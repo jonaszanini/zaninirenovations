@@ -2,7 +2,7 @@
 
 /**
  * Puppeteer inch-grid drags (hosted editor).
- * Modes: edge | centerline (grid fallback) | ortho0 | ortho45 | ortho90 | endpoint-join
+ * Modes: edge | centerline (grid fallback) | ortho0 | ortho45 | ortho90 | ortho-all | endpoint-join
  * stdout: single JSON { ok, mode, ... }
  */
 
@@ -167,9 +167,13 @@ function onInchGrid(coords) {
 }
 
 async function preparePage(page, plan, measureMode) {
-  await page.evaluate((p) => window.postMessage({ type: 'OPENPLAN3D_LOAD_PLAN', plan: p }, window.location.origin), plan);
   await page.waitForFunction(
-    (minWalls) => window.__openPlan3D?.getProject()?.floors?.[0]?.walls?.length >= minWalls,
+    () => window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function',
+    { timeout: 120000 }
+  );
+  await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
+  await page.waitForFunction(
+    (minWalls) => window.__openPlan3D.getProject()?.floors?.[0]?.walls?.length >= minWalls,
     {},
     plan.floors[0].walls.length
   );
@@ -514,16 +518,33 @@ async function main() {
     port = started.port;
   }
 
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    protocolTimeout: 600000,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
   try {
     const page = await browser.newPage();
+    page.setDefaultTimeout(120000);
     await page.setViewport({ width: 1280, height: 900 });
-    await page.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, { timeout: 120000 });
+    await page.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, { timeout: 120000, waitUntil: 'domcontentloaded' });
     await page.waitForSelector('canvas', { timeout: 120000 });
+    await page.waitForFunction(
+      () => window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function',
+      { timeout: 120000 }
+    );
+    await new Promise((r) => setTimeout(r, 400));
 
     let payload;
     if (mode === 'edge' || mode === 'centerline') {
       payload = await runGridFallbackDrag(page, mode);
+    } else if (mode === 'ortho-all') {
+      const results = [];
+      for (const key of ['ortho0', 'ortho45', 'ortho90']) {
+        const one = await runOrthoDrag(page, key);
+        results.push(Object.assign({ ok: true, mode: key }, one));
+      }
+      payload = { results };
     } else if (ORTHO_SCENARIOS[mode]) {
       payload = await runOrthoDrag(page, mode);
     } else if (mode === 'zone-corners') {

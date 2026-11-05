@@ -23,22 +23,28 @@ const h1Editor = fs.readFileSync(
   'utf8'
 );
 
-function runMode(mode) {
-  const out = execFileSync(process.execPath, [HELPER, mode], { encoding: 'utf8', timeout: 180000 }).trim();
-  const line = out.split('\n').filter(Boolean).pop();
-  const result = JSON.parse(line);
-  assert.strictEqual(result.ok, true, `${mode}: ${result.error || 'failed'}`);
-  return result;
-}
-
 function assertWholeInchLength(r, label) {
   assert.ok(typeof r.lengthIn === 'number', label + ' must report lengthIn');
   assert.ok(onWholeInch(r.lengthIn * INCH), `${label}: length ${r.lengthIn} in must be whole inch`);
 }
 
-for (const ortho of ['ortho0', 'ortho45', 'ortho90']) {
-  assertWholeInchLength(runMode(ortho), ortho);
+function runOrthoAll() {
+  const out = execFileSync(process.execPath, [HELPER, 'ortho-all'], {
+    encoding: 'utf8',
+    timeout: 600000,
+    maxBuffer: 10 * 1024 * 1024,
+    env: Object.assign({}, process.env, { NODE_OPTIONS: '--max-old-space-size=4096' }),
+  }).trim();
+  const line = out.split('\n').filter(Boolean).pop();
+  const result = JSON.parse(line);
+  assert.strictEqual(result.ok, true, 'ortho-all: ' + (result.error || 'failed'));
+  assert.ok(Array.isArray(result.results) && result.results.length === 3, 'ortho-all must run three scenarios');
+  for (var i = 0; i < result.results.length; i++) {
+    assertWholeInchLength(result.results[i], result.results[i].mode);
+  }
 }
+
+runOrthoAll();
 
 // Draw-tool jo() ortho length (chunk simulation; revert guard in kr-inch-snap.test.js).
 const anchor = { x: 23.71, y: 31.43 };

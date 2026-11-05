@@ -9,7 +9,24 @@ const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
 console.log('openplan3d-zanini-extensions tests');
 
 assert.strictEqual(typeof ext.rectsUnionAreaSqFt, 'function');
-assert.strictEqual(typeof ext.applyToMetrics, 'function');
+assert.strictEqual(typeof ext.zoneAreaSqFt, 'function');
+assert.strictEqual(typeof ext.collectZoneMemberLegacyRects, 'function');
+
+const ft = ext.CM_PER_FOOT;
+const lShapeZone = {
+  id: 'z-merge',
+  x1: 0,
+  y1: 0,
+  x2: 15 * ft,
+  y2: 15 * ft,
+  rects: [
+    { x1: 0, y1: 0, x2: 10 * ft, y2: 15 * ft },
+    { x1: 10 * ft, y1: 10 * ft, x2: 15 * ft, y2: 15 * ft }
+  ]
+};
+const lShapeArea = ext.zoneAreaSqFt(lShapeZone, [lShapeZone], ft);
+assert.ok(Math.abs(lShapeArea - 175) < 0.05, 'merged zone union area must exclude bbox double-count (got ' + lShapeArea + ')');
+assert.ok(lShapeArea < 225, 'union must be less than enclosing bbox area');
 
 const union = ext.rectsUnionAreaSqFt([
   { x1: 0, y1: 0, x2: 100, y2: 100 },
@@ -148,7 +165,6 @@ const lShapeUnion = ext.rectangleUnionAreaSqFt([
 ], 1.0);
 assert.strictEqual(mergedOut.excluded_area_sqft, lShapeUnion);
 
-const ft = ext.CM_PER_FOOT;
 const zoneA = { x1: 20 * ft, y1: 20 * ft, x2: 30 * ft, y2: 30 * ft };
 const zoneB = { x1: 25 * ft, y1: 25 * ft, x2: 35 * ft, y2: 35 * ft };
 const bigRoomPoly = [

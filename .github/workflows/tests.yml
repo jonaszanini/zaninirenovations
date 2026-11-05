@@ -241,9 +241,14 @@ jobs:
       - name: Unit tests (no database)
         run: tests/ci/run-unit-suite.sh
 
+      - name: Install Puppeteer browser
+        if: needs.changes.outputs.run_browser == 'true'
+        run: npx puppeteer browsers install chrome
+
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'
         run: |
+          node tests/js/openplan3d-kr-ortho-drag.test.js
           node tests/js/openplan3d-browser.test.js
           node tests/js/openplan3d-room-area-blade-browser.test.js
           node tests/js/room-area-main-thread-responsive.test.js
@@ -252,7 +257,7 @@ jobs:
           node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
-          node tests/js/openplan3d-kr-ortho-drag.test.js
+          node tests/js/openplan3d-wall-finish-browser.test.js
           node tests/js/openplan3d-zone-coords.test.js
           node tests/js/admin-hotkey-save-browser.test.js
           node tests/js/admin-date-picker-browser.test.js

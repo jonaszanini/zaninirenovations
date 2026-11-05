@@ -175,6 +175,17 @@
     return out;
   }
 
+  function zoneAreaSqFt(zone, zones, cmPerUnit) {
+    // Zone overlay rects are stored in plan cm (same as applyToMetrics with unit cm).
+    var members = collectZoneMemberLegacyRects(zone, zones);
+    var rects = [];
+    for (var i = 0; i < members.length; i++) {
+      var m = members[i];
+      rects.push({ x0: m.x1, y0: m.y1, x1: m.x2, y1: m.y2 });
+    }
+    return rectsUnionAreaSqFt(rects, 1.0);
+  }
+
   function zonesToLegacyRects(zones, exclude) {
     var out = [];
     for (var i = 0; i < zones.length; i++) {
@@ -469,6 +480,8 @@
     normalizeLegacyRect: normalizeLegacyRect,
     rectangleUnionAreaSqFt: rectangleUnionAreaSqFt,
     rectsUnionAreaSqFt: rectsUnionAreaSqFt,
+    collectZoneMemberLegacyRects: collectZoneMemberLegacyRects,
+    zoneAreaSqFt: zoneAreaSqFt,
     extractZanini: extractZanini,
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
     normalizeZanini: normalizeZanini,

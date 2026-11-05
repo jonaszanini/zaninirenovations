@@ -359,6 +359,9 @@
     var deleteProjectBtn = doc.getElementById('openplan3d-delete-project-btn');
     var zonesPanel = doc.getElementById('openplan3d-zones-panel');
     var zonesListEl = doc.getElementById('openplan3d-zones-list');
+    var takeoffsStrip = doc.getElementById('openplan3d-takeoffs-strip');
+    var takeoffsToggle = doc.getElementById('openplan3d-takeoffs-toggle');
+    var takeoffsSummary = doc.getElementById('openplan3d-takeoffs-summary');
 
     var csrfToken = (doc.getElementById('openplan3d-csrf') || {}).value || '';
     var projects = [];
@@ -783,6 +786,28 @@
       pushPlanToEditor(currentPlan);
     }
 
+    function updateTakeoffsSummary() {
+      if (!takeoffsSummary) return;
+      if (!metricArea) {
+        takeoffsSummary.textContent = '';
+        return;
+      }
+      var area = metricArea.textContent || '0.00';
+      var zonesCount = 0;
+      if (currentPlan && currentPlan.zanini && Array.isArray(currentPlan.zanini.zones)) {
+        zonesCount = currentPlan.zanini.zones.filter(function (z) { return z && !z.mergedInto; }).length;
+      }
+      takeoffsSummary.textContent = area + ' sf floor · ' + zonesCount + ' zone' + (zonesCount === 1 ? '' : 's');
+    }
+
+    function syncTakeoffsCollapsed(collapsed) {
+      if (!takeoffsStrip) return;
+      takeoffsStrip.classList.toggle('is-collapsed', collapsed);
+      if (takeoffsToggle) {
+        takeoffsToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      }
+    }
+
     function renderZonesPanel(plan) {
       if (!zonesListEl) return;
       zonesListEl.innerHTML = '';
@@ -796,8 +821,11 @@
         empty.className = 'openplan3d-zones-empty';
         empty.textContent = 'No area zones yet. Use Zone in the editor toolbar.';
         zonesListEl.appendChild(empty);
+        updateTakeoffsSummary();
         return;
       }
+      var tools = win && win.OpenPlan3DZaniniExtensions;
+      var allZones = (zanini && zanini.zones) || [];
       zones.forEach(function (zone) {
         if (!zone) return;
         var li = doc.createElement('li');
@@ -805,6 +833,12 @@
         var name = doc.createElement('span');
         name.className = 'openplan3d-zones-name';
         name.textContent = zone.name || zone.id || 'Zone';
+        var sqft = doc.createElement('span');
+        sqft.className = 'openplan3d-zones-sqft';
+        var sqftVal = tools && typeof tools.zoneAreaSqFt === 'function'
+          ? tools.zoneAreaSqFt(zone, allZones, tools.CM_PER_FOOT)
+          : 0;
+        sqft.textContent = sqftVal.toFixed(1) + ' sf';
         var tag = doc.createElement('span');
         tag.className = 'openplan3d-zones-tag' + (zone.exclude ? ' openplan3d-zones-tag--exclude' : '');
         tag.textContent = zone.exclude ? 'Exclude' : 'Measure only';
@@ -859,10 +893,12 @@
           });
         }));
         li.appendChild(name);
+        li.appendChild(sqft);
         li.appendChild(tag);
         li.appendChild(actions);
         zonesListEl.appendChild(li);
       });
+      updateTakeoffsSummary();
     }
 
     function removeProjectFromList(projectId) {
@@ -885,15 +921,6 @@
     }
 
     function navigateAfterProjectDelete() {
-      if (projects.length > 0) {
-        selectProject(projects[0].id);
-        if (projects[0].rooms && projects[0].rooms.length > 0) {
-          selectRoom(projects[0].rooms[0]);
-        } else {
-          applyNewRoom('Room 1');
-        }
-        return;
-      }
       startBlankSession();
     }
 
@@ -1024,6 +1051,7 @@
         setMetricEl(metricBulkheadFraming, 0, 2);
         setMetricEl(metricBulkheadBead, 0, 2);
         renderZonesPanel(null);
+        updateTakeoffsSummary();
         updateGeometryWarning();
         return;
       }
@@ -1904,7 +1932,7 @@
         var sun = themeToggleBtn.querySelector('[data-theme-icon="sun"]');
         if (moon) moon.hidden = isDark;
         if (sun) sun.hidden = !isDark;
-        themeToggleBtn.setAttribute('title', isDark ? 'Switch to light theme' : 'Switch to dark theme');
+        themeToggleBtn.setAttribute('data-openplan3d-tip', isDark ? 'Switch to light theme' : 'Switch to dark theme');
         themeToggleBtn.setAttribute('aria-label', isDark ? 'Switch to light theme' : 'Switch to dark theme');
       }
 
@@ -1926,6 +1954,27 @@
       });
 
       doc.addEventListener('admin-theme-change', syncThemeButton);
+    }
+
+    if (takeoffsToggle && takeoffsStrip) {
+      takeoffsToggle.addEventListener('click', function () {
+        syncTakeoffsCollapsed(!takeoffsStrip.classList.contains('is-collapsed'));
+      });
+      if (win && typeof win.matchMedia === 'function') {
+        var phoneMq = win.matchMedia('(max-width: 390px)');
+        function applyPhoneTakeoffs() {
+          takeoffsStrip.classList.toggle('is-collapsed-on-phone', phoneMq.matches);
+          if (phoneMq.matches) {
+            syncTakeoffsCollapsed(true);
+          }
+        }
+        applyPhoneTakeoffs();
+        if (typeof phoneMq.addEventListener === 'function') {
+          phoneMq.addEventListener('change', applyPhoneTakeoffs);
+        } else if (typeof phoneMq.addListener === 'function') {
+          phoneMq.addListener(applyPhoneTakeoffs);
+        }
+      }
     }
 
     initializeSelection();
