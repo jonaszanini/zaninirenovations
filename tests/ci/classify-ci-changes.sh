@@ -13,19 +13,47 @@ is_documentation_path() {
 }
 
 files=()
+append_changed_path() {
+  local p=$1
+  [[ -z "$p" ]] && return
+  local existing
+  for existing in "${files[@]}"; do
+    [[ "$existing" == "$p" ]] && return
+  done
+  files+=("$p")
+}
+
 if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]]; then
   base="${PR_BASE:?}"
   head="${PR_HEAD:?}"
-  while IFS= read -r line; do
-    [[ -n "$line" ]] && files+=("$line")
-  done < <(git diff --name-only "$base" "$head")
+  while IFS=$'\t' read -r status col2 col3 || [[ -n "$status" ]]; do
+    [[ -z "$status" ]] && continue
+    case "$status" in
+      R*|C*)
+        append_changed_path "$col2"
+        append_changed_path "$col3"
+        ;;
+      *)
+        append_changed_path "$col2"
+        ;;
+    esac
+  done < <(git diff --name-status --find-renames=50% "$base" "$head")
 elif [[ "${GITHUB_EVENT_NAME:-}" == "push" ]]; then
   before="${GITHUB_EVENT_BEFORE:-}"
   head="${GITHUB_SHA:?}"
   if [[ -n "$before" && "$before" != "0000000000000000000000000000000000000000" ]]; then
-    while IFS= read -r line; do
-      [[ -n "$line" ]] && files+=("$line")
-    done < <(git diff --name-only "$before" "$head")
+    while IFS=$'\t' read -r status col2 col3 || [[ -n "$status" ]]; do
+      [[ -z "$status" ]] && continue
+      case "$status" in
+        R*|C*)
+          append_changed_path "$col2"
+          append_changed_path "$col3"
+          ;;
+        *)
+          append_changed_path "$col2"
+          ;;
+      esac
+    done < <(git diff --name-status --find-renames=50% "$before" "$head")
   fi
 fi
 

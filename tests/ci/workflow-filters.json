@@ -1,5 +1,5 @@
 {
-  "_comment": "Keep in sync with .github/workflows/tests.yml dorny filters (tests/ci/verify-workflow-filters.mjs).",
+  "_comment": "Keep in sync with .github/workflows/tests.yml dorny filters (tests/ci/verify-workflow-filters.js). Matching uses picomatch { dot: true }.",
   "global_test_deps": [
     "composer.json",
     "composer.lock",
@@ -108,6 +108,7 @@
     "public/js/*quotation*",
     "public/js/admin-hotkey-save.js",
     "public/js/admin-toast.js",
+    "public/js/admin-dialog.js",
     "tests/js/quotation-**",
     "tests/js/fixtures/quotation-redraft-hotkey-lock.html"
   ],
@@ -115,6 +116,8 @@
     "resources/views/admin/client-projects/**",
     "resources/views/admin/client_projects/**",
     "public/js/admin-client-projects.js",
+    "public/css/admin-client-projects.css",
+    "public/css/admin-dark.css",
     "tests/js/client-projects-**"
   ],
   "routes_smoke": [
@@ -123,7 +126,10 @@
     "app/Providers/RouteServiceProvider.php"
   ],
   "seo": [
-    "resources/views/**",
+    "resources/views/site/**",
+    "resources/views/partials/**",
+    "resources/views/pagination/**",
+    "resources/views/emails/**",
     "config/service_areas.php",
     "config/public_services.php",
     "app/Support/Seo*.php",

@@ -47,9 +47,7 @@ function runCompute(changedPaths, extraEnv) {
     ...extraEnv,
   };
   const broad = computeBroadRun(changedPaths, filters);
-  if (broad) {
-    env.FILTER_GLOBAL = 'true';
-  }
+  void broad;
   const stdout = execFileSync('bash', [COMPUTE], {
     cwd: ROOT,
     env: { ...process.env, ...env },
@@ -211,6 +209,48 @@ const cases = [
     },
   },
   {
+    name: 'admin dialog shared with quotation fixtures',
+    paths: ['public/js/admin-dialog.js'],
+    expect: {
+      run_browser_quotation: 'true',
+      run_browser_admin: 'true',
+      browserIncludes: ['tests/js/quotation-redraft-hotkey-lock-browser.test.js'],
+    },
+  },
+  {
+    name: 'admin dark css shared with client preview',
+    paths: ['public/css/admin-dark.css'],
+    expect: {
+      run_browser_client: 'true',
+      run_browser_admin: 'true',
+    },
+  },
+  {
+    name: 'room area finish math PHP glob',
+    paths: ['app/Services/RoomAreaFinishMath.php'],
+    expect: {
+      filter_room_area: 'true',
+    },
+  },
+  {
+    name: 'admin dashboard blade fail-open browser',
+    paths: ['resources/views/admin/dashboard/index.blade.php'],
+    expect: {
+      run_browser: 'true',
+      run_browser_openplan3d: 'true',
+      global_test_deps: 'true',
+    },
+  },
+  {
+    name: 'public site blade seo only no browser',
+    paths: ['resources/views/site/partials/public-header.blade.php'],
+    expect: {
+      filter_seo: 'true',
+      run_browser: 'false',
+      global_test_deps: 'false',
+    },
+  },
+  {
     name: 'negative unknown Dockerfile',
     paths: ['Dockerfile.ci'],
     expect: {
@@ -246,13 +286,13 @@ for (const tc of cases) {
         assert(!browser.includes(exc), `${tc.name}: browser suite should not include ${exc}`);
       }
     }
-    const agg = aggregateFilterHits(tc.paths, loadFilters());
     for (const p of tc.paths) {
+      if (tc.expect.global_test_deps === 'true') {
+        continue;
+      }
       const hits = matchFiltersForPath(p, loadFilters());
       const any = Object.entries(hits).some(([k, v]) => v && !k.startsWith('_'));
-      if (tc.expect.global_test_deps !== 'true') {
-        assert(any, `${tc.name}: path ${p} must match at least one workflow filter (simulated dorny)`);
-      }
+      assert(any, `${tc.name}: path ${p} must match at least one workflow filter (simulated dorny)`);
     }
     console.log('ok', tc.name);
   } catch (err) {

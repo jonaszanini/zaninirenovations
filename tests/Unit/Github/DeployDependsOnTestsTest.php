@@ -197,6 +197,18 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertSame(0, $code, implode("\n", $output));
     }
 
+    public function test_browser_manifest_lists_every_browser_spec(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/verify-browser-manifest.js')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_picomatch_workflow_filter_spot_checks(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/picomatch-tracked-files-audit.js')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
     public function test_ci_js_browser_path_lists_cover_workflow_browser_tests(): void
     {
         $lists = [

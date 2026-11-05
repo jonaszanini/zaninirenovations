@@ -2,58 +2,43 @@
 'use strict';
 
 /**
- * Match changed paths against tests/ci/workflow-filters.json (same globs as dorny paths-filter).
+ * Match changed paths against tests/ci/workflow-filters.json using picomatch
+ * (same semantics as dorny/paths-filter / GitHub Actions).
  */
 const fs = require('fs');
 const path = require('path');
+const picomatch = require('picomatch');
 
-const ROOT = path.resolve(__dirname, '../..');
 const FILTERS_PATH = path.join(__dirname, 'workflow-filters.json');
 
-function globToRegExp(glob) {
-  if (glob.startsWith('!')) {
-    return null;
-  }
-  if (!glob.includes('*')) {
-    return new RegExp('^' + glob.replace(/[.+^${}()|[\]\\]/g, '\\$&') + '$');
-  }
-  if (glob.endsWith('/**') && glob.split('**').length === 2) {
-    const prefix = glob.slice(0, -3);
-    const esc = prefix.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    return new RegExp('^' + esc + '(?:/.*)?$');
-  }
-  const segments = glob.split('/');
-  const reParts = segments.map((seg) => {
-    if (seg === '**') {
-      return '(?:.+/)?';
-    }
-    if (seg.includes('**')) {
-      return seg
-        .split('**')
-        .map((part) => part.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\\\*/g, '[^/]*'))
-        .join('.*');
-    }
-    if (seg.endsWith('**') && seg !== '**') {
-      const prefix = seg.slice(0, -2).replace(/[.+^${}()|[\]\\]/g, '\\$&');
-      return prefix + '.*';
-    }
-    let s = seg.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    s = s.replace(/\\\*/g, '[^/]*');
-    return s;
-  });
-  return new RegExp('^' + reParts.join('/') + '$');
-}
+/** Filters that tag MySQL/SEO only — must not suppress fail-open for browser or unknown paths. */
+const CLASSIFICATION_IGNORE = new Set(['seo']);
 
-function pathMatchesGlob(filePath, glob) {
-  const re = globToRegExp(glob);
-  if (!re) {
-    return false;
-  }
-  return re.test(filePath);
-}
+const BROWSER_FILTER_KEYS = [
+  'browser_js',
+  'browser_admin',
+  'browser_openplan3d',
+  'browser_quotation',
+  'browser_client',
+];
 
 function loadFilters() {
   return JSON.parse(fs.readFileSync(FILTERS_PATH, 'utf8'));
+}
+
+function compilePattern(glob) {
+  if (typeof glob !== 'string' || glob.startsWith('!')) {
+    return null;
+  }
+  return picomatch(glob, { dot: true });
+}
+
+function pathMatchesGlob(filePath, glob) {
+  const fn = compilePattern(glob);
+  if (!fn) {
+    return false;
+  }
+  return fn(filePath);
 }
 
 function matchFiltersForPath(filePath, filters) {
@@ -67,9 +52,9 @@ function matchFiltersForPath(filePath, filters) {
   return hit;
 }
 
-function matchAnyWorkflowFilter(filePath, filters) {
+function matchAnyWorkflowFilter(filePath, filters, ignoreFilters = CLASSIFICATION_IGNORE) {
   for (const [name, patterns] of Object.entries(filters)) {
-    if (name.startsWith('_') || name === 'code') {
+    if (name.startsWith('_') || name === 'code' || ignoreFilters.has(name)) {
       continue;
     }
     for (const p of patterns) {
@@ -104,7 +89,6 @@ function envFromAggregate(agg) {
   const env = {};
   env.FILTER_GLOBAL = agg.global_test_deps ? 'true' : 'false';
   env.FILTER_ADMIN_SHELL = agg.admin_shell ? 'true' : 'false';
-  env.FILTER_ADMIN_SHELL = agg.admin_shell ? 'true' : 'false';
   env.FILTER_SP = agg.shared_prices_geometry ? 'true' : 'false';
   env.FILTER_RA = agg.room_area_live ? 'true' : 'false';
   env.FILTER_BL = agg.blog_live ? 'true' : 'false';
@@ -123,12 +107,41 @@ function isDocPath(p) {
   return p.endsWith('.md') || p.startsWith('docs/') || p.startsWith('lang/');
 }
 
+function pathIsClassifiedForBroadRun(filePath, filters) {
+  if (matchAnyWorkflowFilter(filePath, filters, CLASSIFICATION_IGNORE)) {
+    return true;
+  }
+  const hits = matchFiltersForPath(filePath, filters);
+  if (hits.seo) {
+    return true;
+  }
+  return false;
+}
+
 function computeBroadRun(changedPaths, filters) {
   for (const p of changedPaths) {
     if (!p || isDocPath(p)) {
       continue;
     }
-    if (!matchAnyWorkflowFilter(p, filters)) {
+    if (!pathIsClassifiedForBroadRun(p, filters)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Admin (or other) Blade with no browser-domain filter → run all browser suites. */
+function computeBrowserFailOpen(changedPaths, filters) {
+  for (const p of changedPaths) {
+    if (!p || isDocPath(p)) {
+      continue;
+    }
+    if (!p.startsWith('resources/views/admin/')) {
+      continue;
+    }
+    const hits = matchFiltersForPath(p, filters);
+    const browserHit = BROWSER_FILTER_KEYS.some((k) => hits[k]);
+    if (!browserHit) {
       return true;
     }
   }
@@ -150,23 +163,33 @@ if (require.main === module) {
     const paths = fs.readFileSync(args[1], 'utf8').split('\n').filter(Boolean);
     process.exit(computeBroadRun(paths, filters) ? 0 : 1);
   }
+  if (args[0] === '--browser-fail-open-file' && args[1]) {
+    const paths = fs.readFileSync(args[1], 'utf8').split('\n').filter(Boolean);
+    process.exit(computeBrowserFailOpen(paths, filters) ? 0 : 1);
+  }
   if (args[0] === '--aggregate' && args[1]) {
     const paths = fs.readFileSync(args[1], 'utf8').split('\n').filter(Boolean);
     console.log(JSON.stringify(aggregateFilterHits(paths, filters), null, 2));
     process.exit(0);
   }
-  console.error('Usage: match-workflow-filters.mjs --path <file> [--expect-any]');
-  console.error('       match-workflow-filters.mjs --aggregate <changed-files.txt>');
+  console.error('Usage: match-workflow-filters.js --path <file> [--expect-any]');
+  console.error('       match-workflow-filters.js --broad-file <changed-files.txt>');
+  console.error('       match-workflow-filters.js --browser-fail-open-file <changed-files.txt>');
   process.exit(2);
 }
 
 module.exports = {
   loadFilters,
   pathMatchesGlob,
+  compilePattern,
   matchFiltersForPath,
   aggregateFilterHits,
   envFromAggregate,
+  pathIsClassifiedForBroadRun,
   computeBroadRun,
+  computeBrowserFailOpen,
   matchAnyWorkflowFilter,
   isDocPath,
+  CLASSIFICATION_IGNORE,
+  BROWSER_FILTER_KEYS,
 };

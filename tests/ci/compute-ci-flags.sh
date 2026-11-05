@@ -39,6 +39,13 @@ if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
   fi
 fi
 
+browser_fail_open=false
+if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
+  if node "$ROOT/tests/ci/match-workflow-filters.js" --browser-fail-open-file "$CHANGED_FILES_FILE"; then
+    browser_fail_open=true
+  fi
+fi
+
 global_deps=false
 if truthy "${FILTER_GLOBAL:-false}" || [[ "$broad_run" == true ]]; then
   global_deps=true
@@ -105,22 +112,22 @@ if truthy "${FILTER_BROWSER_JS:-false}" && [[ -n "${CHANGED_FILES_FILE:-}" && -f
 fi
 
 run_browser_admin=false
-if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_ADMIN:-false}" || [[ "$browser_js_admin" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || [[ "$browser_fail_open" == true ]] || truthy "${FILTER_BROWSER_ADMIN:-false}" || [[ "$browser_js_admin" == true ]]; then
   run_browser_admin=true
 fi
 
 run_browser_openplan3d=false
-if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_OPENPLAN3D:-false}" || truthy "${FILTER_RA:-false}" || truthy "${FILTER_SP:-false}" || [[ "$browser_js_openplan3d" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || [[ "$browser_fail_open" == true ]] || truthy "${FILTER_BROWSER_OPENPLAN3D:-false}" || truthy "${FILTER_RA:-false}" || truthy "${FILTER_SP:-false}" || [[ "$browser_js_openplan3d" == true ]]; then
   run_browser_openplan3d=true
 fi
 
 run_browser_quotation=false
-if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_QUOTATION:-false}" || truthy "${FILTER_ROUTES:-false}" || [[ "$browser_js_quotation" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || [[ "$browser_fail_open" == true ]] || truthy "${FILTER_BROWSER_QUOTATION:-false}" || truthy "${FILTER_ROUTES:-false}" || [[ "$browser_js_quotation" == true ]]; then
   run_browser_quotation=true
 fi
 
 run_browser_client=false
-if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_CLIENT:-false}" || [[ "$browser_js_client" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || [[ "$browser_fail_open" == true ]] || truthy "${FILTER_BROWSER_CLIENT:-false}" || [[ "$browser_js_client" == true ]]; then
   run_browser_client=true
 fi
 
@@ -175,6 +182,7 @@ emit filter_seo "$filter_seo_out"
 emit filter_millwork "$filter_mf_out"
 emit filter_routes_smoke "$filter_routes_out"
 emit broad_run "$broad_run"
+emit browser_fail_open "$browser_fail_open"
 emit global_test_deps "$global_deps"
 
 echo "CI flags: database=$run_database browser=$run_browser (admin=$run_browser_admin openplan3d=$run_browser_openplan3d quotation=$run_browser_quotation client=$run_browser_client) mysql_node=$run_mysql_node broad=$broad_run global=$global_deps"
