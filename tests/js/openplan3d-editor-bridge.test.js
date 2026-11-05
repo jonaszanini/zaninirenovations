@@ -492,6 +492,10 @@ const indexHtml = fs.readFileSync(INDEX, 'utf8');
 assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > button.bg-white.text-slate-800.font-semibold'), 'CSS fallback for Save button is restored');
 assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1'), 'CSS fallback for Projects link is restored');
 assert.ok(indexHtml.includes('html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > .relative:has(> button svg path[d^="M21 15v4"])'), 'CSS fallback for Export dropdown is restored');
+assert.ok(
+  indexHtml.includes('html.dark.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700'),
+  'Add Top Floor menu remove-floor item uses hosted dark error red override'
+);
 
 // Verify openplan3d-host.js does not unlock isSaving in jsonPost
 const hostJs = fs.readFileSync(HOST_JS, 'utf8');

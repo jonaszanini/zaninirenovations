@@ -246,6 +246,81 @@
 				transform: translateY(-1px) !important;
 			}
 
+			/*
+			 * Hosted Room Area — right sidebar Plan / Elevation pills and wall
+			 * properties Elevation CTA: vendor Tailwind uses light-theme pills
+			 * (bg-white text-slate-800, text-white/80) that lose contrast on dark chrome.
+			 */
+			html.dark.zanini-hosted-openplan3d aside button.rounded-full.bg-white,
+			html.dark html.zanini-hosted-openplan3d aside button.rounded-full.bg-white {
+				background-color: #f1f5f9 !important;
+				color: #0f172a !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.rounded-full[class*="text-white"],
+			html.dark html.zanini-hosted-openplan3d aside button.rounded-full[class*="text-white"] {
+				color: #e2e8f0 !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.rounded-full[class*="text-white"]:hover,
+			html.dark html.zanini-hosted-openplan3d aside button.rounded-full[class*="text-white"]:hover {
+				color: #ffffff !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.rounded-full.bg-blue-500,
+			html.dark html.zanini-hosted-openplan3d aside button.rounded-full.bg-blue-500 {
+				background-color: #2563eb !important;
+				color: #ffffff !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.bg-blue-50.text-blue-700,
+			html.dark html.zanini-hosted-openplan3d aside button.bg-blue-50.text-blue-700 {
+				background-color: rgba(37, 99, 235, 0.28) !important;
+				color: #f0f9ff !important;
+				border-color: rgba(96, 165, 250, 0.55) !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.bg-blue-50.text-blue-700:hover,
+			html.dark html.zanini-hosted-openplan3d aside button.bg-blue-50.text-blue-700:hover {
+				background-color: rgba(37, 99, 235, 0.42) !important;
+				color: #ffffff !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.border-b-2.text-gray-400,
+			html.dark html.zanini-hosted-openplan3d aside button.border-b-2.text-gray-400 {
+				color: #cbd5e1 !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.border-b-2.text-gray-400:hover,
+			html.dark html.zanini-hosted-openplan3d aside button.border-b-2.text-gray-400:hover {
+				color: #f8fafc !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d aside button.border-blue-500.text-blue-600,
+			html.dark html.zanini-hosted-openplan3d aside button.border-blue-500.text-blue-600 {
+				color: #93c5fd !important;
+				border-bottom-color: #60a5fa !important;
+			}
+
+			/*
+			 * Add Top Floor menu — "Remove current floor" (text-red-700 on a panel that
+			 * becomes dark via .dark .bg-white). Match host Room Area error banner red
+			 * (admin dark .openplan3d-feedback--error / geometry crosses-itself notice).
+			 */
+			html.dark.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700,
+			html.dark html.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700 {
+				color: #f87171 !important;
+				font-weight: 600 !important;
+			}
+
+			html.dark.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700:hover,
+			html.dark.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700:focus-visible,
+			html.dark html.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700:hover,
+			html.dark html.zanini-hosted-openplan3d div.absolute.left-0.top-full.w-64 button.text-red-700:focus-visible {
+				background-color: rgba(248, 113, 113, 0.14) !important;
+				color: #fca5a5 !important;
+			}
+
 			/* Zanini host: hide vendor Projects / Save / Saved ✓ / Export chrome */
 			html.zanini-hosted-openplan3d [data-zanini-hide-native-save] {
 				display: none !important;
