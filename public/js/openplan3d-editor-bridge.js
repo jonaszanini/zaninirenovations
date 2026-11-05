@@ -1055,9 +1055,6 @@
         rawH(project);
       };
       var setProjectWithRoomFill = wrapProjectSetterForRoomFill(innerSetter);
-      if (typeof storeModule.H === 'function') {
-        storeModule.H = setProjectWithRoomFill;
-      }
       setApi({
         getProject: function () {
           var cur = null;
@@ -1081,6 +1078,30 @@
       }
       storeReady = true;
       postToParent({ type: 'OPENPLAN3D_READY' });
+      if (!queuedPlan) {
+        loadAcked = true;
+        ignoreStoreChanges = false;
+      }
+      if (inspected.store && typeof inspected.store.subscribe === 'function') {
+        var roomFillTimer = null;
+        inspected.store.subscribe(function (project) {
+          if (ignoreStoreChanges || !project) return;
+          if (roomFillTimer) clearTimeout(roomFillTimer);
+          roomFillTimer = setTimeout(function () {
+            roomFillTimer = null;
+            if (ignoreStoreChanges) return;
+            var mb = typeof window !== 'undefined' ? window.OpenPlan3DMeasurementBridge : null;
+            if (!mb || typeof mb.syncEditorRoomBoundariesForCanvasFill !== 'function') return;
+            var synced = mb.syncEditorRoomBoundariesForCanvasFill(project);
+            if (!synced || !synced.changed || !synced.plan) return;
+            try {
+              setProjectWithRoomFill(synced.plan);
+            } catch (roomFillErr) {
+              console.warn('[openPlan3D Bridge] Room fill sync failed:', roomFillErr);
+            }
+          }, 0);
+        });
+      }
       tryApply();
       return inspected;
     }

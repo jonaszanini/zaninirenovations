@@ -394,6 +394,18 @@ function patchHostedEditorIndexBoot() {
       /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
       `openplan3d-editor-bridge.js?v=${bridgeV}`
     );
+    embedHtml = embedHtml.replace(
+      /openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-measurement-bridge.js?v=${measureV}`
+    );
+    embedHtml = embedHtml.replace(
+      /openplan3d-zanini-extensions\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-zanini-extensions.js?v=${extV}`
+    );
+    embedHtml = embedHtml.replace(
+      /openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-zanini-tools.js?v=${toolsV}`
+    );
     fs.writeFileSync(embedPath, embedHtml);
   }
 }

@@ -74,4 +74,48 @@ const perimeterSync = bridge.syncEditorRoomBoundariesForCanvasFill(perimeterOnly
 assert.strictEqual(perimeterSync.changed, true, 'closed perimeter with empty rooms[] should persist explicit room early');
 assert.strictEqual(perimeterSync.plan.floors[0].rooms.length, 1);
 
+const CM = bridge.CM_PER_FOOT;
+const side = 40 * CM;
+const splitPlan = {
+  unit: 'cm',
+  activeFloorId: 'f1',
+  floors: [
+    {
+      id: 'f1',
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: side, y: 0 } },
+        { id: 'w2', start: { x: side, y: 0 }, end: { x: side, y: side } },
+        { id: 'w3', start: { x: side, y: side }, end: { x: 0, y: side } },
+        { id: 'w4', start: { x: 0, y: side }, end: { x: 0, y: 0 } },
+        { id: 'p1', start: { x: side / 2, y: 0 }, end: { x: side / 2, y: side } }
+      ],
+      rooms: []
+    }
+  ]
+};
+splitPlan.floor = splitPlan.floors[0];
+const splitSync = bridge.syncEditorRoomBoundariesForCanvasFill(splitPlan);
+assert.strictEqual(splitSync.changed, true, 'spanning partition must persist multi-room topology');
+assert.strictEqual(splitSync.plan.floors[0].rooms.length, 2, 'must not collapse to one outer room');
+const areas = splitSync.plan.floors[0].rooms.map((r) =>
+  bridge.layoutMetrics(splitSync.plan, r.id, { wall_height_ft: 8.0 }).area_sqft
+);
+assert.ok(Math.abs(areas[0] - 800) < 2 && Math.abs(areas[1] - 800) < 2, 'each closed half ~800 sf');
+
+const syncedPerim = bridge.syncEditorRoomBoundariesForCanvasFill(perimeterOnly).plan;
+const openPlan = JSON.parse(JSON.stringify(syncedPerim));
+const dropId = loop.boundary_wall_ids[0];
+openPlan.floors[0].walls = openPlan.floors[0].walls.filter((w) => w.id !== dropId);
+openPlan.floor = openPlan.floors[0];
+const openSync = bridge.syncEditorRoomBoundariesForCanvasFill(openPlan);
+assert.strictEqual(openSync.changed, true, 'broken perimeter must invalidate persisted rooms');
+assert.strictEqual(openSync.plan.floors[0].rooms.length, 0);
+
+const deleteAll = JSON.parse(JSON.stringify(openPlan));
+deleteAll.floors[0].walls = [];
+deleteAll.floor = deleteAll.floors[0];
+const deleteAllSync = bridge.syncEditorRoomBoundariesForCanvasFill(deleteAll);
+assert.strictEqual(deleteAllSync.changed, true, 'delete-all must clear dead room objects');
+assert.strictEqual(deleteAllSync.plan.floors[0].rooms.length, 0);
+
 console.log('openplan3d-editor-room-fill: ok');
