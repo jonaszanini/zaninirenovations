@@ -307,17 +307,51 @@
     return String(text || '').replace(/\s+/g, ' ').trim().replace(/[*:]+$/, '').trim() || 'This field';
   }
 
+  function stripLegendDecorations(root) {
+    if (!root || !root.querySelectorAll) return;
+    var selectors = [
+      '.admin-label-with-tip__end',
+      '.cp-required',
+      '.admin-info-tip',
+      '[data-admin-info-tip]',
+      '[data-admin-info-tip-trigger]',
+      '[data-admin-info-tip-panel]',
+      'button',
+    ];
+    for (var s = 0; s < selectors.length; s++) {
+      var nodes = root.querySelectorAll(selectors[s]);
+      for (var i = nodes.length - 1; i >= 0; i--) {
+        var node = nodes[i];
+        if (node.parentNode) node.parentNode.removeChild(node);
+      }
+    }
+  }
+
+  function legendHeadingText(leg) {
+    if (!leg) return '';
+    if (leg.cloneNode) {
+      var clone = leg.cloneNode(true);
+      stripLegendDecorations(clone);
+      return cleanLabel(clone.textContent);
+    }
+    return cleanLabel(leg.textContent);
+  }
+
   function radioGroupLabel(el, doc) {
     if (!el) return '';
     var fieldset = el.closest ? el.closest('fieldset') : null;
     if (fieldset) {
       var leg = fieldset.querySelector('legend');
-      if (leg) return cleanLabel(leg.textContent);
+      if (leg) return legendHeadingText(leg);
     }
     var labelledBy = el.getAttribute && el.getAttribute('aria-labelledby');
     if (labelledBy && doc) {
       var ref = doc.getElementById(labelledBy);
-      if (ref) return cleanLabel(ref.textContent);
+      if (ref) {
+        var tag = (ref.tagName || '').toLowerCase();
+        if (tag === 'legend') return legendHeadingText(ref);
+        return cleanLabel(ref.textContent);
+      }
     }
     var group = el.closest ? el.closest('[role="group"][aria-labelledby]') : null;
     if (group && doc) {
@@ -345,7 +379,7 @@
     var doc = env.document;
     if (!el) return 'This field';
     var type = (el.type || '').toLowerCase();
-    if (type === 'radio' || type === 'checkbox') {
+    if (type === 'radio') {
       var group = radioGroupLabel(el, doc);
       if (group) return group;
     }

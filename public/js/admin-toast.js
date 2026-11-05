@@ -262,7 +262,7 @@
       var target = el;
       if ((el.tagName || '').toLowerCase() === 'input') {
         var t = (el.type || '').toLowerCase();
-        if (t === 'radio' || t === 'checkbox') {
+        if (t === 'radio') {
           var fieldset = el.closest ? el.closest('fieldset') : null;
           if (fieldset && fieldset.classList) target = fieldset;
         }
