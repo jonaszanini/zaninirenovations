@@ -138,4 +138,36 @@ assert.strictEqual(targetZone.rects.length, 2, 'Target should have 2 rects after
 assert.strictEqual(targetZone.x2, 150, 'Bbox should expand after merge');
 assert.strictEqual(targetZone.y2, 150, 'Bbox should expand after merge');
 
+const mockCanvas = { style: {}, width: 800, height: 600, addEventListener: function () {} };
+global.requestAnimationFrame = function (fn) { return 0; };
+const htmlClass = {};
+global.document.documentElement = {
+  classList: {
+    toggle: function (name, on) {
+      htmlClass[name] = !!on;
+    },
+    contains: function (name) {
+      return !!htmlClass[name];
+    }
+  }
+};
+global.document.querySelector = function (sel) {
+  if (sel && sel.indexOf('canvas') !== -1) return mockCanvas;
+  return null;
+};
+
+tools.setMode('zone');
+assert.strictEqual(tools.getMode(), 'zone');
+assert.strictEqual(mockCanvas.style.cursor, 'crosshair');
+assert.ok(htmlClass['openplan3d-zanini-draw-mode'], 'draw mode class when Zone active');
+
+tools.setMode('bulkhead', { explicit: true });
+assert.strictEqual(tools.getMode(), 'bulkhead');
+assert.strictEqual(mockCanvas.style.cursor, 'crosshair');
+
+tools.setMode(null, { explicit: true });
+assert.strictEqual(tools.getMode(), null);
+assert.strictEqual(mockCanvas.style.cursor, '');
+assert.ok(!htmlClass['openplan3d-zanini-draw-mode'], 'draw mode class cleared on exit');
+
 console.log('openplan3d-zanini-tools: ok');

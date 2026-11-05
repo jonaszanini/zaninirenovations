@@ -1421,6 +1421,122 @@
     }, plan, finish, options);
   }
 
+  function wallIdListKey(ids) {
+    if (!Array.isArray(ids)) return '';
+    return ids.slice().sort().join('|');
+  }
+
+  function cmPerUnitForPlan(plan) {
+    if (!plan || typeof plan !== 'object') return CM_PER_FOOT;
+    var unit = String(plan.unit || 'cm').toLowerCase();
+    if (unit === 'ft' || unit === 'feet' || unit === 'foot') return CM_PER_FOOT;
+    if (unit === 'm' || unit === 'meter' || unit === 'meters') return 100;
+    return CM_PER_FOOT;
+  }
+
+  function floorEligibleForCanvasFillSync(floor, activeId) {
+    if (!floor || typeof floor !== 'object') return false;
+    if (activeId && floor.id && floor.id !== activeId) return false;
+    return true;
+  }
+
+  /**
+   * openPlan3D canvas fill uses persisted room.walls with Bo(). Auto-detected rooms
+   * (empty floors[].rooms) vanish once ≥2 dangling partitions exist, while Zanini
+   * takeoffs still use the outer loop. Persist one explicit boundary room for fill.
+   */
+  function syncEditorRoomBoundariesForCanvasFill(plan) {
+    if (!plan || typeof plan !== 'object') return { plan: plan, changed: false };
+    var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId) || null;
+    var cmPerUnit = cmPerUnitForPlan(plan);
+    var live = resolveFloor(plan);
+    if (!live || !floorEligibleForCanvasFillSync(live, activeId)) {
+      return { plan: plan, changed: false };
+    }
+    if (!Array.isArray(live.walls) || live.walls.length < 4) {
+      return { plan: plan, changed: false };
+    }
+    var roomCount = Array.isArray(live.rooms) ? live.rooms.length : 0;
+    if (roomCount > 1) return { plan: plan, changed: false };
+
+    var drawable = [];
+    for (var wi = 0; wi < live.walls.length; wi++) {
+      var w = live.walls[wi];
+      if (w && w.id && w.start && w.end) drawable.push(w);
+    }
+    if (drawable.length < 4) return { plan: plan, changed: false };
+    var loopData = extractOuterLoopAndPartitions(drawable, cmPerUnit);
+    var boundary = loopData.boundary_wall_ids || [];
+    var outer = loopData.outer_polygon || [];
+    if (boundary.length < 3 || !outerLoopHasUsableArea(outer, cmPerUnit)) {
+      return { plan: plan, changed: false };
+    }
+
+    var nextPoly = applyOuterLoopPolygon([], loopData, cmPerUnit, boundary);
+    if (nextPoly.length < 3) nextPoly = outer.slice();
+
+    var room = roomCount === 1 ? live.rooms[0] : null;
+    if (roomCount === 1 && wallIdListKey(room.walls) === wallIdListKey(boundary)) {
+      var existingPoly = room.polygon || room.vertices || [];
+      if (existingPoly.length >= 3 && outerLoopHasUsableArea(existingPoly, cmPerUnit)) {
+        var existingArea = polygonAreaSqFt(existingPoly, cmPerUnit);
+        var outerArea = polygonAreaSqFt(nextPoly, cmPerUnit);
+        if (Math.abs(existingArea - outerArea) < 0.75) {
+          return { plan: plan, changed: false };
+        }
+      }
+    }
+
+    var needsCreate = roomCount === 0;
+    var wallsChanged = needsCreate || wallIdListKey(room && room.walls) !== wallIdListKey(boundary);
+    var polyChanged =
+      needsCreate ||
+      (nextPoly.length >= 3 &&
+        JSON.stringify((room && room.polygon) || []) !== JSON.stringify(nextPoly));
+    if (!needsCreate && !loopData.partition_walls.length && !wallsChanged && !polyChanged) {
+      return { plan: plan, changed: false };
+    }
+    if (!needsCreate && loopData.partition_walls.length === 0 && !wallsChanged) {
+      return { plan: plan, changed: false };
+    }
+
+    var out = JSON.parse(JSON.stringify(plan));
+    var target = resolveFloor(out);
+    if (!target) return { plan: plan, changed: false };
+    if (!Array.isArray(target.rooms)) target.rooms = [];
+    if (target.rooms.length === 0) {
+      target.rooms.push({
+        id: 'room_1',
+        name: 'Room 1',
+        walls: boundary.slice(),
+        polygon: nextPoly.slice()
+      });
+    } else {
+      if (wallsChanged) target.rooms[0].walls = boundary.slice();
+      if (polyChanged) target.rooms[0].polygon = nextPoly.slice();
+      if (!target.rooms[0].name) target.rooms[0].name = 'Room 1';
+    }
+
+    var snap = JSON.parse(JSON.stringify(target));
+    if (out.floor && typeof out.floor === 'object') out.floor = snap;
+    if (Array.isArray(out.floors)) {
+      for (var fi = 0; fi < out.floors.length; fi++) {
+        if (!out.floors[fi]) continue;
+        if (activeId && out.floors[fi].id && out.floors[fi].id !== activeId) continue;
+        if (!activeId && fi > 0) continue;
+        out.floors[fi] = JSON.parse(JSON.stringify(snap));
+        break;
+      }
+    }
+    return { plan: out, changed: true };
+  }
+
+  function editorFloorNeedsPersistedRoom(plan) {
+    var floor = resolveFloor(plan);
+    if (!floor || countDrawableWalls(floor) < 4) return false;
+    return !Array.isArray(floor.rooms) || floor.rooms.length === 0;
+  }
+
   return {
     CM_PER_INCH: CM_PER_INCH,
     CM_PER_FOOT: CM_PER_FOOT,
@@ -1432,6 +1548,8 @@
     countDrawableWalls: countDrawableWalls,
     extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
     shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
-    isSimplePolygon: isSimplePolygon
+    isSimplePolygon: isSimplePolygon,
+    syncEditorRoomBoundariesForCanvasFill: syncEditorRoomBoundariesForCanvasFill,
+    editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom
   };
 }));

@@ -153,6 +153,16 @@
     return p;
   }
 
+  function preparePlanForEditorLoad(plan) {
+    var prepared = toEditorProject(plan);
+    var bridge = typeof window !== 'undefined' ? window.OpenPlan3DMeasurementBridge : null;
+    if (bridge && typeof bridge.syncEditorRoomBoundariesForCanvasFill === 'function') {
+      var synced = bridge.syncEditorRoomBoundariesForCanvasFill(prepared);
+      if (synced && synced.changed && synced.plan) prepared = synced.plan;
+    }
+    return prepared;
+  }
+
   function inspectStoreModule(mod) {
     if (!mod || typeof mod !== 'object') {
       return { ok: false, setter: null, store: null, reason: 'missing-module' };
@@ -168,6 +178,30 @@
       return { ok: false, setter: setter, store: store, reason: 'missing-H-or-c' };
     }
     return { ok: true, setter: setter, store: store, reason: null };
+  }
+
+  function wrapProjectSetterForRoomFill(setter) {
+    var syncing = false;
+    return function setProjectWithRoomFill(project) {
+      if (syncing) {
+        setter(project);
+        return;
+      }
+      var bridge = typeof window !== 'undefined' ? window.OpenPlan3DMeasurementBridge : null;
+      if (bridge && typeof bridge.syncEditorRoomBoundariesForCanvasFill === 'function') {
+        var synced = bridge.syncEditorRoomBoundariesForCanvasFill(project);
+        if (synced && synced.changed && synced.plan) {
+          syncing = true;
+          try {
+            setter(synced.plan);
+          } finally {
+            syncing = false;
+          }
+          return;
+        }
+      }
+      setter(project);
+    };
   }
 
   function storeExportsOk(mod) {
@@ -1001,7 +1035,7 @@
     }
 
     function queueLoad(plan) {
-      queuedPlan = plan == null ? null : toEditorProject(plan);
+      queuedPlan = plan == null ? null : preparePlanForEditorLoad(plan);
       loadAcked = false;
       ignoreStoreChanges = true;
       tryApply();
@@ -1016,6 +1050,14 @@
         postToParent({ type: 'OPENPLAN3D_BRIDGE_ERROR', message: inspected.reason || 'missing-H-or-c' });
         return inspected;
       }
+      var rawH = typeof storeModule.H === 'function' ? storeModule.H : inspected.setter;
+      var innerSetter = function (project) {
+        rawH(project);
+      };
+      var setProjectWithRoomFill = wrapProjectSetterForRoomFill(innerSetter);
+      if (typeof storeModule.H === 'function') {
+        storeModule.H = setProjectWithRoomFill;
+      }
       setApi({
         getProject: function () {
           var cur = null;
@@ -1023,9 +1065,7 @@
           if (typeof unsub === 'function') unsub();
           return cur;
         },
-        setProject: function (project) {
-          inspected.setter(project);
-        },
+        setProject: setProjectWithRoomFill,
         subscribe: function (callback) {
           return inspected.store.subscribe(callback);
         },
@@ -1135,7 +1175,10 @@
       if (data.type === 'OPENPLAN3D_SET_ZANINI_MODE') {
         var zaniniTools = typeof window !== 'undefined' ? window.OpenPlan3DZaniniTools : null;
         if (zaniniTools && typeof zaniniTools.setMode === 'function') {
-          zaniniTools.setMode(data.mode == null || data.mode === '' ? null : String(data.mode));
+          zaniniTools.setMode(
+            data.mode == null || data.mode === '' ? null : String(data.mode),
+            { explicit: true }
+          );
         }
         return true;
       }

@@ -327,6 +327,7 @@ function fileContentVersion16(absPath) {
 function patchHostedEditorIndexBoot() {
   let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
   const localeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-hosted-locale.js'));
+  const measureV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-measurement-bridge.js'));
   const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
   const extV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-extensions.js'));
   const toolsV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-tools.js'));
@@ -335,6 +336,16 @@ function patchHostedEditorIndexBoot() {
     /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
     `openplan3d-editor-bridge.js?v=${bridgeV}`
   );
+
+  const measureTag = `<script src="/js/openplan3d-measurement-bridge.js?v=${measureV}"></script>`;
+  if (!html.includes('openplan3d-measurement-bridge.js')) {
+    html = html.replace(
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
+      `${measureTag}\n\t\t<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`
+    );
+  } else {
+    html = html.replace(/openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/, `openplan3d-measurement-bridge.js?v=${measureV}`);
+  }
 
   const extTag = `<script src="/js/openplan3d-zanini-extensions.js?v=${extV}"></script>`;
   if (!html.includes('openplan3d-zanini-extensions.js')) {
