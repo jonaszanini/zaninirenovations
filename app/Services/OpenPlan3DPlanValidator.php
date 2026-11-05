@@ -392,12 +392,18 @@ class OpenPlan3DPlanValidator
         }
 
         if (isset($item['position'])) {
-            if (! is_array($item['position'])) {
+            $position = $item['position'];
+            if (is_array($position)) {
+                $check = $this->validatePoint($position, ucfirst($kind).' position');
+                if (! $check['valid']) {
+                    return $check;
+                }
+            } elseif (is_numeric($position) && ! $this->isBadNumber($position)) {
+                if (abs((float) $position) > self::MAX_COORDINATE) {
+                    return ['valid' => false, 'message' => ucfirst($kind).' position is impossibly large.'];
+                }
+            } else {
                 return ['valid' => false, 'message' => ucfirst($kind).' position must be coordinates.'];
-            }
-            $check = $this->validatePoint($item['position'], ucfirst($kind).' position');
-            if (! $check['valid']) {
-                return $check;
             }
         }
 

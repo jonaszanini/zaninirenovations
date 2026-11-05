@@ -227,10 +227,12 @@ jobs:
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
           node tests/js/openplan3d-host-save-area.test.js
+          node tests/js/openplan3d-editor-room-fill.test.js
           node tests/js/openplan3d-editor-bridge.test.js
           node tests/js/openplan3d-zanini-extensions.test.js
           node tests/js/openplan3d-zanini-tools.test.js
           node tests/js/openplan3d-editor-asset-version.test.js
+          node tests/js/openplan3d-immutable-graph-cache.test.js
           node tests/js/openplan3d-kr-inch-snap.test.js
           node tests/js/room-area-formula.test.js
           node tests/js/shared-prices-effective.test.js
@@ -254,10 +256,13 @@ jobs:
           node tests/js/openplan3d-room-area-blade-browser.test.js
           node tests/js/room-area-main-thread-responsive.test.js
           node tests/js/openplan3d-editor-asset-version.test.js
+          node tests/js/openplan3d-immutable-graph-cache.test.js
           node tests/js/openplan3d-kr-inch-snap.test.js
           node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
+          node tests/js/openplan3d-room-canvas-fill-browser.test.js
+          node tests/js/openplan3d-cache-store-singleton-browser.test.js
           node tests/js/openplan3d-wall-finish-browser.test.js
           node tests/js/openplan3d-zone-coords.test.js
           node tests/js/admin-hotkey-save-browser.test.js

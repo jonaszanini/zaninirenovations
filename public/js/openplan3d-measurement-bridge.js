@@ -1421,6 +1421,478 @@
     }, plan, finish, options);
   }
 
+  function wallIdListKey(ids) {
+    if (!Array.isArray(ids)) return '';
+    return ids.slice().sort().join('|');
+  }
+
+  function drawableWallIdSet(walls) {
+    var out = {};
+    if (!Array.isArray(walls)) return out;
+    for (var i = 0; i < walls.length; i++) {
+      if (walls[i] && walls[i].id) out[String(walls[i].id)] = true;
+    }
+    return out;
+  }
+
+  function pointNearRing(pt, ring, epsUnit) {
+    if (!pt || !ring || ring.length < 2) return false;
+    for (var i = 0; i < ring.length; i++) {
+      var a = ring[i];
+      var b = ring[(i + 1) % ring.length];
+      var res = distToSegment(pt, a, b);
+      if (res.dist < epsUnit) return true;
+    }
+    return false;
+  }
+
+  function classifyPartitionWalls(partitionWalls, outerRing, cmPerUnit, wallsList) {
+    var epsUnit = partitionToleranceCm(wallsList, cmPerUnit) / (cmPerUnit > 0 ? cmPerUnit : 1.0);
+    var dangling = [];
+    var spanning = [];
+    for (var i = 0; i < (partitionWalls || []).length; i++) {
+      var w = partitionWalls[i];
+      if (!w || !w.start || !w.end) {
+        if (w) dangling.push(w);
+        continue;
+      }
+      var s = snapPlanPoint(w.start, cmPerUnit);
+      var e = snapPlanPoint(w.end, cmPerUnit);
+      if (pointNearRing(s, outerRing, epsUnit) && pointNearRing(e, outerRing, epsUnit)) {
+        spanning.push(w);
+      } else {
+        dangling.push(w);
+      }
+    }
+    return { dangling: dangling, spanning: spanning, epsUnit: epsUnit };
+  }
+
+  function pointInPolygon(pt, polygon, epsUnit) {
+    if (!polygon || polygon.length < 3) return false;
+    var x = pt.x;
+    var y = pt.y;
+    var inside = false;
+    for (var i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      var xi = polygon[i].x;
+      var yi = polygon[i].y;
+      var xj = polygon[j].x;
+      var yj = polygon[j].y;
+      if (Math.abs(x - xi) < epsUnit && Math.abs(y - yi) < epsUnit) return true;
+      var intersect =
+        yi > y !== yj > y &&
+        x < ((xj - xi) * (y - yi)) / (yj - yi + 1e-12) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function segmentsOverlapNear(a0, a1, b0, b1, epsUnit) {
+    var res = distToSegment(a0, b0, b1);
+    if (res.dist < epsUnit) return true;
+    res = distToSegment(a1, b0, b1);
+    if (res.dist < epsUnit) return true;
+    res = distToSegment(b0, a0, a1);
+    if (res.dist < epsUnit) return true;
+    res = distToSegment(b1, a0, a1);
+    return res.dist < epsUnit;
+  }
+
+  function wallContributesToRoomPolygon(w, poly, cmPerUnit, epsUnit) {
+    if (!w || !w.start || !w.end || !poly || poly.length < 3) return false;
+    var s = snapPlanPoint(w.start, cmPerUnit);
+    var e = snapPlanPoint(w.end, cmPerUnit);
+    if (pointNearRing(s, poly, epsUnit) || pointNearRing(e, poly, epsUnit)) return true;
+    for (var i = 0; i < poly.length; i++) {
+      var a = poly[i];
+      var b = poly[(i + 1) % poly.length];
+      if (segmentsOverlapNear(s, e, a, b, epsUnit)) return true;
+    }
+    return false;
+  }
+
+  function wallsForRoomPolygon(poly, wallsList, cmPerUnit, epsUnit) {
+    var ids = [];
+    var seen = {};
+    for (var i = 0; i < wallsList.length; i++) {
+      var w = wallsList[i];
+      if (!w || !w.id) continue;
+      if (!wallContributesToRoomPolygon(w, poly, cmPerUnit, epsUnit)) continue;
+      var wid = String(w.id);
+      if (seen[wid]) continue;
+      seen[wid] = true;
+      ids.push(wid);
+    }
+    return ids;
+  }
+
+  function locateOnRing(pt, ring, epsUnit) {
+    for (var i = 0; i < ring.length; i++) {
+      var a = ring[i];
+      var b = ring[(i + 1) % ring.length];
+      var res = distToSegment(pt, a, b);
+      if (res.dist < epsUnit && res.t >= -1e-4 && res.t <= 1 + 1e-4) {
+        return { edgeIndex: i, t: res.t, point: snapPlanPoint(res.proj, 1) };
+      }
+    }
+    return null;
+  }
+
+  function appendRingChain(out, ring, fromIdx, toIdx, fromT, toT, fromPt, toPt) {
+    out.push({ x: fromPt.x, y: fromPt.y });
+    var idx = fromIdx;
+    var guard = 0;
+    while (guard++ < ring.length + 2) {
+      idx = (idx + 1) % ring.length;
+      if (idx === (toIdx + 1) % ring.length) break;
+      out.push({ x: ring[idx].x, y: ring[idx].y });
+    }
+    out.push({ x: toPt.x, y: toPt.y });
+    return simplifyRing(out);
+  }
+
+  function trySplitPolygonBySpanningWall(outer, wall, cmPerUnit, epsUnit) {
+    if (!outer || outer.length < 3 || !wall) return null;
+    var s = snapPlanPoint(wall.start, cmPerUnit);
+    var e = snapPlanPoint(wall.end, cmPerUnit);
+    var locA = locateOnRing(s, outer, epsUnit);
+    var locB = locateOnRing(e, outer, epsUnit);
+    if (!locA || !locB) return null;
+    if (locA.edgeIndex === locB.edgeIndex && Math.abs(locA.t - locB.t) < 1e-3) return null;
+
+    var chain1 = [];
+    appendRingChain(chain1, outer, locA.edgeIndex, locB.edgeIndex, locA.t, locB.t, locA.point, locB.point);
+    chain1.push({ x: locA.point.x, y: locA.point.y });
+
+    var chain2 = [];
+    appendRingChain(chain2, outer, locB.edgeIndex, locA.edgeIndex, locB.t, locA.t, locB.point, locA.point);
+    chain2.push({ x: locB.point.x, y: locB.point.y });
+
+    var a1 = polygonAreaSqFt(chain1, cmPerUnit);
+    var a2 = polygonAreaSqFt(chain2, cmPerUnit);
+    if (a1 < 0.5 || a2 < 0.5) return null;
+    return [chain1, chain2];
+  }
+
+  function splitRegionsBySpanningWalls(outer, spanningWalls, cmPerUnit, epsUnit) {
+    var regions = [outer.slice()];
+    for (var si = 0; si < spanningWalls.length; si++) {
+      var wall = spanningWalls[si];
+      var next = [];
+      for (var ri = 0; ri < regions.length; ri++) {
+        var split = trySplitPolygonBySpanningWall(regions[ri], wall, cmPerUnit, epsUnit);
+        if (split) next.push(split[0], split[1]);
+        else next.push(regions[ri]);
+      }
+      regions = next;
+    }
+    return regions.filter(function (poly) {
+      return poly && poly.length >= 3 && outerLoopHasUsableArea(poly, cmPerUnit);
+    });
+  }
+
+  function roomsMatchPersisted(existing, nextRooms, cmPerUnit) {
+    if (!Array.isArray(existing) || !Array.isArray(nextRooms)) return false;
+    if (existing.length !== nextRooms.length) return false;
+    for (var i = 0; i < nextRooms.length; i++) {
+      var a = existing[i];
+      var b = nextRooms[i];
+      if (!a || !b) return false;
+      if (wallIdListKey(a.walls) !== wallIdListKey(b.walls)) return false;
+      var pa = a.polygon || a.vertices || [];
+      var pb = b.polygon || b.vertices || [];
+      if (pa.length !== pb.length) return false;
+      if (Math.abs(polygonAreaSqFt(pa, cmPerUnit) - polygonAreaSqFt(pb, cmPerUnit)) > 0.75) return false;
+    }
+    return true;
+  }
+
+  function buildRoomsFromRegions(regions, wallsList, cmPerUnit, epsUnit) {
+    var sorted = regions.slice().sort(function (a, b) {
+      return polygonAreaSqFt(b, cmPerUnit) - polygonAreaSqFt(a, cmPerUnit);
+    });
+    var rooms = [];
+    for (var i = 0; i < sorted.length; i++) {
+      var poly = sorted[i];
+      var wallIds = wallsForRoomPolygon(poly, wallsList, cmPerUnit, epsUnit);
+      if (wallIds.length < 3) continue;
+      rooms.push(
+        enrichVendorRendererRoom(
+          {
+            id: 'room_' + (i + 1),
+            name: 'Room ' + (i + 1),
+            walls: wallIds
+          },
+          poly,
+          wallIds
+        )
+      );
+    }
+    return rooms;
+  }
+
+  function polygonSignedAreaPlanUnits(polygon) {
+    if (!polygon || polygon.length < 3) return 0;
+    var t = 0;
+    for (var n = 0; n < polygon.length; n++) {
+      var o = (n + 1) % polygon.length;
+      t += polygon[n].x * polygon[o].y - polygon[o].x * polygon[n].y;
+    }
+    return t / 2;
+  }
+
+  /** Vendor Oo() stores room.area as m² from plan coordinates (cm). */
+  function vendorAreaM2FromPolygon(polygon) {
+    return Math.round(Math.abs(polygonSignedAreaPlanUnits(polygon)) / 100) / 100;
+  }
+
+  /**
+   * Room objects consumed by vendor detectedRooms / n3() must include finite area,
+   * floorTexture, and walls[] covering every wall id that should stay visible.
+   */
+  function enrichVendorRendererRoom(room, polygon, drawableWallIds) {
+    var poly = polygon && polygon.length >= 3 ? polygon : room.polygon || [];
+    var walls =
+      Array.isArray(drawableWallIds) && drawableWallIds.length
+        ? drawableWallIds.slice()
+        : room.walls && room.walls.length
+          ? room.walls.slice()
+          : [];
+    var area =
+      typeof room.area === 'number' && isFinite(room.area)
+        ? room.area
+        : vendorAreaM2FromPolygon(poly);
+    return {
+      id: room.id,
+      name: room.name || 'Room 1',
+      walls: walls,
+      floorTexture: room.floorTexture || 'hardwood',
+      area: area,
+      polygon: poly.slice()
+    };
+  }
+
+  function purgeStaleRooms(floor, wallIdSet, cmPerUnit, loopValid) {
+    if (!floor || !Array.isArray(floor.rooms)) return false;
+    if (!loopValid) {
+      if (floor.rooms.length === 0) return false;
+      floor.rooms = [];
+      return true;
+    }
+    var kept = [];
+    var changed = false;
+    for (var i = 0; i < floor.rooms.length; i++) {
+      var room = floor.rooms[i];
+      if (!room || !Array.isArray(room.walls) || room.walls.length === 0) {
+        changed = true;
+        continue;
+      }
+      var bad = false;
+      for (var w = 0; w < room.walls.length; w++) {
+        if (!wallIdSet[room.walls[w]]) {
+          bad = true;
+          break;
+        }
+      }
+      if (bad) {
+        changed = true;
+        continue;
+      }
+      var poly = room.polygon || room.vertices || [];
+      if (poly.length >= 3 && !outerLoopHasUsableArea(poly, cmPerUnit)) {
+        changed = true;
+        continue;
+      }
+      kept.push(room);
+    }
+    if (kept.length !== floor.rooms.length) {
+      floor.rooms = kept;
+      changed = true;
+    }
+    return changed;
+  }
+
+  function applyFloorSnapshotToPlan(out, snap, activeId) {
+    if (out.floor && typeof out.floor === 'object') out.floor = snap;
+    if (Array.isArray(out.floors)) {
+      for (var fi = 0; fi < out.floors.length; fi++) {
+        if (!out.floors[fi]) continue;
+        if (activeId && out.floors[fi].id && out.floors[fi].id !== activeId) continue;
+        if (!activeId && fi > 0) continue;
+        out.floors[fi] = JSON.parse(JSON.stringify(snap));
+        break;
+      }
+    }
+  }
+
+  function cmPerUnitForPlan(plan) {
+    if (!plan || typeof plan !== 'object') return CM_PER_FOOT;
+    var unit = String(plan.unit || 'cm').toLowerCase();
+    if (unit === 'ft' || unit === 'feet' || unit === 'foot') return CM_PER_FOOT;
+    if (unit === 'm' || unit === 'meter' || unit === 'meters') return 100;
+    return CM_PER_FOOT;
+  }
+
+  function floorEligibleForCanvasFillSync(floor, activeId) {
+    if (!floor || typeof floor !== 'object') return false;
+    if (activeId && floor.id && floor.id !== activeId) return false;
+    return true;
+  }
+
+  /**
+   * Canvas fill uses persisted room polygons. Vendor auto-detect leaves rooms[] empty
+   * when dangling stubs break Bo(), but fully spanning partitions need real multi-room
+   * topology — not one synthetic outer room.
+   */
+  function syncEditorRoomBoundariesForCanvasFill(plan) {
+    if (!plan || typeof plan !== 'object') return { plan: plan, changed: false };
+    var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId) || null;
+    var cmPerUnit = cmPerUnitForPlan(plan);
+    var live = resolveFloor(plan);
+    if (!live || !floorEligibleForCanvasFillSync(live, activeId)) {
+      return { plan: plan, changed: false };
+    }
+
+    var drawable = [];
+    for (var wi = 0; wi < (live.walls || []).length; wi++) {
+      var w = live.walls[wi];
+      if (w && w.id && w.start && w.end) drawable.push(w);
+    }
+    var wallIdSet = drawableWallIdSet(drawable);
+
+    if (drawable.length < 4) {
+      if (!Array.isArray(live.rooms) || live.rooms.length === 0) return { plan: plan, changed: false };
+      var outEmpty = JSON.parse(JSON.stringify(plan));
+      var floorEmpty = resolveFloor(outEmpty);
+      floorEmpty.rooms = [];
+      applyFloorSnapshotToPlan(outEmpty, JSON.parse(JSON.stringify(floorEmpty)), activeId);
+      return { plan: outEmpty, changed: true };
+    }
+
+    var loopData = extractOuterLoopAndPartitions(drawable, cmPerUnit);
+    var boundary = loopData.boundary_wall_ids || [];
+    var outer = loopData.outer_polygon || [];
+    var loopValid = boundary.length >= 3 && outerLoopHasUsableArea(outer, cmPerUnit);
+
+    if (!loopValid) {
+      var outOpen = JSON.parse(JSON.stringify(plan));
+      var floorOpen = resolveFloor(outOpen);
+      var purged = purgeStaleRooms(floorOpen, wallIdSet, cmPerUnit, false);
+      if (!purged) return { plan: plan, changed: false };
+      applyFloorSnapshotToPlan(outOpen, JSON.parse(JSON.stringify(floorOpen)), activeId);
+      return { plan: outOpen, changed: true };
+    }
+
+    var roomCount = Array.isArray(live.rooms) ? live.rooms.length : 0;
+    if (roomCount >= 1) {
+      var outPersisted = JSON.parse(JSON.stringify(plan));
+      var floorPersisted = resolveFloor(outPersisted);
+      var touchedPersisted = purgeStaleRooms(floorPersisted, wallIdSet, cmPerUnit, true);
+      if (!touchedPersisted) return { plan: plan, changed: false };
+      applyFloorSnapshotToPlan(outPersisted, JSON.parse(JSON.stringify(floorPersisted)), activeId);
+      return { plan: outPersisted, changed: true };
+    }
+
+    var parts = classifyPartitionWalls(loopData.partition_walls, outer, cmPerUnit, drawable);
+    var dangling = parts.dangling;
+    var spanning = parts.spanning;
+    var epsUnit = parts.epsUnit;
+
+    if (spanning.length > 0) {
+      var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
+      if (regions.length >= 2) {
+        var nextRooms = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit);
+        if (nextRooms.length >= 2) {
+          if (roomsMatchPersisted(live.rooms, nextRooms, cmPerUnit)) {
+            return { plan: plan, changed: false };
+          }
+          var outSplit = JSON.parse(JSON.stringify(plan));
+          var floorSplit = resolveFloor(outSplit);
+          floorSplit.rooms = nextRooms;
+          applyFloorSnapshotToPlan(outSplit, JSON.parse(JSON.stringify(floorSplit)), activeId);
+          return { plan: outSplit, changed: true };
+        }
+      }
+      return { plan: plan, changed: false };
+    }
+
+    var nextPoly = applyOuterLoopPolygon([], loopData, cmPerUnit, boundary);
+    if (nextPoly.length < 3) nextPoly = outer.slice();
+    if (nextPoly.length < 3) return { plan: plan, changed: false };
+
+    var out = JSON.parse(JSON.stringify(plan));
+    var target = resolveFloor(out);
+    if (!target) return { plan: plan, changed: false };
+    target.rooms = [
+      enrichVendorRendererRoom(
+        { id: 'room_1', name: 'Room 1', walls: drawable.map(function (w) { return w.id; }) },
+        nextPoly,
+        drawable.map(function (w) { return w.id; })
+      )
+    ];
+
+    applyFloorSnapshotToPlan(out, JSON.parse(JSON.stringify(target)), activeId);
+    return { plan: out, changed: true };
+  }
+
+  /**
+   * Read-only room polygons for vendor va() when Ro/Bo leave gaps (dangling stubs, live edit).
+   * Never mutates the plan; does not run when floor.rooms already has persisted entries.
+   */
+  function canvasFillRoomEntries(plan) {
+    if (!plan || typeof plan !== 'object') return [];
+    var live = resolveFloor(plan);
+    if (!live) return [];
+    var roomCount = Array.isArray(live.rooms) ? live.rooms.length : 0;
+    if (roomCount >= 1) return [];
+
+    var cmPerUnit = cmPerUnitForPlan(plan);
+    var drawable = [];
+    for (var wi = 0; wi < (live.walls || []).length; wi++) {
+      var w = live.walls[wi];
+      if (w && w.id && w.start && w.end) drawable.push(w);
+    }
+    if (drawable.length < 4) return [];
+
+    var loopData = extractOuterLoopAndPartitions(drawable, cmPerUnit);
+    var boundary = loopData.boundary_wall_ids || [];
+    var outer = loopData.outer_polygon || [];
+    if (boundary.length < 3 || !outerLoopHasUsableArea(outer, cmPerUnit)) return [];
+
+    var parts = classifyPartitionWalls(loopData.partition_walls, outer, cmPerUnit, drawable);
+    var spanning = parts.spanning;
+    var epsUnit = parts.epsUnit;
+
+    if (spanning.length > 0) {
+      var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
+      if (regions.length >= 2) {
+        var multi = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit);
+        if (multi.length >= 2) {
+          return multi.map(function (room) {
+            return { room: room, polygon: room.polygon.slice() };
+          });
+        }
+      }
+    }
+
+    var nextPoly = applyOuterLoopPolygon([], loopData, cmPerUnit, boundary);
+    if (nextPoly.length < 3) nextPoly = outer.slice();
+    if (nextPoly.length < 3) return [];
+
+    var allWallIds = drawable.map(function (w) { return w.id; });
+    var roomObj = enrichVendorRendererRoom(
+      { id: 'room-1-canvas', name: 'Room 1', walls: allWallIds },
+      nextPoly,
+      allWallIds
+    );
+    return [{ room: roomObj, polygon: nextPoly.slice() }];
+  }
+
+  function editorFloorNeedsPersistedRoom(plan) {
+    var floor = resolveFloor(plan);
+    if (!floor || countDrawableWalls(floor) < 4) return false;
+    return !Array.isArray(floor.rooms) || floor.rooms.length === 0;
+  }
+
   return {
     CM_PER_INCH: CM_PER_INCH,
     CM_PER_FOOT: CM_PER_FOOT,
@@ -1432,6 +1904,9 @@
     countDrawableWalls: countDrawableWalls,
     extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
     shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
-    isSimplePolygon: isSimplePolygon
+    isSimplePolygon: isSimplePolygon,
+    syncEditorRoomBoundariesForCanvasFill: syncEditorRoomBoundariesForCanvasFill,
+    canvasFillRoomEntries: canvasFillRoomEntries,
+    editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom
   };
 }));

@@ -1563,6 +1563,18 @@
       var submitOnce = 'openplan3d_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 
       var sentPlan = clonePlan(currentPlan);
+      var mb = win && win.OpenPlan3DMeasurementBridge;
+      if (
+        mb &&
+        typeof mb.editorFloorNeedsPersistedRoom === 'function' &&
+        mb.editorFloorNeedsPersistedRoom(sentPlan) &&
+        typeof mb.syncEditorRoomBoundariesForCanvasFill === 'function'
+      ) {
+        var roomFill = mb.syncEditorRoomBoundariesForCanvasFill(sentPlan);
+        if (roomFill && roomFill.changed && roomFill.plan) {
+          sentPlan = roomFill.plan;
+        }
+      }
       var payload = {
         name: roomName,
         plan: sentPlan,

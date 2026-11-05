@@ -1,7 +1,10 @@
 {
   "vendorSlug": "openplan3d-h1",
-  "storeChunk": "1VjVcrjm-h3.js",
-  "editorChunk": "CgAQI-i0-h3.js",
+  "storeChunk": "1VjVcrjm-h4.js",
+  "editorChunk": "CgAQI-i0-h4.js",
   "vendorEditorChunk": "CgAQI-i0.js",
-  "localeChunk": "NzBhsCJS.js"
+  "localeChunk": "NzBhsCJS.js",
+  "immutableGraphSuffix": "h4",
+  "legacyImmutableSuffix": "h3",
+  "entryChunk": "app.Badnr33M-h4.js"
 }

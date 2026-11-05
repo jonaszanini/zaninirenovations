@@ -535,8 +535,26 @@
     state.raf = requestAnimationFrame(renderOverlay);
   }
 
-  function setMode(mode) {
-    state.mode = state.mode === mode ? null : mode;
+  function updateDrawCursor() {
+    var drawing = state.mode === 'zone' || state.mode === 'bulkhead';
+    if (typeof document !== 'undefined' && document.documentElement) {
+      document.documentElement.classList.toggle('openplan3d-zanini-draw-mode', drawing);
+    }
+    var canvas = canvasEl();
+    if (canvas) canvas.style.cursor = drawing ? 'crosshair' : '';
+    var overlay = state.overlay || (typeof document !== 'undefined' ? document.getElementById('openplan3d-zanini-overlay') : null);
+    if (overlay) overlay.style.cursor = drawing ? 'crosshair' : '';
+  }
+
+  function setMode(mode, options) {
+    options = options || {};
+    if (mode == null || mode === '') {
+      state.mode = null;
+    } else if (options.explicit) {
+      state.mode = mode;
+    } else {
+      state.mode = state.mode === mode ? null : mode;
+    }
     var toggleWrap = document.getElementById('openplan3d-draw-toggle');
     if (toggleWrap) {
       [].forEach.call(toggleWrap.querySelectorAll('[data-zanini-mode]'), function (btn) {
@@ -554,6 +572,7 @@
     }
     var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
     if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
+    updateDrawCursor();
     scheduleOverlay();
   }
 
@@ -657,6 +676,8 @@
     var style = document.createElement('style');
     style.id = 'openplan3d-zanini-toolbar-styles';
     style.textContent = [
+      'html.openplan3d-zanini-draw-mode canvas[data-plan3d-canvas="true"],html.openplan3d-zanini-draw-mode canvas{cursor:crosshair!important;}',
+      'html.openplan3d-zanini-draw-mode #openplan3d-zanini-overlay,html.openplan3d-zanini-draw-mode #openplan3d-zanini-overlay *{cursor:crosshair!important;}',
       '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
       '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
       '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
@@ -950,6 +971,7 @@
     canvas.addEventListener('pointermove', onPointerMove);
     canvas.addEventListener('pointerup', onPointerUp);
     canvas.addEventListener('pointercancel', onPointerUp);
+    updateDrawCursor();
     return true;
   }
 
@@ -1072,6 +1094,8 @@
     renderFinishPanel: renderFinishPanel,
     refreshOverlay: scheduleOverlay,
     setMode: setMode,
+    getMode: function () { return state.mode; },
+    updateDrawCursor: updateDrawCursor,
     deleteSelectedBulkhead: deleteSelectedBulkhead,
     canvasEl: canvasEl,
     screenToPlan: screenToPlan,

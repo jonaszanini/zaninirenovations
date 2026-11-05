@@ -350,4 +350,71 @@ class OpenPlan3DPlanValidatorTest extends TestCase
         $this->assertFalse($resTooBig['valid']);
         $this->assertStringContainsString('width is impossibly large', (string) $resTooBig['message']);
     }
+
+    public function test_accepts_scalar_position_on_doors_and_windows(): void
+    {
+        $plan = $this->rectangle();
+        $plan['floor']['doors'] = [
+            [
+                'id' => 'd1',
+                'wallId' => 'w1',
+                'position' => 152.4,
+                'width' => 91.44,
+                'height' => 203.2,
+            ],
+        ];
+        $plan['floor']['windows'] = [
+            [
+                'id' => 'win1',
+                'wallId' => 'w2',
+                'position' => 0,
+                'width' => 60.96,
+                'height' => 91.44,
+            ],
+        ];
+
+        $this->assertTrue($this->validator->validate($plan)['valid']);
+    }
+
+    public function test_accepts_object_position_on_doors_and_windows(): void
+    {
+        $plan = $this->rectangle();
+        $plan['floor']['doors'] = [
+            [
+                'id' => 'd1',
+                'wallId' => 'w1',
+                'position' => ['x' => 50.0, 'y' => 0.0],
+                'width' => 91.44,
+            ],
+        ];
+        $plan['floor']['windows'] = [
+            [
+                'id' => 'win1',
+                'wallId' => 'w2',
+                'position' => ['x' => 10.0, 'y' => 20.0, 'z' => 100.0],
+                'width' => 60.96,
+            ],
+        ];
+
+        $this->assertTrue($this->validator->validate($plan)['valid']);
+    }
+
+    public function test_rejects_invalid_door_and_window_position(): void
+    {
+        $plan = $this->rectangle();
+        $plan['floor']['doors'] = [
+            ['id' => 'd1', 'wallId' => 'w1', 'position' => 'mid-wall', 'width' => 91.44],
+        ];
+        $doorResult = $this->validator->validate($plan);
+        $this->assertFalse($doorResult['valid']);
+        $this->assertStringContainsString('position must be coordinates', (string) $doorResult['message']);
+
+        $plan['floor']['doors'] = [];
+        $plan['floor']['windows'] = [
+            ['id' => 'win1', 'wallId' => 'w2', 'position' => ['x' => 'NaN', 'y' => 0], 'width' => 60.96],
+        ];
+        $windowResult = $this->validator->validate($plan);
+        $this->assertFalse($windowResult['valid']);
+        $this->assertStringContainsString('finite', (string) $windowResult['message']);
+    }
 }

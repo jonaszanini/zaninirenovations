@@ -23,9 +23,11 @@ const OUT_SLUG = 'openplan3d-h1';
 const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
-/** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
-const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h3.js';
-const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h3.js';
+/** Active immutable graph suffix (must not reuse previously served -h3.js bytes for patches). */
+const IMMUTABLE_GRAPH_SUFFIX = 'h4';
+const PATCHED_STORE_CHUNK_BASENAME = `1VjVcrjm-${IMMUTABLE_GRAPH_SUFFIX}.js`;
+const PATCHED_EDITOR_CHUNK_BASENAME = `CgAQI-i0-${IMMUTABLE_GRAPH_SUFFIX}.js`;
+const LEGACY_IMMUTABLE_SUFFIX = 'h3';
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
@@ -102,11 +104,19 @@ function propagateImmutableRenames(rootDir, initialRenames) {
         if (fileText.includes(fromBase)) {
           const norm = f.replace(/\\/g, '/');
           if (norm.includes('_app/immutable') && !renames.has(base)) {
-            if (base.endsWith('-h3.js')) {
+            if (base.endsWith(`-${IMMUTABLE_GRAPH_SUFFIX}.js`)) {
               renames.set(base, base);
               continue;
             }
-            const newBase = base.replace(/(-h[12])?\.js$/, '-h3.js');
+            if (base.endsWith(`-${LEGACY_IMMUTABLE_SUFFIX}.js`)) {
+              renames.set(
+                base,
+                base.replace(`-${LEGACY_IMMUTABLE_SUFFIX}.js`, `-${IMMUTABLE_GRAPH_SUFFIX}.js`)
+              );
+              changed = true;
+              continue;
+            }
+            const newBase = base.replace(/(-h[0-9]+)?\.js$/, `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
             renames.set(base, newBase);
             changed = true;
           }
@@ -128,12 +138,12 @@ function propagateImmutableRenames(rootDir, initialRenames) {
     }
   }
 
-  // Rewrite references inside the new -h3.js files and HTML entry pages only.
-  // Files that keep their name must be byte-identical to what's live now.
+  // Rewrite references inside the new -h4.js files and HTML entry pages only.
   for (const f of listAllFiles(rootDir)) {
     if (!/\.(html|js|css|json)$/.test(f)) continue;
     const base = path.basename(f);
-    const isNewOrHtml = base.endsWith('-h3.js') || f.endsWith('.html');
+    const isNewOrHtml =
+      base.endsWith(`-${IMMUTABLE_GRAPH_SUFFIX}.js`) || f.endsWith('.html');
     if (!isNewOrHtml) continue;
 
     let text = fs.readFileSync(f, 'utf8');
@@ -251,6 +261,43 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
+  const unOld = 'function un(e){ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
+  const unPatched =
+    'function un(e){if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill==="function"){const __zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill(e);__zaniniRf&&__zaniniRf.changed&&__zaniniRf.plan&&(e=__zaniniRf.plan)}ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
+  if (s.includes('__zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill')) {
+    s = replaceExpected(s, unPatched, unOld, 'store chunk: remove load-time room sync from un()', 1);
+  }
+
+  const vaOld =
+    'function va(e,t=[]){const n=vt(e.walls);return Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)}))}';
+  const vaPatchedMerge =
+    'function va(e,t=[]){const n=vt(e.walls);const __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon.length>=3);const __zaniniSeen=new Set(__zaniniAuto.map(x=>x.room.id));for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom||__zaniniSeen.has(__zaniniRoom.id))continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});__zaniniSeen.add(__zaniniRoom.id)}return __zaniniAuto}';
+  const vaEphemeral =
+    'function va(e,t=[]){const n=vt(e.walls);let __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon&&x.polygon.length>=3);if(__zaniniAuto.length===0&&typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries==="function"){const __zaniniEphemeral=window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries({unit:e.unit||"cm",activeFloorId:e.id,floors:[e],floor:e})||[];if(__zaniniEphemeral.length>0)__zaniniAuto=__zaniniEphemeral;}if(__zaniniAuto.length===0){for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom)continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});}}return __zaniniAuto}';
+  const vaNew =
+    'function va(e,t=[]){const n=vt(e.walls);let __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon&&x.polygon.length>=3);if(__zaniniAuto.length===0&&typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries==="function"){const __zaniniEphemeral=window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries({unit:e.unit||"cm",activeFloorId:e.id,floors:[e],floor:e})||[];if(__zaniniEphemeral.length>0)__zaniniAuto=__zaniniEphemeral;}if(__zaniniAuto.length===0){for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom)continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;let __zaniniRoomUse=__zaniniRoom;if(typeof __zaniniRoom.area!=="number"||!Number.isFinite(__zaniniRoom.area)){let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniRoomUse={...__zaniniRoom,area:Math.round(Math.abs(__zaniniPt)/100)/100,floorTexture:__zaniniRoom.floorTexture||"hardwood"};}__zaniniAuto.push({room:__zaniniRoomUse,polygon:__zaniniPoly});}}return __zaniniAuto}';
+  if (s.includes(vaEphemeral) && !s.includes('__zaniniRoomUse=__zaniniRoom')) {
+    s = replaceExpected(s, vaEphemeral, vaNew, 'store chunk: va() backfill area on persisted rooms', 1);
+  } else if (s.includes(vaPatchedMerge)) {
+    s = replaceExpected(s, vaPatchedMerge, vaNew, 'store chunk: va() ephemeral canvas fill without duplicate merge', 1);
+  } else if (s.includes(vaOld)) {
+    s = replaceExpected(s, vaOld, vaNew, 'store chunk: va() ephemeral canvas fill', 1);
+  } else if (!s.includes('canvasFillRoomEntries')) {
+    console.error('patch-openplan3d: store chunk: va() canvas-fill pattern not found');
+    process.exit(1);
+  }
+
+  const boOld =
+    'function Bo(e,t){const n=new Set(e.walls);let o=t.filter(c=>(c.wallIds??[c.wallId]).some(d=>n.has(d))),i=!0;for(;i&&o.length>=3;)i=!1,o=o.filter(c=>{const d=o.filter(u=>H(u.start,c.start)||H(u.end,c.start)).length,h=o.filter(u=>H(u.start,c.end)||H(u.end,c.end)).length;return d<2||h<2?(i=!0,!1):!0});if(o.length<3)return[];const a=new Set;let s=[],r=0,l=[];for(const c of o){if(a.has(c))continue;const d=[c.start];a.add(c);let h=c.end;for(;!H(h,d[0]);){d.push(h);const u=o.find(f=>!a.has(f)&&(H(f.start,h)||H(f.end,h)));if(!u)break;a.add(u),h=H(u.start,h)?u.end:u.start}if(H(h,d[0])){const u=Math.abs(pt(d));u>r&&(r=u,s=d)}else d.length>l.length&&(l=d)}return s.length>=3?s:l}';
+  const boNew =
+    'function Bo(e,t){const n=new Set(e.walls);let o=t.filter(c=>(c.wallIds??[c.wallId]).some(d=>n.has(d))),i=!0;for(;i&&o.length>=3;)i=!1,o=o.filter(c=>{const d=o.filter(u=>H(u.start,c.start)||H(u.end,c.start)).length,h=o.filter(u=>H(u.start,c.end)||H(u.end,c.end)).length;return d<2||h<2?(i=!0,!1):!0});if(o.length<3)return e.polygon&&e.polygon.length>=3?e.polygon.slice():[];const a=new Set;let s=[],r=0,l=[];for(const c of o){if(a.has(c))continue;const d=[c.start];a.add(c);let h=c.end;for(;!H(h,d[0]);){d.push(h);const u=o.find(f=>!a.has(f)&&(H(f.start,h)||H(f.end,h)));if(!u)break;a.add(u),h=H(u.start,h)?u.end:u.start}if(H(h,d[0])){const u=Math.abs(pt(d));u>r&&(r=u,s=d)}else d.length>l.length&&(l=d)}return s.length>=3?s:e.polygon&&e.polygon.length>=3?e.polygon.slice():l.length>=3?l:[]}';
+  if (s.includes(boOld)) {
+    s = replaceExpected(s, boOld, boNew, 'store chunk: Bo() use persisted room.polygon fallback', 1);
+  } else if (!s.includes('return e.polygon&&e.polygon.length>=3?e.polygon.slice():[]')) {
+    console.error('patch-openplan3d: store chunk: Bo() polygon fallback pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
@@ -327,6 +374,7 @@ function fileContentVersion16(absPath) {
 function patchHostedEditorIndexBoot() {
   let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
   const localeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-hosted-locale.js'));
+  const measureV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-measurement-bridge.js'));
   const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
   const extV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-extensions.js'));
   const toolsV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-tools.js'));
@@ -335,6 +383,16 @@ function patchHostedEditorIndexBoot() {
     /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
     `openplan3d-editor-bridge.js?v=${bridgeV}`
   );
+
+  const measureTag = `<script src="/js/openplan3d-measurement-bridge.js?v=${measureV}"></script>`;
+  if (!html.includes('openplan3d-measurement-bridge.js')) {
+    html = html.replace(
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
+      `${measureTag}\n\t\t<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`
+    );
+  } else {
+    html = html.replace(/openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/, `openplan3d-measurement-bridge.js?v=${measureV}`);
+  }
 
   const extTag = `<script src="/js/openplan3d-zanini-extensions.js?v=${extV}"></script>`;
   if (!html.includes('openplan3d-zanini-extensions.js')) {
@@ -383,6 +441,18 @@ function patchHostedEditorIndexBoot() {
       /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
       `openplan3d-editor-bridge.js?v=${bridgeV}`
     );
+    embedHtml = embedHtml.replace(
+      /openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-measurement-bridge.js?v=${measureV}`
+    );
+    embedHtml = embedHtml.replace(
+      /openplan3d-zanini-extensions\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-zanini-extensions.js?v=${extV}`
+    );
+    embedHtml = embedHtml.replace(
+      /openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/,
+      `openplan3d-zanini-tools.js?v=${toolsV}`
+    );
     fs.writeFileSync(embedPath, embedHtml);
   }
 }
@@ -413,6 +483,40 @@ function rewriteHtmlEntryChunkSlugs(rootDir, fromSuffix, toSuffix) {
     text = text.split(fromSuffix).join(toSuffix);
     fs.writeFileSync(htmlFile, text);
   }
+}
+
+/** Restore -h3 immutable files from origin/main so cached clients keep the prior graph bytes. */
+function restoreLegacyImmutableGraphFromMain() {
+  const immutableRoot = path.join(OUT, '_app/immutable');
+  if (!fs.existsSync(immutableRoot)) return;
+  for (const f of listAllFiles(immutableRoot)) {
+    if (!f.endsWith(`-${LEGACY_IMMUTABLE_SUFFIX}.js`)) continue;
+    const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+    try {
+      const content = execSync(`git show origin/main:${rel}`, {
+        encoding: 'utf8',
+        cwd: ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      fs.writeFileSync(f, content);
+    } catch (e) {
+      console.warn(`patch-openplan3d: skip legacy restore (not on main): ${rel}`);
+    }
+  }
+}
+
+function syncEditorIndexStoreImport(storeChunkBasename) {
+  let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
+  const storeImport = `/vendor/openplan3d-h1/_app/immutable/chunks/${storeChunkBasename}`;
+  html = html.replace(
+    /import\("\/vendor\/openplan3d-h1\/_app\/immutable\/chunks\/1VjVcrjm-h[0-9]+\.js"\)/g,
+    `import("${storeImport}")`
+  );
+  html = html.replace(
+    /<link href="\/vendor\/openplan3d-h1\/_app\/immutable\/chunks\/1VjVcrjm-h[0-9]+\.js" rel="modulepreload">/g,
+    `<link href="${storeImport}" rel="modulepreload">`
+  );
+  fs.writeFileSync(EDITOR_INDEX, html);
 }
 
 function main() {
@@ -450,9 +554,13 @@ function main() {
     [vendorPristineEditorChunk, editorChunk],
   ]);
 
-  rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', '-h3.js');
+  rewriteHtmlEntryChunkSlugs(OUT, `-${LEGACY_IMMUTABLE_SUFFIX}.js`, `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
+  restoreLegacyImmutableGraphFromMain();
+
+  rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
 
   patchHostedEditorIndexBoot();
+  syncEditorIndexStoreImport(storeChunk);
   const localeChunk = trimRedundantLocaleModulepreload();
 
   const manifest = {
@@ -461,6 +569,9 @@ function main() {
     editorChunk,
     vendorEditorChunk: vendorPristineEditorChunk,
     localeChunk,
+    immutableGraphSuffix: IMMUTABLE_GRAPH_SUFFIX,
+    legacyImmutableSuffix: LEGACY_IMMUTABLE_SUFFIX,
+    entryChunk: `app.Badnr33M-${IMMUTABLE_GRAPH_SUFFIX}.js`,
   };
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
   console.log('patch-openplan3d: ok', manifest);
