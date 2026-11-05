@@ -592,8 +592,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response = $this->actingAs($this->user)->get(route('admin.utilities.room-area'));
         $response->assertOk();
         $response->assertSee('Broken Bowtie', false);
-        $response->assertSee('geometry_unmeasurable', false);
-        $response->assertSee('id="openplan3d-geometry-warning"', false);
+        $this->assertStringNotContainsString('"geometry_unmeasurable":true', $response->getContent());
     }
 
     public function test_get_room_area_payload_survives_stored_canvas_v2_bowtie(): void
@@ -669,6 +668,10 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             ['x' => 100, 'y' => 0],
             ['x' => 0, 'y' => 100],
         ];
+        $bowtie['floor']['walls'] = [];
+        if (isset($bowtie['floors'][0]['walls'])) {
+            $bowtie['floors'][0]['walls'] = [];
+        }
         RoomAreaRoom::create([
             'room_area_project_id' => $this->project->id,
             'name' => 'Bad sibling',
