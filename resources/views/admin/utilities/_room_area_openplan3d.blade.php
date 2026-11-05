@@ -95,6 +95,22 @@
         </button>
       </div>
 
+      <div class="openplan3d-header-actions__group openplan3d-header-actions__group--draw" role="group" aria-label="Drawing tools">
+        <div class="openplan3d-draw-toggle" id="openplan3d-draw-toggle" role="tablist" aria-label="Drawing mode">
+          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-zone" data-zanini-mode="zone" aria-selected="false" data-openplan3d-tip="Draw area zone rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            <span>Zone</span>
+          </button>
+          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-bulkhead" data-zanini-mode="bulkhead" aria-selected="false" data-openplan3d-tip="Draw bulkhead / soffit rectangle">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span>Bulkhead</span>
+          </button>
+        </div>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--danger openplan3d-tool-btn openplan3d-tool-btn--icon openplan3d-instant-tip" id="openplan3d-delete-bulkhead-btn" hidden aria-label="Delete selected bulkhead" data-openplan3d-tip="Delete selected bulkhead">
+          <i class="fa fa-trash" aria-hidden="true"></i>
+        </button>
+      </div>
+
       <div class="openplan3d-header-actions__group openplan3d-header-actions__group--util" role="group" aria-label="Editor utilities">
       @include('admin.partials.info_tip', [
         'tipLabel' => 'openPlan3D engine preview',
@@ -403,6 +419,51 @@
 
 .openplan3d-tool-btn--icon .openplan3d-btn-label {
   display: none;
+}
+
+.openplan3d-draw-toggle {
+  display: inline-flex;
+  background: var(--admin-surface, #f8fafc);
+  border: 1px solid var(--admin-border, #cbd5e1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.openplan3d-draw-toggle__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  min-height: 36px;
+  border: none;
+  background: transparent;
+  color: var(--admin-muted, #64748b);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.openplan3d-draw-toggle__btn:first-child {
+  border-right: 1px solid var(--admin-border, #cbd5e1);
+}
+
+.openplan3d-draw-toggle__btn:hover {
+  background: var(--admin-hover, #e2e8f0);
+  color: var(--admin-text, #1e293b);
+}
+
+.openplan3d-draw-toggle__btn[aria-selected="true"] {
+  background: var(--admin-accent, #0891b2);
+  color: #fff;
+}
+
+.openplan3d-draw-toggle__btn[aria-selected="true"]:hover {
+  background: var(--admin-accent-hover, #0e7490);
+}
+
+.openplan3d-draw-toggle__btn svg {
+  flex-shrink: 0;
 }
 
 #openplan3d-delete-project-btn .fa-trash {
@@ -1177,7 +1238,18 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     display: none;
   }
 
-  .openplan3d-noscale-warning {
+  .openplan3d-draw-toggle__btn span {
+    display: none;
+  }
+
+  .openplan3d-draw-toggle__btn {
+    padding: 6px 10px;
+    min-width: 40px;
+    min-height: 40px;
+    justify-content: center;
+  }
+
+.openplan3d-noscale-warning {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
     flex-wrap: wrap;
@@ -1298,6 +1370,39 @@ body.admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover,
 .admin-dark .openplan3d-settings-drawer .admin-btn--ghost:hover {
   background: #334155;
   border-color: #475569;
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-draw-toggle,
+body.admin-dark .openplan3d-draw-toggle,
+.admin-dark .openplan3d-draw-toggle {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+html.admin-dark .openplan3d-draw-toggle__btn,
+body.admin-dark .openplan3d-draw-toggle__btn,
+.admin-dark .openplan3d-draw-toggle__btn {
+  color: #94a3b8;
+}
+
+html.admin-dark .openplan3d-draw-toggle__btn:first-child,
+body.admin-dark .openplan3d-draw-toggle__btn:first-child,
+.admin-dark .openplan3d-draw-toggle__btn:first-child {
+  border-right-color: #334155;
+}
+
+html.admin-dark .openplan3d-draw-toggle__btn:hover,
+body.admin-dark .openplan3d-draw-toggle__btn:hover,
+.admin-dark .openplan3d-draw-toggle__btn:hover {
+  background: #334155;
+  color: #e2e8f0;
+}
+
+html.admin-dark .openplan3d-draw-toggle__btn[aria-selected="true"],
+body.admin-dark .openplan3d-draw-toggle__btn[aria-selected="true"],
+.admin-dark .openplan3d-draw-toggle__btn[aria-selected="true"] {
+  background: #0891b2;
   color: #ffffff;
 }
 

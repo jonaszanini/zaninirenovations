@@ -535,13 +535,15 @@
 
   function setMode(mode) {
     state.mode = state.mode === mode ? null : mode;
-    if (state.toolbar) {
-      [].forEach.call(state.toolbar.querySelectorAll('[data-zanini-mode]'), function (btn) {
-        btn.classList.toggle('zanini-tool-active', btn.getAttribute('data-zanini-mode') === state.mode);
+    var toggleWrap = document.getElementById('openplan3d-draw-toggle');
+    if (toggleWrap) {
+      [].forEach.call(toggleWrap.querySelectorAll('[data-zanini-mode]'), function (btn) {
+        var isActive = btn.getAttribute('data-zanini-mode') === state.mode;
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
-      var delBtn = state.toolbar.querySelector('[data-zanini-action="delete-bulkhead"]');
-      if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
     }
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
     scheduleOverlay();
   }
 
@@ -562,10 +564,8 @@
     if (!hit || state.mode) return;
     state.selectedBulkheadId = hit.getAttribute('data-zanini-bulkhead-id');
     scheduleOverlay();
-    if (state.toolbar) {
-      var delBtn = state.toolbar.querySelector('[data-zanini-action="delete-bulkhead"]');
-      if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
-    }
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
   }
 
   function onPointerDown(e) {
@@ -647,39 +647,28 @@
     var style = document.createElement('style');
     style.id = 'openplan3d-zanini-toolbar-styles';
     style.textContent = [
-      '#openplan3d-zanini-toolbar{z-index:45;bottom:56px;}',
-      '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
-      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;}',
-      '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
-      '@media (max-width:480px){#openplan3d-zanini-toolbar{bottom:72px;gap:4px;padding:4px;}}'
+      '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}'
     ].join('');
     document.head.appendChild(style);
   }
 
-  function buildToolbar() {
-    if (state.toolbar) return state.toolbar;
+  function wireHeaderToolbar() {
+    if (state.toolbar) return;
     injectToolbarStyles();
-    var bar = document.createElement('div');
-    bar.id = 'openplan3d-zanini-toolbar';
-    bar.style.cssText = 'position:fixed;left:50%;bottom:56px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:calc(100vw - 16px);overflow-x:auto;';
-    bar.innerHTML = [
-      '<button type="button" data-zanini-mode="zone" title="Draw area zone" style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:600;">Zone</button>',
-      '<button type="button" data-zanini-mode="bulkhead" title="Draw bulkhead" style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:600;">Bulkhead</button>',
-      '<button type="button" data-zanini-action="delete-bulkhead" title="Delete selected bulkhead" hidden style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#7f1d1d;color:#fecaca;font-size:11px;font-weight:600;">Del</button>'
-    ].join('');
-    document.body.appendChild(bar);
-    bar.addEventListener('click', function (e) {
-      var actionBtn = e.target.closest('[data-zanini-action]');
-      if (actionBtn && actionBtn.getAttribute('data-zanini-action') === 'delete-bulkhead') {
-        deleteSelectedBulkhead();
-        return;
-      }
+    var toggleWrap = document.getElementById('openplan3d-draw-toggle');
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (!toggleWrap) return;
+    toggleWrap.addEventListener('click', function (e) {
       var btn = e.target.closest('[data-zanini-mode]');
       if (!btn) return;
       setMode(btn.getAttribute('data-zanini-mode'));
     });
-    state.toolbar = bar;
-    return bar;
+    if (delBtn) {
+      delBtn.addEventListener('click', function () {
+        deleteSelectedBulkhead();
+      });
+    }
+    state.toolbar = toggleWrap;
   }
 
   function findWallSidebarHost() {
@@ -982,7 +971,7 @@
   }
 
   function init() {
-    buildToolbar();
+    wireHeaderToolbar();
     watchCanvas();
     ensureWallSelectionHook();
     watchWallSidebar();
