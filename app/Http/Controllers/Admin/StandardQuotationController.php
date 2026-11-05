@@ -98,8 +98,7 @@ class StandardQuotationController extends Controller
                     : 'Standard quotation saved as draft.')
                 : ($linkedNow
                     ? 'Standard quotation '.$quote->quote_number.' saved and linked to this project.'
-                    : 'Standard quotation '.$quote->quote_number.' saved.'))
-            ->with('standard_flash', $linkedNow ? 'linked' : 'saved');
+                    : 'Standard quotation '.$quote->quote_number.' saved.'));
 
         if ($warnings !== []) {
             $resp = $resp->with('warning', implode(' ', $warnings));
@@ -107,7 +106,6 @@ class StandardQuotationController extends Controller
 
         if ($quote->fresh()->isLinked() && $quote->client_project_id) {
             $resp = $resp
-                ->with('standard_flash', 'linked')
                 ->with('standard_linked_project_id', $quote->client_project_id);
         }
 
@@ -244,8 +242,7 @@ class StandardQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
-            ->with('success', QuotationDraftFlash::updated('Standard', $standard_quotation, false, $wasDraft))
-            ->with('standard_flash', 'saved');
+            ->with('success', QuotationDraftFlash::updated('Standard', $standard_quotation, false, $wasDraft));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -289,7 +286,6 @@ class StandardQuotationController extends Controller
         return redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
             ->with('success', 'Linked to project "'.$project->name.'". A line item was added to the project\'s Quotation.')
-            ->with('standard_flash', 'linked')
             ->with('standard_linked_project_id', $project->id);
     }
 

@@ -97,11 +97,11 @@
 
       <div class="openplan3d-header-actions__group openplan3d-header-actions__group--draw" role="group" aria-label="Drawing tools">
         <div class="openplan3d-draw-toggle" id="openplan3d-draw-toggle" role="tablist" aria-label="Drawing mode">
-          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-zone" data-zanini-mode="zone" aria-selected="false" data-openplan3d-tip="Draw area zone rectangle">
+          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-zone" data-zanini-mode="zone" aria-selected="false" aria-label="Zone" data-openplan3d-tip="Draw area zone rectangle">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
             <span>Zone</span>
           </button>
-          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-bulkhead" data-zanini-mode="bulkhead" aria-selected="false" data-openplan3d-tip="Draw bulkhead / soffit rectangle">
+          <button type="button" role="tab" class="openplan3d-draw-toggle__btn openplan3d-instant-tip" id="openplan3d-mode-bulkhead" data-zanini-mode="bulkhead" aria-selected="false" aria-label="Bulkhead" data-openplan3d-tip="Draw bulkhead / soffit rectangle">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             <span>Bulkhead</span>
           </button>

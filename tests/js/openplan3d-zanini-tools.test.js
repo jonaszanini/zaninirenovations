@@ -92,6 +92,39 @@ assert.strictEqual(overlap.id, 'z1', 'Should find overlapping zone');
 const noOverlap = tools.findOverlappingZone(zones, { x1: 400, y1: 400, x2: 500, y2: 500 });
 assert.strictEqual(noOverlap, null, 'Should return null when no overlap');
 
+const lZoneOverlap = {
+  id: 'l1',
+  x1: 0,
+  y1: 0,
+  x2: 100,
+  y2: 150,
+  rects: [
+    { x1: 0, y1: 0, x2: 100, y2: 50 },
+    { x1: 0, y1: 0, x2: 50, y2: 150 }
+  ]
+};
+const notchRect = { x1: 80, y1: 80, x2: 90, y2: 90 };
+const lOverlap = tools.findOverlappingZone([lZoneOverlap], notchRect);
+assert.strictEqual(lOverlap, null, 'Rect inside L bbox but not touching member rects must not merge (D3)');
+
+const ext = require('../../public/js/openplan3d-zanini-extensions.js');
+global.window.OpenPlan3DZaniniExtensions = ext;
+const ft = ext.CM_PER_FOOT;
+const lZoneFt = {
+  id: 'l-canvas',
+  x1: 0,
+  y1: 0,
+  x2: 15 * ft,
+  y2: 15 * ft,
+  rects: [
+    { x1: 0, y1: 0, x2: 10 * ft, y2: 15 * ft },
+    { x1: 10 * ft, y1: 10 * ft, x2: 15 * ft, y2: 15 * ft }
+  ]
+};
+const lAreaTools = tools.zoneAreaSqFt(lZoneFt, [lZoneFt], ft);
+assert.ok(Math.abs(lAreaTools - 175) < 0.05, 'canvas label path must use L union area (~175 sf), got ' + lAreaTools);
+assert.ok(lAreaTools < 225, 'must not use bbox area 225 sf for L-shaped zone');
+
 // Test mergeRectIntoZone
 const targetZone = {
   id: 'target',

@@ -76,6 +76,24 @@ assert.strictEqual(
   'editor split payload must not trigger false zero replace prompt'
 );
 
+const deletedInFloors0 = JSON.parse(JSON.stringify(hand0Plan));
+deletedInFloors0.floors[0].walls = deletedInFloors0.floors[0].walls.filter(function (w) {
+  return w.id !== 'mclt5ix7';
+});
+const deletedMetrics = bridge.layoutMetrics(deletedInFloors0, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(
+  bridge.resolveFloor(deletedInFloors0).walls.length,
+  deletedInFloors0.floors[0].walls.length,
+  'save/metrics must not resurrect deleted wall from stale plan.floor'
+);
+assert.ok(
+  !bridge.resolveFloor(deletedInFloors0).walls.some(function (w) {
+    return w.id === 'mclt5ix7';
+  }),
+  'resolved floor must omit wall deleted in floors[0]'
+);
+assert.ok(deletedMetrics.area_sqft > 1300, 'live metrics after delete must stay positive');
+
 const emptyPlan = { unit: 'cm', floor: { walls: [], rooms: [] } };
 const emptyMetrics = bridge.layoutMetrics(emptyPlan, null, { wall_height_ft: 8.0 });
 assert.strictEqual(

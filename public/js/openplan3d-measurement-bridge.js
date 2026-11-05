@@ -472,20 +472,27 @@
     return best;
   }
 
-  function resolveFloor(plan) {
+  /** Prefer vendor live floor (plan.floors[active]); fall back to plan.floor when active is empty. */
+  function resolveLiveFloorSnapshot(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    var candidates = [];
-    if (plan.project && Array.isArray(plan.project.floors)) {
-      var fromProject = resolveFloorFromList(plan.project.floors, activeId);
-      if (fromProject) candidates.push(fromProject);
-    }
     var fromFloors = resolveFloorFromList(plan.floors, activeId);
-    if (fromFloors) candidates.push(fromFloors);
-    if (plan.floor && typeof plan.floor === 'object') candidates.push(plan.floor);
-    if (Array.isArray(plan.walls)) candidates.push(plan);
-    if (candidates.length === 0) return null;
-    return pickBestFloor(candidates);
+    var fromProject = null;
+    if (plan.project && Array.isArray(plan.project.floors)) {
+      fromProject = resolveFloorFromList(plan.project.floors, activeId);
+    }
+    if (fromFloors && countDrawableWalls(fromFloors) > 0) return fromFloors;
+    if (fromProject && countDrawableWalls(fromProject) > 0) return fromProject;
+    if (plan.floor && typeof plan.floor === 'object' && countDrawableWalls(plan.floor) > 0) return plan.floor;
+    if (fromFloors) return fromFloors;
+    if (fromProject) return fromProject;
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    if (Array.isArray(plan.walls)) return plan;
+    return null;
+  }
+
+  function resolveFloor(plan) {
+    return resolveLiveFloorSnapshot(plan);
   }
 
   function emptyLayoutMetrics(wallHeightFt) {

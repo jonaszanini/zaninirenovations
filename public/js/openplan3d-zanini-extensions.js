@@ -123,35 +123,44 @@
     return best;
   }
 
-  function resolveActiveFloor(plan) {
+  function resolveLiveFloorSnapshot(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    var candidates = [];
+    var fromFloors = null;
+    if (Array.isArray(plan.floors) && plan.floors.length) {
+      if (activeId) {
+        for (var i = 0; i < plan.floors.length; i++) {
+          if (plan.floors[i] && plan.floors[i].id === activeId) {
+            fromFloors = plan.floors[i];
+            break;
+          }
+        }
+      }
+      if (!fromFloors) fromFloors = plan.floors[0];
+    }
+    var fromProject = null;
     if (plan.project && Array.isArray(plan.project.floors)) {
       if (activeId) {
         for (var pi = 0; pi < plan.project.floors.length; pi++) {
           if (plan.project.floors[pi] && plan.project.floors[pi].id === activeId) {
-            candidates.push(plan.project.floors[pi]);
+            fromProject = plan.project.floors[pi];
             break;
           }
         }
       }
-      if (!candidates.length && plan.project.floors[0]) candidates.push(plan.project.floors[0]);
+      if (!fromProject && plan.project.floors[0]) fromProject = plan.project.floors[0];
     }
-    if (Array.isArray(plan.floors) && plan.floors.length) {
-      var matched = null;
-      if (activeId) {
-        for (var i = 0; i < plan.floors.length; i++) {
-          if (plan.floors[i] && plan.floors[i].id === activeId) {
-            matched = plan.floors[i];
-            break;
-          }
-        }
-      }
-      candidates.push(matched || plan.floors[0]);
-    }
-    if (plan.floor && typeof plan.floor === 'object') candidates.push(plan.floor);
-    return pickBestFloor(candidates);
+    if (fromFloors && countDrawableWalls(fromFloors) > 0) return fromFloors;
+    if (fromProject && countDrawableWalls(fromProject) > 0) return fromProject;
+    if (plan.floor && typeof plan.floor === 'object' && countDrawableWalls(plan.floor) > 0) return plan.floor;
+    if (fromFloors) return fromFloors;
+    if (fromProject) return fromProject;
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    return null;
+  }
+
+  function resolveActiveFloor(plan) {
+    return resolveLiveFloorSnapshot(plan);
   }
 
   function extractZanini(plan) {

@@ -448,54 +448,72 @@ class RoomAreaOpenPlan3DExtensions
     private function resolveActiveFloor(array $plan): ?array
     {
         $activeId = $plan['activeFloorId'] ?? ($plan['project']['activeFloorId'] ?? null);
-        $candidates = [];
+        $activeId = is_string($activeId) ? $activeId : null;
 
-        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
-            $matched = null;
-            if ($activeId) {
-                foreach ($plan['project']['floors'] as $floor) {
-                    if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
-                        $matched = $floor;
-                        break;
-                    }
-                }
-            }
-            $candidates[] = $matched ?? (is_array($plan['project']['floors'][0] ?? null) ? $plan['project']['floors'][0] : null);
-        }
-
+        $fromFloors = null;
         if (isset($plan['floors']) && is_array($plan['floors'])) {
-            $matched = null;
             if ($activeId) {
                 foreach ($plan['floors'] as $floor) {
                     if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
-                        $matched = $floor;
+                        $fromFloors = $floor;
                         break;
                     }
                 }
             }
-            $candidates[] = $matched ?? (is_array($plan['floors'][0] ?? null) ? $plan['floors'][0] : null);
+            if ($fromFloors === null && is_array($plan['floors'][0] ?? null)) {
+                $fromFloors = $plan['floors'][0];
+            }
         }
 
-        if (isset($plan['floor']) && is_array($plan['floor'])) {
-            $candidates[] = $plan['floor'];
+        $fromProject = null;
+        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
+            if ($activeId) {
+                foreach ($plan['project']['floors'] as $floor) {
+                    if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
+                        $fromProject = $floor;
+                        break;
+                    }
+                }
+            }
+            if ($fromProject === null && is_array($plan['project']['floors'][0] ?? null)) {
+                $fromProject = $plan['project']['floors'][0];
+            }
         }
 
-        $best = null;
-        $bestCount = -1;
-        foreach (array_filter($candidates) as $floor) {
+        $countDrawable = function (?array $floor): int {
+            if (! is_array($floor)) {
+                return 0;
+            }
             $count = 0;
             foreach ($floor['walls'] ?? [] as $w) {
                 if (is_array($w) && isset($w['start'], $w['end'])) {
                     $count++;
                 }
             }
-            if ($count > $bestCount) {
-                $bestCount = $count;
-                $best = $floor;
-            }
+
+            return $count;
+        };
+
+        if ($countDrawable($fromFloors) > 0) {
+            return $fromFloors;
+        }
+        if ($countDrawable($fromProject) > 0) {
+            return $fromProject;
+        }
+        if (isset($plan['floor']) && is_array($plan['floor']) && $countDrawable($plan['floor']) > 0) {
+            return $plan['floor'];
+        }
+        if ($fromFloors !== null) {
+            return $fromFloors;
+        }
+        if ($fromProject !== null) {
+            return $fromProject;
+        }
+        if (isset($plan['floor']) && is_array($plan['floor'])) {
+            return $plan['floor'];
         }
 
-        return $best;
+        return null;
     }
 
     /**

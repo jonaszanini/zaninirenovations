@@ -90,8 +90,10 @@
     for (var i = 0; i < zones.length; i++) {
       var zone = zones[i];
       if (!zone || zone.mergedInto) continue;
-      var bounds = zoneUnionBounds(zone, zones);
-      if (bounds && rectsOverlap(bounds, rect)) return zone;
+      var members = collectZoneMemberRects(zone, zones);
+      for (var mi = 0; mi < members.length; mi++) {
+        if (rectsOverlap(members[mi], rect)) return zone;
+      }
     }
     return null;
   }

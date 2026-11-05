@@ -365,4 +365,47 @@ var splitMetrics = bridge.layoutMetrics(editorSplitPlan, 'r1', { wall_height_ft:
 assert.ok(splitMetrics.area_sqft > 1300, 'Must use plan.floor when floors[0].walls is stale empty; got ' + splitMetrics.area_sqft);
 assert.ok(splitMetrics.perimeter_lf > 0, 'Perimeter must stay non-zero when floor walls are on plan.floor');
 
+// Test 18: Deleted wall on plan.floors[0] must win over stale extra wall on plan.floor (D1)
+var deletedInFloors0 = JSON.parse(JSON.stringify(hand0Plan));
+var deleteWallId = 'mclt5ix7';
+deletedInFloors0.floors[0].walls = deletedInFloors0.floors[0].walls.filter(function (w) {
+  return w.id !== deleteWallId;
+});
+assert.ok(
+  deletedInFloors0.floor.walls.some(function (w) {
+    return w.id === deleteWallId;
+  }),
+  'fixture: plan.floor stays stale with deleted wall still present'
+);
+var deletedResolved = bridge.resolveFloor(deletedInFloors0);
+assert.strictEqual(
+  deletedResolved.walls.length,
+  deletedInFloors0.floors[0].walls.length,
+  'resolveFloor must use live floors[0] after delete, not stale plan.floor'
+);
+assert.ok(
+  !deletedResolved.walls.some(function (w) {
+    return w.id === deleteWallId;
+  }),
+  'deleted wall must not resurrect from stale plan.floor'
+);
+var deletedMetrics = bridge.layoutMetrics(deletedInFloors0, 'r1', { wall_height_ft: 8.0 });
+assert.ok(deletedMetrics.area_sqft > 1300, 'deleted interior wall on floors[0] must keep positive area');
+
+// Test 19: activeFloorId f2 must beat stale plan.floor snapshot (D5)
+var activeF2Plan = JSON.parse(JSON.stringify(hand0Plan));
+activeF2Plan.activeFloorId = 'f2';
+activeF2Plan.floors.push({
+  id: 'f2',
+  walls: [
+    { id: 'a1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 } },
+    { id: 'a2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 } },
+    { id: 'a3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 } },
+    { id: 'a4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 } }
+  ],
+  rooms: [{ id: 'r2', name: 'Upstairs', polygon: [] }]
+});
+var activeF2Metrics = bridge.layoutMetrics(activeF2Plan, 'r2', { wall_height_ft: 8.0 });
+assert.ok(activeF2Metrics.area_sqft > 90 && activeF2Metrics.area_sqft < 110, 'active f2 square must measure ~100 sq ft, got ' + activeF2Metrics.area_sqft);
+
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

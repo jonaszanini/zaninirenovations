@@ -1195,48 +1195,58 @@ class OpenPlan3DMeasurementBridge
         return $best;
     }
 
+    /**
+     * @param  list<array<string, mixed>>|null  $floors
+     * @return array<string, mixed>|null
+     */
+    private function resolveFloorFromList(?array $floors, ?string $activeId): ?array
+    {
+        if (! is_array($floors) || $floors === []) {
+            return null;
+        }
+        if ($activeId) {
+            foreach ($floors as $floor) {
+                if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
+                    return $floor;
+                }
+            }
+        }
+
+        return is_array($floors[0] ?? null) ? $floors[0] : null;
+    }
+
     private function resolveFloor(array $plan): ?array
     {
         $activeId = $plan['activeFloorId'] ?? ($plan['project']['activeFloorId'] ?? null);
-        $candidates = [];
+        $fromFloors = $this->resolveFloorFromList($plan['floors'] ?? null, is_string($activeId) ? $activeId : null);
+        $fromProject = $this->resolveFloorFromList(
+            isset($plan['project']['floors']) && is_array($plan['project']['floors']) ? $plan['project']['floors'] : null,
+            is_string($activeId) ? $activeId : null
+        );
 
-        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
-            foreach ($plan['project']['floors'] as $f) {
-                if (! is_array($f)) {
-                    continue;
-                }
-                if ($activeId && ($f['id'] ?? '') === $activeId) {
-                    $candidates[] = $f;
-                    break;
-                }
-            }
-            if ($candidates === [] && isset($plan['project']['floors'][0]) && is_array($plan['project']['floors'][0])) {
-                $candidates[] = $plan['project']['floors'][0];
-            }
+        if ($fromFloors !== null && $this->countDrawableWalls($fromFloors) > 0) {
+            return $fromFloors;
         }
-
-        if (isset($plan['floors']) && is_array($plan['floors'])) {
-            $matched = null;
-            if ($activeId) {
-                foreach ($plan['floors'] as $f) {
-                    if (is_array($f) && ($f['id'] ?? null) === $activeId) {
-                        $matched = $f;
-                        break;
-                    }
-                }
-            }
-            $candidates[] = $matched ?? (is_array($plan['floors'][0] ?? null) ? $plan['floors'][0] : null);
+        if ($fromProject !== null && $this->countDrawableWalls($fromProject) > 0) {
+            return $fromProject;
         }
-
+        if (isset($plan['floor']) && is_array($plan['floor']) && $this->countDrawableWalls($plan['floor']) > 0) {
+            return $plan['floor'];
+        }
+        if ($fromFloors !== null) {
+            return $fromFloors;
+        }
+        if ($fromProject !== null) {
+            return $fromProject;
+        }
         if (isset($plan['floor']) && is_array($plan['floor'])) {
-            $candidates[] = $plan['floor'];
+            return $plan['floor'];
         }
-
         if (isset($plan['walls']) && is_array($plan['walls'])) {
-            $candidates[] = $plan;
+            return $plan;
         }
 
-        return $this->pickBestFloor(array_values(array_filter($candidates)));
+        return null;
     }
 
     /**
