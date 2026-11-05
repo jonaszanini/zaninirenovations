@@ -1,0 +1,141 @@
+{
+  "_comment": "Keep in sync with .github/workflows/tests.yml dorny filters (tests/ci/verify-workflow-filters.js). Matching uses picomatch { dot: true }.",
+  "global_test_deps": [
+    "composer.json",
+    "composer.lock",
+    "package.json",
+    "package-lock.json",
+    "phpunit.xml",
+    "phpunit.*.xml",
+    ".github/workflows/**",
+    "tests/ci/**",
+    "config/**",
+    "bootstrap/**",
+    "app/Providers/**",
+    "database/migrations/**",
+    "resources/views/layouts/**"
+  ],
+  "admin_shell": [
+    "resources/views/admin/layouts/app.blade.php"
+  ],
+  "shared_prices_geometry": [
+    "app/Http/Controllers/Admin/SharedPriceLibraryController.php",
+    "app/Models/SharedWork.php",
+    "app/Services/SharedWorkCatalog.php",
+    "public/js/shared-prices-effective.js",
+    "resources/views/admin/quotations/shared_prices/**",
+    "tests/Feature/SharedPrices*.php",
+    "tests/js/shared-prices*.test.js",
+    "tests/Unit/Models/SharedWorkLabelTest.php",
+    "tests/Unit/Services/SharedWorkCatalogTest.php"
+  ],
+  "room_area_live": [
+    "app/**/RoomArea*.php",
+    "app/Services/OpenPlan3DMeasurementBridge.php",
+    "app/Services/OpenPlan3DPlanValidator.php",
+    "database/seeders/RoomAreaGeometrySeeder.php",
+    "public/js/room-area/**",
+    "public/js/openplan3d-measurement-bridge.js",
+    "resources/views/**/room-area/**",
+    "resources/views/admin/client-projects/**/room-area/**",
+    "resources/views/admin/utilities/_room_area_openplan3d.blade.php",
+    "tests/Feature/Admin/RoomArea*.php",
+    "tests/Feature/Admin/*RoomArea*.php",
+    "tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php",
+    "tests/js/openplan3d-room-area-blade-browser.test.js",
+    "tests/js/room-area-main-thread-responsive.test.js",
+    "tests/js/room-area-phone-geometry.test.js",
+    "public/js/openplan3d-editor-bridge.js",
+    "public/js/openplan3d-hosted-locale.js",
+    "scripts/patch-openplan3d.mjs",
+    "scripts/openplan3d-h1.json",
+    "public/vendor/openplan3d-h1/**",
+    "tests/js/openplan3d-editor-index-mount.test.js",
+    "public/.htaccess",
+    "tests/ci/apache-htaccess-cache.sh",
+    "tests/js/openplan3d-editor-asset-version.test.js",
+    "public/js/openplan3d-host.js",
+    "public/vendor/openplan3d-h1/editor/index.html",
+    "tests/Unit/Services/RoomArea*.php"
+  ],
+  "blog_live": [
+    "app/**/BlogPost*.php",
+    "database/seeders/BlogPostsGeometrySeeder.php",
+    "resources/views/**/blog/**",
+    "resources/views/admin/blog/**",
+    "tests/Feature/Admin/BlogPosts*.php",
+    "tests/Feature/Admin/blog-posts-geometry.js",
+    "tests/Feature/Blog*.php"
+  ],
+  "millwork_fuzz": [
+    "app/Services/Millwork/**",
+    "tests/Unit/Services/MillworkV2FuzzParityTest.php",
+    "tests/Unit/Services/Millwork*.php",
+    "tests/Feature/Admin/Millwork*.php"
+  ],
+  "browser_js": [
+    "tests/js/*browser*",
+    "tests/js/**/*browser*",
+    "tests/js/admin-info-tip-click.test.mjs"
+  ],
+  "browser_admin": [
+    "public/js/admin-**",
+    "public/js/admin*.js",
+    "public/css/admin-**",
+    "resources/views/admin/layouts/**",
+    "resources/views/admin/partials/**",
+    "resources/views/components/admin/info-tip.blade.php",
+    "tests/js/admin-*",
+    "tests/js/**/*admin*browser*"
+  ],
+  "browser_openplan3d": [
+    "public/js/openplan3d-**",
+    "public/js/room-area/**",
+    "public/vendor/openplan3d-h1/**",
+    "scripts/patch-openplan3d.mjs",
+    "scripts/openplan3d-h1.json",
+    "app/Services/OpenPlan3DMeasurementBridge.php",
+    "app/Services/OpenPlan3DPlanValidator.php",
+    "resources/views/admin/utilities/_room_area_openplan3d.blade.php",
+    "tests/js/openplan3d-**",
+    "tests/js/room-area-**"
+  ],
+  "browser_quotation": [
+    "app/Support/Quotation**.php",
+    "app/Models/ClientProjectQuotation.php",
+    "app/Support/Quotations/**",
+    "resources/views/admin/quotations/**",
+    "public/js/*quotation*",
+    "public/js/admin-hotkey-save.js",
+    "public/js/admin-toast.js",
+    "public/js/admin-dialog.js",
+    "tests/js/quotation-**",
+    "tests/js/fixtures/quotation-redraft-hotkey-lock.html"
+  ],
+  "browser_client": [
+    "resources/views/admin/client-projects/**",
+    "resources/views/admin/client_projects/**",
+    "public/js/admin-client-projects.js",
+    "public/css/admin-client-projects.css",
+    "public/css/admin-dark.css",
+    "tests/js/client-projects-**"
+  ],
+  "routes_smoke": [
+    "routes/**",
+    "app/Http/Controllers/**",
+    "app/Providers/RouteServiceProvider.php"
+  ],
+  "seo": [
+    "resources/views/site/**",
+    "resources/views/partials/**",
+    "resources/views/pagination/**",
+    "resources/views/emails/**",
+    "config/service_areas.php",
+    "config/public_services.php",
+    "app/Support/Seo*.php",
+    "app/Support/PublicSitemap.php",
+    "app/Support/LlmsTxtGenerator.php",
+    "app/Support/RobotsTxtGenerator.php",
+    "tests/Feature/OnPageSeo*.php"
+  ]
+}

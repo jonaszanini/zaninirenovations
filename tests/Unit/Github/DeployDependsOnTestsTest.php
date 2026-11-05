@@ -20,6 +20,26 @@ class DeployDependsOnTestsTest extends TestCase
         );
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
         $this->assertStringContainsString('tests/ci/classify-ci-changes.sh', $yaml);
+        $this->assertStringContainsString('tests/ci/compute-ci-flags.sh', $yaml);
+        $this->assertMatchesRegularExpression(
+            '/^\s+changes:\s*$/m',
+            $yaml
+        );
+        $changesBlock = $this->extractYamlJobBlock($yaml, 'changes');
+        $this->assertStringContainsString('actions/setup-node@v4', $changesBlock, 'changes job must install Node before compute-ci-flags (picomatch)');
+        $this->assertStringContainsString('npm ci', $changesBlock, 'changes job must run npm ci before match-workflow-filters');
+        $this->assertMatchesRegularExpression(
+            '/Setup Node[\s\S]*npm ci[\s\S]*id: flags/m',
+            $changesBlock,
+            'Node install must precede compute flags step'
+        );
+        $this->assertStringContainsString('tests/ci/run-js-browser-suite.sh', $yaml);
+        $this->assertStringContainsString('tests/ci/run-js-unit-suite.sh', $yaml);
+        $this->assertStringContainsString('global_test_deps:', $yaml);
+        $this->assertStringContainsString('run_mysql_node', $yaml);
+        $this->assertStringContainsString('RoomAreaEngineFeatureFlagTest.php', $yaml);
+        $this->assertMatchesRegularExpression('/^\s+unit_js:\s*$/m', $yaml);
+        $this->assertMatchesRegularExpression('/^\s+mysql:\s*$/m', $yaml);
         $this->assertStringContainsString('DOCS_ONLY', $yaml);
         $this->assertStringContainsString('run_database', $yaml);
         $this->assertStringContainsString("push:\n    branches:\n      - main", $yaml);
@@ -29,8 +49,27 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertStringContainsString('workflow_dispatch:', $yaml);
-        $this->assertStringContainsString('openplan3d-editor-bridge.test.js', $yaml);
-        $this->assertStringContainsString('openplan3d-editor-browser.test.js', $yaml);
+        $unitList = (string) file_get_contents(base_path('tests/ci/js-unit-paths.txt'));
+        $this->assertStringContainsString(
+            'openplan3d-editor-bridge.test.js',
+            $unitList,
+            'editor bridge unit test must stay in tests/ci/js-unit-paths.txt'
+        );
+        $browserLists = [
+            'tests/ci/js-browser-openplan3d.txt',
+            'tests/ci/js-browser-admin.txt',
+            'tests/ci/js-browser-quotation.txt',
+            'tests/ci/js-browser-client-projects.txt',
+        ];
+        $browserCombined = '';
+        foreach ($browserLists as $rel) {
+            $browserCombined .= (string) file_get_contents(base_path($rel));
+        }
+        $this->assertStringContainsString(
+            'openplan3d-editor-browser.test.js',
+            $browserCombined,
+            'editor browser test must stay in tests/ci/js-browser-*.txt manifests'
+        );
         $this->assertMatchesRegularExpression(
             '/fetch-depth:\s*0/',
             $yaml,
@@ -147,6 +186,67 @@ class DeployDependsOnTestsTest extends TestCase
         }
     }
 
+    public function test_room_area_engine_feature_flag_runs_on_pr_when_room_area_filter_matches(): void
+    {
+        $roomAreaFilter = $this->pathsFile('tests/ci/database-filter-room-area.txt');
+        $this->assertContains(
+            'tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php',
+            $roomAreaFilter,
+            'OpenPlan3D manifest/vendor PRs must run RoomAreaEngineFeatureFlagTest via CI_MYSQL_FILTER_ROOM_AREA, not main-only extended.txt alone'
+        );
+    }
+
+    public function test_matcher_fail_closed_script_passes(): void
+    {
+        exec('bash '.escapeshellarg(base_path('tests/ci/matcher-fail-closed.test.sh')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_ci_filter_matrix_script_passes(): void
+    {
+        exec('bash '.escapeshellarg(base_path('tests/ci/ci-filter-matrix.test.sh')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_workflow_filters_json_matches_tests_yml(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/verify-workflow-filters.js')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_browser_manifest_lists_every_browser_spec(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/verify-browser-manifest.js')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_picomatch_workflow_filter_spot_checks(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/picomatch-tracked-files-audit.js')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_ci_js_browser_path_lists_cover_workflow_browser_tests(): void
+    {
+        $lists = [
+            'tests/ci/js-browser-admin.txt',
+            'tests/ci/js-browser-openplan3d.txt',
+            'tests/ci/js-browser-quotation.txt',
+            'tests/ci/js-browser-client-projects.txt',
+        ];
+        $paths = [];
+        foreach ($lists as $list) {
+            foreach ($this->pathsFile($list) as $path) {
+                $paths[] = $path;
+            }
+        }
+        $paths = array_values(array_unique($paths));
+        $this->assertGreaterThan(10, count($paths));
+        foreach ($paths as $path) {
+            $this->assertFileExists(base_path($path), $path);
+        }
+    }
+
     public function test_deploy_requires_tests_success_and_is_skipped_when_tests_fail(): void
     {
         $yaml = $this->workflow('deploy.yml');
@@ -227,6 +327,20 @@ class DeployDependsOnTestsTest extends TestCase
         }
 
         return $paths;
+    }
+
+    private function extractYamlJobBlock(string $yaml, string $job): string
+    {
+        $pattern = '/^\s{2}'.preg_quote($job, '/').':\s*\n/m';
+        if (! preg_match($pattern, $yaml, $startMatch, PREG_OFFSET_CAPTURE)) {
+            $this->fail("Missing job {$job}");
+        }
+        $start = $startMatch[0][1];
+        if (preg_match('/^\s{2}[a-z0-9_]+:\s*\n/m', $yaml, $nextMatch, PREG_OFFSET_CAPTURE, $start + strlen($startMatch[0][0]))) {
+            return substr($yaml, $start, $nextMatch[0][1] - $start);
+        }
+
+        return substr($yaml, $start);
     }
 
     private function workflow(string $name): string

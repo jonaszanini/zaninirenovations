@@ -12,3 +12,4 @@ tests/Feature/Admin/RoomAreaQuoteLinesTest.php
 tests/Feature/Admin/RoomAreaQuotePrefillTest.php
 tests/Feature/Admin/UtilitiesRoomAreaPageTest.php
 tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php
+tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php

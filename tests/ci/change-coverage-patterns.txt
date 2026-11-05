@@ -1,0 +1,2 @@
+# Deprecated: broad-run classification now uses tests/ci/workflow-filters.json
+# via tests/ci/match-workflow-filters.js (unknown path => global_test_deps / fail-open).

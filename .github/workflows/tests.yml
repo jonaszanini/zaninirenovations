@@ -31,16 +31,23 @@ jobs:
     outputs:
       run_database: ${{ steps.flags.outputs.run_database }}
       run_browser: ${{ steps.flags.outputs.run_browser }}
+      run_browser_admin: ${{ steps.flags.outputs.run_browser_admin }}
+      run_browser_openplan3d: ${{ steps.flags.outputs.run_browser_openplan3d }}
+      run_browser_quotation: ${{ steps.flags.outputs.run_browser_quotation }}
+      run_browser_client: ${{ steps.flags.outputs.run_browser_client }}
+      run_mysql_node: ${{ steps.flags.outputs.run_mysql_node }}
       run_shared_prices_geometry: ${{ steps.flags.outputs.run_shared_prices_geometry }}
       run_room_area_live: ${{ steps.flags.outputs.run_room_area_live }}
       run_blog_live: ${{ steps.flags.outputs.run_blog_live }}
       run_millwork_fuzz: ${{ steps.flags.outputs.run_millwork_fuzz }}
-      filter_shared_prices: ${{ steps.filter.outputs.shared_prices_geometry }}
-      filter_room_area: ${{ steps.filter.outputs.room_area_live }}
-      filter_blog: ${{ steps.filter.outputs.blog_live }}
-      filter_seo: ${{ steps.filter.outputs.seo }}
-      filter_millwork: ${{ steps.filter.outputs.millwork_fuzz }}
-      filter_routes_smoke: ${{ steps.filter.outputs.routes_smoke }}
+      filter_shared_prices: ${{ steps.flags.outputs.filter_shared_prices }}
+      filter_room_area: ${{ steps.flags.outputs.filter_room_area }}
+      filter_blog: ${{ steps.flags.outputs.filter_blog }}
+      filter_seo: ${{ steps.flags.outputs.filter_seo }}
+      filter_millwork: ${{ steps.flags.outputs.filter_millwork }}
+      filter_routes_smoke: ${{ steps.flags.outputs.filter_routes_smoke }}
+      broad_run: ${{ steps.flags.outputs.broad_run }}
+      global_test_deps: ${{ steps.flags.outputs.global_test_deps }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -55,6 +62,15 @@ jobs:
           PR_HEAD: ${{ github.event.pull_request.head.sha }}
         run: tests/ci/classify-ci-changes.sh
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install npm dependencies
+        run: npm ci
+
       - uses: dorny/paths-filter@v3
         id: filter
         with:
@@ -64,6 +80,22 @@ jobs:
               - '!**/*.md'
               - '!docs/**'
               - '!lang/**'
+            global_test_deps:
+              - 'composer.json'
+              - 'composer.lock'
+              - 'package.json'
+              - 'package-lock.json'
+              - 'phpunit.xml'
+              - 'phpunit.*.xml'
+              - '.github/workflows/**'
+              - 'tests/ci/**'
+              - 'config/**'
+              - 'bootstrap/**'
+              - 'app/Providers/**'
+              - 'database/migrations/**'
+              - 'resources/views/layouts/**'
+            admin_shell:
+              - 'resources/views/admin/layouts/app.blade.php'
             shared_prices_geometry:
               - 'app/Http/Controllers/Admin/SharedPriceLibraryController.php'
               - 'app/Models/SharedWork.php'
@@ -76,12 +108,17 @@ jobs:
               - 'tests/Unit/Services/SharedWorkCatalogTest.php'
             room_area_live:
               - 'app/**/RoomArea*.php'
+              - 'app/Services/OpenPlan3DMeasurementBridge.php'
+              - 'app/Services/OpenPlan3DPlanValidator.php'
               - 'database/seeders/RoomAreaGeometrySeeder.php'
               - 'public/js/room-area/**'
+              - 'public/js/openplan3d-measurement-bridge.js'
               - 'resources/views/**/room-area/**'
               - 'resources/views/admin/client-projects/**/room-area/**'
+              - 'resources/views/admin/utilities/_room_area_openplan3d.blade.php'
               - 'tests/Feature/Admin/RoomArea*.php'
               - 'tests/Feature/Admin/*RoomArea*.php'
+              - 'tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php'
               - 'tests/js/openplan3d-room-area-blade-browser.test.js'
               - 'tests/js/room-area-main-thread-responsive.test.js'
               - 'tests/js/room-area-phone-geometry.test.js'
@@ -114,12 +151,53 @@ jobs:
               - 'tests/js/*browser*'
               - 'tests/js/**/*browser*'
               - 'tests/js/admin-info-tip-click.test.mjs'
+            browser_admin:
+              - 'public/js/admin-**'
+              - 'public/js/admin*.js'
+              - 'public/css/admin-**'
+              - 'resources/views/admin/layouts/**'
+              - 'resources/views/admin/partials/**'
+              - 'resources/views/components/admin/info-tip.blade.php'
+              - 'tests/js/admin-*'
+              - 'tests/js/**/*admin*browser*'
+            browser_openplan3d:
+              - 'public/js/openplan3d-**'
+              - 'public/js/room-area/**'
+              - 'public/vendor/openplan3d-h1/**'
+              - 'scripts/patch-openplan3d.mjs'
+              - 'scripts/openplan3d-h1.json'
+              - 'app/Services/OpenPlan3DMeasurementBridge.php'
+              - 'app/Services/OpenPlan3DPlanValidator.php'
+              - 'resources/views/admin/utilities/_room_area_openplan3d.blade.php'
+              - 'tests/js/openplan3d-**'
+              - 'tests/js/room-area-**'
+            browser_quotation:
+              - 'app/Support/Quotation**.php'
+              - 'app/Models/ClientProjectQuotation.php'
+              - 'app/Support/Quotations/**'
+              - 'resources/views/admin/quotations/**'
+              - 'public/js/*quotation*'
+              - 'public/js/admin-hotkey-save.js'
+              - 'public/js/admin-toast.js'
+              - 'public/js/admin-dialog.js'
+              - 'tests/js/quotation-**'
+              - 'tests/js/fixtures/quotation-redraft-hotkey-lock.html'
+            browser_client:
+              - 'resources/views/admin/client-projects/**'
+              - 'resources/views/admin/client_projects/**'
+              - 'public/js/admin-client-projects.js'
+              - 'public/css/admin-client-projects.css'
+              - 'public/css/admin-dark.css'
+              - 'tests/js/client-projects-**'
             routes_smoke:
               - 'routes/**'
               - 'app/Http/Controllers/**'
               - 'app/Providers/RouteServiceProvider.php'
             seo:
-              - 'resources/views/**'
+              - 'resources/views/site/**'
+              - 'resources/views/partials/**'
+              - 'resources/views/pagination/**'
+              - 'resources/views/emails/**'
               - 'config/service_areas.php'
               - 'config/public_services.php'
               - 'app/Support/Seo*.php'
@@ -130,47 +208,26 @@ jobs:
 
       - id: flags
         env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          SLOW_INPUT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.slow || 'false' }}
           DOCS_ONLY: ${{ steps.classify.outputs.docs_only }}
           HAS_CODE_CHANGES: ${{ steps.classify.outputs.has_code_changes }}
-          FILTER_CODE: ${{ steps.filter.outputs.code }}
+          CHANGED_FILES_FILE: ${{ steps.classify.outputs.changed_files_path }}
+          FILTER_GLOBAL: ${{ steps.filter.outputs.global_test_deps }}
+          FILTER_ADMIN_SHELL: ${{ steps.filter.outputs.admin_shell }}
           FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
           FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
           FILTER_BL: ${{ steps.filter.outputs.blog_live }}
           FILTER_MF: ${{ steps.filter.outputs.millwork_fuzz }}
           FILTER_BROWSER_JS: ${{ steps.filter.outputs.browser_js }}
+          FILTER_BROWSER_ADMIN: ${{ steps.filter.outputs.browser_admin }}
+          FILTER_BROWSER_OPENPLAN3D: ${{ steps.filter.outputs.browser_openplan3d }}
+          FILTER_BROWSER_QUOTATION: ${{ steps.filter.outputs.browser_quotation }}
+          FILTER_BROWSER_CLIENT: ${{ steps.filter.outputs.browser_client }}
           FILTER_ROUTES: ${{ steps.filter.outputs.routes_smoke }}
-        run: |
-          set -euo pipefail
-          is_main=false
-          if [ "${{ github.ref }}" = "refs/heads/main" ]; then is_main=true; fi
-          slow_input=false
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ github.event.inputs.slow }}" = "true" ]; then slow_input=true; fi
-
-          run_database=false
-          if [ "$is_main" = true ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then run_database=true; fi
-          if [ "${{ github.event_name }}" = "pull_request" ] && [ "$DOCS_ONLY" != "true" ] && [ "$HAS_CODE_CHANGES" = "true" ]; then run_database=true; fi
-
-          run_shared=false
-          if [ "$slow_input" = true ] || [ "$FILTER_SP" = "true" ]; then run_shared=true; fi
-          run_ra=false
-          if [ "$slow_input" = true ] || [ "$FILTER_RA" = "true" ]; then run_ra=true; fi
-          run_bl=false
-          if [ "$slow_input" = true ] || [ "$FILTER_BL" = "true" ]; then run_bl=true; fi
-          run_mf=false
-          if [ "$slow_input" = true ] || [ "$FILTER_MF" = "true" ]; then run_mf=true; fi
-
-          run_browser=false
-          if [ "$is_main" = true ] || [ "$run_database" = true ] || [ "$slow_input" = true ]; then run_browser=true; fi
-          if [ "$FILTER_SP" = "true" ] || [ "$FILTER_RA" = "true" ] || [ "$FILTER_BL" = "true" ] || [ "$FILTER_MF" = "true" ] || [ "$FILTER_BROWSER_JS" = "true" ]; then run_browser=true; fi
-
-          {
-            echo "run_database=$run_database"
-            echo "run_browser=$run_browser"
-            echo "run_shared_prices_geometry=$run_shared"
-            echo "run_room_area_live=$run_ra"
-            echo "run_blog_live=$run_bl"
-            echo "run_millwork_fuzz=$run_mf"
-          } >> "$GITHUB_OUTPUT"
+          FILTER_SEO: ${{ steps.filter.outputs.seo }}
+        run: bash tests/ci/compute-ci-flags.sh
 
   unit_js:
     needs: changes
@@ -223,23 +280,7 @@ jobs:
         run: tests/ci/apache-htaccess-cache.sh
 
       - name: JavaScript tests (no browser)
-        run: |
-          node tests/js/room-area-lib.test.js
-          node tests/js/openplan3d-parity.test.js
-          node tests/js/openplan3d-host-save-area.test.js
-          node tests/js/openplan3d-editor-room-fill.test.js
-          node tests/js/openplan3d-editor-bridge.test.js
-          node tests/js/openplan3d-zanini-extensions.test.js
-          node tests/js/openplan3d-zanini-tools.test.js
-          node tests/js/openplan3d-editor-asset-version.test.js
-          node tests/js/openplan3d-immutable-graph-cache.test.js
-          node tests/js/openplan3d-kr-inch-snap.test.js
-          node tests/js/room-area-formula.test.js
-          node tests/js/shared-prices-effective.test.js
-          node tests/js/admin-hotkey-save.test.js
-          node tests/js/admin-project-calendar-swipe.test.js
-          node tests/js/admin-project-calendar-popover.test.js
-          node tests/js/admin-info-tip.test.mjs
+        run: tests/ci/run-js-unit-suite.sh
 
       - name: Unit tests (no database)
         run: tests/ci/run-unit-suite.sh
@@ -250,26 +291,13 @@ jobs:
 
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'
-        run: |
-          node tests/js/openplan3d-kr-ortho-drag.test.js
-          node tests/js/openplan3d-browser.test.js
-          node tests/js/openplan3d-room-area-blade-browser.test.js
-          node tests/js/room-area-main-thread-responsive.test.js
-          node tests/js/openplan3d-editor-asset-version.test.js
-          node tests/js/openplan3d-immutable-graph-cache.test.js
-          node tests/js/openplan3d-kr-inch-snap.test.js
-          node tests/js/client-projects-table-screenshots.test.js
-          node tests/js/openplan3d-editor-browser.test.js
-          node tests/js/openplan3d-editor-index-mount.test.js
-          node tests/js/openplan3d-room-canvas-fill-browser.test.js
-          node tests/js/openplan3d-cache-store-singleton-browser.test.js
-          node tests/js/openplan3d-wall-finish-browser.test.js
-          node tests/js/openplan3d-zone-coords.test.js
-          node tests/js/admin-hotkey-save-browser.test.js
-          node tests/js/admin-date-picker-browser.test.js
-          node tests/js/quotation-redraft-confirm-browser.test.js
-          node tests/js/quotation-redraft-hotkey-lock-browser.test.js
-          node tests/js/admin-info-tip-click.test.mjs
+        env:
+          CI_JS_BROWSER_ALL: ${{ needs.changes.outputs.global_test_deps == 'true' && 'true' || 'false' }}
+          CI_JS_BROWSER_ADMIN: ${{ needs.changes.outputs.run_browser_admin }}
+          CI_JS_BROWSER_OPENPLAN3D: ${{ needs.changes.outputs.run_browser_openplan3d }}
+          CI_JS_BROWSER_QUOTATION: ${{ needs.changes.outputs.run_browser_quotation }}
+          CI_JS_BROWSER_CLIENT: ${{ needs.changes.outputs.run_browser_client }}
+        run: tests/ci/run-js-browser-suite.sh
 
   mysql:
     needs: changes
@@ -316,18 +344,18 @@ jobs:
           php artisan key:generate
 
       - name: Setup Node
-        if: needs.changes.outputs.run_browser == 'true'
+        if: needs.changes.outputs.run_mysql_node == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: npm
 
       - name: Install Node dependencies
-        if: needs.changes.outputs.run_browser == 'true'
+        if: needs.changes.outputs.run_mysql_node == 'true'
         run: npm ci --no-fund --no-audit
 
       - name: Cache Puppeteer
-        if: needs.changes.outputs.run_browser == 'true'
+        if: needs.changes.outputs.run_mysql_node == 'true'
         uses: actions/cache@v4
         with:
           path: /home/runner/.cache/puppeteer
