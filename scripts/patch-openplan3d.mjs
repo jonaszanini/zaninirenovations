@@ -23,9 +23,11 @@ const OUT_SLUG = 'openplan3d-h1';
 const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
-/** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
-const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h4.js';
-const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h3.js';
+/** Active immutable graph suffix (must not reuse previously served -h3.js bytes for patches). */
+const IMMUTABLE_GRAPH_SUFFIX = 'h4';
+const PATCHED_STORE_CHUNK_BASENAME = `1VjVcrjm-${IMMUTABLE_GRAPH_SUFFIX}.js`;
+const PATCHED_EDITOR_CHUNK_BASENAME = `CgAQI-i0-${IMMUTABLE_GRAPH_SUFFIX}.js`;
+const LEGACY_IMMUTABLE_SUFFIX = 'h3';
 
 const require = createRequire(import.meta.url);
 const bridge = require(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
@@ -79,9 +81,6 @@ function listAllFiles(dir) {
 function publishPatchedStoreChunk(vendorBasename, patchedSource) {
   const outPath = path.join(OUT, '_app/immutable/chunks', PATCHED_STORE_CHUNK_BASENAME);
   fs.writeFileSync(outPath, patchedSource);
-  // Cached -h3 importers still request the legacy store URL (E3 stale immutable graph).
-  const legacyStorePath = path.join(OUT, '_app/immutable/chunks/1VjVcrjm-h3.js');
-  fs.writeFileSync(legacyStorePath, patchedSource);
   return PATCHED_STORE_CHUNK_BASENAME;
 }
 
@@ -105,11 +104,19 @@ function propagateImmutableRenames(rootDir, initialRenames) {
         if (fileText.includes(fromBase)) {
           const norm = f.replace(/\\/g, '/');
           if (norm.includes('_app/immutable') && !renames.has(base)) {
-            if (base.endsWith('-h3.js')) {
+            if (base.endsWith(`-${IMMUTABLE_GRAPH_SUFFIX}.js`)) {
               renames.set(base, base);
               continue;
             }
-            const newBase = base.replace(/(-h[12])?\.js$/, '-h3.js');
+            if (base.endsWith(`-${LEGACY_IMMUTABLE_SUFFIX}.js`)) {
+              renames.set(
+                base,
+                base.replace(`-${LEGACY_IMMUTABLE_SUFFIX}.js`, `-${IMMUTABLE_GRAPH_SUFFIX}.js`)
+              );
+              changed = true;
+              continue;
+            }
+            const newBase = base.replace(/(-h[0-9]+)?\.js$/, `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
             renames.set(base, newBase);
             changed = true;
           }
@@ -131,12 +138,12 @@ function propagateImmutableRenames(rootDir, initialRenames) {
     }
   }
 
-  // Rewrite references inside the new -h3.js files and HTML entry pages only.
-  // Files that keep their name must be byte-identical to what's live now.
+  // Rewrite references inside the new -h4.js files and HTML entry pages only.
   for (const f of listAllFiles(rootDir)) {
     if (!/\.(html|js|css|json)$/.test(f)) continue;
     const base = path.basename(f);
-    const isNewOrHtml = base.endsWith('-h3.js') || f.endsWith('.html');
+    const isNewOrHtml =
+      base.endsWith(`-${IMMUTABLE_GRAPH_SUFFIX}.js`) || f.endsWith('.html');
     if (!isNewOrHtml) continue;
 
     let text = fs.readFileSync(f, 'utf8');
@@ -478,6 +485,40 @@ function rewriteHtmlEntryChunkSlugs(rootDir, fromSuffix, toSuffix) {
   }
 }
 
+/** Restore -h3 immutable files from origin/main so cached clients keep the prior graph bytes. */
+function restoreLegacyImmutableGraphFromMain() {
+  const immutableRoot = path.join(OUT, '_app/immutable');
+  if (!fs.existsSync(immutableRoot)) return;
+  for (const f of listAllFiles(immutableRoot)) {
+    if (!f.endsWith(`-${LEGACY_IMMUTABLE_SUFFIX}.js`)) continue;
+    const rel = path.relative(ROOT, f).replace(/\\/g, '/');
+    try {
+      const content = execSync(`git show origin/main:${rel}`, {
+        encoding: 'utf8',
+        cwd: ROOT,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      fs.writeFileSync(f, content);
+    } catch (e) {
+      console.warn(`patch-openplan3d: skip legacy restore (not on main): ${rel}`);
+    }
+  }
+}
+
+function syncEditorIndexStoreImport(storeChunkBasename) {
+  let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
+  const storeImport = `/vendor/openplan3d-h1/_app/immutable/chunks/${storeChunkBasename}`;
+  html = html.replace(
+    /import\("\/vendor\/openplan3d-h1\/_app\/immutable\/chunks\/1VjVcrjm-h[0-9]+\.js"\)/g,
+    `import("${storeImport}")`
+  );
+  html = html.replace(
+    /<link href="\/vendor\/openplan3d-h1\/_app\/immutable\/chunks\/1VjVcrjm-h[0-9]+\.js" rel="modulepreload">/g,
+    `<link href="${storeImport}" rel="modulepreload">`
+  );
+  fs.writeFileSync(EDITOR_INDEX, html);
+}
+
 function main() {
   if (!fs.existsSync(PRISTINE)) {
     throw new Error('patch-openplan3d: missing pristine tree at public/vendor/openplan3d');
@@ -513,9 +554,13 @@ function main() {
     [vendorPristineEditorChunk, editorChunk],
   ]);
 
-  rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', '-h3.js');
+  rewriteHtmlEntryChunkSlugs(OUT, `-${LEGACY_IMMUTABLE_SUFFIX}.js`, `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
+  restoreLegacyImmutableGraphFromMain();
+
+  rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
 
   patchHostedEditorIndexBoot();
+  syncEditorIndexStoreImport(storeChunk);
   const localeChunk = trimRedundantLocaleModulepreload();
 
   const manifest = {
@@ -524,6 +569,9 @@ function main() {
     editorChunk,
     vendorEditorChunk: vendorPristineEditorChunk,
     localeChunk,
+    immutableGraphSuffix: IMMUTABLE_GRAPH_SUFFIX,
+    legacyImmutableSuffix: LEGACY_IMMUTABLE_SUFFIX,
+    entryChunk: `app.Badnr33M-${IMMUTABLE_GRAPH_SUFFIX}.js`,
   };
   fs.writeFileSync(MANIFEST, JSON.stringify(manifest, null, 2) + '\n');
   console.log('patch-openplan3d: ok', manifest);
