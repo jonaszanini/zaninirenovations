@@ -826,34 +826,73 @@
       }
       var tools = win && win.OpenPlan3DZaniniExtensions;
       var allZones = (zanini && zanini.zones) || [];
+
+      var ICON_RENAME = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>';
+      var ICON_MERGE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6H21M8 12H21M8 18H21M3 6h.01M3 12h.01M3 18h.01"/></svg>';
+      var ICON_DELETE = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>';
+
       zones.forEach(function (zone) {
         if (!zone) return;
         var li = doc.createElement('li');
         li.className = 'openplan3d-zones-item';
+
+        var infoCol = doc.createElement('div');
+        infoCol.className = 'openplan3d-zones-info';
+
+        var titleRow = doc.createElement('div');
+        titleRow.className = 'openplan3d-zones-title-row';
+
+        var swatch = doc.createElement('span');
+        swatch.className = 'openplan3d-zones-swatch';
+        swatch.style.background = zone.color || 'rgba(14, 165, 233, 0.6)';
+
         var name = doc.createElement('span');
         name.className = 'openplan3d-zones-name';
         name.textContent = zone.name || zone.id || 'Zone';
+
         var sqft = doc.createElement('span');
         sqft.className = 'openplan3d-zones-sqft';
         var sqftVal = tools && typeof tools.zoneAreaSqFt === 'function'
           ? tools.zoneAreaSqFt(zone, allZones, tools.CM_PER_FOOT)
           : 0;
         sqft.textContent = sqftVal.toFixed(1) + ' sf';
-        var tag = doc.createElement('span');
-        tag.className = 'openplan3d-zones-tag' + (zone.exclude ? ' openplan3d-zones-tag--exclude' : '');
-        tag.textContent = zone.exclude ? 'Exclude' : 'Measure only';
+
+        titleRow.appendChild(swatch);
+        titleRow.appendChild(name);
+        titleRow.appendChild(sqft);
+
+        var statusBtn = doc.createElement('button');
+        statusBtn.type = 'button';
+        statusBtn.className = 'openplan3d-zones-status' + (zone.exclude ? ' openplan3d-zones-status--exclude' : '');
+        statusBtn.textContent = zone.exclude ? 'Exclude' : 'Measure only';
+        statusBtn.title = 'Toggle exclude from floor area';
+        statusBtn.setAttribute('aria-label', zone.exclude ? 'Currently excluded; click to measure only' : 'Currently measure only; click to exclude');
+        statusBtn.addEventListener('click', function () {
+          mutateZanini(function (z) {
+            for (var i = 0; i < (z.zones || []).length; i++) {
+              if (z.zones[i].id === zone.id) z.zones[i].exclude = !z.zones[i].exclude;
+            }
+          });
+        });
+
+        infoCol.appendChild(titleRow);
+        infoCol.appendChild(statusBtn);
+
         var actions = doc.createElement('div');
         actions.className = 'openplan3d-zones-actions';
-        function mkBtn(label, title, handler) {
+
+        function mkIconBtn(icon, title, ariaLabel, handler) {
           var btn = doc.createElement('button');
           btn.type = 'button';
-          btn.className = 'admin-btn admin-btn--ghost admin-btn--sm openplan3d-zones-action';
-          btn.textContent = label;
+          btn.className = 'openplan3d-zones-icon-btn';
+          btn.innerHTML = icon;
           btn.title = title;
+          btn.setAttribute('aria-label', ariaLabel);
           btn.addEventListener('click', handler);
           return btn;
         }
-        actions.appendChild(mkBtn('Rename', 'Rename zone', function () {
+
+        actions.appendChild(mkIconBtn(ICON_RENAME, 'Rename', 'Rename zone', function () {
           askPrompt('Rename zone', zone.name || '').then(function (next) {
             if (!next) return;
             mutateZanini(function (z) {
@@ -863,14 +902,7 @@
             });
           });
         }));
-        actions.appendChild(mkBtn(zone.exclude ? 'Measure' : 'Exclude', 'Toggle exclude from floor area', function () {
-          mutateZanini(function (z) {
-            for (var i = 0; i < (z.zones || []).length; i++) {
-              if (z.zones[i].id === zone.id) z.zones[i].exclude = !z.zones[i].exclude;
-            }
-          });
-        }));
-        actions.appendChild(mkBtn('Merge', 'Merge into another zone', function () {
+        actions.appendChild(mkIconBtn(ICON_MERGE, 'Merge', 'Merge into another zone', function () {
           askPickZone('Merge zone', (currentPlan && currentPlan.zanini && currentPlan.zanini.zones) || [], zone.id).then(function (targetId) {
             if (!targetId || targetId === zone.id) return;
             if (win && win.OpenPlan3DZaniniTools && typeof win.OpenPlan3DZaniniTools.mergeZones === 'function') {
@@ -884,7 +916,7 @@
             });
           });
         }));
-        actions.appendChild(mkBtn('Delete', 'Remove zone', function () {
+        actions.appendChild(mkIconBtn(ICON_DELETE, 'Delete', 'Delete zone', function () {
           askConfirm('Delete this area zone?', 'Delete zone', 'Delete').then(function (ok) {
             if (!ok) return;
             mutateZanini(function (z) {
@@ -892,9 +924,8 @@
             });
           });
         }));
-        li.appendChild(name);
-        li.appendChild(sqft);
-        li.appendChild(tag);
+
+        li.appendChild(infoCol);
         li.appendChild(actions);
         zonesListEl.appendChild(li);
       });

@@ -779,48 +779,117 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0.55rem;
+  gap: 0.35rem;
+  padding: 0.25rem 0.45rem;
   border-radius: 6px;
   border: 1px solid var(--admin-border, #cbd5e1);
   background: var(--admin-surface, #ffffff);
   font-size: 0.82rem;
 }
 
+.openplan3d-zones-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.openplan3d-zones-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.openplan3d-zones-swatch {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  border: 1px solid rgba(0,0,0,0.15);
+}
+
 .openplan3d-zones-name {
   color: var(--admin-text, #1e293b);
-  font-weight: 500;
+  font-weight: 600;
+  font-size: 0.78rem;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.openplan3d-zones-tag {
+.openplan3d-zones-sqft {
   flex-shrink: 0;
   font-size: 0.72rem;
-  font-weight: 600;
-  padding: 0.1rem 0.45rem;
+  font-weight: 500;
+  color: var(--admin-muted, #64748b);
+}
+
+.openplan3d-zones-status {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 0.1rem 0.4rem;
+  border: none;
   border-radius: 999px;
   background: rgba(2, 71, 104, 0.1);
   color: var(--admin-primary, #024768);
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
 }
 
-.openplan3d-zones-tag--exclude {
+.openplan3d-zones-status:hover {
+  background: rgba(2, 71, 104, 0.18);
+}
+
+.openplan3d-zones-status--exclude {
   background: rgba(220, 38, 38, 0.12);
   color: #b91c1c;
 }
 
-.openplan3d-zones-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-left: auto;
+.openplan3d-zones-status--exclude:hover {
+  background: rgba(220, 38, 38, 0.2);
 }
 
-.openplan3d-zones-action {
-  min-height: 44px;
-  padding: 0.25rem 0.5rem;
-  font-size: 0.72rem;
+.openplan3d-zones-actions {
+  display: flex;
+  gap: 0.15rem;
+  flex-shrink: 0;
+}
+
+.openplan3d-zones-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--admin-muted, #64748b);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.openplan3d-zones-icon-btn:hover {
+  background: var(--admin-surface-hover, rgba(0,0,0,0.06));
+  color: var(--admin-text, #1e293b);
+}
+
+.openplan3d-zones-icon-btn:focus-visible {
+  outline: 2px solid var(--admin-primary, #024768);
+  outline-offset: 1px;
+}
+
+.openplan3d-zones-icon-btn svg {
+  width: 16px;
+  height: 16px;
 }
 
 .openplan3d-zones-empty {
@@ -831,7 +900,13 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 @media (max-width: 640px) {
   .openplan3d-zones-item {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+  }
+  .openplan3d-zones-icon-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 
@@ -1290,6 +1365,57 @@ body.admin-dark .openplan3d-zones-item,
 html.admin-dark .openplan3d-zones-name,
 body.admin-dark .openplan3d-zones-name,
 .admin-dark .openplan3d-zones-name {
+  color: var(--admin-text, #e2e8f0);
+}
+
+html.admin-dark .openplan3d-zones-sqft,
+body.admin-dark .openplan3d-zones-sqft,
+.admin-dark .openplan3d-zones-sqft {
+  color: var(--admin-muted, #94a3b8);
+}
+
+html.admin-dark .openplan3d-zones-swatch,
+body.admin-dark .openplan3d-zones-swatch,
+.admin-dark .openplan3d-zones-swatch {
+  border-color: rgba(255,255,255,0.2);
+}
+
+html.admin-dark .openplan3d-zones-status,
+body.admin-dark .openplan3d-zones-status,
+.admin-dark .openplan3d-zones-status {
+  background: rgba(14, 165, 233, 0.2);
+  color: #38bdf8;
+}
+
+html.admin-dark .openplan3d-zones-status:hover,
+body.admin-dark .openplan3d-zones-status:hover,
+.admin-dark .openplan3d-zones-status:hover {
+  background: rgba(14, 165, 233, 0.3);
+}
+
+html.admin-dark .openplan3d-zones-status--exclude,
+body.admin-dark .openplan3d-zones-status--exclude,
+.admin-dark .openplan3d-zones-status--exclude {
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+}
+
+html.admin-dark .openplan3d-zones-status--exclude:hover,
+body.admin-dark .openplan3d-zones-status--exclude:hover,
+.admin-dark .openplan3d-zones-status--exclude:hover {
+  background: rgba(248, 113, 113, 0.3);
+}
+
+html.admin-dark .openplan3d-zones-icon-btn,
+body.admin-dark .openplan3d-zones-icon-btn,
+.admin-dark .openplan3d-zones-icon-btn {
+  color: var(--admin-muted, #94a3b8);
+}
+
+html.admin-dark .openplan3d-zones-icon-btn:hover,
+body.admin-dark .openplan3d-zones-icon-btn:hover,
+.admin-dark .openplan3d-zones-icon-btn:hover {
+  background: rgba(255,255,255,0.08);
   color: var(--admin-text, #e2e8f0);
 }
 

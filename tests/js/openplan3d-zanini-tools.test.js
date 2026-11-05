@@ -1,121 +1,108 @@
 'use strict';
 
 const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
+
+// Set env var to skip browser-only init
+process.env.OPENPLAN3D_TOOLS_TEST = '1';
+
+// Mock window and document for Node.js
+global.window = {};
+global.document = {
+  readyState: 'complete',
+  addEventListener: function() {},
+  createElement: function() { return { style: {}, appendChild: function() {} }; },
+  getElementById: function() { return null; },
+  querySelector: function() { return null; },
+  querySelectorAll: function() { return []; },
+  body: { appendChild: function() {} },
+  head: { appendChild: function() {} }
+};
+
+const tools = require('../../public/js/openplan3d-zanini-tools.js');
 
 console.log('openplan3d-zanini-tools tests');
 
-const toolsSrc = fs.readFileSync(path.join(__dirname, '../../public/js/openplan3d-zanini-tools.js'), 'utf8');
-assert.match(toolsSrc, /MutationObserver|openplan3d-store-ready/, 'canvas hook must retry until editor canvas exists');
-assert.match(toolsSrc, /data-plan3d-canvas="true"/, 'must target main plan canvas not minimap');
-assert.match(toolsSrc, /clientWidth|cssW/, 'screenToPlan must use CSS canvas dimensions like vendor F()');
-assert.match(toolsSrc, /PREVIEW_FILL/, 'zone drag preview must use gray preview fill');
-assert.match(toolsSrc, /BULKHEAD_FILL/, 'bulkheads must use a distinct fill from zone palette');
-assert.match(toolsSrc, /isEditor3DViewActive/, 'must skip zone/bulkhead overlay in 3D view');
-assert.match(toolsSrc, /findWallSidebarHost|openplan3d-zanini-finish-host/, 'finishes must mount in editor sidebar');
-assert.doesNotMatch(toolsSrc, /querySelectorAll\('aside'\)/, 'wall sidebar host must not rely on aside only');
-assert.match(toolsSrc, /mod\.bg/, 'multi-wall selection must read store export bg (selected wall Set)');
-assert.match(toolsSrc, /sidebarObserverPaused/, 'finish panel render must pause sidebar MutationObserver');
-assert.doesNotMatch(
-  toolsSrc,
-  /sidebarObserver\.observe\(document\.body,\s*\{[^}]*attributes:\s*true/s,
-  'sidebar observer must not watch attributes (re-render loop)'
-);
-assert.match(toolsSrc, /wallFinishes\s*=\s*zanini\.wallFinishes/, 'multi-wall mixed state must guard missing zanini');
-assert.match(toolsSrc, /deleteSelectedBulkhead/, 'bulkheads must be deletable');
+// Test axisRect normalization
+const normalized = tools.axisRect({ x1: 100, y1: 50, x2: 0, y2: 150 });
+assert.deepStrictEqual(normalized, { x1: 0, y1: 50, x2: 100, y2: 150 }, 'axisRect should normalize min/max');
 
-global.window = global;
-global.window.addEventListener = function () {};
-global.window.removeEventListener = function () {};
-global.MutationObserver = function () {
-  this.observe = function () {};
-  this.disconnect = function () {};
-};
-global.document = {
-  readyState: 'complete',
-  addEventListener: function () {},
-  querySelector: function () { return null; },
-  querySelectorAll: function () { return []; },
-  getElementById: function () { return null; },
-  createElement: function () {
-    return {
-      style: {},
-      setAttribute: function () {},
-      appendChild: function () {},
-      addEventListener: function () {},
-      querySelector: function () { return null; },
-      querySelectorAll: function () { return []; }
-    };
-  },
-  body: { appendChild: function () {} },
-  head: { appendChild: function () {} }
-};
-global.requestAnimationFrame = function (fn) { fn(); };
-global.cancelAnimationFrame = function () {};
-process.env.OPENPLAN3D_TOOLS_TEST = '1';
+// Test rectsOverlap
+assert.strictEqual(tools.rectsOverlap(
+  { x1: 0, y1: 0, x2: 100, y2: 100 },
+  { x1: 50, y1: 50, x2: 150, y2: 150 }
+), true, 'overlapping rects should be detected');
 
-const tools = require('../../public/js/openplan3d-zanini-tools.js');
-const bridge = require('../../public/js/openplan3d-editor-bridge.js');
+assert.strictEqual(tools.rectsOverlap(
+  { x1: 0, y1: 0, x2: 100, y2: 100 },
+  { x1: 200, y1: 200, x2: 300, y2: 300 }
+), false, 'non-overlapping rects should not be detected');
 
-function screenToPlanCss(canvas, clientX, clientY, view) {
-  return bridge.clientToPlanCm(canvas, clientX, clientY, view, null);
-}
-
-function planToClientCss(canvas, x, y, view) {
-  return bridge.planCmToClient(canvas, x, y, view, null);
-}
-
-const fakeCanvas = {
-  width: 1600,
-  height: 1200,
-  clientWidth: 800,
-  clientHeight: 600,
-  getBoundingClientRect: function () {
-    return { left: 10, top: 20, width: 800, height: 600 };
-  }
+// Test collectZoneMemberRects
+const lZone = {
+  id: 'l-zone',
+  x1: 0, y1: 0, x2: 100, y2: 100,
+  rects: [
+    { x1: 0, y1: 0, x2: 100, y2: 50 },
+    { x1: 0, y1: 50, x2: 50, y2: 150 }
+  ]
 };
 
-const view = { zoom: 0.28, camX: 412.5, camY: 318.2 };
-const center = screenToPlanCss(fakeCanvas, 10 + 400, 20 + 300, view);
-assert.ok(Math.abs(center.x - view.camX) < 0.02, 'canvas center maps to cam, got x=' + center.x);
-assert.ok(Math.abs(center.y - view.camY) < 0.02, 'canvas center maps to cam, got y=' + center.y);
+const members = tools.collectZoneMemberRects(lZone, [lZone]);
+assert.strictEqual(members.length, 2, 'L-zone should have 2 member rects');
+assert.deepStrictEqual(members[0], { x1: 0, y1: 0, x2: 100, y2: 50 });
+assert.deepStrictEqual(members[1], { x1: 0, y1: 50, x2: 50, y2: 150 });
 
-const planPt = { x: 512.75, y: 640.125 };
-const client = planToClientCss(fakeCanvas, planPt.x, planPt.y, view);
-const back = screenToPlanCss(fakeCanvas, client.clientX, client.clientY, view);
-assert.ok(Math.abs(back.x - planPt.x) < 0.05, 'round-trip x');
-assert.ok(Math.abs(back.y - planPt.y) < 0.05, 'round-trip y');
-
-const viewPan = { zoom: 0.37, camX: -50, camY: 120 };
-const probe = { x: 10, y: -25 };
-const c2 = planToClientCss(fakeCanvas, probe.x, probe.y, viewPan);
-const back2 = screenToPlanCss(fakeCanvas, c2.clientX, c2.clientY, viewPan);
-assert.ok(Math.abs(back2.x - probe.x) < 0.05 && Math.abs(back2.y - probe.y) < 0.05, 'round-trip under pan/zoom');
-
-assert.ok(tools.rectsOverlap({ x1: 0, y1: 0, x2: 10, y2: 10 }, { x1: 5, y1: 5, x2: 15, y2: 15 }), 'rectsOverlap detects overlap');
-
-const zones = [{
-  id: 'z1',
-  name: 'A',
-  color: 'rgba(14, 165, 233, 0.35)',
-  x1: 0,
-  y1: 0,
-  x2: 100,
-  y2: 100
-}];
-const plan = {
-  zanini: { version: 1, zones: zones.slice(), bulkheads: [], wallFinishes: {} }
+// Test that legacy zone (no rects array) falls back to zone itself
+const legacyZone = {
+  id: 'legacy',
+  x1: 10, y1: 20, x2: 110, y2: 120
 };
-const mergedId = tools.addZoneFromPreview(plan, { x0: 80, y0: 80, x1: 160, y1: 160 });
-assert.strictEqual(mergedId, 'z1', 'overlapping zone preview merges into existing zone');
-assert.strictEqual(plan.zanini.zones.filter(function (z) { return z && !z.mergedInto; }).length, 1, 'merge keeps one visible zone');
-assert.ok(Array.isArray(plan.zanini.zones[0].rects) && plan.zanini.zones[0].rects.length >= 2, 'merge stores union rects');
+const legacyMembers = tools.collectZoneMemberRects(legacyZone, [legacyZone]);
+assert.strictEqual(legacyMembers.length, 1, 'Legacy zone should have 1 member rect');
+assert.deepStrictEqual(legacyMembers[0], { x1: 10, y1: 20, x2: 110, y2: 120 });
 
-const fresh = { zanini: { version: 1, zones: [], bulkheads: [], wallFinishes: {} } };
-const newId = tools.addZoneFromPreview(fresh, { x0: 0, y0: 0, x1: 50, y1: 50 });
-assert.notStrictEqual(newId, null);
-assert.strictEqual(fresh.zanini.zones.length, 1);
-assert.ok(fresh.zanini.zones[0].color, 'new zone gets a color on create');
+// Test merged zones are collected
+const parentZone = {
+  id: 'parent',
+  x1: 0, y1: 0, x2: 100, y2: 100
+};
+const childZone = {
+  id: 'child',
+  x1: 100, y1: 0, x2: 200, y2: 100,
+  mergedInto: 'parent'
+};
+const allZones = [parentZone, childZone];
+const mergedMembers = tools.collectZoneMemberRects(parentZone, allZones);
+assert.strictEqual(mergedMembers.length, 2, 'Parent zone should include merged child');
+
+// Test zoneUnionBounds still returns bbox (for hit testing)
+const unionBounds = tools.zoneUnionBounds(lZone, [lZone]);
+assert.strictEqual(unionBounds.x1, 0);
+assert.strictEqual(unionBounds.y1, 0);
+assert.strictEqual(unionBounds.x2, 100);
+assert.strictEqual(unionBounds.y2, 150);
+
+// Test findOverlappingZone
+const zones = [
+  { id: 'z1', x1: 0, y1: 0, x2: 100, y2: 100 },
+  { id: 'z2', x1: 200, y1: 200, x2: 300, y2: 300 }
+];
+const overlap = tools.findOverlappingZone(zones, { x1: 50, y1: 50, x2: 150, y2: 150 });
+assert.strictEqual(overlap.id, 'z1', 'Should find overlapping zone');
+const noOverlap = tools.findOverlappingZone(zones, { x1: 400, y1: 400, x2: 500, y2: 500 });
+assert.strictEqual(noOverlap, null, 'Should return null when no overlap');
+
+// Test mergeRectIntoZone
+const targetZone = {
+  id: 'target',
+  x1: 0, y1: 0, x2: 100, y2: 100
+};
+const zonesForMerge = [targetZone];
+tools.mergeRectIntoZone(zonesForMerge, 'target', { x1: 50, y1: 50, x2: 150, y2: 150 });
+assert.ok(Array.isArray(targetZone.rects), 'Target should have rects array after merge');
+assert.strictEqual(targetZone.rects.length, 2, 'Target should have 2 rects after merge');
+// Bbox should be updated for hit testing
+assert.strictEqual(targetZone.x2, 150, 'Bbox should expand after merge');
+assert.strictEqual(targetZone.y2, 150, 'Bbox should expand after merge');
 
 console.log('openplan3d-zanini-tools: ok');

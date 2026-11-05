@@ -424,6 +424,35 @@
     return null;
   }
 
+  function collectZoneMemberRects(zone, zones) {
+    var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
+    if (ext && typeof ext.collectZoneMemberLegacyRects === 'function') {
+      return ext.collectZoneMemberLegacyRects(zone, zones);
+    }
+    var out = [];
+    var seen = {};
+    function pushShape(shape) {
+      var a = axisRect(shape);
+      if (!a) return;
+      var key = [a.x1, a.y1, a.x2, a.y2].join('|');
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 });
+    }
+    if (Array.isArray(zone.rects) && zone.rects.length) {
+      for (var r = 0; r < zone.rects.length; r++) {
+        pushShape(zone.rects[r]);
+      }
+    } else {
+      pushShape(zone);
+    }
+    for (var j = 0; j < (zones || []).length; j++) {
+      var merged = zones[j];
+      if (merged && merged.mergedInto === zone.id) pushShape(merged);
+    }
+    return out;
+  }
+
   function renderOverlay() {
     var canvas = canvasEl();
     var overlay = ensureOverlay();
@@ -434,7 +463,7 @@
     var zones = plan.zanini.zones || [];
 
     function drawBox(bounds, opts) {
-      if (!bounds) return;
+      if (!bounds) return null;
       var box = planToScreen(canvas, bounds);
       var el = document.createElement('div');
       el.className = opts.className || 'zanini-overlay-rect';
@@ -453,21 +482,27 @@
       }
       if (opts.dataId) el.setAttribute('data-zanini-bulkhead-id', opts.dataId);
       overlay.appendChild(el);
+      return el;
     }
 
     zones.forEach(function (z) {
       if (!z || z.mergedInto) return;
-      var bounds = zoneUnionBounds(z, zones);
       var color = z.color || pickZoneColor(zones);
       var sqft = zoneAreaSqFt(z, zones, CM_PER_FOOT);
       var label = (z.name || 'Zone') + ' · ' + sqft.toFixed(1) + ' sf';
-      drawBox(bounds, {
-        className: 'zanini-zone-rect',
-        fill: color,
-        border: 'rgba(15, 23, 42, 0.55)',
-        dashed: true,
-        label: label
-      });
+      var memberRects = collectZoneMemberRects(z, zones);
+      var labelPlaced = false;
+      for (var ri = 0; ri < memberRects.length; ri++) {
+        var rect = memberRects[ri];
+        var el = drawBox(rect, {
+          className: 'zanini-zone-rect',
+          fill: color,
+          border: 'rgba(15, 23, 42, 0.55)',
+          dashed: true,
+          label: !labelPlaced ? label : null
+        });
+        if (el && !labelPlaced) labelPlaced = true;
+      }
     });
 
     (plan.zanini.bulkheads || []).forEach(function (b) {
@@ -991,6 +1026,7 @@
     findOverlappingZone: findOverlappingZone,
     mergeRectIntoZone: mergeRectIntoZone,
     addZoneFromPreview: addZoneFromPreview,
+    collectZoneMemberRects: collectZoneMemberRects,
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
     readSelectedWallIds: readSelectedWallIds,
