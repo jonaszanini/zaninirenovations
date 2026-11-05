@@ -393,6 +393,32 @@ class PolygonAreaService
     }
 
     /**
+     * True when every vertex lies on a negligible footprint (intentional 0-area / collapsed room).
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $vertices
+     */
+    public function isCollapsedZeroFootprint(array $vertices): bool
+    {
+        $vertices = $this->normalizeRing($vertices);
+        if (count($vertices) < 3) {
+            return true;
+        }
+
+        $minX = $maxX = (float) $vertices[0]['x'];
+        $minY = $maxY = (float) $vertices[0]['y'];
+        foreach ($vertices as $vertex) {
+            $x = (float) $vertex['x'];
+            $y = (float) $vertex['y'];
+            $minX = min($minX, $x);
+            $maxX = max($maxX, $x);
+            $minY = min($minY, $y);
+            $maxY = max($maxY, $y);
+        }
+
+        return hypot($maxX - $minX, $maxY - $minY) < 0.02;
+    }
+
+    /**
      * @param  array{x: float|int, y: float|int}  $p1
      * @param  array{x: float|int, y: float|int}  $p2
      * @param  array{x: float|int, y: float|int}  $p3

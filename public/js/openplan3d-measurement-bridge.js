@@ -34,6 +34,246 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  /** Snap plan coordinates to 0.1 cm so editor float noise does not break graph tracing. */
+  function snapPlanCoordinate(value, cmPerUnit) {
+    var unitScale = cmPerUnit > 0 ? cmPerUnit : 1.0;
+    var cm = Number(value || 0) * unitScale;
+    var snappedCm = Math.round(cm * 100) / 100;
+    return snappedCm / unitScale;
+  }
+
+  function snapPlanPoint(pt, cmPerUnit) {
+    return {
+      x: snapPlanCoordinate(pt.x, cmPerUnit),
+      y: snapPlanCoordinate(pt.y, cmPerUnit)
+    };
+  }
+
+  function partitionToleranceCm(wallsList, cmPerUnit) {
+    var baseCm = 20.0;
+    var maxCm = 30.0;
+    var minLenCm = Infinity;
+    for (var i = 0; i < (wallsList || []).length; i++) {
+      var w = wallsList[i];
+      if (!w || !w.start || !w.end) continue;
+      var lenCm = hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
+      if (lenCm > 0.01 && lenCm < minLenCm) minLenCm = lenCm;
+    }
+    if (!isFinite(minLenCm)) return baseCm;
+    return Math.min(maxCm, Math.max(baseCm, minLenCm * 0.08));
+  }
+
+  function onSegment(p, q, r) {
+    return (
+      Math.min(p.x, q.x) - 1e-9 <= r.x && r.x <= Math.max(p.x, q.x) + 1e-9 &&
+      Math.min(p.y, q.y) - 1e-9 <= r.y && r.y <= Math.max(p.y, q.y) + 1e-9
+    );
+  }
+
+  function direction(p, q, r) {
+    var val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+    if (Math.abs(val) < 1e-9) return 0;
+    return val > 0 ? 1 : 2;
+  }
+
+  function segmentsIntersect(p1, q1, p2, q2) {
+    var d1 = direction(p1, q1, p2);
+    var d2 = direction(p1, q1, q2);
+    var d3 = direction(p2, q2, p1);
+    var d4 = direction(p2, q2, q1);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+    if (d1 === 0 && onSegment(p1, q1, p2)) return true;
+    if (d2 === 0 && onSegment(p1, q1, q2)) return true;
+    if (d3 === 0 && onSegment(p2, q2, p1)) return true;
+    if (d4 === 0 && onSegment(p2, q2, q1)) return true;
+    return false;
+  }
+
+  function isSimplePolygon(vertices) {
+    var n = (vertices || []).length;
+    if (n < 3) return false;
+    for (var i = 0; i < n; i++) {
+      var a1 = vertices[i];
+      var a2 = vertices[(i + 1) % n];
+      for (var j = i + 1; j < n; j++) {
+        if (j === i + 1) continue;
+        if (i === 0 && j === n - 1) continue;
+        var b1 = vertices[j];
+        var b2 = vertices[(j + 1) % n];
+        if (segmentsIntersect(a1, a2, b1, b2)) return false;
+      }
+    }
+    return true;
+  }
+
+  function isCollapsedZeroFootprint(verticesFt) {
+    var verts = verticesFt || [];
+    if (verts.length < 3) return true;
+    var minX = Number(verts[0].x);
+    var maxX = minX;
+    var minY = Number(verts[0].y);
+    var maxY = minY;
+    for (var i = 1; i < verts.length; i++) {
+      var x = Number(verts[i].x);
+      var y = Number(verts[i].y);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return hypot(maxX - minX, maxY - minY) < 0.02;
+  }
+
+  function polygonVerticesToFeet(polygon, cmPerUnit) {
+    var out = [];
+    for (var i = 0; i < (polygon || []).length; i++) {
+      var pt = polygon[i];
+      out.push({
+        x: (Number(pt.x || 0) * cmPerUnit) / CM_PER_FOOT,
+        y: (Number(pt.y || 0) * cmPerUnit) / CM_PER_FOOT
+      });
+    }
+    return out;
+  }
+
+  function outerLoopHasUsableArea(outerPolygon, cmPerUnit) {
+    if (!outerPolygon || outerPolygon.length < 3) return false;
+    var area = verticesToSquareFeet(polygonVerticesToFeet(outerPolygon, cmPerUnit));
+    return area > 0.01;
+  }
+
+  function storedPolygonMeasurable(storedPoly, cmPerUnit) {
+    if (!storedPoly || storedPoly.length < 3) return false;
+    var feet = polygonVerticesToFeet(storedPoly, cmPerUnit);
+    if (!isSimplePolygon(feet)) return false;
+    return verticesToSquareFeet(feet) > 0.01;
+  }
+
+  function endpointClusterToleranceCm(wallsList, cmPerUnit) {
+    // Independent draw jitter per endpoint can separate a corner by ~2*maxOffset*sqrt(2).
+    // Use a generous merge distance (up to partition tolerance) without replacing T-junction eps.
+    var junctionCm = partitionToleranceCm(wallsList, cmPerUnit);
+    var drawNoiseCm = 3.5;
+    return Math.min(junctionCm, Math.max(drawNoiseCm, junctionCm * 0.45));
+  }
+
+  function clusterSegmentEndpoints(rawSegments, cmPerUnit, wallsList) {
+    var clusterCm = endpointClusterToleranceCm(wallsList || rawSegments.map(function (s) { return s.wall; }), cmPerUnit);
+    var epsUnit = clusterCm / (cmPerUnit > 0 ? cmPerUnit : 1.0);
+    var refs = [];
+    for (var si = 0; si < rawSegments.length; si++) {
+      var seg = rawSegments[si];
+      refs.push({ seg: seg, key: 'start', x: seg.start.x, y: seg.start.y });
+      refs.push({ seg: seg, key: 'end', x: seg.end.x, y: seg.end.y });
+    }
+    if (refs.length === 0) return;
+
+    var parent = refs.map(function (_, i) { return i; });
+    function find(i) {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    }
+    function unite(a, b) {
+      var ra = find(a);
+      var rb = find(b);
+      if (ra !== rb) parent[rb] = ra;
+    }
+
+    for (var i = 0; i < refs.length; i++) {
+      for (var j = i + 1; j < refs.length; j++) {
+        if (hypot(refs[i].x - refs[j].x, refs[i].y - refs[j].y) < epsUnit) {
+          unite(i, j);
+        }
+      }
+    }
+
+    var sums = {};
+    var counts = {};
+    for (var i = 0; i < refs.length; i++) {
+      var root = find(i);
+      if (!sums[root]) {
+        sums[root] = { x: 0, y: 0 };
+        counts[root] = 0;
+      }
+      sums[root].x += refs[i].x;
+      sums[root].y += refs[i].y;
+      counts[root]++;
+    }
+
+    for (var i = 0; i < refs.length; i++) {
+      var root = find(i);
+      var n = counts[root] || 1;
+      var cx = sums[root].x / n;
+      var cy = sums[root].y / n;
+      var canon = snapPlanPoint({ x: cx, y: cy }, cmPerUnit);
+      if (refs[i].key === 'start') {
+        refs[i].seg.start = canon;
+      } else {
+        refs[i].seg.end = canon;
+      }
+    }
+
+    // Snap free endpoints onto nearby segment interiors (almost-T junctions from draw error)
+    for (var si = 0; si < rawSegments.length; si++) {
+      var seg = rawSegments[si];
+      var keys = ['start', 'end'];
+      for (var ki = 0; ki < keys.length; ki++) {
+        var key = keys[ki];
+        var pt = seg[key];
+        var best = null;
+        var bestDist = epsUnit;
+        for (var sj = 0; sj < rawSegments.length; sj++) {
+          var s = rawSegments[sj];
+          var res = distToSegment(pt, s.start, s.end);
+          var segLen = hypot(s.end.x - s.start.x, s.end.y - s.start.y);
+          if (segLen < 1e-6) continue;
+          if (res.dist >= bestDist) continue;
+          if (res.t * segLen <= epsUnit || (1.0 - res.t) * segLen <= epsUnit) continue;
+          bestDist = res.dist;
+          best = snapPlanPoint(res.proj, cmPerUnit);
+        }
+        if (best) seg[key] = best;
+      }
+    }
+  }
+
+  function polygonAreaSqFt(polygon, cmPerUnit) {
+    if (!polygon || polygon.length < 3) return 0.0;
+    return verticesToSquareFeet(polygonVerticesToFeet(polygon, cmPerUnit));
+  }
+
+  function shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit, roomWallIds) {
+    var outer = loopData && loopData.outer_polygon ? loopData.outer_polygon : [];
+    if (!outerLoopHasUsableArea(outer, cmPerUnit)) return false;
+    if (!storedPoly || storedPoly.length < 3) return true;
+
+    var partitions = (loopData.partition_walls && loopData.partition_walls.length) || 0;
+    var outerArea = polygonAreaSqFt(outer, cmPerUnit);
+    var storedArea = polygonAreaSqFt(storedPoly, cmPerUnit);
+    var storedMeasurable = storedPolygonMeasurable(storedPoly, cmPerUnit);
+
+    if (!storedMeasurable) {
+      return partitions > 0;
+    }
+
+    if (partitions > 0 && outerArea > storedArea + 0.5) {
+      var wallIds = roomWallIds || [];
+      return wallIds.length > 0;
+    }
+
+    return false;
+  }
+
+  function applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit, roomWallIds) {
+    if (shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit, roomWallIds)) {
+      return loopData.outer_polygon.slice();
+    }
+    return storedPoly;
+  }
+
   function normalizeWallHeight(h) {
     var val = Number(h);
     if (!isFinite(val) || val < 1) return DEFAULT_WALL_HEIGHT_FT;
@@ -352,7 +592,9 @@
 
   function extractOuterLoopAndPartitions(wallsList, cmPerUnit, eps) {
     cmPerUnit = cmPerUnit || 1.0;
-    eps = eps || 5.0;
+    if (eps == null || !isFinite(Number(eps))) {
+      eps = partitionToleranceCm(wallsList, cmPerUnit);
+    }
     var epsUnit = eps / (cmPerUnit > 0 ? cmPerUnit : 1.0);
 
     if (!wallsList || wallsList.length < 3) {
@@ -371,10 +613,12 @@
     for (var i = 0; i < wallsList.length; i++) {
       var w = wallsList[i];
       if (!w || !w.start || !w.end) continue;
+      var start = snapPlanPoint(w.start, cmPerUnit);
+      var end = snapPlanPoint(w.end, cmPerUnit);
       rawSegments.push({
         wallId: String(w.id != null ? w.id : 'w_' + i),
-        start: { x: Number(w.start.x || 0), y: Number(w.start.y || 0) },
-        end: { x: Number(w.end.x || 0), y: Number(w.end.y || 0) },
+        start: start,
+        end: end,
         wall: w,
         splitPoints: []
       });
@@ -388,6 +632,8 @@
         partition_walls: rawSegments.map(function(s) { return s.wall; })
       };
     }
+
+    clusterSegmentEndpoints(rawSegments, cmPerUnit, wallsList);
 
     var allEndpoints = [];
     for (var i = 0; i < rawSegments.length; i++) {
@@ -463,14 +709,16 @@
 
     // 4. Cluster vertices into unique node IDs
     var nodes = [];
+    var nodeClusterUnit = endpointClusterToleranceCm(wallsList, cmPerUnit) / (cmPerUnit > 0 ? cmPerUnit : 1.0);
     function findNode(pt) {
+      var snapped = snapPlanPoint(pt, cmPerUnit);
       for (var idx = 0; idx < nodes.length; idx++) {
-        if (hypot(nodes[idx].x - pt.x, nodes[idx].y - pt.y) < epsUnit) {
+        if (hypot(nodes[idx].x - snapped.x, nodes[idx].y - snapped.y) < nodeClusterUnit) {
           return idx;
         }
       }
       var newId = nodes.length;
-      nodes.push(pt);
+      nodes.push(snapped);
       return newId;
     }
 
@@ -572,7 +820,7 @@
         var nbr = neighbors[j];
         var toNode = nbr.to;
         var eIdx = nbr.edgeIdx;
-        if ((visitedEdges[eIdx] || 0) >= 2) continue;
+        if ((visitedEdges[eIdx] || 0) >= 1) continue;
 
         var toPt = nodes[toNode];
         var edgeAngle = Math.atan2(toPt.y - nodes[currNode].y, toPt.x - nodes[currNode].x);
@@ -628,6 +876,13 @@
       partition_wall_ids: Object.keys(partitionWallIds),
       partition_walls: partitionWalls
     };
+  }
+
+  function layoutMetricsUnmeasurable(plan, finish, options, wallHeightFt, message) {
+    var unmeasurable = emptyLayoutMetrics(wallHeightFt || normalizeWallHeight(finish.wall_height_ft));
+    unmeasurable.geometry_unmeasurable = true;
+    unmeasurable.geometry_message = message || 'Room geometry could not be measured.';
+    return applyZaniniExtensions(unmeasurable, plan, finish, options);
   }
 
   function getZaniniExtensions() {
@@ -784,19 +1039,12 @@
     var partitionWalls = loopData.partition_walls || [];
     var boundaryWallIds = loopData.boundary_wall_ids || [];
     var storedPoly = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
-    var polyVertices = storedPoly;
-    if (storedPoly.length < 3) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
-      }
-    } else if (!isSingleRoom && roomWIds.length === 0) {
-      polyVertices = storedPoly;
-    } else if (partitionWalls.length > 0) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
-      }
+    var polyVertices = applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit, roomWIds);
+    if (polyVertices.length < 3) {
+      var preHeight = normalizeWallHeight(finish.wall_height_ft || DEFAULT_WALL_HEIGHT_FT);
+      return layoutMetricsUnmeasurable(plan, finish, options, preHeight,
+        'Room geometry could not be measured.');
     }
-    if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
 
     // Convert polygon vertices to feet
     var verticesFt = [];
@@ -823,6 +1071,22 @@
 
     // Floor area in sq ft
     var insideAreaSqFt = roundTo(verticesToSquareFeet(verticesFt), 2);
+    var polygonSimple = isSimplePolygon(verticesFt);
+    if ((!polygonSimple || insideAreaSqFt <= 0) && !isCollapsedZeroFootprint(verticesFt)) {
+      var unmeasurable = emptyLayoutMetrics(wallHeightFt);
+      unmeasurable.geometry_unmeasurable = true;
+      unmeasurable.geometry_message = 'Room shape crosses itself — adjust corners.';
+      if (verticesFt.length >= 3) {
+        var perimLf = 0.0;
+        for (var pi = 0; pi < verticesFt.length; pi++) {
+          var pj = (pi + 1) % verticesFt.length;
+          perimLf += hypot(verticesFt[pj].x - verticesFt[pi].x, verticesFt[pj].y - verticesFt[pi].y);
+        }
+        unmeasurable.perimeter_lf = roundTo(perimLf, 2);
+        unmeasurable.baseboard_lf = unmeasurable.perimeter_lf;
+      }
+      return applyZaniniExtensions(unmeasurable, plan, finish, options);
+    }
     var ceilingAreaSqFt = insideAreaSqFt;
 
     // Corners
@@ -1119,6 +1383,9 @@
     roundTo: roundTo,
     isPlan: isPlan,
     emptyLayoutMetrics: emptyLayoutMetrics,
-    layoutMetrics: layoutMetrics
+    layoutMetrics: layoutMetrics,
+    extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
+    shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
+    isSimplePolygon: isSimplePolygon
   };
 }));

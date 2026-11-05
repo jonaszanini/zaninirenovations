@@ -195,4 +195,137 @@ assert.strictEqual(lPartMetrics.area_sqft, 300.0, 'Floor area matches L-shape wi
 assert.strictEqual(lPartMetrics.perimeter_lf, 80.0, 'Perimeter matches outer loop (80 lf)');
 assert.strictEqual(lPartMetrics.net_wall_area_sqft, 832.0, 'Net wall area includes both faces of partitions (832 sq ft)');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
+
+// Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
+function basementStubRegressionPlan(stubYOffsetCm) {
+  stubYOffsetCm = stubYOffsetCm || 0;
+  const ft = cmPerFt;
+  const walls = [
+    { id: 'w1', start: { x: 0, y: 0 }, end: { x: 30 * ft, y: 0 }, thickness: 10, height: 8 * ft },
+    { id: 'w2', start: { x: 30 * ft, y: 0 }, end: { x: 30 * ft, y: 20 * ft }, thickness: 10, height: 8 * ft },
+    { id: 'w3', start: { x: 30 * ft, y: 20 * ft }, end: { x: 0, y: 20 * ft }, thickness: 10, height: 8 * ft },
+    { id: 'w4', start: { x: 0, y: 20 * ft }, end: { x: 0, y: 0 }, thickness: 10, height: 8 * ft },
+    {
+      id: 'p1',
+      start: { x: 14 * ft, y: 20 * ft - stubYOffsetCm },
+      end: { x: 14 * ft, y: 8 * ft },
+      thickness: 10,
+      height: 8 * ft
+    },
+    {
+      id: 'p2',
+      start: { x: 22 * ft, y: 20 * ft - stubYOffsetCm },
+      end: { x: 22 * ft, y: 12 * ft },
+      thickness: 10,
+      height: 8 * ft
+    }
+  ];
+  const badStoredPolygon = [
+    { x: 0, y: 0 },
+    { x: 30 * ft, y: 0 },
+    { x: 0, y: 20 * ft },
+    { x: 30 * ft, y: 20 * ft }
+  ];
+  return {
+    unit: 'cm',
+    floor: {
+      walls: walls,
+      rooms: [
+        {
+          id: 'r1',
+          name: 'Basement',
+          walls: ['w1', 'w2', 'w3', 'w4', 'p1', 'p2'],
+          polygon: badStoredPolygon
+        }
+      ]
+    }
+  };
+}
+
+const basementPlan = basementStubRegressionPlan(0);
+const basementMetrics = bridge.layoutMetrics(basementPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(!basementMetrics.geometry_unmeasurable, 'Basement stubs with bad stored polygon is measurable');
+assert.strictEqual(basementMetrics.area_sqft, 600.0, 'Floor area uses outer loop (30x20 = 600 sq ft)');
+const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
+assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
+assert.ok(
+  bridge.shouldReplaceRoomPolygonWithOuterLoop(
+    basementPlan.floor.rooms[0].polygon,
+    basementLoop,
+    1.0,
+    basementPlan.floor.rooms[0].walls
+  ),
+  'Self-intersecting stored polygon is replaced by outer loop'
+);
+
+const basementOffsetPlan = basementStubRegressionPlan(15);
+const basementOffsetMetrics = bridge.layoutMetrics(basementOffsetPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(!basementOffsetMetrics.geometry_unmeasurable, 'Stub endpoints 15cm off perimeter still measurable');
+assert.strictEqual(basementOffsetMetrics.area_sqft, 600.0, 'Offset stubs still yield 600 sq ft floor area');
+const offsetLoop = bridge.extractOuterLoopAndPartitions(basementOffsetPlan.floor.walls, 1.0);
+assert.strictEqual(offsetLoop.partition_walls.length, 2, 'Near-miss T-junction stubs count as partitions');
+
+// Test 10: Editor-drawn plan with float noise (hand0 regression)
+const hand0Plan = JSON.parse(
+  require('fs').readFileSync(require('path').join(__dirname, '../fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8')
+);
+const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0 });
+assert.ok(hand0Metrics.area_sqft > 1300 && hand0Metrics.area_sqft < 1360,
+  'Drawn basement plan area ~1346 sq ft, got ' + hand0Metrics.area_sqft);
+assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
+
+// Test 11: True bowtie polygon flags unmeasurable but keeps perimeter baseboard
+const bowtieOnlyPlan = {
+  unit: 'cm',
+  floor: {
+    rooms: [{ id: 'r1', polygon: [{ x: 0, y: 0 }, { x: 304.8, y: 304.8 }, { x: 304.8, y: 0 }, { x: 0, y: 304.8 }] }],
+    walls: [
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 } },
+      { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 } },
+      { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 } },
+      { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 } }
+    ]
+  }
+};
+const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
+assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
+
+// Test 12: Independent endpoint noise ±1.5–3 cm (hand0 drawn perimeter)
+function jitterIndependentEndpoints(plan, maxOffsetCm) {
+  var copy = JSON.parse(JSON.stringify(plan));
+  var walls = copy.floor && copy.floor.walls ? copy.floor.walls : copy.walls;
+  if (!walls) return copy;
+  for (var wi = 0; wi < walls.length; wi++) {
+    var w = walls[wi];
+    if (!w || !w.start || !w.end) continue;
+    w.start.x = Number(w.start.x || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.start.y = Number(w.start.y || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.end.x = Number(w.end.x || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.end.y = Number(w.end.y || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+  }
+  return copy;
+}
+
+var independentOffsetsCm = [1.5, 2.5, 3.0];
+for (var oi = 0; oi < independentOffsetsCm.length; oi++) {
+  var maxCm = independentOffsetsCm[oi];
+  for (var trial = 0; trial < 8; trial++) {
+    var noisyIndependent = jitterIndependentEndpoints(hand0Plan, maxCm);
+    var independentMetrics = bridge.layoutMetrics(noisyIndependent, null, { wall_height_ft: 8.0 });
+    assert.ok(
+      independentMetrics.area_sqft > 1300 && independentMetrics.area_sqft < 1380 && !independentMetrics.geometry_unmeasurable,
+      'Independent ±' + maxCm + ' cm jitter trial ' + trial + ' must stay measurable (~1346 sq ft), got ' + independentMetrics.area_sqft
+    );
+  }
+}
+
+// Test 13: Unmeasurable when outer loop cannot be recovered (never silent zero)
+var brokenPlan = jitterIndependentEndpoints(hand0Plan, 25);
+brokenPlan.floor.rooms = [];
+delete brokenPlan.floors;
+var brokenMetrics = bridge.layoutMetrics(brokenPlan, null, { wall_height_ft: 8.0 });
+assert.strictEqual(brokenMetrics.geometry_unmeasurable, true, 'Extreme noise must flag geometry_unmeasurable');
+assert.strictEqual(brokenMetrics.area_sqft, 0, 'Extreme noise must not report a false positive area');
+
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

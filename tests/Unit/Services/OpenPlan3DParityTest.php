@@ -492,4 +492,226 @@ class OpenPlan3DParityTest extends TestCase
             ],
         ];
     }
+
+    public function test_basement_two_stub_partitions_replace_self_intersecting_stored_polygon(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = $this->basementStubRegressionPlan(0.0);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(600.0, $metrics['area_sqft']);
+
+        $walls = $plan['floor']['walls'];
+        $loop = $this->bridge->extractOuterLoopAndPartitions($walls, 1.0);
+        $this->assertCount(2, $loop['partition_walls']);
+        $storedPoly = $plan['floor']['rooms'][0]['polygon'];
+        $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop(
+            $storedPoly,
+            $loop,
+            1.0,
+            $plan['floor']['rooms'][0]['walls']
+        ));
+    }
+
+    public function test_basement_stub_partitions_tolerate_endpoint_offset_from_perimeter(): void
+    {
+        $plan = $this->basementStubRegressionPlan(15.0);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(600.0, $metrics['area_sqft']);
+
+        $loop = $this->bridge->extractOuterLoopAndPartitions($plan['floor']['walls'], 1.0);
+        $this->assertCount(2, $loop['partition_walls']);
+    }
+
+    public function test_partial_stored_polygon_expands_to_outer_loop_with_partition(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floors' => [[
+                'id' => 'f1',
+                'walls' => [
+                    ['id' => 'wN', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 400, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wE', 'start' => ['x' => 400, 'y' => 0], 'end' => ['x' => 400, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wS', 'start' => ['x' => 400, 'y' => 300], 'end' => ['x' => 0, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wW', 'start' => ['x' => 0, 'y' => 300], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wP', 'start' => ['x' => 200, 'y' => 0], 'end' => ['x' => 200, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                ],
+                'rooms' => [[
+                    'id' => 'r1',
+                    'walls' => ['wN', 'wE', 'wS', 'wW', 'wP'],
+                    'polygon' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 200, 'y' => 0],
+                        ['x' => 200, 'y' => 300],
+                        ['x' => 0, 'y' => 300],
+                    ],
+                ]],
+            ]],
+            'activeFloorId' => 'f1',
+        ];
+
+        $metrics = $this->bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertGreaterThan(80.0, $metrics['area_sqft']);
+    }
+
+    public function test_noisy_hand0_independent_endpoint_jitter_remains_measurable(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $base = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
+        foreach ([1.5, 2.5, 3.0] as $maxCm) {
+            for ($trial = 0; $trial < 8; $trial++) {
+                $plan = $this->jitterHand0PlanIndependent($base, $maxCm);
+                $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+                $this->assertFalse(
+                    $metrics['geometry_unmeasurable'] ?? false,
+                    "Independent endpoint jitter {$maxCm} cm trial {$trial} must stay measurable"
+                );
+                $this->assertGreaterThan(
+                    1300.0,
+                    $metrics['area_sqft'],
+                    "Area should match drawn basement (~1346 sq ft) at {$maxCm} cm noise"
+                );
+                $this->assertLessThan(1380.0, $metrics['area_sqft']);
+            }
+        }
+    }
+
+    public function test_extreme_hand0_jitter_is_geometry_unmeasurable_not_silent_zero(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $base = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        unset($base['floors']);
+        $base['floor']['rooms'] = [];
+        $plan = $this->jitterHand0PlanIndependent($base, 25.0);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertTrue($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
+    }
+
+    public function test_editor_drawn_hand0_plan_measures_floor_area_after_vertex_snap(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $this->assertFileExists($path);
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
+        $this->assertLessThan(1360.0, $metrics['area_sqft']);
+    }
+
+    public function test_degenerate_zero_area_plan_returns_measurable_zero_for_save_guard(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 0, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'empty',
+                        'name' => 'Untitled Project',
+                        'walls' => ['w1'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
+    }
+
+    public function test_true_bowtie_polygon_stays_geometry_unmeasurable(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'rooms' => [[
+                    'id' => 'r1',
+                    'polygon' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt],
+                        ['x' => 10 * $cmPerFt, 'y' => 0],
+                        ['x' => 0, 'y' => 12 * $cmPerFt],
+                    ],
+                ]],
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 10 * $cmPerFt, 'y' => 0]],
+                    ['id' => 'w2', 'start' => ['x' => 10 * $cmPerFt, 'y' => 0], 'end' => ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt]],
+                    ['id' => 'w3', 'start' => ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt], 'end' => ['x' => 0, 'y' => 12 * $cmPerFt]],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 12 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0]],
+                ],
+            ],
+        ];
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertTrue($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function basementStubRegressionPlan(float $stubYOffsetCm): array
+    {
+        $cmPerFt = 30.48;
+
+        return [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cmPerFt, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w2', 'start' => ['x' => 30 * $cmPerFt, 'y' => 0], 'end' => ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w3', 'start' => ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 20 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'p1', 'start' => ['x' => 14 * $cmPerFt, 'y' => 20 * $cmPerFt - $stubYOffsetCm], 'end' => ['x' => 14 * $cmPerFt, 'y' => 8 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'p2', 'start' => ['x' => 22 * $cmPerFt, 'y' => 20 * $cmPerFt - $stubYOffsetCm], 'end' => ['x' => 22 * $cmPerFt, 'y' => 12 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'Basement',
+                        'walls' => ['w1', 'w2', 'w3', 'w4', 'p1', 'p2'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 30 * $cmPerFt, 'y' => 0],
+                            ['x' => 0, 'y' => 20 * $cmPerFt],
+                            ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $basePlan
+     * @return array<string, mixed>
+     */
+    private function jitterHand0PlanIndependent(array $basePlan, float $maxOffsetCm): array
+    {
+        $plan = json_decode(json_encode($basePlan, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        foreach ($plan['floor']['walls'] as &$wall) {
+            if (! is_array($wall['start'] ?? null) || ! is_array($wall['end'] ?? null)) {
+                continue;
+            }
+            $wall['start']['x'] = (float) $wall['start']['x'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['start']['y'] = (float) $wall['start']['y'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['end']['x'] = (float) $wall['end']['x'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['end']['y'] = (float) $wall['end']['y'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+        }
+        unset($wall);
+
+        return $plan;
+    }
 }
