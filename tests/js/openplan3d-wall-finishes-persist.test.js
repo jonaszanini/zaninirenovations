@@ -50,4 +50,25 @@ const incomingOverride = ext.mergeWallFinishes(
 assert.strictEqual(incomingOverride.a.studs, true, 'explicit incoming flag wins');
 assert.strictEqual(incomingOverride.a.drywall, true, 'unspecified incoming keys keep previous');
 
+assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 2 }, true), 1, 'perimeter ignores outside baseboard sides');
+assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 1 }, false), 1);
+assert.strictEqual(ext.resolveBaseboardSides({}, false), 2);
+
+const perimeterBb = ext.applyToMetrics(Object.assign({}, {
+  boundary_wall_ids: ['w1'],
+  walls: [{ id: 'w1', length_lf: 10, net_area_sqft: 80 }],
+}), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: { wallFinishes: { w1: { baseboard: true, baseboardSides: 2 } } },
+}, {}, 1.0);
+assert.strictEqual(perimeterBb.finish_baseboard_lf, 10, 'stored baseboardSides:2 on perimeter must not double exterior');
+
+const batchSides = ext.mergeWallFinishes(
+  { p1: { baseboardSides: 2 }, p2: { baseboardSides: 1 } },
+  { p1: { baseboardSides: 1 }, p2: { baseboardSides: 1 } }
+);
+assert.strictEqual(batchSides.p1.baseboardSides, 1);
+assert.strictEqual(batchSides.p2.baseboardSides, 1);
+
 console.log('openplan3d-wall-finishes-persist: ok');

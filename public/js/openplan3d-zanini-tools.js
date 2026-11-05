@@ -823,6 +823,21 @@
     };
   }
 
+  function wallsEligibleForBaseboardSidesControl(wallIds) {
+    return (wallIds || []).filter(function (wallId) {
+      return !wallIsBoundary(wallId);
+    });
+  }
+
+  function readBaseboardSidesForWall(wallFinishes, wallId) {
+    var flags = (wallFinishes && wallFinishes[wallId]) || {};
+    var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
+    if (ext && typeof ext.resolveBaseboardSides === 'function') {
+      return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId));
+    }
+    return wallIsBoundary(wallId) ? 1 : (flags.baseboardSides != null ? Number(flags.baseboardSides) : 2);
+  }
+
   function renderFinishPanel() {
     state.sidebarObserverPaused = true;
     if (state.sidebarObserver) state.sidebarObserver.disconnect();
@@ -852,8 +867,21 @@
     var wallFinishes = zanini.wallFinishes || {};
     var primary = wallIds[0];
     var flags = wallFinishes[primary] || {};
-    var isBoundary = wallIsBoundary(primary);
     var defaults = finishDefaultsForWall(primary);
+    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds);
+    var floor = activeFloor(plan);
+    var wallLenLf = 0;
+    if (floor && Array.isArray(floor.walls)) {
+      for (var wi = 0; wi < floor.walls.length; wi++) {
+        if (String(floor.walls[wi].id) === String(primary)) {
+          wallLenLf = Math.hypot(
+            floor.walls[wi].end.x - floor.walls[wi].start.x,
+            floor.walls[wi].end.y - floor.walls[wi].start.y
+          ) / CM_PER_FOOT;
+          break;
+        }
+      }
+    }
     var heading = wallIds.length > 1
       ? ('Wall finishes (' + wallIds.length + ' walls)')
       : ('Wall finishes · ' + primary);
@@ -876,14 +904,39 @@
       row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + key;
       host.appendChild(row);
     });
-    if (!isBoundary && wallIds.length === 1) {
+    if (sidesEligible.length === 0 && wallIds.length > 0) {
+      var perimeterNote = document.createElement('p');
+      perimeterNote.style.cssText = 'margin:4px 0 0;opacity:.85;font-size:11px;line-height:1.35;';
+      perimeterNote.textContent = 'Perimeter walls: baseboard on interior face only (exterior has none).';
+      host.appendChild(perimeterNote);
+    }
+    if (sidesEligible.length > 0) {
       var sidesRow = document.createElement('label');
       sidesRow.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:12px;';
-      var sides = flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
-      sidesRow.innerHTML = 'Baseboard sides <select data-finish-sides style="min-height:44px;"><option value="1">1 side</option><option value="2">2 sides</option></select>';
+      var sidesPrimary = readBaseboardSidesForWall(wallFinishes, sidesEligible[0]);
+      var sidesMixed = false;
+      if (sidesEligible.length > 1) {
+        for (var si = 1; si < sidesEligible.length; si++) {
+          if (readBaseboardSidesForWall(wallFinishes, sidesEligible[si]) !== sidesPrimary) {
+            sidesMixed = true;
+            break;
+          }
+        }
+      }
+      var sidesLabel = sidesEligible.length === wallIds.length
+        ? 'Baseboard sides'
+        : ('Baseboard sides (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
+      sidesRow.innerHTML = sidesLabel + ' <select data-finish-sides style="min-height:44px;"><option value="1">1 side</option><option value="2">2 sides</option></select>';
       host.appendChild(sidesRow);
       var sel = host.querySelector('[data-finish-sides]');
-      if (sel) sel.value = String(sides === 1 ? 1 : 2);
+      if (sel) {
+        if (sidesMixed) {
+          sel.value = '2';
+          sel.selectedIndex = -1;
+        } else {
+          sel.value = String(sidesPrimary === 1 ? 1 : 2);
+        }
+      }
     }
     host.querySelectorAll('input[data-finish-key]').forEach(function (input) {
       input.addEventListener('change', function () {
@@ -894,6 +947,9 @@
           wallIds.forEach(function (wallId) {
             plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
             plan.zanini.wallFinishes[wallId][key] = val;
+            if (key === 'baseboard' && wallIsBoundary(wallId)) {
+              plan.zanini.wallFinishes[wallId].baseboardSides = 1;
+            }
           });
         });
       });
@@ -901,17 +957,19 @@
     var sidesSelect = host.querySelector('[data-finish-sides]');
     if (sidesSelect) {
       sidesSelect.addEventListener('change', function () {
+        var sidesVal = Number(sidesSelect.value) === 1 ? 1 : 2;
         writePlan(function (plan) {
           plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
-          plan.zanini.wallFinishes[wallIds[0]] = plan.zanini.wallFinishes[wallIds[0]] || {};
-          plan.zanini.wallFinishes[wallIds[0]].baseboardSides = Number(sidesSelect.value) === 1 ? 1 : 2;
+          sidesEligible.forEach(function (wallId) {
+            plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
+            plan.zanini.wallFinishes[wallId].baseboardSides = sidesVal;
+          });
         });
       });
     }
     var bbChecked = Object.prototype.hasOwnProperty.call(flags, 'baseboard') ? !!flags.baseboard : defaults.baseboard;
-    if (bbChecked && wallLenLf > 0 && wallIds.length === 1) {
-      var sidesCount = flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
-      if (sidesCount !== 1) sidesCount = 2;
+    if (bbChecked && wallLenLf > 0 && wallIds.length === 1 && !wallIsBoundary(primary)) {
+      var sidesCount = readBaseboardSidesForWall(wallFinishes, primary);
       var wallBbLf = wallLenLf * sidesCount;
       var info = document.createElement('p');
       info.style.cssText = 'margin:6px 0 0;opacity:.85;font-size:11px;';
@@ -1084,6 +1142,8 @@
     zoneUnionBounds: zoneUnionBounds,
     wallIsBoundary: wallIsBoundary,
     finishDefaultsForWall: finishDefaultsForWall,
+    wallsEligibleForBaseboardSidesControl: wallsEligibleForBaseboardSidesControl,
+    readBaseboardSidesForWall: readBaseboardSidesForWall,
     readSelectedWallIds: readSelectedWallIds,
     isEditor3DViewActive: isEditor3DViewActive,
     mergeZones: mergeZones,

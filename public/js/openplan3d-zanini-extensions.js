@@ -516,6 +516,13 @@
     return metrics;
   }
 
+  function resolveBaseboardSides(flags, isBoundaryWall) {
+    if (isBoundaryWall) return 1;
+    var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+    sides = sides === 1 ? 1 : 2;
+    return sides;
+  }
+
   function applyWallFinishMetrics(metrics, zanini) {
     var walls = metrics.walls || [];
     var boundaryIds = metrics.boundary_wall_ids || [];
@@ -554,8 +561,7 @@
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += len;
         if (flagEnabled(flags, 'baseboard', true)) {
-          var sides = flags.baseboardSides != null ? Number(flags.baseboardSides) : (isB ? 1 : 2);
-          sides = Math.max(1, Math.min(2, sides));
+          var sides = resolveBaseboardSides(flags, isB);
           baseboard += len * sides;
         }
       }
@@ -596,6 +602,7 @@
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
     mergeWallFinishes: mergeWallFinishes,
     mergeZaniniSnapshots: mergeZaniniSnapshots,
+    resolveBaseboardSides: resolveBaseboardSides,
     normalizeZanini: normalizeZanini,
     applyToMetrics: applyToMetrics,
     bulkheadTakeoff: bulkheadTakeoff,

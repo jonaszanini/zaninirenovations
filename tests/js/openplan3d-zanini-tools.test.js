@@ -195,4 +195,19 @@ assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is 
 assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
 assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');
 
+assert.deepStrictEqual(
+  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA']),
+  ['partA'],
+  'perimeter walls excluded from baseboard sides control'
+);
+assert.strictEqual(
+  tools.readBaseboardSidesForWall({ mtn32xy9: { baseboardSides: 2 } }, 'mtn32xy9'),
+  1,
+  'readBaseboardSides clamps perimeter to interior-only'
+);
+assert.strictEqual(
+  tools.readBaseboardSidesForWall({ partA: { baseboardSides: 1 } }, 'partA'),
+  1
+);
+
 console.log('openplan3d-zanini-tools: ok');
