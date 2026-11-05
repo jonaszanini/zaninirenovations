@@ -256,7 +256,7 @@
     var storedMeasurable = storedPolygonMeasurable(storedPoly, cmPerUnit);
 
     if (!storedMeasurable) {
-      return partitions > 0;
+      return true;
     }
 
     if (partitions > 0 && outerArea > storedArea + 0.5) {
@@ -271,7 +271,11 @@
     if (shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit, roomWallIds)) {
       return loopData.outer_polygon.slice();
     }
-    return storedPoly;
+    var poly = storedPoly || [];
+    if (poly.length < 3 && outerLoopHasUsableArea(loopData && loopData.outer_polygon, cmPerUnit)) {
+      return loopData.outer_polygon.slice();
+    }
+    return poly;
   }
 
   function normalizeWallHeight(h) {
@@ -433,28 +437,24 @@
     return false;
   }
 
+  function resolveFloorFromList(floors, activeId) {
+    if (!Array.isArray(floors) || floors.length === 0) return null;
+    if (activeId) {
+      for (var i = 0; i < floors.length; i++) {
+        if (floors[i] && floors[i].id === activeId) return floors[i];
+      }
+    }
+    return floors[0] || null;
+  }
+
   function resolveFloor(plan) {
-    if (plan.floor && typeof plan.floor === 'object') {
-      return plan.floor;
-    }
-    if (plan.project && Array.isArray(plan.project.floors) && plan.project.floors.length > 0) {
-      var activeId = plan.project.activeFloorId;
-      if (activeId) {
-        for (var i = 0; i < plan.project.floors.length; i++) {
-          if (plan.project.floors[i].id === activeId) return plan.project.floors[i];
-        }
-      }
-      return plan.project.floors[0];
-    }
-    if (Array.isArray(plan.floors) && plan.floors.length > 0) {
-      var activeId = plan.activeFloorId;
-      if (activeId) {
-        for (var i = 0; i < plan.floors.length; i++) {
-          if (plan.floors[i].id === activeId) return plan.floors[i];
-        }
-      }
-      return plan.floors[0];
-    }
+    if (!plan || typeof plan !== 'object') return null;
+    var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
+    var fromProject = plan.project && resolveFloorFromList(plan.project.floors, activeId);
+    if (fromProject) return fromProject;
+    var fromFloors = resolveFloorFromList(plan.floors, activeId);
+    if (fromFloors) return fromFloors;
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
     if (Array.isArray(plan.walls)) return plan;
     return null;
   }
@@ -1384,6 +1384,7 @@
     isPlan: isPlan,
     emptyLayoutMetrics: emptyLayoutMetrics,
     layoutMetrics: layoutMetrics,
+    resolveFloor: resolveFloor,
     extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
     shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
     isSimplePolygon: isSimplePolygon

@@ -439,21 +439,88 @@
       if (!plan || !currentRoom || !roomStoredGeometryUnmeasurable(currentRoom)) return false;
       if (!win || !win.OpenPlan3DMeasurementBridge) return false;
       var live = currentMetrics(plan);
-      return !!(live && (live.area_sqft || 0) > 0 && !live.geometry_unmeasurable);
+      return !!(live && liveMetricsTrustworthy(live, plan) && (live.area_sqft || 0) > 0 && !live.geometry_unmeasurable);
+    }
+
+    function planHasDrawableWalls(plan) {
+      var bridge = win && win.OpenPlan3DMeasurementBridge;
+      if (!bridge || typeof bridge.resolveFloor !== 'function') return false;
+      var floor = bridge.resolveFloor(plan);
+      var walls = floor && Array.isArray(floor.walls) ? floor.walls : [];
+      var valid = 0;
+      for (var i = 0; i < walls.length; i++) {
+        var w = walls[i];
+        if (w && w.start && w.end) valid++;
+      }
+      return valid >= 3;
+    }
+
+    function liveMetricsTrustworthy(metrics, plan) {
+      if (!metrics || typeof metrics !== 'object') return false;
+      if (metrics.geometry_unmeasurable) return false;
+      if ((Number(metrics.area_sqft) || 0) > 0.01) return true;
+      if (plan && planHasDrawableWalls(plan)) return false;
+      return true;
+    }
+
+    function liveTakeoffsFailedWithStoredPositive(plan) {
+      if (!plan || !currentRoom || !currentRoom.metrics) return false;
+      if ((Number(currentRoom.metrics.area_sqft) || 0) <= 0) return false;
+      if (!win || !win.OpenPlan3DMeasurementBridge) return false;
+      if (!planHasDrawableWalls(plan)) return false;
+      var live = currentMetrics(plan);
+      return !liveMetricsTrustworthy(live, plan);
+    }
+
+    function applyStoredMetricsToRibbon(stored) {
+      if (!stored) return;
+      metricArea.textContent = (stored.area_sqft || 0).toFixed(2);
+      if (metricPerimeter) {
+        metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
+      }
+      if (metricBaseboard) {
+        var bb = stored.baseboard_lf;
+        metricBaseboard.textContent = (bb != null ? bb : 0).toFixed(2);
+      }
+      if (metricWallArea) {
+        metricWallArea.textContent = (stored.net_wall_area_sqft || stored.wall_area_sqft || 0).toFixed(2);
+      }
+      if (metricOpenings) {
+        metricOpenings.textContent = (stored.door_count || 0) + ' doors · ' + (stored.window_count || 0) + ' windows';
+      }
+      if (metricCasing) {
+        metricCasing.textContent = (stored.casing_lf != null ? stored.casing_lf : 0).toFixed(2);
+      }
+      if (metricBoxes) {
+        metricBoxes.textContent = String(stored.flooring_boxes != null ? stored.flooring_boxes : 0);
+      }
+      setMetricEl(metricDrywall, stored.finish_drywall_sqft != null ? stored.finish_drywall_sqft : stored.net_wall_area_sqft, 2);
+      setMetricEl(metricInsulation, stored.finish_insulation_sqft, 2);
+      setMetricEl(metricStuds, stored.finish_stud_lf, 2);
+      setMetricEl(metricBulkheadDrywall, stored.bulkhead_drywall_sqft, 2);
+      setMetricEl(metricBulkheadFraming, stored.bulkhead_framing_lf, 2);
+      setMetricEl(metricBulkheadBead, stored.bulkhead_corner_bead_lf, 2);
     }
 
     function updateGeometryWarning(plan) {
       if (!geometryWarning) return;
       var show = roomStoredGeometryUnmeasurable(currentRoom);
+      var liveMismatch = !!(plan && liveTakeoffsFailedWithStoredPositive(plan));
+      if (liveMismatch) show = true;
       if (show && plan && liveMetricsClearStoredGeometryWarning(plan)) {
         show = false;
+        liveMismatch = false;
       }
       var message = show && currentRoom && currentRoom.metrics
         ? (currentRoom.metrics.geometry_message || '')
         : '';
       if (geometryWarningText) {
-        geometryWarningText.textContent = message
-          || 'Room geometry could not be measured. Fix the outline in the editor before saving or quoting.';
+        if (liveMismatch) {
+          geometryWarningText.textContent = 'Live takeoffs could not be computed from the current walls. Showing last saved measurements until geometry is fixed or saved again.';
+        } else {
+          geometryWarningText.textContent = message
+            || 'Room geometry could not be measured. Fix the outline in the editor before saving or quoting.';
+        }
       }
       geometryWarning.hidden = !show;
     }
@@ -749,16 +816,29 @@
         } catch (e) {
           merged.zanini = incomingPlan.zanini;
         }
-        return merged;
+      } else if (previousPlan && previousPlan.zanini) {
+        merged.zanini = merged.zanini || {};
+        try {
+          merged.zanini = JSON.parse(JSON.stringify(previousPlan.zanini));
+        } catch (e) {
+          merged.zanini = previousPlan.zanini;
+        }
       }
-      if (!previousPlan || !previousPlan.zanini) return merged;
-      merged.zanini = merged.zanini || {};
+      return syncActiveFloorSnapshot(merged);
+    }
+
+    function syncActiveFloorSnapshot(plan) {
+      if (!plan || typeof plan !== 'object') return plan;
+      var bridge = win && win.OpenPlan3DMeasurementBridge;
+      if (!bridge || typeof bridge.resolveFloor !== 'function') return plan;
+      var active = bridge.resolveFloor(plan);
+      if (!active) return plan;
       try {
-        merged.zanini = JSON.parse(JSON.stringify(previousPlan.zanini));
+        plan.floor = JSON.parse(JSON.stringify(active));
       } catch (e) {
-        merged.zanini = previousPlan.zanini;
+        plan.floor = active;
       }
-      return merged;
+      return plan;
     }
 
     function setMetricEl(el, value, digits) {
@@ -1035,35 +1115,10 @@
       if (!metricArea) return;
       if (currentRoom && currentRoom.metrics && currentRoom.metrics.geometry_unmeasurable) {
         if (!liveMetricsClearStoredGeometryWarning(plan)) {
-        var stored = currentRoom.metrics;
-        metricArea.textContent = (stored.area_sqft || 0).toFixed(2);
-        if (metricPerimeter) {
-          metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
-        }
-        if (metricBaseboard) {
-          var bb = stored.baseboard_lf;
-          metricBaseboard.textContent = (bb != null ? bb : 0).toFixed(2);
-        }
-        if (metricWallArea) {
-          metricWallArea.textContent = (stored.net_wall_area_sqft || stored.wall_area_sqft || 0).toFixed(2);
-        }
-        if (metricOpenings) {
-          metricOpenings.textContent = (stored.door_count || 0) + ' doors · ' + (stored.window_count || 0) + ' windows';
-        }
-        if (metricCasing) {
-          metricCasing.textContent = (stored.casing_lf != null ? stored.casing_lf : 0).toFixed(2);
-        }
-        if (metricBoxes) {
-          metricBoxes.textContent = String(stored.flooring_boxes != null ? stored.flooring_boxes : 0);
-        }
-        setMetricEl(metricDrywall, stored.finish_drywall_sqft != null ? stored.finish_drywall_sqft : stored.net_wall_area_sqft, 2);
-        setMetricEl(metricInsulation, stored.finish_insulation_sqft, 2);
-        setMetricEl(metricStuds, stored.finish_stud_lf, 2);
-        setMetricEl(metricBulkheadDrywall, stored.bulkhead_drywall_sqft, 2);
-        setMetricEl(metricBulkheadFraming, stored.bulkhead_framing_lf, 2);
-        setMetricEl(metricBulkheadBead, stored.bulkhead_corner_bead_lf, 2);
+        applyStoredMetricsToRibbon(currentRoom.metrics);
         renderZonesPanel(currentPlan);
         updateGeometryWarning(plan);
+        updateTakeoffsSummary();
         return;
         }
       }
@@ -1089,6 +1144,9 @@
 
       try {
         var metrics = currentMetrics(plan) || {};
+        if (liveTakeoffsFailedWithStoredPositive(plan)) {
+          applyStoredMetricsToRibbon(currentRoom.metrics);
+        } else {
         metricArea.textContent = (metrics.area_sqft || 0).toFixed(2);
         if (metricPerimeter) {
           metricPerimeter.textContent = (metrics.perimeter_lf != null ? metrics.perimeter_lf : (metrics.perimeter_ft || 0)).toFixed(2);
@@ -1115,11 +1173,16 @@
         setMetricEl(metricBulkheadDrywall, metrics.bulkhead_drywall_sqft, 2);
         setMetricEl(metricBulkheadFraming, metrics.bulkhead_framing_lf, 2);
         setMetricEl(metricBulkheadBead, metrics.bulkhead_corner_bead_lf, 2);
+        }
       } catch (err) {
         console.warn('[openPlan3D] Metrics computation failed:', err);
+        if (liveTakeoffsFailedWithStoredPositive(plan)) {
+          applyStoredMetricsToRibbon(currentRoom.metrics);
+        }
       }
       renderZonesPanel(plan);
       updateGeometryWarning(plan);
+      updateTakeoffsSummary();
     }
 
     function postToEditor(payload) {
@@ -1632,9 +1695,10 @@
       var incomingArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
       var confirmZero = false;
 
-      // Ask the replace question if real value is 0 or drops sharply (incoming < 50% of stored, or <= 0)
+      // Ask the replace question only when live metrics are trustworthy and area drops sharply.
       var zeroAreaCheck = Promise.resolve(true);
-      if (storedArea > 0 && (!isFinite(incomingArea) || incomingArea <= 0 || incomingArea < storedArea * 0.5)) {
+      if (storedArea > 0 && liveMetricsTrustworthy(metrics, currentPlan)) {
+        if (!isFinite(incomingArea) || incomingArea <= 0 || incomingArea < storedArea * 0.5) {
         var newAreaText = (isFinite(incomingArea) && incomingArea > 0)
           ? incomingArea.toFixed(2) + ' sq ft'
           : '0';
@@ -1653,6 +1717,7 @@
           confirmZero = true;
           return true;
         });
+        }
       }
 
       zeroAreaCheck.then(function (proceed) {
@@ -1918,7 +1983,7 @@
           }
           loadAcked = true;
           if (e.data.plan) {
-            currentPlan = e.data.plan;
+            currentPlan = syncActiveFloorSnapshot(e.data.plan);
           }
           loadedPlanBaseline = currentPlan;
           updateMetrics(currentPlan);

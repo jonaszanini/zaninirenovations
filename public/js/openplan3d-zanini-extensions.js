@@ -99,15 +99,26 @@
   }
 
   function resolveActiveFloor(plan) {
-    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
-    if (!Array.isArray(plan.floors)) return null;
-    var activeId = plan.activeFloorId;
-    if (activeId) {
-      for (var i = 0; i < plan.floors.length; i++) {
-        if (plan.floors[i] && plan.floors[i].id === activeId) return plan.floors[i];
+    if (!plan || typeof plan !== 'object') return null;
+    var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
+    if (plan.project && Array.isArray(plan.project.floors) && plan.project.floors.length) {
+      if (activeId) {
+        for (var pi = 0; pi < plan.project.floors.length; pi++) {
+          if (plan.project.floors[pi] && plan.project.floors[pi].id === activeId) return plan.project.floors[pi];
+        }
       }
+      return plan.project.floors[0] || null;
     }
-    return plan.floors[0] || null;
+    if (Array.isArray(plan.floors) && plan.floors.length) {
+      if (activeId) {
+        for (var i = 0; i < plan.floors.length; i++) {
+          if (plan.floors[i] && plan.floors[i].id === activeId) return plan.floors[i];
+        }
+      }
+      return plan.floors[0] || null;
+    }
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    return null;
   }
 
   function extractZanini(plan) {

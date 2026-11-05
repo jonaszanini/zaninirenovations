@@ -226,6 +226,7 @@ jobs:
         run: |
           node tests/js/room-area-lib.test.js
           node tests/js/openplan3d-parity.test.js
+          node tests/js/openplan3d-host-save-area.test.js
           node tests/js/openplan3d-editor-bridge.test.js
           node tests/js/openplan3d-zanini-extensions.test.js
           node tests/js/openplan3d-zanini-tools.test.js

@@ -288,8 +288,9 @@ const bowtieOnlyPlan = {
   }
 };
 const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
-assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
-assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
+assert.strictEqual(bowtieMetrics.area_sqft, 100.0, 'Valid wall outer loop replaces bowtie stored polygon');
+assert.ok(!bowtieMetrics.geometry_unmeasurable, 'Bowtie stored polygon must not block measurement when walls form a closed loop');
+assert.ok(bowtieMetrics.baseboard_lf > 0, 'Recovered loop should expose baseboard LF from outline');
 
 // Test 12: Independent endpoint noise ±1.5–3 cm (hand0 drawn perimeter)
 function jitterIndependentEndpoints(plan, maxOffsetCm) {
@@ -327,5 +328,33 @@ delete brokenPlan.floors;
 var brokenMetrics = bridge.layoutMetrics(brokenPlan, null, { wall_height_ft: 8.0 });
 assert.strictEqual(brokenMetrics.geometry_unmeasurable, true, 'Extreme noise must flag geometry_unmeasurable');
 assert.strictEqual(brokenMetrics.area_sqft, 0, 'Extreme noise must not report a false positive area');
+
+// Test 14: Editor live plan uses plan.floors when plan.floor is stale/empty (Jonas live zero takeoffs)
+var staleFloorPlan = JSON.parse(JSON.stringify(hand0Plan));
+staleFloorPlan.floor.walls = [];
+staleFloorPlan.floor.rooms = [{ id: 'r1', name: 'B', polygon: [] }];
+var staleFloorMetrics = bridge.layoutMetrics(staleFloorPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(staleFloorMetrics.area_sqft > 1300, 'Stale empty plan.floor must not zero live area; got ' + staleFloorMetrics.area_sqft);
+assert.ok(!staleFloorMetrics.geometry_unmeasurable, 'Stale plan.floor must not mark geometry unmeasurable');
+
+// Test 15: Closed outer + two interior partitions stays measurable
+var twoPartitionPlan = JSON.parse(JSON.stringify(hand0Plan));
+assert.ok(twoPartitionPlan.floor.walls.length >= 18, 'hand0 fixture includes two interior partitions');
+var twoPartMetrics = bridge.layoutMetrics(twoPartitionPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(twoPartMetrics.area_sqft > 1300, 'Two interior partitions must keep floor area > 0; got ' + twoPartMetrics.area_sqft);
+
+// Test 16: Removing partitions with invalid stored polygon still uses outer loop (false zero save)
+var removedPartitionPlan = JSON.parse(JSON.stringify(hand0Plan));
+removedPartitionPlan.floor.walls = removedPartitionPlan.floor.walls.filter(function (w) {
+  return w.id !== 'mclt5ix7';
+});
+removedPartitionPlan.floors[0].walls = removedPartitionPlan.floor.walls;
+removedPartitionPlan.floor.rooms[0].polygon = [
+  { x: 0, y: 0 }, { x: 100, y: 100 }, { x: 100, y: 0 }, { x: 0, y: 100 }
+];
+removedPartitionPlan.floors[0].rooms[0].polygon = removedPartitionPlan.floor.rooms[0].polygon;
+var removedMetrics = bridge.layoutMetrics(removedPartitionPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(removedMetrics.area_sqft > 1300, 'Removing a partition must not zero area when outer loop is closed; got ' + removedMetrics.area_sqft);
+assert.ok(!removedMetrics.geometry_unmeasurable, 'Removing a partition must stay measurable with bad stored polygon');
 
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

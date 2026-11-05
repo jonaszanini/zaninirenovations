@@ -1448,7 +1448,7 @@ class OpenPlan3DMeasurementBridge
         $storedMeasurable = $this->storedPolygonMeasurable($storedPoly, $cmPerUnit);
 
         if (! $storedMeasurable) {
-            return $partitions > 0;
+            return true;
         }
 
         if ($partitions > 0 && $outerArea > $storedArea + 0.5) {
