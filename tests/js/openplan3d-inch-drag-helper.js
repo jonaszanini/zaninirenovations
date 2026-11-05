@@ -443,8 +443,13 @@ async function runZoneCorners(page) {
     await applyZoneViewCase(page, viewCase);
 
     await page.evaluate(() => {
-      const btn = document.querySelector('#openplan3d-zanini-toolbar [data-zanini-mode="zone"]');
-      if (btn && !btn.classList.contains('zanini-tool-active')) btn.click();
+      var btn =
+        document.querySelector('#openplan3d-draw-toggle [data-zanini-mode="zone"]') ||
+        document.querySelector('#openplan3d-mode-zone') ||
+        document.querySelector('#openplan3d-zanini-toolbar [data-zanini-mode="zone"]');
+      if (btn && btn.getAttribute('aria-selected') !== 'true' && !btn.classList.contains('zanini-tool-active')) {
+        btn.click();
+      }
     });
     await new Promise((r) => setTimeout(r, 200));
 

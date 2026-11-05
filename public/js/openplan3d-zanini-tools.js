@@ -542,6 +542,14 @@
         btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
       });
     }
+    var floatBar = document.getElementById('openplan3d-zanini-toolbar');
+    if (floatBar) {
+      [].forEach.call(floatBar.querySelectorAll('[data-zanini-mode]'), function (btn) {
+        btn.classList.toggle('zanini-tool-active', btn.getAttribute('data-zanini-mode') === state.mode);
+      });
+      var floatDel = floatBar.querySelector('[data-zanini-action="delete-bulkhead"]');
+      if (floatDel) floatDel.hidden = !state.selectedBulkheadId;
+    }
     var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
     if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
     scheduleOverlay();
@@ -647,28 +655,65 @@
     var style = document.createElement('style');
     style.id = 'openplan3d-zanini-toolbar-styles';
     style.textContent = [
-      '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}'
+      '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
+      '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
+      '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}'
     ].join('');
     document.head.appendChild(style);
+  }
+
+  function buildFloatingToolbarFallback() {
+    if (document.getElementById('openplan3d-zanini-toolbar')) {
+      state.toolbar = document.getElementById('openplan3d-zanini-toolbar');
+      return state.toolbar;
+    }
+    var bar = document.createElement('div');
+    bar.id = 'openplan3d-zanini-toolbar';
+    bar.innerHTML = [
+      '<button type="button" data-zanini-mode="zone" title="Draw area zone">Zone</button>',
+      '<button type="button" data-zanini-mode="bulkhead" title="Draw bulkhead">Bulkhead</button>',
+      '<button type="button" data-zanini-action="delete-bulkhead" title="Delete selected bulkhead" hidden>Del</button>'
+    ].join('');
+    document.body.appendChild(bar);
+    bar.addEventListener('click', function (e) {
+      var actionBtn = e.target.closest('[data-zanini-action]');
+      if (actionBtn && actionBtn.getAttribute('data-zanini-action') === 'delete-bulkhead') {
+        deleteSelectedBulkhead();
+        return;
+      }
+      var btn = e.target.closest('[data-zanini-mode]');
+      if (!btn) return;
+      setMode(btn.getAttribute('data-zanini-mode'));
+    });
+    state.toolbar = bar;
+    return bar;
   }
 
   function wireHeaderToolbar() {
     if (state.toolbar) return;
     injectToolbarStyles();
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      state.toolbar = { hosted: true };
+      return;
+    }
     var toggleWrap = document.getElementById('openplan3d-draw-toggle');
     var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
-    if (!toggleWrap) return;
-    toggleWrap.addEventListener('click', function (e) {
-      var btn = e.target.closest('[data-zanini-mode]');
-      if (!btn) return;
-      setMode(btn.getAttribute('data-zanini-mode'));
-    });
-    if (delBtn) {
-      delBtn.addEventListener('click', function () {
-        deleteSelectedBulkhead();
+    if (toggleWrap) {
+      toggleWrap.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-zanini-mode]');
+        if (!btn) return;
+        setMode(btn.getAttribute('data-zanini-mode'));
       });
+      if (delBtn) {
+        delBtn.addEventListener('click', function () {
+          deleteSelectedBulkhead();
+        });
+      }
+      state.toolbar = toggleWrap;
+      return;
     }
-    state.toolbar = toggleWrap;
+    buildFloatingToolbarFallback();
   }
 
   function findWallSidebarHost() {
@@ -1024,6 +1069,8 @@
     toggleZoneExclude: toggleZoneExclude,
     renderFinishPanel: renderFinishPanel,
     refreshOverlay: scheduleOverlay,
+    setMode: setMode,
+    deleteSelectedBulkhead: deleteSelectedBulkhead,
     canvasEl: canvasEl,
     screenToPlan: screenToPlan,
     ensureCanvasBound: ensureCanvasBound,

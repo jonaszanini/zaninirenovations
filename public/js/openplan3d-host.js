@@ -2052,6 +2052,36 @@
       doc.addEventListener('admin-theme-change', syncThemeButton);
     }
 
+    function syncDrawToggleUi(activeMode) {
+      var drawToggleEl = doc.getElementById('openplan3d-draw-toggle');
+      if (!drawToggleEl) return;
+      [].forEach.call(drawToggleEl.querySelectorAll('[data-zanini-mode]'), function (btn) {
+        var isActive = !!(activeMode && btn.getAttribute('data-zanini-mode') === activeMode);
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+
+    var drawToggleEl = doc.getElementById('openplan3d-draw-toggle');
+    if (drawToggleEl) {
+      drawToggleEl.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-zanini-mode]');
+        if (!btn) return;
+        var mode = btn.getAttribute('data-zanini-mode');
+        var turningOff = btn.getAttribute('aria-selected') === 'true';
+        var nextMode = turningOff ? null : mode;
+        syncDrawToggleUi(nextMode);
+        postToEditor({ type: 'OPENPLAN3D_SET_ZANINI_MODE', mode: nextMode });
+      });
+    }
+
+    var deleteBulkheadBtn = doc.getElementById('openplan3d-delete-bulkhead-btn');
+    if (deleteBulkheadBtn) {
+      deleteBulkheadBtn.addEventListener('click', function () {
+        postToEditor({ type: 'OPENPLAN3D_DELETE_ZANINI_BULKHEAD' });
+        deleteBulkheadBtn.hidden = true;
+      });
+    }
+
     if (takeoffsToggle && takeoffsStrip) {
       takeoffsToggle.addEventListener('click', function () {
         syncTakeoffsCollapsed(!takeoffsStrip.classList.contains('is-collapsed'));

@@ -1132,6 +1132,20 @@
         });
         return true;
       }
+      if (data.type === 'OPENPLAN3D_SET_ZANINI_MODE') {
+        var zaniniTools = typeof window !== 'undefined' ? window.OpenPlan3DZaniniTools : null;
+        if (zaniniTools && typeof zaniniTools.setMode === 'function') {
+          zaniniTools.setMode(data.mode == null || data.mode === '' ? null : String(data.mode));
+        }
+        return true;
+      }
+      if (data.type === 'OPENPLAN3D_DELETE_ZANINI_BULKHEAD') {
+        var zaniniDelete = typeof window !== 'undefined' ? window.OpenPlan3DZaniniTools : null;
+        if (zaniniDelete && typeof zaniniDelete.deleteSelectedBulkhead === 'function') {
+          zaniniDelete.deleteSelectedBulkhead();
+        }
+        return true;
+      }
       return false;
     }
 
