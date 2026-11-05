@@ -241,6 +241,10 @@ jobs:
       - name: Unit tests (no database)
         run: tests/ci/run-unit-suite.sh
 
+      - name: Install Puppeteer browser
+        if: needs.changes.outputs.run_browser == 'true'
+        run: npx puppeteer browsers install chrome
+
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'
         run: |

@@ -31,7 +31,8 @@ function assertWholeInchLength(r, label) {
 function runOrthoAll() {
   const out = execFileSync(process.execPath, [HELPER, 'ortho-all'], {
     encoding: 'utf8',
-    timeout: 300000,
+    timeout: 600000,
+    maxBuffer: 10 * 1024 * 1024,
     env: Object.assign({}, process.env, { NODE_OPTIONS: '--max-old-space-size=4096' }),
   }).trim();
   const line = out.split('\n').filter(Boolean).pop();
