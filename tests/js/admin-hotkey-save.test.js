@@ -45,6 +45,8 @@ function matches(el, sel) {
   if (!el || !sel) return false;
   if (sel === ':invalid') return !!el.invalid;
   if (sel === 'form') return el.tagName === 'FORM';
+  if (sel === 'fieldset') return el.tagName === 'FIELDSET';
+  if (sel === 'legend') return el.tagName === 'LEGEND';
   if (sel === 'label') return el.tagName === 'LABEL';
   if (sel === '[data-hotkey-save]') return el.hasAttribute('data-hotkey-save');
   if (sel === '[data-admin-toast-host]') return el.hasAttribute('data-admin-toast-host');
@@ -64,6 +66,10 @@ function matches(el, sel) {
   if (named && sel.indexOf('[data-') === -1) {
     if (named[1] && el.tagName !== named[1].toUpperCase()) return false;
     return el.getAttribute('name') === named[2];
+  }
+  const typedName = sel.match(/^input\[type="([^"]+)"\]\[name="([^"]+)"\]$/i);
+  if (typedName) {
+    return el.tagName === 'INPUT' && el.getAttribute('type') === typedName[1] && el.getAttribute('name') === typedName[2];
   }
   if (sel.indexOf('[data-admin-hotkey-field]') !== -1) {
     if (!el.hasAttribute('data-admin-hotkey-field')) return false;
@@ -1779,6 +1785,56 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
       inst.reset();
     });
 }).then(() => {
+  (function replyToAcceptValidationUsesFieldsetLegendNotYesOption() {
+    const replyMsg =
+      'Choose Yes or No for \u201cAsk client to reply I accept to this email\u201d before saving or sending.';
+    const yes = makeEl('input', { type: 'radio', name: 'ask_reply_to_accept', value: '1', invalid: true });
+    const no = makeEl('input', { type: 'radio', name: 'ask_reply_to_accept', value: '0', invalid: true });
+    const legend = makeEl('legend', {});
+    legend.textContent = 'Ask client to reply I accept to this email *';
+    const fieldset = makeEl('fieldset', { class: 'cp-reply-to-accept__fieldset' }, [legend]);
+    const yesLbl = makeEl('label', {}, [yes]);
+    yesLbl.textContent = 'Yes';
+    fieldset.appendChild(yesLbl);
+    const noLbl = makeEl('label', {}, [no]);
+    noLbl.textContent = 'No';
+    fieldset.appendChild(noLbl);
+    const form = makeEl('form', { id: 'sq-standard-form' }, [fieldset]);
+    const host = makeEl('div', { 'data-admin-toast-host': '' });
+    host.hidden = true;
+    const doc = makeDoc([form, host]);
+    const api = apiFor(doc);
+
+    const fromPayload = api.fieldsFromPayload([
+      { name: 'ask_reply_to_accept', message: replyMsg },
+    ]);
+    assert.strictEqual(fromPayload.length, 1);
+    assert.match(fromPayload[0].label, /Ask client to reply I accept to this email/i);
+    assert.notStrictEqual(fromPayload[0].label.trim(), 'Yes');
+    assert.strictEqual(fromPayload[0].el, yes, 'payload maps to first radio in group');
+    assert.strictEqual(fromPayload[0].message, replyMsg);
+
+    const fromDom = api.collectInvalidFields(form);
+    assert.strictEqual(fromDom.length, 1, 'radio group deduped');
+    assert.match(fromDom[0].label, /Ask client to reply I accept to this email/i);
+    assert.strictEqual(fromDom[0].el, yes);
+
+    const envMobile = { document: doc, window: { innerWidth: 390, innerHeight: 740, addEventListener() {} } };
+    toast.validation(fromPayload, {}, envMobile);
+    assert.strictEqual(host.hidden, false);
+    const html = String(host.innerHTML);
+    assert.ok(html.indexOf('Please fix these fields') !== -1, 'validation title');
+    assert.ok(html.indexOf('Ask client to reply I accept to this email') !== -1, 'toast link uses legend');
+    assert.ok(html.indexOf('admin-toast__field-link">Yes</a>') === -1, 'toast link is not the Yes option');
+    assert.ok(fieldset.classList.contains('admin-field-invalid'), 'fieldset highlighted');
+    assert.ok(yes.classList.contains('admin-field-invalid'), 'first radio marked invalid');
+    assert.strictEqual(doc.activeElement, yes, 'focus lands on reply Yes/No group');
+
+    const envDesktop = { document: doc, window: { innerWidth: 1280, innerHeight: 800, addEventListener() {} } };
+    toast.validation(fromPayload, {}, envDesktop);
+    assert.ok(fieldset.classList.contains('admin-field-invalid'), 'desktop toast still highlights fieldset');
+    toast.close(envDesktop);
+  })();
   console.log('admin-hotkey-save tests: ok');
 }).catch((err) => {
   console.error(err);

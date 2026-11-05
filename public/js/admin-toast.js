@@ -259,12 +259,28 @@
     fields.forEach(function (field) {
       var el = field.el;
       if (!el || !el.classList) return;
+      var target = el;
+      if ((el.tagName || '').toLowerCase() === 'input') {
+        var t = (el.type || '').toLowerCase();
+        if (t === 'radio' || t === 'checkbox') {
+          var fieldset = el.closest ? el.closest('fieldset') : null;
+          if (fieldset && fieldset.classList) target = fieldset;
+        }
+      }
       if (on) {
-        el.classList.add('admin-field-invalid');
-        el.setAttribute('aria-invalid', 'true');
+        target.classList.add('admin-field-invalid');
+        target.setAttribute('aria-invalid', 'true');
+        if (target !== el) {
+          el.classList.add('admin-field-invalid');
+          el.setAttribute('aria-invalid', 'true');
+        }
       } else {
-        el.classList.remove('admin-field-invalid');
-        el.removeAttribute('aria-invalid');
+        target.classList.remove('admin-field-invalid');
+        target.removeAttribute('aria-invalid');
+        if (target !== el) {
+          el.classList.remove('admin-field-invalid');
+          el.removeAttribute('aria-invalid');
+        }
       }
     });
   }

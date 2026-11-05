@@ -303,10 +303,52 @@
     }
   }
 
+  function cleanLabel(text) {
+    return String(text || '').replace(/\s+/g, ' ').trim().replace(/[*:]+$/, '').trim() || 'This field';
+  }
+
+  function radioGroupLabel(el, doc) {
+    if (!el) return '';
+    var fieldset = el.closest ? el.closest('fieldset') : null;
+    if (fieldset) {
+      var leg = fieldset.querySelector('legend');
+      if (leg) return cleanLabel(leg.textContent);
+    }
+    var labelledBy = el.getAttribute && el.getAttribute('aria-labelledby');
+    if (labelledBy && doc) {
+      var ref = doc.getElementById(labelledBy);
+      if (ref) return cleanLabel(ref.textContent);
+    }
+    var group = el.closest ? el.closest('[role="group"][aria-labelledby]') : null;
+    if (group && doc) {
+      var groupId = group.getAttribute('aria-labelledby');
+      var groupRef = groupId && doc.getElementById(groupId);
+      if (groupRef) return cleanLabel(groupRef.textContent);
+    }
+    return '';
+  }
+
+  function normalizeRadioGroupField(el) {
+    if (!el || !el.name) return el;
+    var type = (el.type || '').toLowerCase();
+    if (type !== 'radio' && type !== 'checkbox') return el;
+    var fieldset = el.closest ? el.closest('fieldset') : null;
+    if (!fieldset) return el;
+    var selector =
+      'input[type="' + type + '"][name="' + String(el.name).replace(/"/g, '\\"') + '"]';
+    var first = fieldset.querySelector(selector);
+    return first || el;
+  }
+
   function fieldLabel(el, env) {
     env = defaultEnv(env);
     var doc = env.document;
     if (!el) return 'This field';
+    var type = (el.type || '').toLowerCase();
+    if (type === 'radio' || type === 'checkbox') {
+      var group = radioGroupLabel(el, doc);
+      if (group) return group;
+    }
     if (el.id && doc) {
       var lab = doc.querySelector('label[for="' + el.id + '"]');
       if (lab) return cleanLabel(lab.textContent);
@@ -314,10 +356,6 @@
     var wrap = el.closest ? el.closest('label') : null;
     if (wrap) return cleanLabel(wrap.textContent);
     return el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.name || 'This field';
-  }
-
-  function cleanLabel(text) {
-    return String(text || '').replace(/\s+/g, ' ').trim().replace(/[*:]+$/, '').trim() || 'This field';
   }
 
   function laravelToName(name) {
@@ -355,6 +393,7 @@
       var key = el.name || el.id || i;
       if (seen[key]) continue;
       seen[key] = true;
+      el = normalizeRadioGroupField(el);
       var msg = '';
       try { msg = el.validationMessage || 'is required'; } catch (e2) { msg = 'is required'; }
       fields.push({
@@ -389,6 +428,7 @@
         if (item.id) el = doc.getElementById(item.id);
         if (!el && item.name) el = resolveNamedField(form, item.name, env);
       }
+      if (el) el = normalizeRadioGroupField(el);
       return {
         el: el,
         name: item.name || '',
@@ -1269,6 +1309,7 @@
       isUnlockingResponse: isUnlockingResponse,
       readBody: readBody,
       collectInvalidFields: function (form) { return collectInvalidFields(form, env); },
+      fieldsFromPayload: function (list) { return fieldsFromPayload(list, env); },
       handleKeydown: handleKeydown,
       onMarkedClick: onMarkedClick,
       onFormSubmit: onFormSubmit,
