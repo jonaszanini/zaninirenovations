@@ -88,7 +88,7 @@
         </div>
 
         <div class="sq-add-material-wrap">
-          <button type="button" class="admin-btn admin-btn--ghost sq-add-material">
+          <button type="button" class="admin-btn admin-btn--primary sq-add-material">
             <i class="fa fa-plus"></i> Add material
           </button>
         </div>
