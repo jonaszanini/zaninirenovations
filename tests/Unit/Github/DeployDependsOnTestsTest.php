@@ -38,8 +38,27 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertStringContainsString('workflow_dispatch:', $yaml);
-        $this->assertStringContainsString('openplan3d-editor-bridge.test.js', $yaml);
-        $this->assertStringContainsString('openplan3d-editor-browser.test.js', $yaml);
+        $unitList = (string) file_get_contents(base_path('tests/ci/js-unit-paths.txt'));
+        $this->assertStringContainsString(
+            'openplan3d-editor-bridge.test.js',
+            $unitList,
+            'editor bridge unit test must stay in tests/ci/js-unit-paths.txt'
+        );
+        $browserLists = [
+            'tests/ci/js-browser-openplan3d.txt',
+            'tests/ci/js-browser-admin.txt',
+            'tests/ci/js-browser-quotation.txt',
+            'tests/ci/js-browser-client-projects.txt',
+        ];
+        $browserCombined = '';
+        foreach ($browserLists as $rel) {
+            $browserCombined .= (string) file_get_contents(base_path($rel));
+        }
+        $this->assertStringContainsString(
+            'openplan3d-editor-browser.test.js',
+            $browserCombined,
+            'editor browser test must stay in tests/ci/js-browser-*.txt manifests'
+        );
         $this->assertMatchesRegularExpression(
             '/fetch-depth:\s*0/',
             $yaml,
@@ -168,9 +187,13 @@ class DeployDependsOnTestsTest extends TestCase
 
     public function test_ci_filter_matrix_script_passes(): void
     {
-        $script = base_path('tests/ci/ci-filter-matrix.test.sh');
-        $this->assertFileExists($script);
-        exec('bash '.escapeshellarg($script).' 2>&1', $output, $code);
+        exec('bash '.escapeshellarg(base_path('tests/ci/ci-filter-matrix.test.sh')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
+    }
+
+    public function test_workflow_filters_json_matches_tests_yml(): void
+    {
+        exec('node '.escapeshellarg(base_path('tests/ci/verify-workflow-filters.js')).' 2>&1', $output, $code);
         $this->assertSame(0, $code, implode("\n", $output));
     }
 

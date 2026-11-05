@@ -85,6 +85,8 @@ jobs:
               - 'app/Providers/**'
               - 'database/migrations/**'
               - 'resources/views/layouts/**'
+            admin_shell:
+              - 'resources/views/admin/layouts/app.blade.php'
             shared_prices_geometry:
               - 'app/Http/Controllers/Admin/SharedPriceLibraryController.php'
               - 'app/Models/SharedWork.php'
@@ -97,11 +99,14 @@ jobs:
               - 'tests/Unit/Services/SharedWorkCatalogTest.php'
             room_area_live:
               - 'app/**/RoomArea*.php'
+              - 'app/Services/OpenPlan3DMeasurementBridge.php'
+              - 'app/Services/OpenPlan3DPlanValidator.php'
               - 'database/seeders/RoomAreaGeometrySeeder.php'
               - 'public/js/room-area/**'
               - 'public/js/openplan3d-measurement-bridge.js'
               - 'resources/views/**/room-area/**'
               - 'resources/views/admin/client-projects/**/room-area/**'
+              - 'resources/views/admin/utilities/_room_area_openplan3d.blade.php'
               - 'tests/Feature/Admin/RoomArea*.php'
               - 'tests/Feature/Admin/*RoomArea*.php'
               - 'tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php'
@@ -143,6 +148,7 @@ jobs:
               - 'public/css/admin-**'
               - 'resources/views/admin/layouts/**'
               - 'resources/views/admin/partials/**'
+              - 'resources/views/components/admin/info-tip.blade.php'
               - 'tests/js/admin-*'
               - 'tests/js/**/*admin*browser*'
             browser_openplan3d:
@@ -151,15 +157,25 @@ jobs:
               - 'public/vendor/openplan3d-h1/**'
               - 'scripts/patch-openplan3d.mjs'
               - 'scripts/openplan3d-h1.json'
+              - 'app/Services/OpenPlan3DMeasurementBridge.php'
+              - 'app/Services/OpenPlan3DPlanValidator.php'
+              - 'resources/views/admin/utilities/_room_area_openplan3d.blade.php'
               - 'tests/js/openplan3d-**'
               - 'tests/js/room-area-**'
             browser_quotation:
               - 'app/Support/Quotation**.php'
+              - 'app/Models/ClientProjectQuotation.php'
+              - 'app/Support/Quotations/**'
               - 'resources/views/admin/quotations/**'
               - 'public/js/*quotation*'
+              - 'public/js/admin-hotkey-save.js'
+              - 'public/js/admin-toast.js'
               - 'tests/js/quotation-**'
+              - 'tests/js/fixtures/quotation-redraft-hotkey-lock.html'
             browser_client:
               - 'resources/views/admin/client-projects/**'
+              - 'resources/views/admin/client_projects/**'
+              - 'public/js/admin-client-projects.js'
               - 'tests/js/client-projects-**'
             routes_smoke:
               - 'routes/**'
@@ -184,6 +200,7 @@ jobs:
           HAS_CODE_CHANGES: ${{ steps.classify.outputs.has_code_changes }}
           CHANGED_FILES_FILE: ${{ steps.classify.outputs.changed_files_path }}
           FILTER_GLOBAL: ${{ steps.filter.outputs.global_test_deps }}
+          FILTER_ADMIN_SHELL: ${{ steps.filter.outputs.admin_shell }}
           FILTER_SP: ${{ steps.filter.outputs.shared_prices_geometry }}
           FILTER_RA: ${{ steps.filter.outputs.room_area_live }}
           FILTER_BL: ${{ steps.filter.outputs.blog_live }}

@@ -1,23 +1,2 @@
-# Non-doc changed paths matching ANY line here are "classified". Anything else => broad run (all filters).
-app/**
-bootstrap/**
-config/**
-database/**
-docs/**
-lang/**
-public/**
-resources/**
-routes/**
-scripts/**
-tests/**
-.github/**
-composer.json
-composer.lock
-package.json
-package-lock.json
-phpunit.xml
-phpunit.*.xml
-.env.example
-artisan
-Makefile
-Dockerfile*
+# Deprecated: broad-run classification now uses tests/ci/workflow-filters.json
+# via tests/ci/match-workflow-filters.js (unknown path => global_test_deps / fail-open).

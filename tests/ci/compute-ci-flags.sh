@@ -34,24 +34,9 @@ fi
 
 broad_run=false
 if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
-  while IFS= read -r path || [[ -n "$path" ]]; do
-    [[ -z "$path" ]] && continue
-    case "$path" in
-      *.md|docs/*|lang/*) continue ;;
-    esac
-    matched=false
-    while IFS= read -r pattern || [[ -n "$pattern" ]]; do
-      [[ -z "$pattern" || "$pattern" == \#* ]] && continue
-      if bash "$ROOT/tests/ci/path-matches-pattern.sh" "$path" "$pattern"; then
-        matched=true
-        break
-      fi
-    done < "$ROOT/tests/ci/change-coverage-patterns.txt"
-    if [[ "$matched" == false ]]; then
-      broad_run=true
-      break
-    fi
-  done < "$CHANGED_FILES_FILE"
+  if node "$ROOT/tests/ci/match-workflow-filters.js" --broad-file "$CHANGED_FILES_FILE"; then
+    broad_run=true
+  fi
 fi
 
 global_deps=false
@@ -92,6 +77,11 @@ if [[ "$slow_input" == true ]] || [[ "$run_all_heavy" == true ]] || truthy "${FI
   run_mf=true
 fi
 
+admin_shell=false
+if truthy "${FILTER_ADMIN_SHELL:-false}"; then
+  admin_shell=true
+fi
+
 browser_js_admin=false
 browser_js_openplan3d=false
 browser_js_quotation=false
@@ -115,22 +105,22 @@ if truthy "${FILTER_BROWSER_JS:-false}" && [[ -n "${CHANGED_FILES_FILE:-}" && -f
 fi
 
 run_browser_admin=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_BROWSER_ADMIN:-false}" || [[ "$browser_js_admin" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_ADMIN:-false}" || [[ "$browser_js_admin" == true ]]; then
   run_browser_admin=true
 fi
 
 run_browser_openplan3d=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_BROWSER_OPENPLAN3D:-false}" || truthy "${FILTER_RA:-false}" || truthy "${FILTER_SP:-false}" || [[ "$browser_js_openplan3d" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_OPENPLAN3D:-false}" || truthy "${FILTER_RA:-false}" || truthy "${FILTER_SP:-false}" || [[ "$browser_js_openplan3d" == true ]]; then
   run_browser_openplan3d=true
 fi
 
 run_browser_quotation=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_BROWSER_QUOTATION:-false}" || truthy "${FILTER_ROUTES:-false}" || [[ "$browser_js_quotation" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_QUOTATION:-false}" || truthy "${FILTER_ROUTES:-false}" || [[ "$browser_js_quotation" == true ]]; then
   run_browser_quotation=true
 fi
 
 run_browser_client=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_BROWSER_CLIENT:-false}" || [[ "$browser_js_client" == true ]]; then
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_CLIENT:-false}" || [[ "$browser_js_client" == true ]]; then
   run_browser_client=true
 fi
 
@@ -146,17 +136,17 @@ fi
 
 # MySQL supplemental filter outputs (for select-database-paths.sh) — true when domain touched or broad.
 filter_sp_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_SP:-false}"; then filter_sp_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_SP:-false}"; then filter_sp_out=true; fi
 filter_ra_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_RA:-false}"; then filter_ra_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_RA:-false}"; then filter_ra_out=true; fi
 filter_bl_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_BL:-false}"; then filter_bl_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BL:-false}"; then filter_bl_out=true; fi
 filter_seo_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_SEO:-false}"; then filter_seo_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_SEO:-false}"; then filter_seo_out=true; fi
 filter_mf_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_MF:-false}"; then filter_mf_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_MF:-false}"; then filter_mf_out=true; fi
 filter_routes_out=false
-if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_ROUTES:-false}"; then filter_routes_out=true; fi
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_ROUTES:-false}"; then filter_routes_out=true; fi
 
 emit() {
   local key=$1
