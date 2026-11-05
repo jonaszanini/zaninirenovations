@@ -2,7 +2,7 @@
 
 /**
  * Puppeteer inch-grid drags (hosted editor).
- * Modes: edge | centerline (grid fallback) | ortho0 | ortho45 | ortho90 | endpoint-join
+ * Modes: edge | centerline (grid fallback) | ortho0 | ortho45 | ortho90 | ortho-all | endpoint-join
  * stdout: single JSON { ok, mode, ... }
  */
 
@@ -514,7 +514,10 @@ async function main() {
     port = started.port;
   }
 
-  const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
+  const browser = await puppeteer.launch({
+    headless: 'new',
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+  });
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 900 });
@@ -524,6 +527,13 @@ async function main() {
     let payload;
     if (mode === 'edge' || mode === 'centerline') {
       payload = await runGridFallbackDrag(page, mode);
+    } else if (mode === 'ortho-all') {
+      const results = [];
+      for (const key of ['ortho0', 'ortho45', 'ortho90']) {
+        const one = await runOrthoDrag(page, key);
+        results.push(Object.assign({ ok: true, mode: key }, one));
+      }
+      payload = { results };
     } else if (ORTHO_SCENARIOS[mode]) {
       payload = await runOrthoDrag(page, mode);
     } else if (mode === 'zone-corners') {
