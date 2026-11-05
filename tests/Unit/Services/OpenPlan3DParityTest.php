@@ -556,29 +556,39 @@ class OpenPlan3DParityTest extends TestCase
         $this->assertGreaterThan(80.0, $metrics['area_sqft']);
     }
 
-    public function test_noisy_hand0_perimeter_corners_remain_measurable(): void
+    public function test_noisy_hand0_independent_endpoint_jitter_remains_measurable(): void
     {
         $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
-        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
-        $plan['floor']['walls'] = array_values(array_filter(
-            $plan['floor']['walls'],
-            fn ($w) => ! in_array($w['id'] ?? '', ['z9ajm00u', 'mclt5ix7'], true)
-        ));
-        foreach ($plan['floor']['walls'] as &$wall) {
-            if (($wall['id'] ?? '') === '94g8q0tr') {
-                $wall['end']['x'] += 1.0;
-                $wall['end']['y'] += 0.5;
-            }
-            if (($wall['id'] ?? '') === '95cyxqtw') {
-                $wall['start']['x'] += 0.8;
-                $wall['start']['y'] -= 0.4;
+        $base = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+
+        foreach ([1.5, 2.5, 3.0] as $maxCm) {
+            for ($trial = 0; $trial < 8; $trial++) {
+                $plan = $this->jitterHand0PlanIndependent($base, $maxCm);
+                $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+                $this->assertFalse(
+                    $metrics['geometry_unmeasurable'] ?? false,
+                    "Independent endpoint jitter {$maxCm} cm trial {$trial} must stay measurable"
+                );
+                $this->assertGreaterThan(
+                    1300.0,
+                    $metrics['area_sqft'],
+                    "Area should match drawn basement (~1346 sq ft) at {$maxCm} cm noise"
+                );
+                $this->assertLessThan(1380.0, $metrics['area_sqft']);
             }
         }
-        unset($wall);
+    }
 
+    public function test_extreme_hand0_jitter_is_geometry_unmeasurable_not_silent_zero(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $base = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        unset($base['floors']);
+        $base['floor']['rooms'] = [];
+        $plan = $this->jitterHand0PlanIndependent($base, 25.0);
         $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
-        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
+        $this->assertTrue($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
     }
 
     public function test_editor_drawn_hand0_plan_measures_floor_area_after_vertex_snap(): void
@@ -653,5 +663,26 @@ class OpenPlan3DParityTest extends TestCase
                 ],
             ],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $basePlan
+     * @return array<string, mixed>
+     */
+    private function jitterHand0PlanIndependent(array $basePlan, float $maxOffsetCm): array
+    {
+        $plan = json_decode(json_encode($basePlan, JSON_THROW_ON_ERROR), true, 512, JSON_THROW_ON_ERROR);
+        foreach ($plan['floor']['walls'] as &$wall) {
+            if (! is_array($wall['start'] ?? null) || ! is_array($wall['end'] ?? null)) {
+                continue;
+            }
+            $wall['start']['x'] = (float) $wall['start']['x'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['start']['y'] = (float) $wall['start']['y'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['end']['x'] = (float) $wall['end']['x'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+            $wall['end']['y'] = (float) $wall['end']['y'] + (lcg_value() - 0.5) * 2 * $maxOffsetCm;
+        }
+        unset($wall);
+
+        return $plan;
     }
 }

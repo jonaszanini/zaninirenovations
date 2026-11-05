@@ -131,12 +131,16 @@
     return verticesToSquareFeet(feet) > 0.01;
   }
 
-  function endpointClusterToleranceCm() {
-    return 2.5;
+  function endpointClusterToleranceCm(wallsList, cmPerUnit) {
+    // Independent draw jitter per endpoint can separate a corner by ~2*maxOffset*sqrt(2).
+    // Use a generous merge distance (up to partition tolerance) without replacing T-junction eps.
+    var junctionCm = partitionToleranceCm(wallsList, cmPerUnit);
+    var drawNoiseCm = 3.5;
+    return Math.min(junctionCm, Math.max(drawNoiseCm, junctionCm * 0.45));
   }
 
-  function clusterSegmentEndpoints(rawSegments, cmPerUnit) {
-    var clusterCm = endpointClusterToleranceCm();
+  function clusterSegmentEndpoints(rawSegments, cmPerUnit, wallsList) {
+    var clusterCm = endpointClusterToleranceCm(wallsList || rawSegments.map(function (s) { return s.wall; }), cmPerUnit);
     var epsUnit = clusterCm / (cmPerUnit > 0 ? cmPerUnit : 1.0);
     var refs = [];
     for (var si = 0; si < rawSegments.length; si++) {
@@ -611,7 +615,7 @@
       };
     }
 
-    clusterSegmentEndpoints(rawSegments, cmPerUnit);
+    clusterSegmentEndpoints(rawSegments, cmPerUnit, wallsList);
 
     var allEndpoints = [];
     for (var i = 0; i < rawSegments.length; i++) {
@@ -687,7 +691,7 @@
 
     // 4. Cluster vertices into unique node IDs
     var nodes = [];
-    var nodeClusterUnit = endpointClusterToleranceCm() / (cmPerUnit > 0 ? cmPerUnit : 1.0);
+    var nodeClusterUnit = endpointClusterToleranceCm(wallsList, cmPerUnit) / (cmPerUnit > 0 ? cmPerUnit : 1.0);
     function findNode(pt) {
       var snapped = snapPlanPoint(pt, cmPerUnit);
       for (var idx = 0; idx < nodes.length; idx++) {
@@ -856,6 +860,13 @@
     };
   }
 
+  function layoutMetricsUnmeasurable(plan, finish, options, wallHeightFt, message) {
+    var unmeasurable = emptyLayoutMetrics(wallHeightFt || normalizeWallHeight(finish.wall_height_ft));
+    unmeasurable.geometry_unmeasurable = true;
+    unmeasurable.geometry_message = message || 'Room geometry could not be measured.';
+    return applyZaniniExtensions(unmeasurable, plan, finish, options);
+  }
+
   function getZaniniExtensions() {
     if (typeof OpenPlan3DZaniniExtensions !== 'undefined') {
       return OpenPlan3DZaniniExtensions;
@@ -1011,7 +1022,11 @@
     var boundaryWallIds = loopData.boundary_wall_ids || [];
     var storedPoly = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
     var polyVertices = applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit, roomWIds);
-    if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
+    if (polyVertices.length < 3) {
+      var preHeight = normalizeWallHeight(finish.wall_height_ft || DEFAULT_WALL_HEIGHT_FT);
+      return layoutMetricsUnmeasurable(plan, finish, options, preHeight,
+        'Room geometry could not be measured.');
+    }
 
     // Convert polygon vertices to feet
     var verticesFt = [];
@@ -1043,13 +1058,15 @@
       var unmeasurable = emptyLayoutMetrics(wallHeightFt);
       unmeasurable.geometry_unmeasurable = true;
       unmeasurable.geometry_message = 'Room shape crosses itself — adjust corners.';
-      var perimLf = 0.0;
-      for (var pi = 0; pi < verticesFt.length; pi++) {
-        var pj = (pi + 1) % verticesFt.length;
-        perimLf += hypot(verticesFt[pj].x - verticesFt[pi].x, verticesFt[pj].y - verticesFt[pi].y);
+      if (verticesFt.length >= 3) {
+        var perimLf = 0.0;
+        for (var pi = 0; pi < verticesFt.length; pi++) {
+          var pj = (pi + 1) % verticesFt.length;
+          perimLf += hypot(verticesFt[pj].x - verticesFt[pi].x, verticesFt[pj].y - verticesFt[pi].y);
+        }
+        unmeasurable.perimeter_lf = roundTo(perimLf, 2);
+        unmeasurable.baseboard_lf = unmeasurable.perimeter_lf;
       }
-      unmeasurable.perimeter_lf = roundTo(perimLf, 2);
-      unmeasurable.baseboard_lf = unmeasurable.perimeter_lf;
       return applyZaniniExtensions(unmeasurable, plan, finish, options);
     }
     var ceilingAreaSqFt = insideAreaSqFt;

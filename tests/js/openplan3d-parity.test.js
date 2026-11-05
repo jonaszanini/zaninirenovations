@@ -291,43 +291,41 @@ const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_f
 assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
 assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
 
-// Test 12: Noisy closed perimeter corners stay measurable (shared corner jitter)
-function jitterClosedPerimeterPlan(plan, maxOffsetCm) {
+// Test 12: Independent endpoint noise ±1.5–3 cm (hand0 drawn perimeter)
+function jitterIndependentEndpoints(plan, maxOffsetCm) {
   var copy = JSON.parse(JSON.stringify(plan));
   var walls = copy.floor && copy.floor.walls ? copy.floor.walls : copy.walls;
   if (!walls) return copy;
-  var buckets = {};
   for (var wi = 0; wi < walls.length; wi++) {
     var w = walls[wi];
     if (!w || !w.start || !w.end) continue;
-    for (var ki = 0; ki < 2; ki++) {
-      var keyName = ki === 0 ? 'start' : 'end';
-      var pt = w[keyName];
-      var bucketKey = Math.round(Number(pt.x || 0) * 10) + ':' + Math.round(Number(pt.y || 0) * 10);
-      if (!buckets[bucketKey]) {
-        buckets[bucketKey] = {
-          dx: (Math.random() - 0.5) * 2 * maxOffsetCm,
-          dy: (Math.random() - 0.5) * 2 * maxOffsetCm
-        };
-      }
-      w[keyName].x = Number(pt.x || 0) + buckets[bucketKey].dx;
-      w[keyName].y = Number(pt.y || 0) + buckets[bucketKey].dy;
-    }
+    w.start.x = Number(w.start.x || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.start.y = Number(w.start.y || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.end.x = Number(w.end.x || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
+    w.end.y = Number(w.end.y || 0) + (Math.random() - 0.5) * 2 * maxOffsetCm;
   }
   return copy;
 }
 
-var hand0PerimeterOnly = JSON.parse(JSON.stringify(hand0Plan));
-hand0PerimeterOnly.floor.walls = hand0PerimeterOnly.floor.walls.filter(function (w) {
-  return w.id !== 'z9ajm00u' && w.id !== 'mclt5ix7';
-});
-for (var jitterCm = 0.5; jitterCm <= 3.01; jitterCm += 2.5) {
-  var noisyHand = jitterClosedPerimeterPlan(hand0PerimeterOnly, jitterCm);
-  var noisyMetrics = bridge.layoutMetrics(noisyHand, null, { wall_height_ft: 8.0 });
-  assert.ok(
-    noisyMetrics.area_sqft > 1300 && !noisyMetrics.geometry_unmeasurable,
-    'Noisy perimeter offset ' + jitterCm + ' cm must stay measurable, got area ' + noisyMetrics.area_sqft
-  );
+var independentOffsetsCm = [1.5, 2.5, 3.0];
+for (var oi = 0; oi < independentOffsetsCm.length; oi++) {
+  var maxCm = independentOffsetsCm[oi];
+  for (var trial = 0; trial < 8; trial++) {
+    var noisyIndependent = jitterIndependentEndpoints(hand0Plan, maxCm);
+    var independentMetrics = bridge.layoutMetrics(noisyIndependent, null, { wall_height_ft: 8.0 });
+    assert.ok(
+      independentMetrics.area_sqft > 1300 && independentMetrics.area_sqft < 1380 && !independentMetrics.geometry_unmeasurable,
+      'Independent ±' + maxCm + ' cm jitter trial ' + trial + ' must stay measurable (~1346 sq ft), got ' + independentMetrics.area_sqft
+    );
+  }
 }
+
+// Test 13: Unmeasurable when outer loop cannot be recovered (never silent zero)
+var brokenPlan = jitterIndependentEndpoints(hand0Plan, 25);
+brokenPlan.floor.rooms = [];
+delete brokenPlan.floors;
+var brokenMetrics = bridge.layoutMetrics(brokenPlan, null, { wall_height_ft: 8.0 });
+assert.strictEqual(brokenMetrics.geometry_unmeasurable, true, 'Extreme noise must flag geometry_unmeasurable');
+assert.strictEqual(brokenMetrics.area_sqft, 0, 'Extreme noise must not report a false positive area');
 
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

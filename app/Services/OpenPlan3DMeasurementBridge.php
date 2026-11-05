@@ -118,9 +118,7 @@ class OpenPlan3DMeasurementBridge
 
         $resolvedRooms = $this->resolveRooms($floor, $walls, $cmPerUnit);
         if ($resolvedRooms === []) {
-            $wallHeight = (float) ($finish['wall_height_ft'] ?? self::DEFAULT_WALL_HEIGHT_FT);
-
-            return $this->emptyLayoutMetrics($wallHeight);
+            throw new InvalidArgumentException('Room geometry could not be measured.');
         }
 
         if ($roomId === null && count($resolvedRooms) > 1) {
@@ -227,9 +225,7 @@ class OpenPlan3DMeasurementBridge
 
         $polygonVertices = $selectedRoom['polygon'] ?? [];
         if (count($polygonVertices) < 3) {
-            $wallHeight = (float) ($finish['wall_height_ft'] ?? self::DEFAULT_WALL_HEIGHT_FT);
-
-            return $this->emptyLayoutMetrics($wallHeight);
+            throw new InvalidArgumentException('Room geometry could not be measured.');
         }
 
         // Room finish and heights
@@ -265,6 +261,9 @@ class OpenPlan3DMeasurementBridge
             throw new InvalidArgumentException($areaValidation['message'] ?? 'Room geometry could not be measured.');
         }
         $insideAreaSqFt = $this->roundTo((float) $areaValidation['area_sqft'], 2);
+        if ($insideAreaSqFt <= 0.01) {
+            throw new InvalidArgumentException('Room shape crosses itself — adjust corners.');
+        }
 
         // Ceiling area
         $ceilingAreaSqFt = $this->finishMath->ceilingAreaSqFt($insideAreaSqFt);
@@ -908,7 +907,7 @@ class OpenPlan3DMeasurementBridge
             ];
         }
 
-        $this->clusterSegmentEndpoints($rawSegments, $cmPerUnit);
+        $this->clusterSegmentEndpoints($rawSegments, $cmPerUnit, $walls);
 
         $allEndpoints = [];
         foreach ($rawSegments as $s) {
@@ -988,7 +987,7 @@ class OpenPlan3DMeasurementBridge
 
         // 4. Cluster vertices into unique node IDs
         $nodes = [];
-        $nodeClusterUnit = $this->endpointClusterToleranceCm() / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
+        $nodeClusterUnit = $this->endpointClusterToleranceCm($walls, $cmPerUnit) / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
         $findNode = function ($pt) use (&$nodes, $nodeClusterUnit, $cmPerUnit) {
             $snapped = $this->snapPlanPoint($pt, $cmPerUnit);
             foreach ($nodes as $id => $nPt) {
@@ -1238,17 +1237,24 @@ class OpenPlan3DMeasurementBridge
         return min($maxCm, max($baseCm, $minLenCm * 0.08));
     }
 
-    private function endpointClusterToleranceCm(): float
+    /**
+     * @param  list<array<string, mixed>>  $walls
+     */
+    private function endpointClusterToleranceCm(array $walls, float $cmPerUnit): float
     {
-        return 2.5;
+        $junctionCm = $this->partitionToleranceCm($walls, $cmPerUnit);
+        $drawNoiseCm = 3.5;
+
+        return min($junctionCm, max($drawNoiseCm, $junctionCm * 0.45));
     }
 
     /**
      * @param  list<array{wallId: string, start: array{x: float, y: float}, end: array{x: float, y: float}, wall: array<string, mixed>, splitPoints: list<mixed>}>  $rawSegments
+     * @param  list<array<string, mixed>>  $walls
      */
-    private function clusterSegmentEndpoints(array &$rawSegments, float $cmPerUnit): void
+    private function clusterSegmentEndpoints(array &$rawSegments, float $cmPerUnit, array $walls): void
     {
-        $clusterCm = $this->endpointClusterToleranceCm();
+        $clusterCm = $this->endpointClusterToleranceCm($walls, $cmPerUnit);
         $epsUnit = $clusterCm / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
         $refs = [];
         foreach ($rawSegments as $si => $seg) {
@@ -1502,7 +1508,7 @@ class OpenPlan3DMeasurementBridge
                     $r['polygon'] = $loop['outer_polygon'];
                 } elseif (count($storedPoly) >= 3) {
                     $r['polygon'] = $storedPoly;
-                } elseif (count($loop['outer_polygon']) >= 3) {
+                } elseif ($this->outerLoopHasUsableArea($loop['outer_polygon'], $cmPerUnit)) {
                     $r['polygon'] = $loop['outer_polygon'];
                 }
 
@@ -1512,21 +1518,14 @@ class OpenPlan3DMeasurementBridge
 
                 if (isset($r['polygon']) && is_array($r['polygon']) && count($r['polygon']) >= 3) {
                     $rooms[] = $r;
-                    continue;
-                }
-
-                $rPolygon = $this->resolveRoomPolygon($r, $walls);
-                if (count($rPolygon) >= 3) {
-                    $r['polygon'] = $rPolygon;
-                    $rooms[] = $r;
                 }
             }
         }
 
         // Fallback: If no rooms are explicitly defined, construct from outer loop of walls
-        if ($rooms === []) {
+        if ($rooms === [] && (! is_array($rawRooms) || count($rawRooms) === 0)) {
             $loop = $this->extractOuterLoopAndPartitions(array_values($walls), $cmPerUnit);
-            if (count($loop['outer_polygon']) >= 3) {
+            if (count($loop['outer_polygon']) >= 3 && $this->outerLoopHasUsableArea($loop['outer_polygon'], $cmPerUnit)) {
                 $rooms[] = [
                     'id' => 'r1',
                     'name' => 'Room 1',
@@ -1536,16 +1535,6 @@ class OpenPlan3DMeasurementBridge
                     'partition_walls' => $loop['partition_walls'],
                     'partition_wall_ids' => $loop['partition_wall_ids'],
                 ];
-            } else {
-                $poly = $this->traceWallsToPolygon(array_values($walls));
-                if (count($poly) >= 3) {
-                    $rooms[] = [
-                        'id' => 'r1',
-                        'name' => 'Room 1',
-                        'walls' => array_keys($walls),
-                        'polygon' => $poly,
-                    ];
-                }
             }
         }
 
