@@ -183,11 +183,65 @@
   function normalizeZanini(raw) {
     raw = raw || {};
     return {
+      version: raw.version != null ? raw.version : 1,
       excluded_area_zones: Array.isArray(raw.excluded_area_zones) ? raw.excluded_area_zones : [],
       zones: Array.isArray(raw.zones) ? raw.zones : [],
       bulkheads: Array.isArray(raw.bulkheads) ? raw.bulkheads : [],
       wallFinishes: raw.wallFinishes && typeof raw.wallFinishes === 'object' ? raw.wallFinishes : {}
     };
+  }
+
+  /** Deep-merge per-wall finish flags; incoming explicit keys win, empty incoming does not drop saved flags. */
+  function mergeWallFinishes(previousFinishes, incomingFinishes) {
+    previousFinishes = previousFinishes && typeof previousFinishes === 'object' ? previousFinishes : {};
+    incomingFinishes = incomingFinishes && typeof incomingFinishes === 'object' ? incomingFinishes : {};
+    var merged = {};
+    var ids = {};
+    Object.keys(previousFinishes).forEach(function (id) { ids[id] = true; });
+    Object.keys(incomingFinishes).forEach(function (id) { ids[id] = true; });
+    Object.keys(ids).forEach(function (wallId) {
+      var prev = previousFinishes[wallId];
+      var inc = incomingFinishes[wallId];
+      var out = {};
+      if (prev && typeof prev === 'object') {
+        Object.keys(prev).forEach(function (k) {
+          out[k] = prev[k];
+        });
+      }
+      if (inc && typeof inc === 'object') {
+        Object.keys(inc).forEach(function (k) {
+          if (Object.prototype.hasOwnProperty.call(inc, k)) {
+            out[k] = inc[k];
+          }
+        });
+      }
+      if (Object.keys(out).length) {
+        merged[wallId] = out;
+      }
+    });
+    return merged;
+  }
+
+  function mergeZaniniSnapshots(previousZanini, incomingZanini) {
+    var prev = normalizeZanini(previousZanini);
+    var inc = normalizeZanini(incomingZanini);
+    var out = {
+      version: inc.version != null ? inc.version : prev.version,
+      excluded_area_zones: prev.excluded_area_zones.slice(),
+      zones: prev.zones.slice(),
+      bulkheads: prev.bulkheads.slice(),
+      wallFinishes: mergeWallFinishes(prev.wallFinishes, inc.wallFinishes)
+    };
+    if (Array.isArray(inc.excluded_area_zones) && inc.excluded_area_zones.length) {
+      out.excluded_area_zones = inc.excluded_area_zones.slice();
+    }
+    if (Array.isArray(inc.zones) && inc.zones.length) {
+      out.zones = inc.zones.slice();
+    }
+    if (Array.isArray(inc.bulkheads) && inc.bulkheads.length) {
+      out.bulkheads = inc.bulkheads.slice();
+    }
+    return out;
   }
 
   function zoneAxisRect(zone) {
@@ -462,6 +516,13 @@
     return metrics;
   }
 
+  function resolveBaseboardSides(flags, isBoundaryWall) {
+    if (isBoundaryWall) return 1;
+    var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+    sides = sides === 1 ? 1 : 2;
+    return sides;
+  }
+
   function applyWallFinishMetrics(metrics, zanini) {
     var walls = metrics.walls || [];
     var boundaryIds = metrics.boundary_wall_ids || [];
@@ -500,8 +561,7 @@
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += len;
         if (flagEnabled(flags, 'baseboard', true)) {
-          var sides = flags.baseboardSides != null ? Number(flags.baseboardSides) : (isB ? 1 : 2);
-          sides = Math.max(1, Math.min(2, sides));
+          var sides = resolveBaseboardSides(flags, isB);
           baseboard += len * sides;
         }
       }
@@ -540,6 +600,9 @@
     zoneAreaSqFt: zoneAreaSqFt,
     extractZanini: extractZanini,
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
+    mergeWallFinishes: mergeWallFinishes,
+    mergeZaniniSnapshots: mergeZaniniSnapshots,
+    resolveBaseboardSides: resolveBaseboardSides,
     normalizeZanini: normalizeZanini,
     applyToMetrics: applyToMetrics,
     bulkheadTakeoff: bulkheadTakeoff,

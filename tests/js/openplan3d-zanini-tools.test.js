@@ -170,4 +170,44 @@ assert.strictEqual(tools.getMode(), null);
 assert.strictEqual(mockCanvas.style.cursor, '');
 assert.ok(!htmlClass['openplan3d-zanini-draw-mode'], 'draw mode class cleared on exit');
 
+global.window.__openPlan3D = {
+  getProject: function () {
+    return {
+      activeFloorId: 'f1',
+      floors: [{
+        id: 'f1',
+        walls: [
+          { id: 'inner1', start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
+          { id: 'mtn32xy9', start: { x: 0, y: 0 }, end: { x: 20, y: 0 } },
+        ],
+        rooms: [
+          { id: 'r-living', walls: ['inner1'] },
+          { id: 'r-basement', boundary_wall_ids: ['mtn32xy9'], walls: ['mtn32xy9'] },
+        ],
+      }],
+    };
+  },
+  setProject: function () {},
+};
+assert.strictEqual(tools.wallIsBoundary('mtn32xy9'), true, 'perimeter wall on non-first room must be boundary');
+assert.strictEqual(tools.wallIsBoundary('inner1'), true, 'room.walls list still marks boundary membership');
+assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is not boundary');
+assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
+assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');
+
+assert.deepStrictEqual(
+  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA']),
+  ['partA'],
+  'perimeter walls excluded from baseboard sides control'
+);
+assert.strictEqual(
+  tools.readBaseboardSidesForWall({ mtn32xy9: { baseboardSides: 2 } }, 'mtn32xy9'),
+  1,
+  'readBaseboardSides clamps perimeter to interior-only'
+);
+assert.strictEqual(
+  tools.readBaseboardSidesForWall({ partA: { baseboardSides: 1 } }, 'partA'),
+  1
+);
+
 console.log('openplan3d-zanini-tools: ok');

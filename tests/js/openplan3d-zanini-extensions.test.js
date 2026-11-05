@@ -78,6 +78,18 @@ assert.strictEqual(bulkheadOut.bulkhead_framing_lf, 27);
 assert.strictEqual(bulkheadOut.bulkhead_drywall_sqft, 30);
 assert.strictEqual(bulkheadOut.bulkhead_corner_bead_lf, 10);
 
+const mergedFinishes = ext.mergeWallFinishes(
+  { w1: { studs: false, drywall: true } },
+  {}
+);
+assert.strictEqual(mergedFinishes.w1.studs, false, 'empty incoming must not drop studs:false');
+
+const ackMerge = ext.mergeZaniniSnapshots(
+  { wallFinishes: { w1: { studs: false } } },
+  { wallFinishes: {} }
+);
+assert.strictEqual(ackMerge.wallFinishes.w1.studs, false, 'editor scaffold zanini must not wipe saved finishes');
+
 const corner = ext.bulkheadTakeoff(10, 2, 1, true);
 assert.strictEqual(corner.drywall_sqft, 30);
 assert.strictEqual(corner.corner_bead_lf, 10);

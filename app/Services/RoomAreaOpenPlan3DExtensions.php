@@ -298,8 +298,10 @@ class RoomAreaOpenPlan3DExtensions
                     $studs += $lengthLf;
                 }
                 if ($this->flagEnabled($flags, 'baseboard', true)) {
-                    $sides = (int) ($flags['baseboardSides'] ?? ($isBoundary ? 1 : 2));
-                    $sides = max(1, min(2, $sides));
+                    $sides = $isBoundary ? 1 : (int) ($flags['baseboardSides'] ?? 2);
+                    if (! $isBoundary) {
+                        $sides = max(1, min(2, $sides));
+                    }
                     $baseboard += $lengthLf * (float) $sides;
                 }
             }
