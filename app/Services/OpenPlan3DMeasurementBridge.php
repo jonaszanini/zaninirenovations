@@ -135,6 +135,7 @@ class OpenPlan3DMeasurementBridge
             $totalPolygonCount = count($resolvedRooms);
             $totalSharedWallLf = 0.0;
             $totalFramingLf = 0.0;
+            $totalPartitionLf = 0.0;
             $totalOutsideArea = 0.0;
             $totalCeilingArea = 0.0;
             $totalCasingLf = 0.0;
@@ -156,6 +157,7 @@ class OpenPlan3DMeasurementBridge
                 $totalOutsideCorners += $sub['outside_corners'];
                 $totalSharedWallLf += $sub['shared_wall_lf'];
                 $totalFramingLf += $sub['framing_lf'];
+                $totalPartitionLf += $sub['partition_lf'] ?? 0;
                 $totalOutsideArea += $sub['outside_area_sqft'];
                 $totalCeilingArea += $sub['ceiling_area_sqft'];
                 $totalCasingLf += $sub['casing_lf'];
@@ -172,7 +174,7 @@ class OpenPlan3DMeasurementBridge
 
             $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
 
-            return [
+            return $this->extensions->applyToMetrics([
                 'area_sqft' => $this->roundTo($totalInsideArea, 2),
                 'perimeter_lf' => $this->roundTo($totalPerimeter, 2),
                 'baseboard_lf' => $this->roundTo($totalBaseboard, 2),
@@ -190,6 +192,7 @@ class OpenPlan3DMeasurementBridge
                 'outside_area_sqft' => $this->roundTo($totalOutsideArea, 2),
                 'shared_wall_lf' => $this->roundTo($totalSharedWallLf, 2),
                 'framing_lf' => $this->roundTo($totalFramingLf, 2),
+                'partition_lf' => $this->roundTo($totalPartitionLf, 2),
                 'cabinet_base_lf' => $library['cabinet_base_lf'],
                 'cabinet_upper_lf' => $library['cabinet_upper_lf'],
                 'stairs_count' => $library['stairs_count'],
@@ -206,7 +209,7 @@ class OpenPlan3DMeasurementBridge
                 'flooring_boxes' => $flooringBoxes,
                 'flooring_with_waste_sqft' => $flooringWithWasteSqFt,
                 'casing_lf' => $this->roundTo($totalCasingLf, 2),
-            ];
+            ], $plan, $finish, $cmPerUnit);
         }
 
         // Pick matching room or first room
@@ -382,11 +385,13 @@ class OpenPlan3DMeasurementBridge
         }
 
         // Partition walls (interior): count both faces (2x)
+        $partitionLf = 0.0;
         foreach ($partitionWalls as $pw) {
             $wId = (string) $pw['id'];
             $dx = ((float) $pw['end']['x'] - (float) $pw['start']['x']) * $cmPerUnit;
             $dy = ((float) $pw['end']['y'] - (float) $pw['start']['y']) * $cmPerUnit;
             $lengthFt = hypot($dx, $dy) / self::CM_PER_FOOT;
+            $partitionLf += $lengthFt;
             $wallLengthIn = $lengthFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
 
@@ -472,6 +477,7 @@ class OpenPlan3DMeasurementBridge
             'outside_area_sqft' => $outsideAreaSqFt,
             'shared_wall_lf' => $sharedLf,
             'framing_lf' => $framingLf,
+            'partition_lf' => $this->roundTo($partitionLf, 2),
             'cabinet_base_lf' => $library['cabinet_base_lf'],
             'cabinet_upper_lf' => $library['cabinet_upper_lf'],
             'stairs_count' => $library['stairs_count'],
@@ -523,6 +529,10 @@ class OpenPlan3DMeasurementBridge
             'outside_area_sqft' => 0.0,
             'shared_wall_lf' => 0.0,
             'framing_lf' => 0.0,
+            'partition_lf' => 0.0,
+            'bulkhead_lf' => 0.0,
+            'bulkhead_framing_lf' => 0.0,
+            'bulkhead_drywall_sqft' => 0.0,
             'cabinet_base_lf' => 0.0,
             'cabinet_upper_lf' => 0.0,
             'stairs_count' => 0,

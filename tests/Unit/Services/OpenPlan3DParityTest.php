@@ -504,6 +504,7 @@ class OpenPlan3DParityTest extends TestCase
         $walls = $plan['floor']['walls'];
         $loop = $this->bridge->extractOuterLoopAndPartitions($walls, 1.0);
         $this->assertCount(2, $loop['partition_walls']);
+        $this->assertEquals(20.0, $metrics['partition_lf']);
         $storedPoly = $plan['floor']['rooms'][0]['polygon'];
         $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop(
             $storedPoly,

@@ -1750,6 +1750,74 @@ class BasementQuotationCalculatorTest extends TestCase
         );
     }
 
+    public function test_offered_flooring_types_exclude_carpet(): void
+    {
+        $this->assertArrayHasKey('hardwood', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayHasKey('engineered', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayHasKey('lvp', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayHasKey('laminate', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayHasKey('tile', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayNotHasKey('carpet', BasementQuotationCalculator::FLOORING_TYPES);
+        $this->assertArrayNotHasKey('epoxy', BasementQuotationCalculator::FLOORING_TYPES);
+    }
+
+    public function test_hardwood_and_engineered_maps_use_matching_catalog_keys(): void
+    {
+        $hardwood = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'flooring_type' => 'hardwood',
+            'flooring_sf' => 200,
+            'underlayment' => false,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+        $labor = collect($hardwood['labor'])->firstWhere('key', 'fl_install');
+        $this->assertNotNull($labor);
+        $this->assertStringContainsString('Hardwood', $labor['label']);
+        $this->assertStringNotContainsString('Carpet', $labor['label']);
+        $mat = collect($hardwood['materials'])->firstWhere('key', 'flooring_finish');
+        $this->assertNotNull($mat);
+        $this->assertStringContainsString('Hardwood', $mat['label']);
+
+        $legacyCarpet = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 200,
+            'flooring_type' => 'carpet',
+            'flooring_sf' => 200,
+            'underlayment' => false,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'owner_hourly_rate' => 80,
+        ], $this->settings());
+        $carpetLabor = collect($legacyCarpet['labor'])->firstWhere('key', 'fl_install');
+        $this->assertNotNull($carpetLabor);
+        $this->assertStringNotContainsString('Carpet', $carpetLabor['label']);
+    }
+
+    public function test_trade_line_helper_does_not_claim_licensed_contractors(): void
+    {
+        $src = (string) file_get_contents((new \ReflectionClass(BasementQuotationCalculator::class))->getFileName());
+        $this->assertStringNotContainsString('Licensed electrical', $src);
+        $this->assertStringNotContainsString('Licensed electrical / plumbing', $src);
+        $this->assertDoesNotMatchRegularExpression('/\blicensed\b/i', $src);
+        $this->assertStringContainsString('qualified electrician', $src);
+        $this->assertStringContainsString('qualified plumber', $src);
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

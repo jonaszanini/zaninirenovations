@@ -192,6 +192,8 @@ class BasementSettings extends Model
             'thinset_grout' => $row('Thinset & grout, 50 lb bag (each)', 'bag', round(1.10 * self::THINSET_SF_PER_BAG, 4)),
             'lvp' => $row('LVP flooring (per sq ft)', 'sf', 3.50),
             'laminate' => $row('Laminate flooring (per sq ft)', 'sf', 2.75),
+            'hardwood' => $row('Hardwood flooring (per sq ft)', 'sf', 8.50),
+            'engineered' => $row('Engineered wood flooring (per sq ft)', 'sf', 6.50),
             'carpet' => $row('Carpet + pad (per sq ft)', 'sf', 3.25),
             'epoxy' => $row('Epoxy floor coating (per sq ft)', 'sf', 4.00),
             'underlayment' => $row('Floor underlayment, 100 sq ft roll (each)', 'roll', round(0.45 * self::UNDERLAYMENT_SF_PER_ROLL, 4)),

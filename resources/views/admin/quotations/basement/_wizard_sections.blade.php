@@ -137,7 +137,7 @@
       'flooring_sf' => 'Floor area to install. Blank uses the work area.',
       'transition_qty' => 'Reducer or T-mould strips where the new floor meets another floor or a different height.',
       'subfloor_prep' => 'Level or patch the concrete/subfloor before underlayment and finish flooring.',
-      'underlayment' => 'Foam or cork under LVP, laminate, or carpet. Not used with tile or epoxy.',
+      'underlayment' => 'Foam or cork under LVP or laminate. Not used with tile or epoxy.',
       'door_qty' => 'Prehung or slab interior doors to hang, including bath and closet doors.',
       'baseboard_lf' => 'Baseboard length. Blank uses the room perimeter from the work area, or both sides of the new wall on the wall preset.',
       'include_shoe' => 'Install shoe moulding using the same shared rate as Flooring and Trimming.',
@@ -231,7 +231,7 @@
         @foreach (\App\Services\BasementQuotationCalculator::tradeSections() as $tradeKey => $tradeLabel)
           @include('admin.partials.checkbox', [
             'name' => 'enabled_sections[]',
-            'value' => $tradeKey,
+            'checkboxValue' => $tradeKey,
             'checked' => in_array($tradeKey, $enabledNow, true),
             'label' => $tradeLabel,
             'inputClass' => 'admin-checkbox__input br-preview',
@@ -772,12 +772,15 @@
   @include('admin.partials.info_tip', ['tipText' => $brInfo['flooring_type'], 'tipLabel' => 'Final flooring type'])
 </span>
         <select class="admin-input br-preview" id="br-fl-type" name="flooring_type">
-          <option value="lvp" @selected($brVal('flooring_type', 'lvp') === 'lvp')>LVP</option>
-          <option value="laminate" @selected($brVal('flooring_type') === 'laminate')>Laminate</option>
-          <option value="tile" @selected($brVal('flooring_type') === 'tile')>Tile</option>
-          <option value="carpet" @selected($brVal('flooring_type') === 'carpet')>Carpet</option>
-          <option value="epoxy" @selected($brVal('flooring_type') === 'epoxy')>Epoxy</option>
-          <option value="none" @selected($brVal('flooring_type') === 'none')>Skip flooring</option>
+          @php
+            $flCurrent = (string) $brVal('flooring_type', 'lvp');
+            if (! array_key_exists($flCurrent, \App\Services\BasementQuotationCalculator::FLOORING_TYPES)) {
+              $flCurrent = 'lvp';
+            }
+          @endphp
+          @foreach (\App\Services\BasementQuotationCalculator::FLOORING_TYPES as $flKey => $flLabel)
+            <option value="{{ $flKey }}" @selected($flCurrent === $flKey)>{{ $flLabel }}</option>
+          @endforeach
         </select>
       </div>
       @include('admin.quotations.basement._qty_lw', [
@@ -814,7 +817,7 @@
     </div>
     <div class="br-check-grid br-check-grid--inset">
       @include('admin.partials.checkbox', ['name' => 'subfloor_prep', 'hiddenFallback' => true, 'checked' => $brOn('subfloor_prep'), 'label' => 'Subfloor preparation / leveling', 'info' => $brInfo['subfloor_prep'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('subfloor_prep')])
-      @include('admin.partials.checkbox', ['name' => 'underlayment', 'hiddenFallback' => true, 'checked' => $brOn('underlayment', true), 'label' => 'Underlayment (LVP / laminate / carpet)', 'info' => $brInfo['underlayment'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('underlayment')])
+      @include('admin.partials.checkbox', ['name' => 'underlayment', 'hiddenFallback' => true, 'checked' => $brOn('underlayment', true), 'label' => 'Underlayment (LVP / laminate)', 'info' => $brInfo['underlayment'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('underlayment')])
     </div>
   </div>
 </details>

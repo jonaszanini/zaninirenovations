@@ -101,7 +101,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Import layout')
             ->assertSee('Search rooms', false)
             ->assertSee('name="perimeter_lf"', false)
-            ->assertSee('data-br-layout-picker', false);
+            ->assertSee('data-br-layout-picker', false)
+            ->assertSee('admin-basement-layout-import.js', false)
+            ->assertSee('id="br-bulkhead"', false)
+            ->assertSee('id="br-partition"', false);
     }
 
     public function test_project_context_sits_between_price_configuration_and_next(): void
@@ -270,6 +273,47 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'helper_hourly_rate' => 40,
         ])->assertOk()->json();
         $this->assertEquals(0, (float) ($withoutPermit['summary']['permit_pre_hst'] ?? 0));
+    }
+
+    public function test_preview_with_posted_trade_keys_yields_a_positive_grand_total(): void
+    {
+        $this->actingAsAdmin();
+
+        $html = $this->get(route('admin.quotations.basement.create'))
+            ->assertOk()
+            ->getContent();
+        foreach (array_keys(\App\Services\BasementQuotationCalculator::tradeSections()) as $tradeKey) {
+            $this->assertMatchesRegularExpression(
+                '/name="enabled_sections\[]"[^>]*value="'.preg_quote($tradeKey, '/').'"/',
+                $html
+            );
+        }
+
+        $keys = array_merge(
+            ['overview'],
+            array_keys(\App\Services\BasementQuotationCalculator::tradeSections())
+        );
+        $withKeys = $this->post(route('admin.quotations.basement.preview'), [
+            'area_sqft' => 500,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'enabled_sections' => $keys,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()->json();
+        $this->assertGreaterThan(0, (float) ($withKeys['summary']['grand_total'] ?? 0));
+        $this->assertGreaterThan(0, (float) ($withKeys['summary']['labor_pre_hst'] ?? 0));
+
+        $bogusOnes = $this->post(route('admin.quotations.basement.preview'), [
+            'area_sqft' => 500,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'enabled_sections' => ['overview', '1', '1', '1'],
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ])->assertOk()->json();
+        $this->assertSame(0.0, (float) ($bogusOnes['summary']['labor_pre_hst'] ?? -1));
+        $this->assertSame(0.0, (float) ($bogusOnes['summary']['grand_total'] ?? -1));
     }
 
     public function test_preview_uses_imported_layout_perimeter(): void

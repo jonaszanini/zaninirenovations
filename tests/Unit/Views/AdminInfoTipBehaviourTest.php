@@ -81,6 +81,24 @@ BLADE);
         $this->assertStringContainsString('name="sync_client_directory" value="0"', $html);
     }
 
+    public function test_checkbox_uses_explicit_checkbox_value_for_trade_keys(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'enabled_sections[]',
+            'checkboxValue' => 'framing',
+            'checked' => true,
+            'label' => 'Framing',
+            'attrs' => ['data-br-enabled-section' => 'framing'],
+            'errors' => new ViewErrorBag,
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/<input type="checkbox"[^>]*name="enabled_sections\[]"[^>]*value="framing"/',
+            $html
+        );
+        $this->assertStringNotContainsString('value="1"', $html);
+    }
+
     public function test_checkbox_derives_rewriteable_id_from_name_not_uniqid(): void
     {
         $html = view('admin.partials.checkbox', [
