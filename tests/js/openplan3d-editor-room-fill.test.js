@@ -53,16 +53,21 @@ const beforeMetrics = bridge.layoutMetrics(vendorStyle, 'r1', { wall_height_ft: 
 assert.ok(beforeMetrics.area_sqft > 1300, 'takeoffs stay positive with vendor-style room.walls');
 
 const synced = bridge.syncEditorRoomBoundariesForCanvasFill(vendorStyle);
-assert.strictEqual(synced.changed, true, 'must trim room.walls when partitions exist');
-const roomWalls = synced.plan.floors[0].rooms[0].walls;
-assert.ok(roomWalls.length < vendorStyle.floors[0].walls.length, 'room.walls must drop partition ids');
-assert.deepStrictEqual(
-  roomWalls.slice().sort(),
-  loop.boundary_wall_ids.slice().sort(),
-  'room.walls must match outer boundary ids for canvas Bo()'
+assert.strictEqual(synced.changed, false, 'must not rewrite saved room id/name/walls on load');
+assert.strictEqual(synced.plan.floors[0].rooms[0].id, 'r1');
+assert.strictEqual(synced.plan.floors[0].rooms[0].name, 'Basement');
+assert.strictEqual(
+  synced.plan.floors[0].rooms[0].walls.length,
+  vendorStyle.floors[0].walls.length,
+  'saved room.walls must stay untouched'
 );
 
-const again = bridge.syncEditorRoomBoundariesForCanvasFill(synced.plan);
+const ephemeral = bridge.canvasFillRoomEntries(emptyTwoStubs);
+assert.ok(ephemeral.length >= 1, 'live-edit canvas fill must expose polygons without persisting');
+assert.ok(ephemeral[0].polygon.length >= 3);
+assert.strictEqual(bridge.canvasFillRoomEntries(vendorStyle).length, 0, 'skip ephemeral when rooms[] populated');
+
+const again = bridge.syncEditorRoomBoundariesForCanvasFill(vendorStyle);
 assert.strictEqual(again.changed, false, 'second sync must be idempotent');
 
 const perimeterOnly = emptyRoomsPlan(hand0);

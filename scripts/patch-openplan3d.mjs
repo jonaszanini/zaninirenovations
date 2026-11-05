@@ -24,7 +24,7 @@ const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
 /** Cache-bust: browsers may immutable-cache the upstream editor chunk filename. */
-const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h3.js';
+const PATCHED_STORE_CHUNK_BASENAME = '1VjVcrjm-h4.js';
 const PATCHED_EDITOR_CHUNK_BASENAME = 'CgAQI-i0-h3.js';
 
 const require = createRequire(import.meta.url);
@@ -252,23 +252,24 @@ function patchStoreChunk(source) {
   }
 
   const unOld = 'function un(e){ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
-  const unNew =
+  const unPatched =
     'function un(e){if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill==="function"){const __zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill(e);__zaniniRf&&__zaniniRf.changed&&__zaniniRf.plan&&(e=__zaniniRf.plan)}ce.length=0,Ce.length=0,xe=0,_t=null,qe="",nt(),it(),I.set(e),Ye()}';
-  if (s.includes(unOld)) {
-    s = replaceExpected(s, unOld, unNew, 'store chunk: sync room boundaries inside setProject (un)', 1);
-  } else if (!s.includes('__zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill')) {
-    console.error('patch-openplan3d: store chunk: un() room-fill hook pattern not found');
-    process.exit(1);
+  if (s.includes('__zaniniRf=window.OpenPlan3DMeasurementBridge.syncEditorRoomBoundariesForCanvasFill')) {
+    s = replaceExpected(s, unPatched, unOld, 'store chunk: remove load-time room sync from un()', 1);
   }
 
   const vaOld =
     'function va(e,t=[]){const n=vt(e.walls);return Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)}))}';
-  const vaNew =
+  const vaPatchedMerge =
     'function va(e,t=[]){const n=vt(e.walls);const __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon.length>=3);const __zaniniSeen=new Set(__zaniniAuto.map(x=>x.room.id));for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom||__zaniniSeen.has(__zaniniRoom.id))continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});__zaniniSeen.add(__zaniniRoom.id)}return __zaniniAuto}';
-  if (s.includes(vaOld)) {
-    s = replaceExpected(s, vaOld, vaNew, 'store chunk: va() include persisted floor.rooms for canvas', 1);
-  } else if (!s.includes('__zaniniAuto=Ro(e,t,n).map')) {
-    console.error('patch-openplan3d: store chunk: va() persisted-room pattern not found');
+  const vaNew =
+    'function va(e,t=[]){const n=vt(e.walls);let __zaniniAuto=Ro(e,t,n).map(o=>({room:o,polygon:Bo(o,n)})).filter(x=>x.polygon&&x.polygon.length>=3);if(__zaniniAuto.length===0&&typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries==="function"){const __zaniniEphemeral=window.OpenPlan3DMeasurementBridge.canvasFillRoomEntries({unit:e.unit||"cm",activeFloorId:e.id,floors:[e],floor:e})||[];if(__zaniniEphemeral.length>0)__zaniniAuto=__zaniniEphemeral;}if(__zaniniAuto.length===0){for(const __zaniniRoom of e.rooms??[]){if(!__zaniniRoom)continue;let __zaniniPoly=__zaniniRoom.polygon&&__zaniniRoom.polygon.length>=3?__zaniniRoom.polygon.slice():Bo(__zaniniRoom,n);if(__zaniniPoly.length<3)continue;__zaniniAuto.push({room:__zaniniRoom,polygon:__zaniniPoly});}}return __zaniniAuto}';
+  if (s.includes(vaPatchedMerge)) {
+    s = replaceExpected(s, vaPatchedMerge, vaNew, 'store chunk: va() ephemeral canvas fill without duplicate merge', 1);
+  } else if (s.includes(vaOld)) {
+    s = replaceExpected(s, vaOld, vaNew, 'store chunk: va() ephemeral canvas fill', 1);
+  } else if (!s.includes('canvasFillRoomEntries')) {
+    console.error('patch-openplan3d: store chunk: va() canvas-fill pattern not found');
     process.exit(1);
   }
 
@@ -501,9 +502,15 @@ function main() {
 
   propagateImmutableRenames(OUT, [
     [vendorStoreChunk, storeChunk],
+    ['1VjVcrjm-h3.js', storeChunk],
     [vendorLiveEditorChunk, editorChunk],
     [vendorPristineEditorChunk, editorChunk],
   ]);
+
+  const staleStorePath = path.join(OUT, '_app/immutable/chunks/1VjVcrjm-h3.js');
+  if (storeChunk === '1VjVcrjm-h4.js' && fs.existsSync(staleStorePath)) {
+    fs.unlinkSync(staleStorePath);
+  }
 
   rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', '-h3.js');
 

@@ -1737,13 +1737,13 @@
     }
 
     var roomCount = Array.isArray(live.rooms) ? live.rooms.length : 0;
-    if (roomCount > 1) {
-      var outMulti = JSON.parse(JSON.stringify(plan));
-      var floorMulti = resolveFloor(outMulti);
-      var touched = purgeStaleRooms(floorMulti, wallIdSet, cmPerUnit, true);
-      if (!touched) return { plan: plan, changed: false };
-      applyFloorSnapshotToPlan(outMulti, JSON.parse(JSON.stringify(floorMulti)), activeId);
-      return { plan: outMulti, changed: true };
+    if (roomCount >= 1) {
+      var outPersisted = JSON.parse(JSON.stringify(plan));
+      var floorPersisted = resolveFloor(outPersisted);
+      var touchedPersisted = purgeStaleRooms(floorPersisted, wallIdSet, cmPerUnit, true);
+      if (!touchedPersisted) return { plan: plan, changed: false };
+      applyFloorSnapshotToPlan(outPersisted, JSON.parse(JSON.stringify(floorPersisted)), activeId);
+      return { plan: outPersisted, changed: true };
     }
 
     var parts = classifyPartitionWalls(loopData.partition_walls, outer, cmPerUnit, drawable);
@@ -1771,65 +1771,75 @@
 
     var nextPoly = applyOuterLoopPolygon([], loopData, cmPerUnit, boundary);
     if (nextPoly.length < 3) nextPoly = outer.slice();
-
-    var room = roomCount === 1 ? live.rooms[0] : null;
-    if (roomCount === 1) {
-      var stale = false;
-      for (var rw = 0; rw < (room.walls || []).length; rw++) {
-        if (!wallIdSet[room.walls[rw]]) stale = true;
-      }
-      if (stale) {
-        var outStale = JSON.parse(JSON.stringify(plan));
-        var floorStale = resolveFloor(outStale);
-        floorStale.rooms = [];
-        applyFloorSnapshotToPlan(outStale, JSON.parse(JSON.stringify(floorStale)), activeId);
-        return { plan: outStale, changed: true };
-      }
-    }
-
-    if (roomCount === 1 && wallIdListKey(room.walls) === wallIdListKey(boundary)) {
-      var existingPoly = room.polygon || room.vertices || [];
-      if (existingPoly.length >= 3 && outerLoopHasUsableArea(existingPoly, cmPerUnit)) {
-        var existingArea = polygonAreaSqFt(existingPoly, cmPerUnit);
-        var outerArea = polygonAreaSqFt(nextPoly, cmPerUnit);
-        if (Math.abs(existingArea - outerArea) < 0.75 && dangling.length === 0) {
-          return { plan: plan, changed: false };
-        }
-      }
-    }
-
-    var needsCreate = roomCount === 0;
-    var wallsChanged = needsCreate || wallIdListKey(room && room.walls) !== wallIdListKey(boundary);
-    var polyChanged =
-      needsCreate ||
-      (nextPoly.length >= 3 &&
-        JSON.stringify((room && room.polygon) || []) !== JSON.stringify(nextPoly));
-    if (!needsCreate && dangling.length === 0 && !wallsChanged && !polyChanged) {
-      return { plan: plan, changed: false };
-    }
-    if (!needsCreate && !wallsChanged && !polyChanged) {
-      return { plan: plan, changed: false };
-    }
+    if (nextPoly.length < 3) return { plan: plan, changed: false };
 
     var out = JSON.parse(JSON.stringify(plan));
     var target = resolveFloor(out);
     if (!target) return { plan: plan, changed: false };
-    if (!Array.isArray(target.rooms)) target.rooms = [];
-    if (target.rooms.length === 0) {
-      target.rooms.push({
+    target.rooms = [
+      {
         id: 'room_1',
         name: 'Room 1',
         walls: boundary.slice(),
         polygon: nextPoly.slice()
-      });
-    } else {
-      if (wallsChanged) target.rooms[0].walls = boundary.slice();
-      if (polyChanged) target.rooms[0].polygon = nextPoly.slice();
-      if (!target.rooms[0].name) target.rooms[0].name = 'Room 1';
-    }
+      }
+    ];
 
     applyFloorSnapshotToPlan(out, JSON.parse(JSON.stringify(target)), activeId);
     return { plan: out, changed: true };
+  }
+
+  /**
+   * Read-only room polygons for vendor va() when Ro/Bo leave gaps (dangling stubs, live edit).
+   * Never mutates the plan; does not run when floor.rooms already has persisted entries.
+   */
+  function canvasFillRoomEntries(plan) {
+    if (!plan || typeof plan !== 'object') return [];
+    var live = resolveFloor(plan);
+    if (!live) return [];
+    var roomCount = Array.isArray(live.rooms) ? live.rooms.length : 0;
+    if (roomCount >= 1) return [];
+
+    var cmPerUnit = cmPerUnitForPlan(plan);
+    var drawable = [];
+    for (var wi = 0; wi < (live.walls || []).length; wi++) {
+      var w = live.walls[wi];
+      if (w && w.id && w.start && w.end) drawable.push(w);
+    }
+    if (drawable.length < 4) return [];
+
+    var loopData = extractOuterLoopAndPartitions(drawable, cmPerUnit);
+    var boundary = loopData.boundary_wall_ids || [];
+    var outer = loopData.outer_polygon || [];
+    if (boundary.length < 3 || !outerLoopHasUsableArea(outer, cmPerUnit)) return [];
+
+    var parts = classifyPartitionWalls(loopData.partition_walls, outer, cmPerUnit, drawable);
+    var spanning = parts.spanning;
+    var epsUnit = parts.epsUnit;
+
+    if (spanning.length > 0) {
+      var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
+      if (regions.length >= 2) {
+        var multi = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit);
+        if (multi.length >= 2) {
+          return multi.map(function (room) {
+            return { room: room, polygon: room.polygon.slice() };
+          });
+        }
+      }
+    }
+
+    var nextPoly = applyOuterLoopPolygon([], loopData, cmPerUnit, boundary);
+    if (nextPoly.length < 3) nextPoly = outer.slice();
+    if (nextPoly.length < 3) return [];
+
+    var ephemeral = {
+      id: '__canvas_fill_1',
+      name: 'Room 1',
+      walls: boundary.slice(),
+      polygon: nextPoly.slice()
+    };
+    return [{ room: ephemeral, polygon: nextPoly.slice() }];
   }
 
   function editorFloorNeedsPersistedRoom(plan) {
@@ -1851,6 +1861,7 @@
     shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
     isSimplePolygon: isSimplePolygon,
     syncEditorRoomBoundariesForCanvasFill: syncEditorRoomBoundariesForCanvasFill,
+    canvasFillRoomEntries: canvasFillRoomEntries,
     editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom
   };
 }));

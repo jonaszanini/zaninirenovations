@@ -154,13 +154,7 @@
   }
 
   function preparePlanForEditorLoad(plan) {
-    var prepared = toEditorProject(plan);
-    var bridge = typeof window !== 'undefined' ? window.OpenPlan3DMeasurementBridge : null;
-    if (bridge && typeof bridge.syncEditorRoomBoundariesForCanvasFill === 'function') {
-      var synced = bridge.syncEditorRoomBoundariesForCanvasFill(prepared);
-      if (synced && synced.changed && synced.plan) prepared = synced.plan;
-    }
-    return prepared;
+    return toEditorProject(plan);
   }
 
   function inspectStoreModule(mod) {
@@ -181,27 +175,7 @@
   }
 
   function wrapProjectSetterForRoomFill(setter) {
-    var syncing = false;
-    return function setProjectWithRoomFill(project) {
-      if (syncing) {
-        setter(project);
-        return;
-      }
-      var bridge = typeof window !== 'undefined' ? window.OpenPlan3DMeasurementBridge : null;
-      if (bridge && typeof bridge.syncEditorRoomBoundariesForCanvasFill === 'function') {
-        var synced = bridge.syncEditorRoomBoundariesForCanvasFill(project);
-        if (synced && synced.changed && synced.plan) {
-          syncing = true;
-          try {
-            setter(synced.plan);
-          } finally {
-            syncing = false;
-          }
-          return;
-        }
-      }
-      setter(project);
-    };
+    return setter;
   }
 
   function storeExportsOk(mod) {
