@@ -262,7 +262,11 @@ class OpenPlan3DMeasurementBridge
         }
         $insideAreaSqFt = $this->roundTo((float) $areaValidation['area_sqft'], 2);
         if ($insideAreaSqFt <= 0.01) {
-            throw new InvalidArgumentException('Room shape crosses itself — adjust corners.');
+            if ($this->polygonArea->isCollapsedZeroFootprint($verticesFt)) {
+                $insideAreaSqFt = 0.0;
+            } else {
+                throw new InvalidArgumentException('Room shape crosses itself — adjust corners.');
+            }
         }
 
         // Ceiling area

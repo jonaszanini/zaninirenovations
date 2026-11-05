@@ -106,6 +106,24 @@
     return true;
   }
 
+  function isCollapsedZeroFootprint(verticesFt) {
+    var verts = verticesFt || [];
+    if (verts.length < 3) return true;
+    var minX = Number(verts[0].x);
+    var maxX = minX;
+    var minY = Number(verts[0].y);
+    var maxY = minY;
+    for (var i = 1; i < verts.length; i++) {
+      var x = Number(verts[i].x);
+      var y = Number(verts[i].y);
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+    return hypot(maxX - minX, maxY - minY) < 0.02;
+  }
+
   function polygonVerticesToFeet(polygon, cmPerUnit) {
     var out = [];
     for (var i = 0; i < (polygon || []).length; i++) {
@@ -1054,7 +1072,7 @@
     // Floor area in sq ft
     var insideAreaSqFt = roundTo(verticesToSquareFeet(verticesFt), 2);
     var polygonSimple = isSimplePolygon(verticesFt);
-    if (!polygonSimple || insideAreaSqFt <= 0) {
+    if ((!polygonSimple || insideAreaSqFt <= 0) && !isCollapsedZeroFootprint(verticesFt)) {
       var unmeasurable = emptyLayoutMetrics(wallHeightFt);
       unmeasurable.geometry_unmeasurable = true;
       unmeasurable.geometry_message = 'Room shape crosses itself — adjust corners.';

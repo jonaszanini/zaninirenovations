@@ -602,6 +602,35 @@ class OpenPlan3DParityTest extends TestCase
         $this->assertLessThan(1360.0, $metrics['area_sqft']);
     }
 
+    public function test_degenerate_zero_area_plan_returns_measurable_zero_for_save_guard(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 0, 'y' => 0], 'height' => 243.84, 'thickness' => 10],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'empty',
+                        'name' => 'Untitled Project',
+                        'walls' => ['w1'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 0, 'y' => 0],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
+    }
+
     public function test_true_bowtie_polygon_stays_geometry_unmeasurable(): void
     {
         $cmPerFt = 30.48;
