@@ -519,6 +519,45 @@ class OpenPlan3DParityTest extends TestCase
         $this->assertCount(2, $loop['partition_walls']);
     }
 
+    public function test_editor_drawn_hand0_plan_measures_floor_area_after_vertex_snap(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $this->assertFileExists($path);
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
+        $this->assertLessThan(1360.0, $metrics['area_sqft']);
+    }
+
+    public function test_true_bowtie_polygon_stays_geometry_unmeasurable(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'rooms' => [[
+                    'id' => 'r1',
+                    'polygon' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt],
+                        ['x' => 10 * $cmPerFt, 'y' => 0],
+                        ['x' => 0, 'y' => 12 * $cmPerFt],
+                    ],
+                ]],
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 10 * $cmPerFt, 'y' => 0]],
+                    ['id' => 'w2', 'start' => ['x' => 10 * $cmPerFt, 'y' => 0], 'end' => ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt]],
+                    ['id' => 'w3', 'start' => ['x' => 10 * $cmPerFt, 'y' => 12 * $cmPerFt], 'end' => ['x' => 0, 'y' => 12 * $cmPerFt]],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 12 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0]],
+                ],
+            ],
+        ];
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertTrue($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(0.0, $metrics['area_sqft']);
+    }
+
     /**
      * @return array<string, mixed>
      */

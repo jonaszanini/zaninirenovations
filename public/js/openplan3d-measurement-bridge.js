@@ -34,6 +34,21 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  /** Snap plan coordinates to 0.1 cm so editor float noise does not break graph tracing. */
+  function snapPlanCoordinate(value, cmPerUnit) {
+    var unitScale = cmPerUnit > 0 ? cmPerUnit : 1.0;
+    var cm = Number(value || 0) * unitScale;
+    var snappedCm = Math.round(cm * 100) / 100;
+    return snappedCm / unitScale;
+  }
+
+  function snapPlanPoint(pt, cmPerUnit) {
+    return {
+      x: snapPlanCoordinate(pt.x, cmPerUnit),
+      y: snapPlanCoordinate(pt.y, cmPerUnit)
+    };
+  }
+
   function partitionToleranceCm(wallsList, cmPerUnit) {
     var baseCm = 20.0;
     var maxCm = 30.0;
@@ -120,8 +135,9 @@
     var outer = loopData && loopData.outer_polygon ? loopData.outer_polygon : [];
     if (!outerLoopHasUsableArea(outer, cmPerUnit)) return false;
     if (!storedPoly || storedPoly.length < 3) return true;
-    if (loopData.partition_walls && loopData.partition_walls.length > 0) return true;
-    return !storedPolygonMeasurable(storedPoly, cmPerUnit);
+    if (storedPolygonMeasurable(storedPoly, cmPerUnit)) return false;
+    var partitions = (loopData.partition_walls && loopData.partition_walls.length) || 0;
+    return partitions > 0;
   }
 
   function applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit) {
@@ -470,10 +486,12 @@
     for (var i = 0; i < wallsList.length; i++) {
       var w = wallsList[i];
       if (!w || !w.start || !w.end) continue;
+      var start = snapPlanPoint(w.start, cmPerUnit);
+      var end = snapPlanPoint(w.end, cmPerUnit);
       rawSegments.push({
         wallId: String(w.id != null ? w.id : 'w_' + i),
-        start: { x: Number(w.start.x || 0), y: Number(w.start.y || 0) },
-        end: { x: Number(w.end.x || 0), y: Number(w.end.y || 0) },
+        start: start,
+        end: end,
         wall: w,
         splitPoints: []
       });
@@ -563,13 +581,14 @@
     // 4. Cluster vertices into unique node IDs
     var nodes = [];
     function findNode(pt) {
+      var snapped = snapPlanPoint(pt, cmPerUnit);
       for (var idx = 0; idx < nodes.length; idx++) {
-        if (hypot(nodes[idx].x - pt.x, nodes[idx].y - pt.y) < epsUnit) {
+        if (hypot(nodes[idx].x - snapped.x, nodes[idx].y - snapped.y) < epsUnit) {
           return idx;
         }
       }
       var newId = nodes.length;
-      nodes.push(pt);
+      nodes.push(snapped);
       return newId;
     }
 
@@ -911,7 +930,20 @@
 
     // Floor area in sq ft
     var insideAreaSqFt = roundTo(verticesToSquareFeet(verticesFt), 2);
-    if (insideAreaSqFt <= 0) return emptyLayoutMetrics(finish.wall_height_ft);
+    var polygonSimple = isSimplePolygon(verticesFt);
+    if (!polygonSimple || insideAreaSqFt <= 0) {
+      var unmeasurable = emptyLayoutMetrics(wallHeightFt);
+      unmeasurable.geometry_unmeasurable = true;
+      unmeasurable.geometry_message = 'Room shape crosses itself — adjust corners.';
+      var perimLf = 0.0;
+      for (var pi = 0; pi < verticesFt.length; pi++) {
+        var pj = (pi + 1) % verticesFt.length;
+        perimLf += hypot(verticesFt[pj].x - verticesFt[pi].x, verticesFt[pj].y - verticesFt[pi].y);
+      }
+      unmeasurable.perimeter_lf = roundTo(perimLf, 2);
+      unmeasurable.baseboard_lf = unmeasurable.perimeter_lf;
+      return applyZaniniExtensions(unmeasurable, plan, finish, options);
+    }
     var ceilingAreaSqFt = insideAreaSqFt;
 
     // Corners

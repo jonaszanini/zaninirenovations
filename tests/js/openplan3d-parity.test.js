@@ -260,4 +260,30 @@ assert.strictEqual(basementOffsetMetrics.area_sqft, 600.0, 'Offset stubs still y
 const offsetLoop = bridge.extractOuterLoopAndPartitions(basementOffsetPlan.floor.walls, 1.0);
 assert.strictEqual(offsetLoop.partition_walls.length, 2, 'Near-miss T-junction stubs count as partitions');
 
+// Test 10: Editor-drawn plan with float noise (hand0 regression)
+const hand0Plan = JSON.parse(
+  require('fs').readFileSync(require('path').join(__dirname, '../fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8')
+);
+const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0 });
+assert.ok(hand0Metrics.area_sqft > 1300 && hand0Metrics.area_sqft < 1360,
+  'Drawn basement plan area ~1346 sq ft, got ' + hand0Metrics.area_sqft);
+assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
+
+// Test 11: True bowtie polygon flags unmeasurable but keeps perimeter baseboard
+const bowtieOnlyPlan = {
+  unit: 'cm',
+  floor: {
+    rooms: [{ id: 'r1', polygon: [{ x: 0, y: 0 }, { x: 304.8, y: 304.8 }, { x: 304.8, y: 0 }, { x: 0, y: 304.8 }] }],
+    walls: [
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 } },
+      { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 } },
+      { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 } },
+      { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 } }
+    ]
+  }
+};
+const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
+assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
+
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

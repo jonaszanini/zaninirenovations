@@ -888,10 +888,12 @@ class OpenPlan3DMeasurementBridge
             if (! is_array($w) || ! isset($w['start'], $w['end'])) {
                 continue;
             }
+            $start = $this->snapPlanPoint($w['start'], $cmPerUnit);
+            $end = $this->snapPlanPoint($w['end'], $cmPerUnit);
             $rawSegments[] = [
                 'wallId' => (string) ($w['id'] ?? uniqid('w_')),
-                'start' => ['x' => (float) ($w['start']['x'] ?? 0), 'y' => (float) ($w['start']['y'] ?? 0)],
-                'end' => ['x' => (float) ($w['end']['x'] ?? 0), 'y' => (float) ($w['end']['y'] ?? 0)],
+                'start' => $start,
+                'end' => $end,
                 'wall' => $w,
                 'splitPoints' => [],
             ];
@@ -984,14 +986,15 @@ class OpenPlan3DMeasurementBridge
 
         // 4. Cluster vertices into unique node IDs
         $nodes = [];
-        $findNode = function ($pt) use (&$nodes, $epsUnit) {
+        $findNode = function ($pt) use (&$nodes, $epsUnit, $cmPerUnit) {
+            $snapped = $this->snapPlanPoint($pt, $cmPerUnit);
             foreach ($nodes as $id => $nPt) {
-                if (hypot($nPt['x'] - $pt['x'], $nPt['y'] - $pt['y']) < $epsUnit) {
+                if (hypot($nPt['x'] - $snapped['x'], $nPt['y'] - $snapped['y']) < $epsUnit) {
                     return $id;
                 }
             }
             $newId = count($nodes);
-            $nodes[$newId] = $pt;
+            $nodes[$newId] = $snapped;
 
             return $newId;
         };
@@ -1232,6 +1235,26 @@ class OpenPlan3DMeasurementBridge
         return min($maxCm, max($baseCm, $minLenCm * 0.08));
     }
 
+    private function snapPlanCoordinate(float $value, float $cmPerUnit): float
+    {
+        $unitScale = $cmPerUnit > 0 ? $cmPerUnit : 1.0;
+        $cm = $value * $unitScale;
+        $snappedCm = round($cm * 100.0) / 100.0;
+
+        return $snappedCm / $unitScale;
+    }
+
+    /**
+     * @return array{x: float, y: float}
+     */
+    private function snapPlanPoint(array $pt, float $cmPerUnit): array
+    {
+        return [
+            'x' => $this->snapPlanCoordinate((float) ($pt['x'] ?? 0), $cmPerUnit),
+            'y' => $this->snapPlanCoordinate((float) ($pt['y'] ?? 0), $cmPerUnit),
+        ];
+    }
+
     /**
      * @param  list<array{x: float, y: float}>  $outerPolygon
      */
@@ -1291,11 +1314,11 @@ class OpenPlan3DMeasurementBridge
         if (count($storedPoly) < 3) {
             return true;
         }
-        if (count($loop['partition_walls'] ?? []) > 0) {
-            return true;
+        if ($this->storedPolygonMeasurable($storedPoly, $cmPerUnit)) {
+            return false;
         }
 
-        return ! $this->storedPolygonMeasurable($storedPoly, $cmPerUnit);
+        return count($loop['partition_walls'] ?? []) > 0;
     }
 
     /**
