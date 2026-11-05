@@ -61,9 +61,43 @@ class RoomAreaEngineFeatureFlagTest extends TestCase
 
         $this->assertDirectoryExists($vendorDir);
         $this->assertFileExists($vendorDir . '/editor/index.html');
-        $manifest = json_decode(file_get_contents(base_path('scripts/openplan3d-h1.json')), true);
-        $this->assertSame('1VjVcrjm-h3.js', $manifest['storeChunk'] ?? null);
-        $this->assertFileExists($vendorDir . '/_app/immutable/chunks/' . $manifest['storeChunk']);
+
+        $manifestPath = base_path('scripts/openplan3d-h1.json');
+        $this->assertFileExists($manifestPath);
+        $manifest = json_decode((string) file_get_contents($manifestPath), true);
+        $this->assertIsArray($manifest);
+
+        $storeChunk = $manifest['storeChunk'] ?? null;
+        $entryChunk = $manifest['entryChunk'] ?? null;
+        $graphSuffix = $manifest['immutableGraphSuffix'] ?? null;
+        $legacySuffix = $manifest['legacyImmutableSuffix'] ?? null;
+
+        $this->assertIsString($storeChunk);
+        $this->assertNotSame('', $storeChunk);
+        $this->assertIsString($entryChunk);
+        $this->assertNotSame('', $entryChunk);
+        $this->assertIsString($graphSuffix);
+        $this->assertStringEndsWith('-' . $graphSuffix . '.js', $storeChunk);
+
+        $storePath = $vendorDir . '/_app/immutable/chunks/' . $storeChunk;
+        $this->assertFileExists($storePath);
+
+        $entryPath = $vendorDir . '/_app/immutable/entry/' . $entryChunk;
+        $this->assertFileExists($entryPath);
+
+        $editorIndex = (string) file_get_contents($vendorDir . '/editor/index.html');
+        $this->assertStringContainsString($storeChunk, $editorIndex);
+        $this->assertStringContainsString($entryChunk, $editorIndex);
+        $this->assertDoesNotMatchRegularExpression(
+            '#/_app/immutable/[^"\']+-h3\.js#',
+            $editorIndex,
+            'Hosted editor index must load the active immutable graph from scripts/openplan3d-h1.json, not legacy -h3 slugs.'
+        );
+
+        if (is_string($legacySuffix) && $legacySuffix !== '') {
+            $legacyStore = '1VjVcrjm-' . $legacySuffix . '.js';
+            $this->assertFileExists($vendorDir . '/_app/immutable/chunks/' . $legacyStore);
+        }
     }
 
     public function test_vendored_openplan3d_assets_exist_on_disk(): void
