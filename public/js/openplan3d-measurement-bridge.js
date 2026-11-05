@@ -131,17 +131,122 @@
     return verticesToSquareFeet(feet) > 0.01;
   }
 
-  function shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit) {
+  function endpointClusterToleranceCm() {
+    return 2.5;
+  }
+
+  function clusterSegmentEndpoints(rawSegments, cmPerUnit) {
+    var clusterCm = endpointClusterToleranceCm();
+    var epsUnit = clusterCm / (cmPerUnit > 0 ? cmPerUnit : 1.0);
+    var refs = [];
+    for (var si = 0; si < rawSegments.length; si++) {
+      var seg = rawSegments[si];
+      refs.push({ seg: seg, key: 'start', x: seg.start.x, y: seg.start.y });
+      refs.push({ seg: seg, key: 'end', x: seg.end.x, y: seg.end.y });
+    }
+    if (refs.length === 0) return;
+
+    var parent = refs.map(function (_, i) { return i; });
+    function find(i) {
+      while (parent[i] !== i) {
+        parent[i] = parent[parent[i]];
+        i = parent[i];
+      }
+      return i;
+    }
+    function unite(a, b) {
+      var ra = find(a);
+      var rb = find(b);
+      if (ra !== rb) parent[rb] = ra;
+    }
+
+    for (var i = 0; i < refs.length; i++) {
+      for (var j = i + 1; j < refs.length; j++) {
+        if (hypot(refs[i].x - refs[j].x, refs[i].y - refs[j].y) < epsUnit) {
+          unite(i, j);
+        }
+      }
+    }
+
+    var sums = {};
+    var counts = {};
+    for (var i = 0; i < refs.length; i++) {
+      var root = find(i);
+      if (!sums[root]) {
+        sums[root] = { x: 0, y: 0 };
+        counts[root] = 0;
+      }
+      sums[root].x += refs[i].x;
+      sums[root].y += refs[i].y;
+      counts[root]++;
+    }
+
+    for (var i = 0; i < refs.length; i++) {
+      var root = find(i);
+      var n = counts[root] || 1;
+      var cx = sums[root].x / n;
+      var cy = sums[root].y / n;
+      var canon = snapPlanPoint({ x: cx, y: cy }, cmPerUnit);
+      if (refs[i].key === 'start') {
+        refs[i].seg.start = canon;
+      } else {
+        refs[i].seg.end = canon;
+      }
+    }
+
+    // Snap free endpoints onto nearby segment interiors (almost-T junctions from draw error)
+    for (var si = 0; si < rawSegments.length; si++) {
+      var seg = rawSegments[si];
+      var keys = ['start', 'end'];
+      for (var ki = 0; ki < keys.length; ki++) {
+        var key = keys[ki];
+        var pt = seg[key];
+        var best = null;
+        var bestDist = epsUnit;
+        for (var sj = 0; sj < rawSegments.length; sj++) {
+          var s = rawSegments[sj];
+          var res = distToSegment(pt, s.start, s.end);
+          var segLen = hypot(s.end.x - s.start.x, s.end.y - s.start.y);
+          if (segLen < 1e-6) continue;
+          if (res.dist >= bestDist) continue;
+          if (res.t * segLen <= epsUnit || (1.0 - res.t) * segLen <= epsUnit) continue;
+          bestDist = res.dist;
+          best = snapPlanPoint(res.proj, cmPerUnit);
+        }
+        if (best) seg[key] = best;
+      }
+    }
+  }
+
+  function polygonAreaSqFt(polygon, cmPerUnit) {
+    if (!polygon || polygon.length < 3) return 0.0;
+    return verticesToSquareFeet(polygonVerticesToFeet(polygon, cmPerUnit));
+  }
+
+  function shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit, roomWallIds) {
     var outer = loopData && loopData.outer_polygon ? loopData.outer_polygon : [];
     if (!outerLoopHasUsableArea(outer, cmPerUnit)) return false;
     if (!storedPoly || storedPoly.length < 3) return true;
-    if (storedPolygonMeasurable(storedPoly, cmPerUnit)) return false;
+
     var partitions = (loopData.partition_walls && loopData.partition_walls.length) || 0;
-    return partitions > 0;
+    var outerArea = polygonAreaSqFt(outer, cmPerUnit);
+    var storedArea = polygonAreaSqFt(storedPoly, cmPerUnit);
+    var storedMeasurable = storedPolygonMeasurable(storedPoly, cmPerUnit);
+
+    if (!storedMeasurable) {
+      return partitions > 0;
+    }
+
+    if (partitions > 0 && outerArea > storedArea + 0.5) {
+      var wallIds = roomWallIds || [];
+      return wallIds.length > 0;
+    }
+
+    return false;
   }
 
-  function applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit) {
-    if (shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit)) {
+  function applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit, roomWallIds) {
+    if (shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit, roomWallIds)) {
       return loopData.outer_polygon.slice();
     }
     return storedPoly;
@@ -506,6 +611,8 @@
       };
     }
 
+    clusterSegmentEndpoints(rawSegments, cmPerUnit);
+
     var allEndpoints = [];
     for (var i = 0; i < rawSegments.length; i++) {
       allEndpoints.push(rawSegments[i].start);
@@ -580,10 +687,11 @@
 
     // 4. Cluster vertices into unique node IDs
     var nodes = [];
+    var nodeClusterUnit = endpointClusterToleranceCm() / (cmPerUnit > 0 ? cmPerUnit : 1.0);
     function findNode(pt) {
       var snapped = snapPlanPoint(pt, cmPerUnit);
       for (var idx = 0; idx < nodes.length; idx++) {
-        if (hypot(nodes[idx].x - snapped.x, nodes[idx].y - snapped.y) < epsUnit) {
+        if (hypot(nodes[idx].x - snapped.x, nodes[idx].y - snapped.y) < nodeClusterUnit) {
           return idx;
         }
       }
@@ -690,7 +798,7 @@
         var nbr = neighbors[j];
         var toNode = nbr.to;
         var eIdx = nbr.edgeIdx;
-        if ((visitedEdges[eIdx] || 0) >= 2) continue;
+        if ((visitedEdges[eIdx] || 0) >= 1) continue;
 
         var toPt = nodes[toNode];
         var edgeAngle = Math.atan2(toPt.y - nodes[currNode].y, toPt.x - nodes[currNode].x);
@@ -902,7 +1010,7 @@
     var partitionWalls = loopData.partition_walls || [];
     var boundaryWallIds = loopData.boundary_wall_ids || [];
     var storedPoly = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
-    var polyVertices = applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit);
+    var polyVertices = applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit, roomWIds);
     if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
 
     // Convert polygon vertices to feet

@@ -249,7 +249,12 @@ assert.strictEqual(basementMetrics.area_sqft, 600.0, 'Floor area uses outer loop
 const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
 assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
 assert.ok(
-  bridge.shouldReplaceRoomPolygonWithOuterLoop(basementPlan.floor.rooms[0].polygon, basementLoop, 1.0),
+  bridge.shouldReplaceRoomPolygonWithOuterLoop(
+    basementPlan.floor.rooms[0].polygon,
+    basementLoop,
+    1.0,
+    basementPlan.floor.rooms[0].walls
+  ),
   'Self-intersecting stored polygon is replaced by outer loop'
 );
 
@@ -285,5 +290,44 @@ const bowtieOnlyPlan = {
 const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
 assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
 assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
+
+// Test 12: Noisy closed perimeter corners stay measurable (shared corner jitter)
+function jitterClosedPerimeterPlan(plan, maxOffsetCm) {
+  var copy = JSON.parse(JSON.stringify(plan));
+  var walls = copy.floor && copy.floor.walls ? copy.floor.walls : copy.walls;
+  if (!walls) return copy;
+  var buckets = {};
+  for (var wi = 0; wi < walls.length; wi++) {
+    var w = walls[wi];
+    if (!w || !w.start || !w.end) continue;
+    for (var ki = 0; ki < 2; ki++) {
+      var keyName = ki === 0 ? 'start' : 'end';
+      var pt = w[keyName];
+      var bucketKey = Math.round(Number(pt.x || 0) * 10) + ':' + Math.round(Number(pt.y || 0) * 10);
+      if (!buckets[bucketKey]) {
+        buckets[bucketKey] = {
+          dx: (Math.random() - 0.5) * 2 * maxOffsetCm,
+          dy: (Math.random() - 0.5) * 2 * maxOffsetCm
+        };
+      }
+      w[keyName].x = Number(pt.x || 0) + buckets[bucketKey].dx;
+      w[keyName].y = Number(pt.y || 0) + buckets[bucketKey].dy;
+    }
+  }
+  return copy;
+}
+
+var hand0PerimeterOnly = JSON.parse(JSON.stringify(hand0Plan));
+hand0PerimeterOnly.floor.walls = hand0PerimeterOnly.floor.walls.filter(function (w) {
+  return w.id !== 'z9ajm00u' && w.id !== 'mclt5ix7';
+});
+for (var jitterCm = 0.5; jitterCm <= 3.01; jitterCm += 2.5) {
+  var noisyHand = jitterClosedPerimeterPlan(hand0PerimeterOnly, jitterCm);
+  var noisyMetrics = bridge.layoutMetrics(noisyHand, null, { wall_height_ft: 8.0 });
+  assert.ok(
+    noisyMetrics.area_sqft > 1300 && !noisyMetrics.geometry_unmeasurable,
+    'Noisy perimeter offset ' + jitterCm + ' cm must stay measurable, got area ' + noisyMetrics.area_sqft
+  );
+}
 
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

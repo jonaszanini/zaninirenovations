@@ -505,7 +505,12 @@ class OpenPlan3DParityTest extends TestCase
         $loop = $this->bridge->extractOuterLoopAndPartitions($walls, 1.0);
         $this->assertCount(2, $loop['partition_walls']);
         $storedPoly = $plan['floor']['rooms'][0]['polygon'];
-        $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop($storedPoly, $loop, 1.0));
+        $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop(
+            $storedPoly,
+            $loop,
+            1.0,
+            $plan['floor']['rooms'][0]['walls']
+        ));
     }
 
     public function test_basement_stub_partitions_tolerate_endpoint_offset_from_perimeter(): void
@@ -517,6 +522,63 @@ class OpenPlan3DParityTest extends TestCase
 
         $loop = $this->bridge->extractOuterLoopAndPartitions($plan['floor']['walls'], 1.0);
         $this->assertCount(2, $loop['partition_walls']);
+    }
+
+    public function test_partial_stored_polygon_expands_to_outer_loop_with_partition(): void
+    {
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floors' => [[
+                'id' => 'f1',
+                'walls' => [
+                    ['id' => 'wN', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 400, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wE', 'start' => ['x' => 400, 'y' => 0], 'end' => ['x' => 400, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wS', 'start' => ['x' => 400, 'y' => 300], 'end' => ['x' => 0, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wW', 'start' => ['x' => 0, 'y' => 300], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+                    ['id' => 'wP', 'start' => ['x' => 200, 'y' => 0], 'end' => ['x' => 200, 'y' => 300], 'thickness' => 11.43, 'height' => 243.84],
+                ],
+                'rooms' => [[
+                    'id' => 'r1',
+                    'walls' => ['wN', 'wE', 'wS', 'wW', 'wP'],
+                    'polygon' => [
+                        ['x' => 0, 'y' => 0],
+                        ['x' => 200, 'y' => 0],
+                        ['x' => 200, 'y' => 300],
+                        ['x' => 0, 'y' => 300],
+                    ],
+                ]],
+            ]],
+            'activeFloorId' => 'f1',
+        ];
+
+        $metrics = $this->bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertGreaterThan(80.0, $metrics['area_sqft']);
+    }
+
+    public function test_noisy_hand0_perimeter_corners_remain_measurable(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['floor']['walls'] = array_values(array_filter(
+            $plan['floor']['walls'],
+            fn ($w) => ! in_array($w['id'] ?? '', ['z9ajm00u', 'mclt5ix7'], true)
+        ));
+        foreach ($plan['floor']['walls'] as &$wall) {
+            if (($wall['id'] ?? '') === '94g8q0tr') {
+                $wall['end']['x'] += 1.0;
+                $wall['end']['y'] += 0.5;
+            }
+            if (($wall['id'] ?? '') === '95cyxqtw') {
+                $wall['start']['x'] += 0.8;
+                $wall['start']['y'] -= 0.4;
+            }
+        }
+        unset($wall);
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
     }
 
     public function test_editor_drawn_hand0_plan_measures_floor_area_after_vertex_snap(): void

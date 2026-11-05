@@ -908,6 +908,8 @@ class OpenPlan3DMeasurementBridge
             ];
         }
 
+        $this->clusterSegmentEndpoints($rawSegments, $cmPerUnit);
+
         $allEndpoints = [];
         foreach ($rawSegments as $s) {
             $allEndpoints[] = $s['start'];
@@ -986,10 +988,11 @@ class OpenPlan3DMeasurementBridge
 
         // 4. Cluster vertices into unique node IDs
         $nodes = [];
-        $findNode = function ($pt) use (&$nodes, $epsUnit, $cmPerUnit) {
+        $nodeClusterUnit = $this->endpointClusterToleranceCm() / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
+        $findNode = function ($pt) use (&$nodes, $nodeClusterUnit, $cmPerUnit) {
             $snapped = $this->snapPlanPoint($pt, $cmPerUnit);
             foreach ($nodes as $id => $nPt) {
-                if (hypot($nPt['x'] - $snapped['x'], $nPt['y'] - $snapped['y']) < $epsUnit) {
+                if (hypot($nPt['x'] - $snapped['x'], $nPt['y'] - $snapped['y']) < $nodeClusterUnit) {
                     return $id;
                 }
             }
@@ -1092,7 +1095,7 @@ class OpenPlan3DMeasurementBridge
             foreach ($neighbors as $nbr) {
                 $toNode = $nbr['to'];
                 $eIdx = $nbr['edgeIdx'];
-                if (($visitedEdges[$eIdx] ?? 0) >= 2) {
+                if (($visitedEdges[$eIdx] ?? 0) >= 1) {
                     continue;
                 }
 
@@ -1235,6 +1238,120 @@ class OpenPlan3DMeasurementBridge
         return min($maxCm, max($baseCm, $minLenCm * 0.08));
     }
 
+    private function endpointClusterToleranceCm(): float
+    {
+        return 2.5;
+    }
+
+    /**
+     * @param  list<array{wallId: string, start: array{x: float, y: float}, end: array{x: float, y: float}, wall: array<string, mixed>, splitPoints: list<mixed>}>  $rawSegments
+     */
+    private function clusterSegmentEndpoints(array &$rawSegments, float $cmPerUnit): void
+    {
+        $clusterCm = $this->endpointClusterToleranceCm();
+        $epsUnit = $clusterCm / ($cmPerUnit > 0 ? $cmPerUnit : 1.0);
+        $refs = [];
+        foreach ($rawSegments as $si => $seg) {
+            $refs[] = ['si' => $si, 'key' => 'start', 'x' => $seg['start']['x'], 'y' => $seg['start']['y']];
+            $refs[] = ['si' => $si, 'key' => 'end', 'x' => $seg['end']['x'], 'y' => $seg['end']['y']];
+        }
+        $count = count($refs);
+        if ($count === 0) {
+            return;
+        }
+
+        $parent = range(0, $count - 1);
+        $find = function ($i) use (&$parent, &$find) {
+            while ($parent[$i] !== $i) {
+                $parent[$i] = $parent[$parent[$i]];
+                $i = $parent[$i];
+            }
+
+            return $i;
+        };
+        $unite = function ($a, $b) use (&$parent, $find) {
+            $ra = $find($a);
+            $rb = $find($b);
+            if ($ra !== $rb) {
+                $parent[$rb] = $ra;
+            }
+        };
+
+        for ($i = 0; $i < $count; $i++) {
+            for ($j = $i + 1; $j < $count; $j++) {
+                if (hypot($refs[$i]['x'] - $refs[$j]['x'], $refs[$i]['y'] - $refs[$j]['y']) < $epsUnit) {
+                    $unite($i, $j);
+                }
+            }
+        }
+
+        $sums = [];
+        $counts = [];
+        for ($i = 0; $i < $count; $i++) {
+            $root = $find($i);
+            $sums[$root]['x'] = ($sums[$root]['x'] ?? 0) + $refs[$i]['x'];
+            $sums[$root]['y'] = ($sums[$root]['y'] ?? 0) + $refs[$i]['y'];
+            $counts[$root] = ($counts[$root] ?? 0) + 1;
+        }
+
+        for ($i = 0; $i < $count; $i++) {
+            $root = $find($i);
+            $n = max(1, $counts[$root] ?? 1);
+            $canon = $this->snapPlanPoint([
+                'x' => $sums[$root]['x'] / $n,
+                'y' => $sums[$root]['y'] / $n,
+            ], $cmPerUnit);
+            $rawSegments[$refs[$i]['si']][$refs[$i]['key']] = $canon;
+        }
+
+        foreach ($rawSegments as $si => &$seg) {
+            foreach (['start', 'end'] as $key) {
+                $pt = $seg[$key];
+                $best = null;
+                $bestDist = $epsUnit;
+                foreach ($rawSegments as $other) {
+                    $res = $this->distToSegment($pt, $other['start'], $other['end']);
+                    $segLen = hypot($other['end']['x'] - $other['start']['x'], $other['end']['y'] - $other['start']['y']);
+                    if ($segLen < 1e-6) {
+                        continue;
+                    }
+                    if ($res['dist'] >= $bestDist) {
+                        continue;
+                    }
+                    if ($res['t'] * $segLen <= $epsUnit || (1.0 - $res['t']) * $segLen <= $epsUnit) {
+                        continue;
+                    }
+                    $bestDist = $res['dist'];
+                    $best = $this->snapPlanPoint($res['proj'], $cmPerUnit);
+                }
+                if ($best !== null) {
+                    $seg[$key] = $best;
+                }
+            }
+        }
+        unset($seg);
+    }
+
+    /**
+     * @param  list<array{x: float, y: float}>  $polygon
+     */
+    private function polygonAreaSqFt(array $polygon, float $cmPerUnit): float
+    {
+        if (count($polygon) < 3) {
+            return 0.0;
+        }
+        $verticesFt = [];
+        foreach ($polygon as $pt) {
+            $verticesFt[] = [
+                'x' => ((float) ($pt['x'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
+                'y' => ((float) ($pt['y'] ?? 0) * $cmPerUnit) / self::CM_PER_FOOT,
+            ];
+        }
+        $validation = $this->polygonArea->validateRoom($verticesFt, 1.0);
+
+        return $validation['valid'] ? (float) $validation['area_sqft'] : 0.0;
+    }
+
     private function snapPlanCoordinate(float $value, float $cmPerUnit): float
     {
         $unitScale = $cmPerUnit > 0 ? $cmPerUnit : 1.0;
@@ -1305,7 +1422,7 @@ class OpenPlan3DMeasurementBridge
      * @param  list<array{x: float, y: float}>  $storedPoly
      * @param  array{outer_polygon: list<array{x: float, y: float}>, partition_walls: list<array<string, mixed>>}  $loop
      */
-    public function shouldReplaceRoomPolygonWithOuterLoop(array $storedPoly, array $loop, float $cmPerUnit): bool
+    public function shouldReplaceRoomPolygonWithOuterLoop(array $storedPoly, array $loop, float $cmPerUnit, array $roomWallIds = []): bool
     {
         $outer = $loop['outer_polygon'] ?? [];
         if (! $this->outerLoopHasUsableArea($outer, $cmPerUnit)) {
@@ -1314,11 +1431,21 @@ class OpenPlan3DMeasurementBridge
         if (count($storedPoly) < 3) {
             return true;
         }
-        if ($this->storedPolygonMeasurable($storedPoly, $cmPerUnit)) {
-            return false;
+
+        $partitions = count($loop['partition_walls'] ?? []);
+        $outerArea = $this->polygonAreaSqFt($outer, $cmPerUnit);
+        $storedArea = $this->polygonAreaSqFt($storedPoly, $cmPerUnit);
+        $storedMeasurable = $this->storedPolygonMeasurable($storedPoly, $cmPerUnit);
+
+        if (! $storedMeasurable) {
+            return $partitions > 0;
         }
 
-        return count($loop['partition_walls'] ?? []) > 0;
+        if ($partitions > 0 && $outerArea > $storedArea + 0.5) {
+            return count($roomWallIds) > 0;
+        }
+
+        return false;
     }
 
     /**
@@ -1371,7 +1498,7 @@ class OpenPlan3DMeasurementBridge
                     $storedPoly = $r['vertices'];
                 }
 
-                if ($this->shouldReplaceRoomPolygonWithOuterLoop($storedPoly, $loop, $cmPerUnit)) {
+                if ($this->shouldReplaceRoomPolygonWithOuterLoop($storedPoly, $loop, $cmPerUnit, is_array($r['walls'] ?? null) ? $r['walls'] : [])) {
                     $r['polygon'] = $loop['outer_polygon'];
                 } elseif (count($storedPoly) >= 3) {
                     $r['polygon'] = $storedPoly;
