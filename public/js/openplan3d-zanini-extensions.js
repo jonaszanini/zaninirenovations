@@ -123,38 +123,41 @@
     return best;
   }
 
+  function resolveActiveFloorEntry(floors, activeId) {
+    if (!Array.isArray(floors) || !floors.length) {
+      return { floor: null, matchedById: false };
+    }
+    if (activeId) {
+      for (var i = 0; i < floors.length; i++) {
+        if (floors[i] && floors[i].id === activeId) {
+          return { floor: floors[i], matchedById: true };
+        }
+      }
+      return { floor: null, matchedById: false, activeMissing: true };
+    }
+    return { floor: floors[0] || null, matchedById: false };
+  }
+
   function resolveLiveFloorSnapshot(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    var fromFloors = null;
-    if (Array.isArray(plan.floors) && plan.floors.length) {
-      if (activeId) {
-        for (var i = 0; i < plan.floors.length; i++) {
-          if (plan.floors[i] && plan.floors[i].id === activeId) {
-            fromFloors = plan.floors[i];
-            break;
-          }
-        }
-      }
-      if (!fromFloors) fromFloors = plan.floors[0];
+    var planFloors = resolveActiveFloorEntry(plan.floors, activeId);
+    if (planFloors.matchedById && planFloors.floor) {
+      return planFloors.floor;
     }
-    var fromProject = null;
-    if (plan.project && Array.isArray(plan.project.floors)) {
-      if (activeId) {
-        for (var pi = 0; pi < plan.project.floors.length; pi++) {
-          if (plan.project.floors[pi] && plan.project.floors[pi].id === activeId) {
-            fromProject = plan.project.floors[pi];
-            break;
-          }
-        }
-      }
-      if (!fromProject && plan.project.floors[0]) fromProject = plan.project.floors[0];
+    if (planFloors.floor && !planFloors.activeMissing) {
+      return planFloors.floor;
     }
-    if (fromFloors && countDrawableWalls(fromFloors) > 0) return fromFloors;
-    if (fromProject && countDrawableWalls(fromProject) > 0) return fromProject;
-    if (plan.floor && typeof plan.floor === 'object' && countDrawableWalls(plan.floor) > 0) return plan.floor;
-    if (fromFloors) return fromFloors;
-    if (fromProject) return fromProject;
+    var projectFloors = resolveActiveFloorEntry(
+      plan.project && Array.isArray(plan.project.floors) ? plan.project.floors : null,
+      activeId
+    );
+    if (projectFloors.matchedById && projectFloors.floor) {
+      return projectFloors.floor;
+    }
+    if (projectFloors.floor && !projectFloors.activeMissing) {
+      return projectFloors.floor;
+    }
     if (plan.floor && typeof plan.floor === 'object') return plan.floor;
     return null;
   }

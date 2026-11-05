@@ -104,11 +104,6 @@ class StandardQuotationController extends Controller
             $resp = $resp->with('warning', implode(' ', $warnings));
         }
 
-        if ($quote->fresh()->isLinked() && $quote->client_project_id) {
-            $resp = $resp
-                ->with('standard_linked_project_id', $quote->client_project_id);
-        }
-
         return QuotationAfterSaveRedirect::apply($request, $resp);
     }
 
@@ -285,8 +280,7 @@ class StandardQuotationController extends Controller
 
         return redirect()
             ->route('admin.quotations.standard.edit', $standard_quotation)
-            ->with('success', 'Linked to project "'.$project->name.'". A line item was added to the project\'s Quotation.')
-            ->with('standard_linked_project_id', $project->id);
+            ->with('success', 'Linked to project "'.$project->name.'". A line item was added to the project\'s Quotation.');
     }
 
     public function createProjectAndLink(

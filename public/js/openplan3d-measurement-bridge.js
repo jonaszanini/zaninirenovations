@@ -443,8 +443,24 @@
       for (var i = 0; i < floors.length; i++) {
         if (floors[i] && floors[i].id === activeId) return floors[i];
       }
+      return null;
     }
     return floors[0] || null;
+  }
+
+  function resolveActiveFloorEntry(floors, activeId) {
+    if (!Array.isArray(floors) || floors.length === 0) {
+      return { floor: null, matchedById: false };
+    }
+    if (activeId) {
+      for (var i = 0; i < floors.length; i++) {
+        if (floors[i] && floors[i].id === activeId) {
+          return { floor: floors[i], matchedById: true };
+        }
+      }
+      return { floor: null, matchedById: false, activeMissing: true };
+    }
+    return { floor: floors[0] || null, matchedById: false };
   }
 
   function countDrawableWalls(floor) {
@@ -457,38 +473,30 @@
     return n;
   }
 
-  function pickBestFloor(candidates) {
-    var best = null;
-    var bestCount = -1;
-    for (var i = 0; i < candidates.length; i++) {
-      var f = candidates[i];
-      if (!f) continue;
-      var count = countDrawableWalls(f);
-      if (count > bestCount) {
-        bestCount = count;
-        best = f;
-      }
-    }
-    return best;
-  }
-
-  /** Prefer vendor live floor (plan.floors[active]); fall back to plan.floor when active is empty. */
+  /** Prefer vendor live floor (plan.floors[active]); fall back to plan.floor only when floors slot is missing. */
   function resolveLiveFloorSnapshot(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    var fromFloors = resolveFloorFromList(plan.floors, activeId);
-    var fromProject = null;
-    if (plan.project && Array.isArray(plan.project.floors)) {
-      fromProject = resolveFloorFromList(plan.project.floors, activeId);
+    var planFloors = resolveActiveFloorEntry(plan.floors, activeId);
+    if (planFloors.matchedById && planFloors.floor) {
+      return planFloors.floor;
     }
-    if (fromFloors && countDrawableWalls(fromFloors) > 0) return fromFloors;
-    if (fromProject && countDrawableWalls(fromProject) > 0) return fromProject;
-    if (plan.floor && typeof plan.floor === 'object' && countDrawableWalls(plan.floor) > 0) return plan.floor;
-    if (fromFloors) return fromFloors;
-    if (fromProject) return fromProject;
+    if (planFloors.floor && !planFloors.activeMissing) {
+      return planFloors.floor;
+    }
+    var projectFloors = resolveActiveFloorEntry(
+      plan.project && Array.isArray(plan.project.floors) ? plan.project.floors : null,
+      activeId
+    );
+    if (projectFloors.matchedById && projectFloors.floor) {
+      return projectFloors.floor;
+    }
+    if (projectFloors.floor && !projectFloors.activeMissing) {
+      return projectFloors.floor;
+    }
     if (plan.floor && typeof plan.floor === 'object') return plan.floor;
     if (Array.isArray(plan.walls)) return plan;
-    return null;
+    return planFloors.floor || projectFloors.floor || null;
   }
 
   function resolveFloor(plan) {

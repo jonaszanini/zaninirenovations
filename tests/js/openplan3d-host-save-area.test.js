@@ -67,7 +67,7 @@ assert.strictEqual(
 
 const editorSplitPlan = JSON.parse(JSON.stringify(hand0Plan));
 editorSplitPlan.floor.walls = editorSplitPlan.floors[0].walls.slice();
-editorSplitPlan.floors[0].walls = [];
+delete editorSplitPlan.floors;
 const splitMetrics = bridge.layoutMetrics(editorSplitPlan, 'r1', { wall_height_ft: 8.0 });
 assert.ok(splitMetrics.area_sqft > 1300, 'full plan.floor with empty floors[0] must not zero live area');
 assert.strictEqual(
@@ -93,6 +93,17 @@ assert.ok(
   'resolved floor must omit wall deleted in floors[0]'
 );
 assert.ok(deletedMetrics.area_sqft > 1300, 'live metrics after delete must stay positive');
+
+const allDeletedPlan = JSON.parse(JSON.stringify(hand0Plan));
+allDeletedPlan.floors[0].walls = [];
+const allDeletedMetrics = bridge.layoutMetrics(allDeletedPlan, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(bridge.resolveFloor(allDeletedPlan).walls.length, 0, 'all deleted must resolve empty floor');
+assert.strictEqual(allDeletedMetrics.area_sqft, 0, 'all deleted must report zero live area');
+assert.strictEqual(
+  shouldConfirmReplaceStoredArea(1515.42, allDeletedMetrics, allDeletedPlan),
+  true,
+  'all walls deleted must trigger replace-stored-area confirm, not silent save'
+);
 
 const emptyPlan = { unit: 'cm', floor: { walls: [], rooms: [] } };
 const emptyMetrics = bridge.layoutMetrics(emptyPlan, null, { wall_height_ft: 8.0 });

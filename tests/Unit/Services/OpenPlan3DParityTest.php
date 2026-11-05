@@ -676,12 +676,38 @@ class OpenPlan3DParityTest extends TestCase
         $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
         $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         $plan['floor']['walls'] = $plan['floors'][0]['walls'];
-        $plan['floors'][0]['walls'] = [];
+        unset($plan['floors']);
 
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
         $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
         $this->assertGreaterThan(0.0, $metrics['perimeter_lf']);
+    }
+
+    public function test_all_walls_deleted_on_active_floor_measures_zero_not_stale_plan_floor(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['floors'][0]['walls'] = [];
+        $this->assertNotEmpty($plan['floor']['walls']);
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertSame(0.0, $metrics['area_sqft']);
+    }
+
+    public function test_new_empty_active_f2_measures_zero_not_stale_plan_floor(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['activeFloorId'] = 'f2';
+        $plan['floors'][] = [
+            'id' => 'f2',
+            'walls' => [],
+            'rooms' => [['id' => 'r2', 'name' => 'New', 'polygon' => []]],
+        ];
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r2', ['wall_height_ft' => 8.0]);
+        $this->assertSame(0.0, $metrics['area_sqft']);
     }
 
     public function test_deleted_wall_on_floors_array_wins_over_stale_plan_floor(): void

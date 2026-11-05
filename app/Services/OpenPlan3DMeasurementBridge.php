@@ -1210,35 +1210,61 @@ class OpenPlan3DMeasurementBridge
                     return $floor;
                 }
             }
+
+            return null;
         }
 
         return is_array($floors[0] ?? null) ? $floors[0] : null;
     }
 
+    /**
+     * @return array{floor: ?array<string, mixed>, matched_by_id: bool, active_missing?: bool}
+     */
+    private function resolveActiveFloorEntry(?array $floors, ?string $activeId): array
+    {
+        if (! is_array($floors) || $floors === []) {
+            return ['floor' => null, 'matched_by_id' => false];
+        }
+        if ($activeId) {
+            foreach ($floors as $floor) {
+                if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
+                    return ['floor' => $floor, 'matched_by_id' => true];
+                }
+            }
+
+            return ['floor' => null, 'matched_by_id' => false, 'active_missing' => true];
+        }
+
+        return [
+            'floor' => is_array($floors[0] ?? null) ? $floors[0] : null,
+            'matched_by_id' => false,
+        ];
+    }
+
     private function resolveFloor(array $plan): ?array
     {
         $activeId = $plan['activeFloorId'] ?? ($plan['project']['activeFloorId'] ?? null);
-        $fromFloors = $this->resolveFloorFromList($plan['floors'] ?? null, is_string($activeId) ? $activeId : null);
-        $fromProject = $this->resolveFloorFromList(
-            isset($plan['project']['floors']) && is_array($plan['project']['floors']) ? $plan['project']['floors'] : null,
-            is_string($activeId) ? $activeId : null
-        );
+        $activeId = is_string($activeId) ? $activeId : null;
 
-        if ($fromFloors !== null && $this->countDrawableWalls($fromFloors) > 0) {
-            return $fromFloors;
+        $planFloors = $this->resolveActiveFloorEntry($plan['floors'] ?? null, $activeId);
+        if ($planFloors['matched_by_id'] && is_array($planFloors['floor'])) {
+            return $planFloors['floor'];
         }
-        if ($fromProject !== null && $this->countDrawableWalls($fromProject) > 0) {
-            return $fromProject;
+        if (is_array($planFloors['floor']) && empty($planFloors['active_missing'])) {
+            return $planFloors['floor'];
         }
-        if (isset($plan['floor']) && is_array($plan['floor']) && $this->countDrawableWalls($plan['floor']) > 0) {
-            return $plan['floor'];
+
+        $projectFloorsList = isset($plan['project']['floors']) && is_array($plan['project']['floors'])
+            ? $plan['project']['floors']
+            : null;
+        $projectFloors = $this->resolveActiveFloorEntry($projectFloorsList, $activeId);
+        if ($projectFloors['matched_by_id'] && is_array($projectFloors['floor'])) {
+            return $projectFloors['floor'];
         }
-        if ($fromFloors !== null) {
-            return $fromFloors;
+        if (is_array($projectFloors['floor']) && empty($projectFloors['active_missing'])) {
+            return $projectFloors['floor'];
         }
-        if ($fromProject !== null) {
-            return $fromProject;
-        }
+
         if (isset($plan['floor']) && is_array($plan['floor'])) {
             return $plan['floor'];
         }
@@ -1246,7 +1272,9 @@ class OpenPlan3DMeasurementBridge
             return $plan;
         }
 
-        return null;
+        return is_array($planFloors['floor'] ?? null)
+            ? $planFloors['floor']
+            : (is_array($projectFloors['floor'] ?? null) ? $projectFloors['floor'] : null);
     }
 
     /**

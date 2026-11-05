@@ -357,13 +357,28 @@ var removedMetrics = bridge.layoutMetrics(removedPartitionPlan, 'r1', { wall_hei
 assert.ok(removedMetrics.area_sqft > 1300, 'Removing a partition must not zero area when outer loop is closed; got ' + removedMetrics.area_sqft);
 assert.ok(!removedMetrics.geometry_unmeasurable, 'Removing a partition must stay measurable with bad stored polygon');
 
-// Test 17: Editor live payload — full plan.floor but stale empty plan.floors[0] (Jonas live zero)
+// Test 17: Editor live payload — walls only on plan.floor when plan.floors is absent
 var editorSplitPlan = JSON.parse(JSON.stringify(hand0Plan));
 editorSplitPlan.floor.walls = editorSplitPlan.floors[0].walls.slice();
-editorSplitPlan.floors[0].walls = [];
+delete editorSplitPlan.floors;
 var splitMetrics = bridge.layoutMetrics(editorSplitPlan, 'r1', { wall_height_ft: 8.0 });
-assert.ok(splitMetrics.area_sqft > 1300, 'Must use plan.floor when floors[0].walls is stale empty; got ' + splitMetrics.area_sqft);
+assert.ok(splitMetrics.area_sqft > 1300, 'Must use plan.floor when plan.floors is missing; got ' + splitMetrics.area_sqft);
 assert.ok(splitMetrics.perimeter_lf > 0, 'Perimeter must stay non-zero when floor walls are on plan.floor');
+
+// Test 20: All walls deleted on floors[0] must not resurrect stale plan.floor (R1)
+var allDeletedPlan = JSON.parse(JSON.stringify(hand0Plan));
+allDeletedPlan.floors[0].walls = [];
+var allDeletedResolved = bridge.resolveFloor(allDeletedPlan);
+assert.strictEqual(allDeletedResolved.walls.length, 0, 'empty active floors[0] must resolve to zero walls');
+var allDeletedMetrics = bridge.layoutMetrics(allDeletedPlan, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(allDeletedMetrics.area_sqft, 0, 'all walls deleted must measure zero area for save guards');
+
+// Test 21: New empty active f2 must not use stale plan.floor (R2)
+var emptyActiveF2 = JSON.parse(JSON.stringify(hand0Plan));
+emptyActiveF2.activeFloorId = 'f2';
+emptyActiveF2.floors.push({ id: 'f2', walls: [], rooms: [{ id: 'r2', name: 'New', polygon: [] }] });
+var emptyF2Metrics = bridge.layoutMetrics(emptyActiveF2, 'r2', { wall_height_ft: 8.0 });
+assert.strictEqual(emptyF2Metrics.area_sqft, 0, 'empty active f2 must measure 0, not stale plan.floor');
 
 // Test 18: Deleted wall on plan.floors[0] must win over stale extra wall on plan.floor (D1)
 var deletedInFloors0 = JSON.parse(JSON.stringify(hand0Plan));
