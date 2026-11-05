@@ -432,9 +432,19 @@
       return !!(room && room.metrics && room.metrics.geometry_unmeasurable);
     }
 
-    function updateGeometryWarning() {
+    function liveMetricsClearStoredGeometryWarning(plan) {
+      if (!plan || !currentRoom || !roomStoredGeometryUnmeasurable(currentRoom)) return false;
+      if (!win || !win.OpenPlan3DMeasurementBridge) return false;
+      var live = currentMetrics(plan);
+      return !!(live && (live.area_sqft || 0) > 0 && !live.geometry_unmeasurable);
+    }
+
+    function updateGeometryWarning(plan) {
       if (!geometryWarning) return;
       var show = roomStoredGeometryUnmeasurable(currentRoom);
+      if (show && plan && liveMetricsClearStoredGeometryWarning(plan)) {
+        show = false;
+      }
       var message = show && currentRoom && currentRoom.metrics
         ? (currentRoom.metrics.geometry_message || '')
         : '';
@@ -966,6 +976,7 @@
     function updateMetrics(plan) {
       if (!metricArea) return;
       if (currentRoom && currentRoom.metrics && currentRoom.metrics.geometry_unmeasurable) {
+        if (!liveMetricsClearStoredGeometryWarning(plan)) {
         var stored = currentRoom.metrics;
         metricArea.textContent = (stored.area_sqft || 0).toFixed(2);
         if (metricPerimeter) {
@@ -994,8 +1005,9 @@
         setMetricEl(metricBulkheadFraming, stored.bulkhead_framing_lf, 2);
         setMetricEl(metricBulkheadBead, stored.bulkhead_corner_bead_lf, 2);
         renderZonesPanel(currentPlan);
-        updateGeometryWarning();
+        updateGeometryWarning(plan);
         return;
+        }
       }
       if (!plan || !win || !win.OpenPlan3DMeasurementBridge) {
         metricArea.textContent = '0.00';
@@ -1048,7 +1060,7 @@
         console.warn('[openPlan3D] Metrics computation failed:', err);
       }
       renderZonesPanel(plan);
-      updateGeometryWarning();
+      updateGeometryWarning(plan);
     }
 
     function postToEditor(payload) {

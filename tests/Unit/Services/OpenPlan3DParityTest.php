@@ -492,4 +492,65 @@ class OpenPlan3DParityTest extends TestCase
             ],
         ];
     }
+
+    public function test_basement_two_stub_partitions_replace_self_intersecting_stored_polygon(): void
+    {
+        $cmPerFt = 30.48;
+        $plan = $this->basementStubRegressionPlan(0.0);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(600.0, $metrics['area_sqft']);
+
+        $walls = $plan['floor']['walls'];
+        $loop = $this->bridge->extractOuterLoopAndPartitions($walls, 1.0);
+        $this->assertCount(2, $loop['partition_walls']);
+        $storedPoly = $plan['floor']['rooms'][0]['polygon'];
+        $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop($storedPoly, $loop, 1.0));
+    }
+
+    public function test_basement_stub_partitions_tolerate_endpoint_offset_from_perimeter(): void
+    {
+        $plan = $this->basementStubRegressionPlan(15.0);
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertEquals(600.0, $metrics['area_sqft']);
+
+        $loop = $this->bridge->extractOuterLoopAndPartitions($plan['floor']['walls'], 1.0);
+        $this->assertCount(2, $loop['partition_walls']);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function basementStubRegressionPlan(float $stubYOffsetCm): array
+    {
+        $cmPerFt = 30.48;
+
+        return [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cmPerFt, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w2', 'start' => ['x' => 30 * $cmPerFt, 'y' => 0], 'end' => ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w3', 'start' => ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 20 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cmPerFt], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'p1', 'start' => ['x' => 14 * $cmPerFt, 'y' => 20 * $cmPerFt - $stubYOffsetCm], 'end' => ['x' => 14 * $cmPerFt, 'y' => 8 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                    ['id' => 'p2', 'start' => ['x' => 22 * $cmPerFt, 'y' => 20 * $cmPerFt - $stubYOffsetCm], 'end' => ['x' => 22 * $cmPerFt, 'y' => 12 * $cmPerFt], 'thickness' => 10, 'height' => 8 * $cmPerFt],
+                ],
+                'rooms' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'Basement',
+                        'walls' => ['w1', 'w2', 'w3', 'w4', 'p1', 'p2'],
+                        'polygon' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 30 * $cmPerFt, 'y' => 0],
+                            ['x' => 0, 'y' => 20 * $cmPerFt],
+                            ['x' => 30 * $cmPerFt, 'y' => 20 * $cmPerFt],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+    }
 }

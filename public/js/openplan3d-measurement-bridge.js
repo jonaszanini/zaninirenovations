@@ -34,6 +34,103 @@
     return Math.sqrt(dx * dx + dy * dy);
   }
 
+  function partitionToleranceCm(wallsList, cmPerUnit) {
+    var baseCm = 20.0;
+    var maxCm = 30.0;
+    var minLenCm = Infinity;
+    for (var i = 0; i < (wallsList || []).length; i++) {
+      var w = wallsList[i];
+      if (!w || !w.start || !w.end) continue;
+      var lenCm = hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
+      if (lenCm > 0.01 && lenCm < minLenCm) minLenCm = lenCm;
+    }
+    if (!isFinite(minLenCm)) return baseCm;
+    return Math.min(maxCm, Math.max(baseCm, minLenCm * 0.08));
+  }
+
+  function onSegment(p, q, r) {
+    return (
+      Math.min(p.x, q.x) - 1e-9 <= r.x && r.x <= Math.max(p.x, q.x) + 1e-9 &&
+      Math.min(p.y, q.y) - 1e-9 <= r.y && r.y <= Math.max(p.y, q.y) + 1e-9
+    );
+  }
+
+  function direction(p, q, r) {
+    var val = (q.y - p.y) * (r.x - q.x) - (q.x - p.x) * (r.y - q.y);
+    if (Math.abs(val) < 1e-9) return 0;
+    return val > 0 ? 1 : 2;
+  }
+
+  function segmentsIntersect(p1, q1, p2, q2) {
+    var d1 = direction(p1, q1, p2);
+    var d2 = direction(p1, q1, q2);
+    var d3 = direction(p2, q2, p1);
+    var d4 = direction(p2, q2, q1);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+    if (d1 === 0 && onSegment(p1, q1, p2)) return true;
+    if (d2 === 0 && onSegment(p1, q1, q2)) return true;
+    if (d3 === 0 && onSegment(p2, q2, p1)) return true;
+    if (d4 === 0 && onSegment(p2, q2, q1)) return true;
+    return false;
+  }
+
+  function isSimplePolygon(vertices) {
+    var n = (vertices || []).length;
+    if (n < 3) return false;
+    for (var i = 0; i < n; i++) {
+      var a1 = vertices[i];
+      var a2 = vertices[(i + 1) % n];
+      for (var j = i + 1; j < n; j++) {
+        if (j === i + 1) continue;
+        if (i === 0 && j === n - 1) continue;
+        var b1 = vertices[j];
+        var b2 = vertices[(j + 1) % n];
+        if (segmentsIntersect(a1, a2, b1, b2)) return false;
+      }
+    }
+    return true;
+  }
+
+  function polygonVerticesToFeet(polygon, cmPerUnit) {
+    var out = [];
+    for (var i = 0; i < (polygon || []).length; i++) {
+      var pt = polygon[i];
+      out.push({
+        x: (Number(pt.x || 0) * cmPerUnit) / CM_PER_FOOT,
+        y: (Number(pt.y || 0) * cmPerUnit) / CM_PER_FOOT
+      });
+    }
+    return out;
+  }
+
+  function outerLoopHasUsableArea(outerPolygon, cmPerUnit) {
+    if (!outerPolygon || outerPolygon.length < 3) return false;
+    var area = verticesToSquareFeet(polygonVerticesToFeet(outerPolygon, cmPerUnit));
+    return area > 0.01;
+  }
+
+  function storedPolygonMeasurable(storedPoly, cmPerUnit) {
+    if (!storedPoly || storedPoly.length < 3) return false;
+    var feet = polygonVerticesToFeet(storedPoly, cmPerUnit);
+    if (!isSimplePolygon(feet)) return false;
+    return verticesToSquareFeet(feet) > 0.01;
+  }
+
+  function shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit) {
+    var outer = loopData && loopData.outer_polygon ? loopData.outer_polygon : [];
+    if (!outerLoopHasUsableArea(outer, cmPerUnit)) return false;
+    if (!storedPoly || storedPoly.length < 3) return true;
+    if (loopData.partition_walls && loopData.partition_walls.length > 0) return true;
+    return !storedPolygonMeasurable(storedPoly, cmPerUnit);
+  }
+
+  function applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit) {
+    if (shouldReplaceRoomPolygonWithOuterLoop(storedPoly, loopData, cmPerUnit)) {
+      return loopData.outer_polygon.slice();
+    }
+    return storedPoly;
+  }
+
   function normalizeWallHeight(h) {
     var val = Number(h);
     if (!isFinite(val) || val < 1) return DEFAULT_WALL_HEIGHT_FT;
@@ -352,7 +449,9 @@
 
   function extractOuterLoopAndPartitions(wallsList, cmPerUnit, eps) {
     cmPerUnit = cmPerUnit || 1.0;
-    eps = eps || 5.0;
+    if (eps == null || !isFinite(Number(eps))) {
+      eps = partitionToleranceCm(wallsList, cmPerUnit);
+    }
     var epsUnit = eps / (cmPerUnit > 0 ? cmPerUnit : 1.0);
 
     if (!wallsList || wallsList.length < 3) {
@@ -784,18 +883,7 @@
     var partitionWalls = loopData.partition_walls || [];
     var boundaryWallIds = loopData.boundary_wall_ids || [];
     var storedPoly = (selectedRoom && (selectedRoom.polygon || selectedRoom.vertices)) || [];
-    var polyVertices = storedPoly;
-    if (storedPoly.length < 3) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
-      }
-    } else if (!isSingleRoom && roomWIds.length === 0) {
-      polyVertices = storedPoly;
-    } else if (partitionWalls.length > 0) {
-      if (loopData.outer_polygon && loopData.outer_polygon.length >= 3) {
-        polyVertices = loopData.outer_polygon;
-      }
-    }
+    var polyVertices = applyOuterLoopPolygon(storedPoly, loopData, cmPerUnit);
     if (polyVertices.length < 3) return emptyLayoutMetrics(finish.wall_height_ft);
 
     // Convert polygon vertices to feet
@@ -823,6 +911,7 @@
 
     // Floor area in sq ft
     var insideAreaSqFt = roundTo(verticesToSquareFeet(verticesFt), 2);
+    if (insideAreaSqFt <= 0) return emptyLayoutMetrics(finish.wall_height_ft);
     var ceilingAreaSqFt = insideAreaSqFt;
 
     // Corners
@@ -1119,6 +1208,9 @@
     roundTo: roundTo,
     isPlan: isPlan,
     emptyLayoutMetrics: emptyLayoutMetrics,
-    layoutMetrics: layoutMetrics
+    layoutMetrics: layoutMetrics,
+    extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
+    shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
+    isSimplePolygon: isSimplePolygon
   };
 }));

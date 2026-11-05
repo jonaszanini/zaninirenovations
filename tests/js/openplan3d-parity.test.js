@@ -195,4 +195,69 @@ assert.strictEqual(lPartMetrics.area_sqft, 300.0, 'Floor area matches L-shape wi
 assert.strictEqual(lPartMetrics.perimeter_lf, 80.0, 'Perimeter matches outer loop (80 lf)');
 assert.strictEqual(lPartMetrics.net_wall_area_sqft, 832.0, 'Net wall area includes both faces of partitions (832 sq ft)');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
+
+// Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
+function basementStubRegressionPlan(stubYOffsetCm) {
+  stubYOffsetCm = stubYOffsetCm || 0;
+  const ft = cmPerFt;
+  const walls = [
+    { id: 'w1', start: { x: 0, y: 0 }, end: { x: 30 * ft, y: 0 }, thickness: 10, height: 8 * ft },
+    { id: 'w2', start: { x: 30 * ft, y: 0 }, end: { x: 30 * ft, y: 20 * ft }, thickness: 10, height: 8 * ft },
+    { id: 'w3', start: { x: 30 * ft, y: 20 * ft }, end: { x: 0, y: 20 * ft }, thickness: 10, height: 8 * ft },
+    { id: 'w4', start: { x: 0, y: 20 * ft }, end: { x: 0, y: 0 }, thickness: 10, height: 8 * ft },
+    {
+      id: 'p1',
+      start: { x: 14 * ft, y: 20 * ft - stubYOffsetCm },
+      end: { x: 14 * ft, y: 8 * ft },
+      thickness: 10,
+      height: 8 * ft
+    },
+    {
+      id: 'p2',
+      start: { x: 22 * ft, y: 20 * ft - stubYOffsetCm },
+      end: { x: 22 * ft, y: 12 * ft },
+      thickness: 10,
+      height: 8 * ft
+    }
+  ];
+  const badStoredPolygon = [
+    { x: 0, y: 0 },
+    { x: 30 * ft, y: 0 },
+    { x: 0, y: 20 * ft },
+    { x: 30 * ft, y: 20 * ft }
+  ];
+  return {
+    unit: 'cm',
+    floor: {
+      walls: walls,
+      rooms: [
+        {
+          id: 'r1',
+          name: 'Basement',
+          walls: ['w1', 'w2', 'w3', 'w4', 'p1', 'p2'],
+          polygon: badStoredPolygon
+        }
+      ]
+    }
+  };
+}
+
+const basementPlan = basementStubRegressionPlan(0);
+const basementMetrics = bridge.layoutMetrics(basementPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(!basementMetrics.geometry_unmeasurable, 'Basement stubs with bad stored polygon is measurable');
+assert.strictEqual(basementMetrics.area_sqft, 600.0, 'Floor area uses outer loop (30x20 = 600 sq ft)');
+const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
+assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
+assert.ok(
+  bridge.shouldReplaceRoomPolygonWithOuterLoop(basementPlan.floor.rooms[0].polygon, basementLoop, 1.0),
+  'Self-intersecting stored polygon is replaced by outer loop'
+);
+
+const basementOffsetPlan = basementStubRegressionPlan(15);
+const basementOffsetMetrics = bridge.layoutMetrics(basementOffsetPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(!basementOffsetMetrics.geometry_unmeasurable, 'Stub endpoints 15cm off perimeter still measurable');
+assert.strictEqual(basementOffsetMetrics.area_sqft, 600.0, 'Offset stubs still yield 600 sq ft floor area');
+const offsetLoop = bridge.extractOuterLoopAndPartitions(basementOffsetPlan.floor.walls, 1.0);
+assert.strictEqual(offsetLoop.partition_walls.length, 2, 'Near-miss T-junction stubs count as partitions');
+
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');
