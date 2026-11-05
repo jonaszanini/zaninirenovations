@@ -230,4 +230,43 @@ const outerMetrics = bridge.layoutMetrics(rectPlan, 'r1', { wall_height_ft: 8 })
 assert.ok(outerMetrics.area_sqft > 80, 'outer polygon should exceed partial stored polygon area');
 assert.ok(Array.isArray(outerMetrics.boundary_wall_ids));
 
+// Test: Zone with multiple rects stays as multiple members (not bbox)
+const multiRectZone = {
+  id: 'multi',
+  name: 'L-Zone',
+  x1: 0,
+  y1: 0,
+  x2: 150, // bbox x2
+  y2: 150, // bbox y2
+  rects: [
+    { x1: 0, y1: 0, x2: 100, y2: 50 },   // top bar: 100x50 = 5000
+    { x1: 0, y1: 50, x2: 50, y2: 150 },  // left stem: 50x100 = 5000
+  ]
+};
+
+const multiRectMembers = ext.collectZoneMemberLegacyRects(multiRectZone, [multiRectZone]);
+assert.strictEqual(multiRectMembers.length, 2, 'L-zone must have 2 member rects, not 1 bbox');
+const multiRectArea = ext.zoneAreaSqFt(multiRectZone, [multiRectZone], 1.0);
+const bboxArea = 150 * 150 / (ft * ft); // would be 22500 / 929.03 = ~24.22 sq ft
+const expectedUnionArea = (100 * 50 + 50 * 100) / (ft * ft); // 10000 / 929.03 = ~10.76 sq ft
+assert.ok(Math.abs(multiRectArea - expectedUnionArea) < 0.1,
+  'L-zone area must be union (~10.76 sf), not bbox (~24.22 sf); got ' + multiRectArea);
+assert.ok(multiRectArea < bboxArea * 0.6,
+  'L-zone area must be significantly less than bbox area');
+
+// Test: Overlapping rects are deduplicated properly
+const overlappingZone = {
+  id: 'overlap',
+  rects: [
+    { x1: 0, y1: 0, x2: 100, y2: 100 },   // 10000 cm²
+    { x1: 50, y1: 50, x2: 150, y2: 150 }, // 10000 cm², 2500 overlap
+  ]
+};
+const overlapMembers = ext.collectZoneMemberLegacyRects(overlappingZone, [overlappingZone]);
+assert.strictEqual(overlapMembers.length, 2, 'Overlapping rects should both be collected');
+const overlapArea = ext.zoneAreaSqFt(overlappingZone, [overlappingZone], 1.0);
+const expectedOverlapUnion = (10000 + 10000 - 2500) / (ft * ft); // 17500 / 929.03 = ~18.84 sf
+assert.ok(Math.abs(overlapArea - expectedOverlapUnion) < 0.1,
+  'Overlapping zone area must account for overlap (~18.84 sf); got ' + overlapArea);
+
 console.log('openplan3d-zanini-extensions: ok');

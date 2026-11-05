@@ -90,8 +90,10 @@
     for (var i = 0; i < zones.length; i++) {
       var zone = zones[i];
       if (!zone || zone.mergedInto) continue;
-      var bounds = zoneUnionBounds(zone, zones);
-      if (bounds && rectsOverlap(bounds, rect)) return zone;
+      var members = collectZoneMemberRects(zone, zones);
+      for (var mi = 0; mi < members.length; mi++) {
+        if (rectsOverlap(members[mi], rect)) return zone;
+      }
     }
     return null;
   }
@@ -424,6 +426,35 @@
     return null;
   }
 
+  function collectZoneMemberRects(zone, zones) {
+    var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
+    if (ext && typeof ext.collectZoneMemberLegacyRects === 'function') {
+      return ext.collectZoneMemberLegacyRects(zone, zones);
+    }
+    var out = [];
+    var seen = {};
+    function pushShape(shape) {
+      var a = axisRect(shape);
+      if (!a) return;
+      var key = [a.x1, a.y1, a.x2, a.y2].join('|');
+      if (seen[key]) return;
+      seen[key] = true;
+      out.push({ x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2 });
+    }
+    if (Array.isArray(zone.rects) && zone.rects.length) {
+      for (var r = 0; r < zone.rects.length; r++) {
+        pushShape(zone.rects[r]);
+      }
+    } else {
+      pushShape(zone);
+    }
+    for (var j = 0; j < (zones || []).length; j++) {
+      var merged = zones[j];
+      if (merged && merged.mergedInto === zone.id) pushShape(merged);
+    }
+    return out;
+  }
+
   function renderOverlay() {
     var canvas = canvasEl();
     var overlay = ensureOverlay();
@@ -434,7 +465,7 @@
     var zones = plan.zanini.zones || [];
 
     function drawBox(bounds, opts) {
-      if (!bounds) return;
+      if (!bounds) return null;
       var box = planToScreen(canvas, bounds);
       var el = document.createElement('div');
       el.className = opts.className || 'zanini-overlay-rect';
@@ -453,21 +484,27 @@
       }
       if (opts.dataId) el.setAttribute('data-zanini-bulkhead-id', opts.dataId);
       overlay.appendChild(el);
+      return el;
     }
 
     zones.forEach(function (z) {
       if (!z || z.mergedInto) return;
-      var bounds = zoneUnionBounds(z, zones);
       var color = z.color || pickZoneColor(zones);
       var sqft = zoneAreaSqFt(z, zones, CM_PER_FOOT);
       var label = (z.name || 'Zone') + ' · ' + sqft.toFixed(1) + ' sf';
-      drawBox(bounds, {
-        className: 'zanini-zone-rect',
-        fill: color,
-        border: 'rgba(15, 23, 42, 0.55)',
-        dashed: true,
-        label: label
-      });
+      var memberRects = collectZoneMemberRects(z, zones);
+      var labelPlaced = false;
+      for (var ri = 0; ri < memberRects.length; ri++) {
+        var rect = memberRects[ri];
+        var el = drawBox(rect, {
+          className: 'zanini-zone-rect',
+          fill: color,
+          border: 'rgba(15, 23, 42, 0.55)',
+          dashed: true,
+          label: !labelPlaced ? label : null
+        });
+        if (el && !labelPlaced) labelPlaced = true;
+      }
     });
 
     (plan.zanini.bulkheads || []).forEach(function (b) {
@@ -500,13 +537,23 @@
 
   function setMode(mode) {
     state.mode = state.mode === mode ? null : mode;
-    if (state.toolbar) {
-      [].forEach.call(state.toolbar.querySelectorAll('[data-zanini-mode]'), function (btn) {
+    var toggleWrap = document.getElementById('openplan3d-draw-toggle');
+    if (toggleWrap) {
+      [].forEach.call(toggleWrap.querySelectorAll('[data-zanini-mode]'), function (btn) {
+        var isActive = btn.getAttribute('data-zanini-mode') === state.mode;
+        btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+      });
+    }
+    var floatBar = document.getElementById('openplan3d-zanini-toolbar');
+    if (floatBar) {
+      [].forEach.call(floatBar.querySelectorAll('[data-zanini-mode]'), function (btn) {
         btn.classList.toggle('zanini-tool-active', btn.getAttribute('data-zanini-mode') === state.mode);
       });
-      var delBtn = state.toolbar.querySelector('[data-zanini-action="delete-bulkhead"]');
-      if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
+      var floatDel = floatBar.querySelector('[data-zanini-action="delete-bulkhead"]');
+      if (floatDel) floatDel.hidden = !state.selectedBulkheadId;
     }
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
     scheduleOverlay();
   }
 
@@ -527,10 +574,8 @@
     if (!hit || state.mode) return;
     state.selectedBulkheadId = hit.getAttribute('data-zanini-bulkhead-id');
     scheduleOverlay();
-    if (state.toolbar) {
-      var delBtn = state.toolbar.querySelector('[data-zanini-action="delete-bulkhead"]');
-      if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
-    }
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
   }
 
   function onPointerDown(e) {
@@ -612,25 +657,25 @@
     var style = document.createElement('style');
     style.id = 'openplan3d-zanini-toolbar-styles';
     style.textContent = [
-      '#openplan3d-zanini-toolbar{z-index:45;bottom:56px;}',
-      '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
-      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;}',
       '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
-      '@media (max-width:480px){#openplan3d-zanini-toolbar{bottom:72px;gap:4px;padding:4px;}}'
+      '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
+      '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}'
     ].join('');
     document.head.appendChild(style);
   }
 
-  function buildToolbar() {
-    if (state.toolbar) return state.toolbar;
-    injectToolbarStyles();
+  function buildFloatingToolbarFallback() {
+    if (document.getElementById('openplan3d-zanini-toolbar')) {
+      state.toolbar = document.getElementById('openplan3d-zanini-toolbar');
+      return state.toolbar;
+    }
     var bar = document.createElement('div');
     bar.id = 'openplan3d-zanini-toolbar';
-    bar.style.cssText = 'position:fixed;left:50%;bottom:56px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);max-width:calc(100vw - 16px);overflow-x:auto;';
     bar.innerHTML = [
-      '<button type="button" data-zanini-mode="zone" title="Draw area zone" style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:600;">Zone</button>',
-      '<button type="button" data-zanini-mode="bulkhead" title="Draw bulkhead" style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-size:11px;font-weight:600;">Bulkhead</button>',
-      '<button type="button" data-zanini-action="delete-bulkhead" title="Delete selected bulkhead" hidden style="min-height:44px;min-width:44px;padding:0 10px;border-radius:8px;border:0;background:#7f1d1d;color:#fecaca;font-size:11px;font-weight:600;">Del</button>'
+      '<button type="button" data-zanini-mode="zone" title="Draw area zone">Zone</button>',
+      '<button type="button" data-zanini-mode="bulkhead" title="Draw bulkhead">Bulkhead</button>',
+      '<button type="button" data-zanini-action="delete-bulkhead" title="Delete selected bulkhead" hidden>Del</button>'
     ].join('');
     document.body.appendChild(bar);
     bar.addEventListener('click', function (e) {
@@ -645,6 +690,32 @@
     });
     state.toolbar = bar;
     return bar;
+  }
+
+  function wireHeaderToolbar() {
+    if (state.toolbar) return;
+    injectToolbarStyles();
+    if (typeof window !== 'undefined' && window.parent && window.parent !== window) {
+      state.toolbar = { hosted: true };
+      return;
+    }
+    var toggleWrap = document.getElementById('openplan3d-draw-toggle');
+    var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
+    if (toggleWrap) {
+      toggleWrap.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-zanini-mode]');
+        if (!btn) return;
+        setMode(btn.getAttribute('data-zanini-mode'));
+      });
+      if (delBtn) {
+        delBtn.addEventListener('click', function () {
+          deleteSelectedBulkhead();
+        });
+      }
+      state.toolbar = toggleWrap;
+      return;
+    }
+    buildFloatingToolbarFallback();
   }
 
   function findWallSidebarHost() {
@@ -947,7 +1018,7 @@
   }
 
   function init() {
-    buildToolbar();
+    wireHeaderToolbar();
     watchCanvas();
     ensureWallSelectionHook();
     watchWallSidebar();
@@ -991,6 +1062,7 @@
     findOverlappingZone: findOverlappingZone,
     mergeRectIntoZone: mergeRectIntoZone,
     addZoneFromPreview: addZoneFromPreview,
+    collectZoneMemberRects: collectZoneMemberRects,
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
     readSelectedWallIds: readSelectedWallIds,
@@ -999,6 +1071,8 @@
     toggleZoneExclude: toggleZoneExclude,
     renderFinishPanel: renderFinishPanel,
     refreshOverlay: scheduleOverlay,
+    setMode: setMode,
+    deleteSelectedBulkhead: deleteSelectedBulkhead,
     canvasEl: canvasEl,
     screenToPlan: screenToPlan,
     ensureCanvasBound: ensureCanvasBound,

@@ -6561,25 +6561,6 @@ body.cp-modal-open {
     grid-template-columns: 1fr;
   }
 }
-.sq-success-card { margin-bottom: 20px; }
-.sq-success-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-.sq-success-actions .sq-success-project-btn {
-  width: 100%;
-  justify-content: center;
-  box-sizing: border-box;
-}
-@media (min-width: 560px) {
-  .sq-success-actions .sq-success-project-btn {
-    width: auto;
-    flex: 1 1 220px;
-    min-width: min(100%, 280px);
-  }
-}
 
 /* Visit date (create / edit / calendar tab) */
 .cp-checkbox-label {

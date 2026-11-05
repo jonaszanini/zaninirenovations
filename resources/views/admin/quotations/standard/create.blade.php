@@ -184,26 +184,6 @@
     </div>
   @endif
 
-  @if (session('standard_flash') === 'saved' || session('standard_flash') === 'linked')
-    <div class="admin-card sq-success-card">
-      <h4 style="margin:0 0 8px;">Next steps</h4>
-      <div class="sq-success-actions">
-        @if (session('standard_linked_project_id'))
-          <a href="{{ route('admin.client-projects.show', session('standard_linked_project_id')) }}#quotation"
-             class="admin-btn admin-btn--primary sq-success-project-btn">
-            <i class="fa fa-briefcase"></i> Open linked project (Quotation tab)
-          </a>
-        @endif
-        <a href="{{ route('admin.quotations.standard.create', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-plus"></i> Create another standard quotation
-        </a>
-        <a href="{{ route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []) }}" class="admin-btn admin-btn--ghost admin-btn--sm">
-          <i class="fa fa-list"></i> View all saved quotations
-        </a>
-      </div>
-    </div>
-  @endif
-
   <form action="{{ $formAction }}" method="post" id="sq-standard-form" data-quotation-editor
         data-quotation-is-draft="{{ $isEdit && $quotation->is_draft ? '1' : '0' }}"
         data-qh-client-share="{{ $isEdit && !($quotation->is_draft ?? false) && ! empty($linkedCpq) ? '1' : '0' }}"

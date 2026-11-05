@@ -288,8 +288,9 @@ const bowtieOnlyPlan = {
   }
 };
 const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
-assert.strictEqual(bowtieMetrics.geometry_unmeasurable, true, 'Bowtie must set geometry_unmeasurable');
-assert.ok(bowtieMetrics.baseboard_lf > 0, 'Bowtie should still expose baseboard LF from outline');
+assert.strictEqual(bowtieMetrics.area_sqft, 100.0, 'Valid wall outer loop replaces bowtie stored polygon');
+assert.ok(!bowtieMetrics.geometry_unmeasurable, 'Bowtie stored polygon must not block measurement when walls form a closed loop');
+assert.ok(bowtieMetrics.baseboard_lf > 0, 'Recovered loop should expose baseboard LF from outline');
 
 // Test 12: Independent endpoint noise ±1.5–3 cm (hand0 drawn perimeter)
 function jitterIndependentEndpoints(plan, maxOffsetCm) {
@@ -327,5 +328,99 @@ delete brokenPlan.floors;
 var brokenMetrics = bridge.layoutMetrics(brokenPlan, null, { wall_height_ft: 8.0 });
 assert.strictEqual(brokenMetrics.geometry_unmeasurable, true, 'Extreme noise must flag geometry_unmeasurable');
 assert.strictEqual(brokenMetrics.area_sqft, 0, 'Extreme noise must not report a false positive area');
+
+// Test 14: Editor live plan uses plan.floors when plan.floor is stale/empty (Jonas live zero takeoffs)
+var staleFloorPlan = JSON.parse(JSON.stringify(hand0Plan));
+staleFloorPlan.floor.walls = [];
+staleFloorPlan.floor.rooms = [{ id: 'r1', name: 'B', polygon: [] }];
+var staleFloorMetrics = bridge.layoutMetrics(staleFloorPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(staleFloorMetrics.area_sqft > 1300, 'Stale empty plan.floor must not zero live area; got ' + staleFloorMetrics.area_sqft);
+assert.ok(!staleFloorMetrics.geometry_unmeasurable, 'Stale plan.floor must not mark geometry unmeasurable');
+
+// Test 15: Closed outer + two interior partitions stays measurable
+var twoPartitionPlan = JSON.parse(JSON.stringify(hand0Plan));
+assert.ok(twoPartitionPlan.floor.walls.length >= 18, 'hand0 fixture includes two interior partitions');
+var twoPartMetrics = bridge.layoutMetrics(twoPartitionPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(twoPartMetrics.area_sqft > 1300, 'Two interior partitions must keep floor area > 0; got ' + twoPartMetrics.area_sqft);
+
+// Test 16: Removing partitions with invalid stored polygon still uses outer loop (false zero save)
+var removedPartitionPlan = JSON.parse(JSON.stringify(hand0Plan));
+removedPartitionPlan.floor.walls = removedPartitionPlan.floor.walls.filter(function (w) {
+  return w.id !== 'mclt5ix7';
+});
+removedPartitionPlan.floors[0].walls = removedPartitionPlan.floor.walls;
+removedPartitionPlan.floor.rooms[0].polygon = [
+  { x: 0, y: 0 }, { x: 100, y: 100 }, { x: 100, y: 0 }, { x: 0, y: 100 }
+];
+removedPartitionPlan.floors[0].rooms[0].polygon = removedPartitionPlan.floor.rooms[0].polygon;
+var removedMetrics = bridge.layoutMetrics(removedPartitionPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(removedMetrics.area_sqft > 1300, 'Removing a partition must not zero area when outer loop is closed; got ' + removedMetrics.area_sqft);
+assert.ok(!removedMetrics.geometry_unmeasurable, 'Removing a partition must stay measurable with bad stored polygon');
+
+// Test 17: Editor live payload — walls only on plan.floor when plan.floors is absent
+var editorSplitPlan = JSON.parse(JSON.stringify(hand0Plan));
+editorSplitPlan.floor.walls = editorSplitPlan.floors[0].walls.slice();
+delete editorSplitPlan.floors;
+var splitMetrics = bridge.layoutMetrics(editorSplitPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(splitMetrics.area_sqft > 1300, 'Must use plan.floor when plan.floors is missing; got ' + splitMetrics.area_sqft);
+assert.ok(splitMetrics.perimeter_lf > 0, 'Perimeter must stay non-zero when floor walls are on plan.floor');
+
+// Test 20: All walls deleted on floors[0] must not resurrect stale plan.floor (R1)
+var allDeletedPlan = JSON.parse(JSON.stringify(hand0Plan));
+allDeletedPlan.floors[0].walls = [];
+var allDeletedResolved = bridge.resolveFloor(allDeletedPlan);
+assert.strictEqual(allDeletedResolved.walls.length, 0, 'empty active floors[0] must resolve to zero walls');
+var allDeletedMetrics = bridge.layoutMetrics(allDeletedPlan, 'r1', { wall_height_ft: 8.0 });
+assert.strictEqual(allDeletedMetrics.area_sqft, 0, 'all walls deleted must measure zero area for save guards');
+
+// Test 21: New empty active f2 must not use stale plan.floor (R2)
+var emptyActiveF2 = JSON.parse(JSON.stringify(hand0Plan));
+emptyActiveF2.activeFloorId = 'f2';
+emptyActiveF2.floors.push({ id: 'f2', walls: [], rooms: [{ id: 'r2', name: 'New', polygon: [] }] });
+var emptyF2Metrics = bridge.layoutMetrics(emptyActiveF2, 'r2', { wall_height_ft: 8.0 });
+assert.strictEqual(emptyF2Metrics.area_sqft, 0, 'empty active f2 must measure 0, not stale plan.floor');
+
+// Test 18: Deleted wall on plan.floors[0] must win over stale extra wall on plan.floor (D1)
+var deletedInFloors0 = JSON.parse(JSON.stringify(hand0Plan));
+var deleteWallId = 'mclt5ix7';
+deletedInFloors0.floors[0].walls = deletedInFloors0.floors[0].walls.filter(function (w) {
+  return w.id !== deleteWallId;
+});
+assert.ok(
+  deletedInFloors0.floor.walls.some(function (w) {
+    return w.id === deleteWallId;
+  }),
+  'fixture: plan.floor stays stale with deleted wall still present'
+);
+var deletedResolved = bridge.resolveFloor(deletedInFloors0);
+assert.strictEqual(
+  deletedResolved.walls.length,
+  deletedInFloors0.floors[0].walls.length,
+  'resolveFloor must use live floors[0] after delete, not stale plan.floor'
+);
+assert.ok(
+  !deletedResolved.walls.some(function (w) {
+    return w.id === deleteWallId;
+  }),
+  'deleted wall must not resurrect from stale plan.floor'
+);
+var deletedMetrics = bridge.layoutMetrics(deletedInFloors0, 'r1', { wall_height_ft: 8.0 });
+assert.ok(deletedMetrics.area_sqft > 1300, 'deleted interior wall on floors[0] must keep positive area');
+
+// Test 19: activeFloorId f2 must beat stale plan.floor snapshot (D5)
+var activeF2Plan = JSON.parse(JSON.stringify(hand0Plan));
+activeF2Plan.activeFloorId = 'f2';
+activeF2Plan.floors.push({
+  id: 'f2',
+  walls: [
+    { id: 'a1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 } },
+    { id: 'a2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 } },
+    { id: 'a3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 } },
+    { id: 'a4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 } }
+  ],
+  rooms: [{ id: 'r2', name: 'Upstairs', polygon: [] }]
+});
+var activeF2Metrics = bridge.layoutMetrics(activeF2Plan, 'r2', { wall_height_ft: 8.0 });
+assert.ok(activeF2Metrics.area_sqft > 90 && activeF2Metrics.area_sqft < 110, 'active f2 square must measure ~100 sq ft, got ' + activeF2Metrics.area_sqft);
 
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

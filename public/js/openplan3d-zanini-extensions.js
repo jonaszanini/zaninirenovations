@@ -98,16 +98,72 @@
     return rectangleUnionAreaSqFt(normalized, cmPerUnit);
   }
 
-  function resolveActiveFloor(plan) {
-    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
-    if (!Array.isArray(plan.floors)) return null;
-    var activeId = plan.activeFloorId;
-    if (activeId) {
-      for (var i = 0; i < plan.floors.length; i++) {
-        if (plan.floors[i] && plan.floors[i].id === activeId) return plan.floors[i];
+  function countDrawableWalls(floor) {
+    if (!floor || !Array.isArray(floor.walls)) return 0;
+    var n = 0;
+    for (var i = 0; i < floor.walls.length; i++) {
+      var w = floor.walls[i];
+      if (w && w.start && w.end) n++;
+    }
+    return n;
+  }
+
+  function pickBestFloor(candidates) {
+    var best = null;
+    var bestCount = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var f = candidates[i];
+      if (!f) continue;
+      var count = countDrawableWalls(f);
+      if (count > bestCount) {
+        bestCount = count;
+        best = f;
       }
     }
-    return plan.floors[0] || null;
+    return best;
+  }
+
+  function resolveActiveFloorEntry(floors, activeId) {
+    if (!Array.isArray(floors) || !floors.length) {
+      return { floor: null, matchedById: false };
+    }
+    if (activeId) {
+      for (var i = 0; i < floors.length; i++) {
+        if (floors[i] && floors[i].id === activeId) {
+          return { floor: floors[i], matchedById: true };
+        }
+      }
+      return { floor: null, matchedById: false, activeMissing: true };
+    }
+    return { floor: floors[0] || null, matchedById: false };
+  }
+
+  function resolveLiveFloorSnapshot(plan) {
+    if (!plan || typeof plan !== 'object') return null;
+    var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
+    var planFloors = resolveActiveFloorEntry(plan.floors, activeId);
+    if (planFloors.matchedById && planFloors.floor) {
+      return planFloors.floor;
+    }
+    if (planFloors.floor && !planFloors.activeMissing) {
+      return planFloors.floor;
+    }
+    var projectFloors = resolveActiveFloorEntry(
+      plan.project && Array.isArray(plan.project.floors) ? plan.project.floors : null,
+      activeId
+    );
+    if (projectFloors.matchedById && projectFloors.floor) {
+      return projectFloors.floor;
+    }
+    if (projectFloors.floor && !projectFloors.activeMissing) {
+      return projectFloors.floor;
+    }
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    return null;
+  }
+
+  function resolveActiveFloor(plan) {
+    return resolveLiveFloorSnapshot(plan);
   }
 
   function extractZanini(plan) {

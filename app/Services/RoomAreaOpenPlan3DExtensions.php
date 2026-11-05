@@ -447,22 +447,54 @@ class RoomAreaOpenPlan3DExtensions
      */
     private function resolveActiveFloor(array $plan): ?array
     {
+        $activeId = $plan['activeFloorId'] ?? ($plan['project']['activeFloorId'] ?? null);
+        $activeId = is_string($activeId) ? $activeId : null;
+
+        $resolveEntry = function (?array $floors) use ($activeId): array {
+            if (! is_array($floors) || $floors === []) {
+                return ['floor' => null, 'matched_by_id' => false];
+            }
+            if ($activeId) {
+                foreach ($floors as $floor) {
+                    if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
+                        return ['floor' => $floor, 'matched_by_id' => true];
+                    }
+                }
+
+                return ['floor' => null, 'matched_by_id' => false, 'active_missing' => true];
+            }
+
+            return [
+                'floor' => is_array($floors[0] ?? null) ? $floors[0] : null,
+                'matched_by_id' => false,
+            ];
+        };
+
+        $planFloors = $resolveEntry($plan['floors'] ?? null);
+        if ($planFloors['matched_by_id'] && is_array($planFloors['floor'])) {
+            return $planFloors['floor'];
+        }
+        if (is_array($planFloors['floor']) && empty($planFloors['active_missing'])) {
+            return $planFloors['floor'];
+        }
+
+        $projectFloors = $resolveEntry(
+            isset($plan['project']['floors']) && is_array($plan['project']['floors']) ? $plan['project']['floors'] : null
+        );
+        if ($projectFloors['matched_by_id'] && is_array($projectFloors['floor'])) {
+            return $projectFloors['floor'];
+        }
+        if (is_array($projectFloors['floor']) && empty($projectFloors['active_missing'])) {
+            return $projectFloors['floor'];
+        }
+
         if (isset($plan['floor']) && is_array($plan['floor'])) {
             return $plan['floor'];
         }
-        if (! isset($plan['floors']) || ! is_array($plan['floors'])) {
-            return null;
-        }
-        $activeId = $plan['activeFloorId'] ?? null;
-        if ($activeId) {
-            foreach ($plan['floors'] as $floor) {
-                if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
-                    return $floor;
-                }
-            }
-        }
 
-        return is_array($plan['floors'][0] ?? null) ? $plan['floors'][0] : null;
+        return is_array($planFloors['floor'] ?? null)
+            ? $planFloors['floor']
+            : (is_array($projectFloors['floor'] ?? null) ? $projectFloors['floor'] : null);
     }
 
     /**
