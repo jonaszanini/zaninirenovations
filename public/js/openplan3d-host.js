@@ -833,10 +833,23 @@
       if (!bridge || typeof bridge.resolveFloor !== 'function') return plan;
       var active = bridge.resolveFloor(plan);
       if (!active) return plan;
+      var snap;
       try {
-        plan.floor = JSON.parse(JSON.stringify(active));
+        snap = JSON.parse(JSON.stringify(active));
       } catch (e) {
-        plan.floor = active;
+        snap = active;
+      }
+      plan.floor = snap;
+      if (Array.isArray(plan.floors) && plan.floors.length) {
+        var activeId = plan.activeFloorId;
+        var idx = 0;
+        for (var fi = 0; fi < plan.floors.length; fi++) {
+          if (plan.floors[fi] && activeId && plan.floors[fi].id === activeId) {
+            idx = fi;
+            break;
+          }
+        }
+        plan.floors[idx] = Object.assign({}, plan.floors[idx] || {}, snap);
       }
       return plan;
     }

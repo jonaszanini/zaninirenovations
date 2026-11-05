@@ -447,16 +447,45 @@
     return floors[0] || null;
   }
 
+  function countDrawableWalls(floor) {
+    if (!floor || !Array.isArray(floor.walls)) return 0;
+    var n = 0;
+    for (var i = 0; i < floor.walls.length; i++) {
+      var w = floor.walls[i];
+      if (w && w.start && w.end) n++;
+    }
+    return n;
+  }
+
+  function pickBestFloor(candidates) {
+    var best = null;
+    var bestCount = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var f = candidates[i];
+      if (!f) continue;
+      var count = countDrawableWalls(f);
+      if (count > bestCount) {
+        bestCount = count;
+        best = f;
+      }
+    }
+    return best;
+  }
+
   function resolveFloor(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    var fromProject = plan.project && resolveFloorFromList(plan.project.floors, activeId);
-    if (fromProject) return fromProject;
+    var candidates = [];
+    if (plan.project && Array.isArray(plan.project.floors)) {
+      var fromProject = resolveFloorFromList(plan.project.floors, activeId);
+      if (fromProject) candidates.push(fromProject);
+    }
     var fromFloors = resolveFloorFromList(plan.floors, activeId);
-    if (fromFloors) return fromFloors;
-    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
-    if (Array.isArray(plan.walls)) return plan;
-    return null;
+    if (fromFloors) candidates.push(fromFloors);
+    if (plan.floor && typeof plan.floor === 'object') candidates.push(plan.floor);
+    if (Array.isArray(plan.walls)) candidates.push(plan);
+    if (candidates.length === 0) return null;
+    return pickBestFloor(candidates);
   }
 
   function emptyLayoutMetrics(wallHeightFt) {
@@ -1385,6 +1414,7 @@
     emptyLayoutMetrics: emptyLayoutMetrics,
     layoutMetrics: layoutMetrics,
     resolveFloor: resolveFloor,
+    countDrawableWalls: countDrawableWalls,
     extractOuterLoopAndPartitions: extractOuterLoopAndPartitions,
     shouldReplaceRoomPolygonWithOuterLoop: shouldReplaceRoomPolygonWithOuterLoop,
     isSimplePolygon: isSimplePolygon

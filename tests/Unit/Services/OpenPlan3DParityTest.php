@@ -671,6 +671,19 @@ class OpenPlan3DParityTest extends TestCase
         $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
     }
 
+    public function test_editor_split_payload_uses_plan_floor_when_floors_array_is_empty(): void
+    {
+        $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+        $plan['floor']['walls'] = $plan['floors'][0]['walls'];
+        $plan['floors'][0]['walls'] = [];
+
+        $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
+        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
+        $this->assertGreaterThan(0.0, $metrics['perimeter_lf']);
+    }
+
     public function test_remove_partition_keeps_positive_area_with_invalid_stored_polygon(): void
     {
         $path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');

@@ -65,6 +65,17 @@ assert.strictEqual(
   'stale floor must not trigger false zero replace prompt'
 );
 
+const editorSplitPlan = JSON.parse(JSON.stringify(hand0Plan));
+editorSplitPlan.floor.walls = editorSplitPlan.floors[0].walls.slice();
+editorSplitPlan.floors[0].walls = [];
+const splitMetrics = bridge.layoutMetrics(editorSplitPlan, 'r1', { wall_height_ft: 8.0 });
+assert.ok(splitMetrics.area_sqft > 1300, 'full plan.floor with empty floors[0] must not zero live area');
+assert.strictEqual(
+  shouldConfirmReplaceStoredArea(1515.42, splitMetrics, editorSplitPlan),
+  false,
+  'editor split payload must not trigger false zero replace prompt'
+);
+
 const emptyPlan = { unit: 'cm', floor: { walls: [], rooms: [] } };
 const emptyMetrics = bridge.layoutMetrics(emptyPlan, null, { wall_height_ft: 8.0 });
 assert.strictEqual(

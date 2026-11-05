@@ -98,27 +98,60 @@
     return rectangleUnionAreaSqFt(normalized, cmPerUnit);
   }
 
+  function countDrawableWalls(floor) {
+    if (!floor || !Array.isArray(floor.walls)) return 0;
+    var n = 0;
+    for (var i = 0; i < floor.walls.length; i++) {
+      var w = floor.walls[i];
+      if (w && w.start && w.end) n++;
+    }
+    return n;
+  }
+
+  function pickBestFloor(candidates) {
+    var best = null;
+    var bestCount = -1;
+    for (var i = 0; i < candidates.length; i++) {
+      var f = candidates[i];
+      if (!f) continue;
+      var count = countDrawableWalls(f);
+      if (count > bestCount) {
+        bestCount = count;
+        best = f;
+      }
+    }
+    return best;
+  }
+
   function resolveActiveFloor(plan) {
     if (!plan || typeof plan !== 'object') return null;
     var activeId = plan.activeFloorId || (plan.project && plan.project.activeFloorId);
-    if (plan.project && Array.isArray(plan.project.floors) && plan.project.floors.length) {
+    var candidates = [];
+    if (plan.project && Array.isArray(plan.project.floors)) {
       if (activeId) {
         for (var pi = 0; pi < plan.project.floors.length; pi++) {
-          if (plan.project.floors[pi] && plan.project.floors[pi].id === activeId) return plan.project.floors[pi];
+          if (plan.project.floors[pi] && plan.project.floors[pi].id === activeId) {
+            candidates.push(plan.project.floors[pi]);
+            break;
+          }
         }
       }
-      return plan.project.floors[0] || null;
+      if (!candidates.length && plan.project.floors[0]) candidates.push(plan.project.floors[0]);
     }
     if (Array.isArray(plan.floors) && plan.floors.length) {
+      var matched = null;
       if (activeId) {
         for (var i = 0; i < plan.floors.length; i++) {
-          if (plan.floors[i] && plan.floors[i].id === activeId) return plan.floors[i];
+          if (plan.floors[i] && plan.floors[i].id === activeId) {
+            matched = plan.floors[i];
+            break;
+          }
         }
       }
-      return plan.floors[0] || null;
+      candidates.push(matched || plan.floors[0]);
     }
-    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
-    return null;
+    if (plan.floor && typeof plan.floor === 'object') candidates.push(plan.floor);
+    return pickBestFloor(candidates);
   }
 
   function extractZanini(plan) {

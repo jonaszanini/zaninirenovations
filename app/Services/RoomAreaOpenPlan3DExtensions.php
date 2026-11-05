@@ -448,33 +448,54 @@ class RoomAreaOpenPlan3DExtensions
     private function resolveActiveFloor(array $plan): ?array
     {
         $activeId = $plan['activeFloorId'] ?? ($plan['project']['activeFloorId'] ?? null);
-        if (isset($plan['project']['floors']) && is_array($plan['project']['floors']) && count($plan['project']['floors']) > 0) {
+        $candidates = [];
+
+        if (isset($plan['project']['floors']) && is_array($plan['project']['floors'])) {
+            $matched = null;
             if ($activeId) {
                 foreach ($plan['project']['floors'] as $floor) {
                     if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
-                        return $floor;
+                        $matched = $floor;
+                        break;
                     }
                 }
             }
-
-            return is_array($plan['project']['floors'][0] ?? null) ? $plan['project']['floors'][0] : null;
+            $candidates[] = $matched ?? (is_array($plan['project']['floors'][0] ?? null) ? $plan['project']['floors'][0] : null);
         }
-        if (isset($plan['floors']) && is_array($plan['floors']) && count($plan['floors']) > 0) {
+
+        if (isset($plan['floors']) && is_array($plan['floors'])) {
+            $matched = null;
             if ($activeId) {
                 foreach ($plan['floors'] as $floor) {
                     if (is_array($floor) && ($floor['id'] ?? null) === $activeId) {
-                        return $floor;
+                        $matched = $floor;
+                        break;
                     }
                 }
             }
-
-            return is_array($plan['floors'][0] ?? null) ? $plan['floors'][0] : null;
+            $candidates[] = $matched ?? (is_array($plan['floors'][0] ?? null) ? $plan['floors'][0] : null);
         }
+
         if (isset($plan['floor']) && is_array($plan['floor'])) {
-            return $plan['floor'];
+            $candidates[] = $plan['floor'];
         }
 
-        return null;
+        $best = null;
+        $bestCount = -1;
+        foreach (array_filter($candidates) as $floor) {
+            $count = 0;
+            foreach ($floor['walls'] ?? [] as $w) {
+                if (is_array($w) && isset($w['start'], $w['end'])) {
+                    $count++;
+                }
+            }
+            if ($count > $bestCount) {
+                $bestCount = $count;
+                $best = $floor;
+            }
+        }
+
+        return $best;
     }
 
     /**
