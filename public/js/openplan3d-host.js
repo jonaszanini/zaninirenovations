@@ -808,13 +808,16 @@
     function mergePlanZanini(previousPlan, incomingPlan) {
       if (!incomingPlan || typeof incomingPlan !== 'object') return incomingPlan;
       var merged = clonePlan(incomingPlan);
-      if (Object.prototype.hasOwnProperty.call(incomingPlan, 'zanini')
-        && incomingPlan.zanini
-        && typeof incomingPlan.zanini === 'object') {
+      var ext = win && win.OpenPlan3DZaniniExtensions;
+      var prevZ = previousPlan && previousPlan.zanini;
+      var incZ = Object.prototype.hasOwnProperty.call(incomingPlan, 'zanini') ? incomingPlan.zanini : undefined;
+      if (ext && typeof ext.mergeZaniniSnapshots === 'function') {
+        merged.zanini = ext.mergeZaniniSnapshots(prevZ, incZ);
+      } else if (incZ && typeof incZ === 'object') {
         try {
-          merged.zanini = JSON.parse(JSON.stringify(incomingPlan.zanini));
+          merged.zanini = JSON.parse(JSON.stringify(incZ));
         } catch (e) {
-          merged.zanini = incomingPlan.zanini;
+          merged.zanini = incZ;
         }
       } else if (previousPlan && previousPlan.zanini) {
         merged.zanini = merged.zanini || {};
@@ -2008,7 +2011,7 @@
           }
           loadAcked = true;
           if (e.data.plan) {
-            currentPlan = syncActiveFloorSnapshot(e.data.plan);
+            currentPlan = mergePlanZanini(currentPlan, e.data.plan);
           }
           loadedPlanBaseline = currentPlan;
           updateMetrics(currentPlan);

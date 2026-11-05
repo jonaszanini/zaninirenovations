@@ -802,13 +802,25 @@
     var floor = activeFloor(plan);
     if (!floor) return true;
     var rooms = floor.rooms || [];
-    var room = rooms[0];
-    if (!room) return true;
-    var ids = room.boundary_wall_ids || room.walls || [];
-    for (var i = 0; i < ids.length; i++) {
-      if (String(ids[i]) === String(wallId)) return true;
+    for (var ri = 0; ri < rooms.length; ri++) {
+      var room = rooms[ri];
+      if (!room) continue;
+      var ids = room.boundary_wall_ids || room.walls || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (String(ids[i]) === String(wallId)) return true;
+      }
     }
     return false;
+  }
+
+  function finishDefaultsForWall(wallId) {
+    var isBoundary = wallIsBoundary(wallId);
+    return {
+      drywall: true,
+      insulation: isBoundary,
+      studs: !isBoundary,
+      baseboard: true
+    };
   }
 
   function renderFinishPanel() {
@@ -841,25 +853,7 @@
     var primary = wallIds[0];
     var flags = wallFinishes[primary] || {};
     var isBoundary = wallIsBoundary(primary);
-    var floor = activeFloor(plan);
-    var wallLenLf = 0;
-    if (floor && Array.isArray(floor.walls)) {
-      for (var wi = 0; wi < floor.walls.length; wi++) {
-        if (String(floor.walls[wi].id) === String(primary)) {
-          wallLenLf = Math.hypot(
-            floor.walls[wi].end.x - floor.walls[wi].start.x,
-            floor.walls[wi].end.y - floor.walls[wi].start.y
-          ) / CM_PER_FOOT;
-          break;
-        }
-      }
-    }
-    var defaults = {
-      drywall: true,
-      insulation: isBoundary,
-      studs: !isBoundary,
-      baseboard: true
-    };
+    var defaults = finishDefaultsForWall(primary);
     var heading = wallIds.length > 1
       ? ('Wall finishes (' + wallIds.length + ' walls)')
       : ('Wall finishes · ' + primary);
@@ -871,7 +865,8 @@
         var first = checked;
         for (var wi2 = 1; wi2 < wallIds.length; wi2++) {
           var f2 = wallFinishes[wallIds[wi2]] || {};
-          var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : defaults[key];
+          var wallDefaults = finishDefaultsForWall(wallIds[wi2]);
+          var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : wallDefaults[key];
           if (c2 !== first) mixed = true;
         }
         if (mixed) checked = false;
@@ -1087,6 +1082,8 @@
     collectZoneMemberRects: collectZoneMemberRects,
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
+    wallIsBoundary: wallIsBoundary,
+    finishDefaultsForWall: finishDefaultsForWall,
     readSelectedWallIds: readSelectedWallIds,
     isEditor3DViewActive: isEditor3DViewActive,
     mergeZones: mergeZones,
