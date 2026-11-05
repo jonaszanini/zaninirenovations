@@ -244,6 +244,7 @@ jobs:
       - name: JavaScript tests (browser)
         if: needs.changes.outputs.run_browser == 'true'
         run: |
+          node tests/js/openplan3d-kr-ortho-drag.test.js
           node tests/js/openplan3d-browser.test.js
           node tests/js/openplan3d-room-area-blade-browser.test.js
           node tests/js/room-area-main-thread-responsive.test.js
@@ -251,7 +252,6 @@ jobs:
           node tests/js/openplan3d-kr-inch-snap.test.js
           node tests/js/client-projects-table-screenshots.test.js
           node tests/js/openplan3d-editor-browser.test.js
-          node tests/js/openplan3d-kr-ortho-drag.test.js
           node tests/js/openplan3d-editor-index-mount.test.js
           node tests/js/openplan3d-zone-coords.test.js
           node tests/js/admin-hotkey-save-browser.test.js

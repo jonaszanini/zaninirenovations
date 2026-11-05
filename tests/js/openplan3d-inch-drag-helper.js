@@ -516,10 +516,12 @@ async function main() {
 
   const browser = await puppeteer.launch({
     headless: 'new',
+    protocolTimeout: 600000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
   });
   try {
     const page = await browser.newPage();
+    page.setDefaultTimeout(120000);
     await page.setViewport({ width: 1280, height: 900 });
     await page.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, { timeout: 120000 });
     await page.waitForSelector('canvas', { timeout: 120000 });
