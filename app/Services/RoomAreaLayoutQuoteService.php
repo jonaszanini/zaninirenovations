@@ -234,6 +234,18 @@ class RoomAreaLayoutQuoteService
             $metrics['bulkhead_lf'] += $row['bulkhead_lf'] ?? $row['bulkhead_framing_lf'] ?? 0;
             $metrics['bulkhead_framing_lf'] += $row['bulkhead_framing_lf'] ?? $row['bulkhead_lf'] ?? 0;
             $metrics['bulkhead_drywall_sqft'] += $row['bulkhead_drywall_sqft'] ?? 0;
+            foreach ([
+                'finish_drywall_sqft',
+                'finish_insulation_sqft',
+                'finish_stud_lf',
+                'finish_baseboard_lf',
+                'finish_casing_lf',
+                'excluded_area_sqft',
+            ] as $finishKey) {
+                if (array_key_exists($finishKey, $row) && $row[$finishKey] !== null && $row[$finishKey] !== '') {
+                    $metrics[$finishKey] = ((float) ($metrics[$finishKey] ?? 0)) + (float) $row[$finishKey];
+                }
+            }
             $metrics['cabinet_base_lf'] += $row['cabinet_base_lf'] ?? 0;
             $metrics['cabinet_upper_lf'] += $row['cabinet_upper_lf'] ?? 0;
             $metrics['stairs_count'] += $row['stairs_count'] ?? 0;
@@ -328,7 +340,7 @@ class RoomAreaLayoutQuoteService
             $meta = 'ⓘ '.$geometryMessage.' · '.$meta;
         }
 
-        return [
+        $payload = [
             'id' => $id,
             'name' => $name,
             'label' => $name,
@@ -374,6 +386,20 @@ class RoomAreaLayoutQuoteService
             'stairs_quote_type' => (string) ($metrics['stairs_quote_type'] ?? 'standard'),
             'meta' => $meta,
         ];
+        foreach ([
+            'finish_drywall_sqft',
+            'finish_insulation_sqft',
+            'finish_stud_lf',
+            'finish_baseboard_lf',
+            'finish_casing_lf',
+            'excluded_area_sqft',
+        ] as $finishKey) {
+            if (array_key_exists($finishKey, $metrics) && $metrics[$finishKey] !== null && $metrics[$finishKey] !== '') {
+                $payload[$finishKey] = round((float) $metrics[$finishKey], 2);
+            }
+        }
+
+        return $payload;
     }
 
     private function formatQty(float $value): string

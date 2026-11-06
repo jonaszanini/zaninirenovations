@@ -6,6 +6,7 @@ use App\Models\BasementQuotation;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Services\BasementQuotationCalculator;
+use App\Services\BasementRoomAreaImportMapper;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -84,6 +85,17 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
                 'opening_count' => 1,
                 'drywall_openings' => 3,
             ]);
+        $canvasOpt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Rec']))
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($canvasOpt);
+        $this->assertArrayNotHasKey('finish_drywall_sqft', $canvasOpt);
+        $this->assertArrayNotHasKey('finish_stud_lf', $canvasOpt);
+        $this->assertArrayNotHasKey('bulkhead_corner_bead_lf', $canvasOpt);
+        $mapped = BasementRoomAreaImportMapper::proposedQuantities($canvasOpt, 8);
+        $this->assertSame(1, $mapped['door_qty']);
+        $this->assertSame(1, $mapped['window_trim_qty']);
+        $this->assertSame(1, $mapped['drywall_openings']);
+        $this->assertSame(30.0, $mapped['baseboard_lf']);
     }
 
     public function test_layout_search_exposes_bulkhead_and_partition_for_basement_import(): void
@@ -134,7 +146,7 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             ],
         ]);
 
-        $this->get(route('admin.utilities.room-area.layouts', ['q' => 'Living']))
+        $payload = $this->get(route('admin.utilities.room-area.layouts', ['q' => 'Living']))
             ->assertOk()
             ->assertJsonFragment([
                 'id' => 'room:'.$room->id,
@@ -142,7 +154,19 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
                 'bulkhead_lf' => 27,
                 'bulkhead_framing_lf' => 27,
                 'bulkhead_drywall_sqft' => 30,
-            ]);
+            ])
+            ->json();
+        $opt = collect($payload)->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($opt);
+        $this->assertArrayHasKey('finish_drywall_sqft', $opt);
+        $this->assertArrayHasKey('finish_stud_lf', $opt);
+        $this->assertArrayHasKey('finish_baseboard_lf', $opt);
+        $this->assertArrayHasKey('finish_insulation_sqft', $opt);
+        $this->assertArrayHasKey('casing_lf', $opt);
+        $this->assertArrayHasKey('ceiling_area_sqft', $opt);
+        $this->assertArrayNotHasKey('bulkhead_corner_bead_lf', $opt);
+        $this->assertGreaterThan(0, (float) $opt['finish_drywall_sqft']);
+        $this->assertSame(20.0, (float) $opt['finish_stud_lf']);
     }
 
     public function test_drywall_step_exposes_openings_and_baseboard_fields(): void
@@ -271,5 +295,142 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             '/<input(?=[^>]*\bid="br-shoe")(?=[^>]*\bvalue="12\.5")/',
             $editHtml
         );
+    }
+
+    public function test_complete_layout_quantities_persist_without_overwriting_rates_or_finishes(): void
+    {
+        $this->actingAsAdmin();
+
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Full import project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Rec complete',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 600,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 30 * $cm, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'p1', 'start' => ['x' => 14 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 14 * $cm, 'y' => 8 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Rec complete',
+                        'walls' => ['w1', 'w2', 'w3', 'w4', 'p1'],
+                    ]],
+                    'doors' => [[
+                        'id' => 'd1',
+                        'wallId' => 'w1',
+                        'type' => 'door',
+                        'width' => 91.44,
+                        'height' => 203.2,
+                        'offset' => 100.0,
+                    ]],
+                    'windows' => [[
+                        'id' => 'win1',
+                        'wallId' => 'w2',
+                        'type' => 'window',
+                        'width' => 121.92,
+                        'height' => 91.44,
+                        'offset' => 100.0,
+                    ]],
+                ],
+                'zanini' => [
+                    'bulkheads' => [[
+                        'rect' => [
+                            'x1' => 0,
+                            'y1' => 0,
+                            'x2' => 10 * $cm,
+                            'y2' => 1 * $cm,
+                        ],
+                        'drop_height_ft' => 2.0,
+                        'against_wall' => true,
+                    ]],
+                ],
+            ],
+        ]);
+
+        $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Rec complete']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($opt);
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertGreaterThan(0, (float) $proposed['area_sqft']);
+        $this->assertGreaterThan(0, (float) $proposed['partition_lf']);
+        $this->assertGreaterThan(0, (float) $proposed['bulkhead_lf']);
+        $this->assertGreaterThan(0, (float) $proposed['drywall_wall_sf']);
+        $this->assertSame(1, $proposed['door_qty']);
+        $this->assertSame(1, $proposed['window_trim_qty']);
+
+        $enabled = array_merge(
+            ['overview'],
+            array_keys(BasementQuotationCalculator::tradeSections())
+        );
+        $payload = array_merge([
+            'save_intent' => 'draft',
+            'client_name' => 'Full Import Client',
+            'flooring_type' => 'lvp',
+            'ceiling_type' => 'drywall',
+            'finish_level' => 4,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'material_waste_percent' => 10,
+            'room_area_import_id' => 'room:'.$room->id,
+            'room_area_import_label' => 'Rec complete',
+            'enabled_sections' => $enabled,
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'insulate_walls' => 1,
+        ], array_filter($proposed, fn ($v) => $v !== null));
+
+        $this->post(route('admin.quotations.basement.store'), $payload);
+        $quote = BasementQuotation::query()->where('client_name', 'Full Import Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertEqualsWithDelta((float) $proposed['area_sqft'], (float) $quote->inputs['area_sqft'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['flooring_sf'], (float) $quote->inputs['flooring_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['partition_lf'], (float) $quote->inputs['partition_lf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['bulkhead_lf'], (float) $quote->inputs['bulkhead_lf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['drywall_wall_sf'], (float) $quote->inputs['drywall_wall_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) $quote->inputs['paint_wall_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['baseboard_lf'], (float) $quote->inputs['baseboard_lf'], 0.05);
+        $this->assertSame(1, (int) $quote->inputs['door_qty']);
+        $this->assertSame(1, (int) $quote->inputs['window_trim_qty']);
+        $this->assertSame(1, (int) $quote->inputs['framing_door_openings']);
+        $this->assertSame('lvp', $quote->inputs['flooring_type']);
+        $this->assertSame('drywall', $quote->inputs['ceiling_type']);
+        $this->assertSame(80.0, (float) $quote->inputs['owner_hourly_rate']);
+        $this->assertSame(10.0, (float) $quote->inputs['material_waste_percent']);
+
+        $laborKeys = collect($quote->calculation['labor'] ?? [])->pluck('key')->all();
+        $this->assertContains('framing_walls', $laborKeys);
+        $this->assertContains('fl_install', $laborKeys);
+        $this->assertContains('trim_base', $laborKeys);
+
+        $payload['save_intent'] = 'publish';
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $quote->refresh();
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertEqualsWithDelta((float) $proposed['flooring_sf'], (float) $quote->inputs['flooring_sf'], 0.05);
+        $this->assertSame('lvp', $quote->inputs['flooring_type']);
+        $this->assertSame(80.0, (float) $quote->inputs['owner_hourly_rate']);
+
+        $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/<input(?=[^>]*\bid="br-partition")(?=[^>]*\bvalue=")/', $editHtml);
+        $this->assertStringContainsString('name="flooring_type"', $editHtml);
+        $this->assertMatchesRegularExpression('/name="flooring_type"[^>]*>[\s\S]*value="lvp"[^>]*selected/', $editHtml);
     }
 }
