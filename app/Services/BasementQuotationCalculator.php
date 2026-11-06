@@ -963,19 +963,19 @@ class BasementQuotationCalculator
         $inputs['drywall_sheet_size'] = $sheetSize;
         $openingSf = 0.0;
         $dwWallGross = 0.0;
+        $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
+        $dwCeil = $this->resolvedDrywallCeilingSf(
+            $inputs,
+            $originalInputs,
+            $area,
+            $ceilingType,
+            $on('ceiling'),
+            $skipCeilingFinish
+        );
         if ($on('drywall')) {
             $dwWallGross = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
             $openingSf = self::drywallOpeningSf($inputs);
             $dwWall = round(max(0, $dwWallGross - $openingSf), 2);
-            $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
-            $dwCeil = $this->resolvedDrywallCeilingSf(
-                $inputs,
-                $originalInputs,
-                $area,
-                $ceilingType,
-                $on('ceiling'),
-                $skipCeilingFinish
-            );
             $dwSf = $dwWall + $dwCeil;
             $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
             $hangOnly = $level === 0;
@@ -1099,10 +1099,9 @@ class BasementQuotationCalculator
         if ($on('painting')) {
             $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
             $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $dwWallFallback);
-            $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
             $pCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
                 $inputs['paint_ceiling_sf'],
-                (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0 : ($dwCeil ?: $area)
+                (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0.0 : $dwCeil
             );
             $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
             $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
@@ -1687,7 +1686,9 @@ class BasementQuotationCalculator
 
     /**
      * Hang/mud ceiling area. New quotes follow Ceiling Options (ceiling_sf).
-     * Legacy quotes that stored a different drywall_ceiling_sf keep that figure.
+     * Drop, skip, and a disabled ceiling trade never hang ceiling drywall.
+     * Legacy drywall-type quotes that stored a different drywall_ceiling_sf
+     * keep that figure so agreed totals do not change.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $originalInputs
@@ -1704,14 +1705,11 @@ class BasementQuotationCalculator
             return 0.0;
         }
         $drywallType = in_array($ceilingType, ['drywall', 'paint'], true);
-        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
-            return $this->qtyOr(
-                $inputs['drywall_ceiling_sf'] ?? null,
-                ($ceilingOn && $drywallType) ? $area : 0.0
-            );
-        }
         if (! $ceilingOn || ! $drywallType) {
             return 0.0;
+        }
+        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
+            return $this->qtyOr($inputs['drywall_ceiling_sf'] ?? null, $area);
         }
 
         return $this->qtyOr($inputs['ceiling_sf'] ?? null, $area);

@@ -700,6 +700,7 @@
         'widthValue' => $qtyDim('drywall_ceiling_sf')['width'],
         'placeholder' => 'Auto',
         'info' => $brInfo['drywall_ceiling_sf'],
+        'disabled' => ! $splitCeiling,
       ])
       </div>
       <div class="admin-form-group">

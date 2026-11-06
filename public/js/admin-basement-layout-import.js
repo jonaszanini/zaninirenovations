@@ -245,6 +245,28 @@
     return false;
   }
 
+  function importStatusText(proposed, opt, extras) {
+    proposed = proposed || {};
+    extras = extras || {};
+    var name = (opt && (opt.short_name || opt.name)) || 'layout';
+    var floor = formatQty(proposed.area_sqft != null ? proposed.area_sqft : 0);
+    var parts = ['Imported ' + name + ': ' + floor + ' sq ft floor'];
+    if (proposed.ceiling_sf != null) {
+      parts.push(formatQty(proposed.ceiling_sf) + ' sq ft ceiling');
+    }
+    var periLabel = formatQty(proposed.perimeter_lf != null ? proposed.perimeter_lf : 0);
+    var height = formatQty(extras.heightFt != null ? extras.heightFt : 8);
+    var walls = formatQty(proposed.drywall_wall_sf != null ? proposed.drywall_wall_sf : 0);
+    var openingTotal = (proposed.drywall_door_openings || 0)
+      + (proposed.drywall_window_openings || 0)
+      + (proposed.drywall_openings || 0);
+    var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
+    parts.push(periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
+      + (extras.measuredNet ? ' (openings already deducted)' : ''));
+    parts.push(openLabel + '.');
+    return parts.join(', ');
+  }
+
   var api = {
     formatQty: formatQty,
     present: present,
@@ -252,6 +274,7 @@
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,
     wouldOverwrite: wouldOverwrite,
+    importStatusText: importStatusText,
     FIELD_IDS: FIELD_IDS,
     LW_KEYS: LW_KEYS,
     NEVER_OVERWRITE: NEVER_OVERWRITE,

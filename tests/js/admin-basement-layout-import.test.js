@@ -146,4 +146,15 @@ assert.ok(layout.FIELD_IDS.flooring_sf === 'br-fl-sf');
 assert.ok(layout.FIELD_IDS.paint_wall_sf === 'br-p-wall');
 assert.ok(layout.LW_KEYS.flooring_sf);
 
+const statusWithCeiling = layout.importStatusText(proposed, { name: 'Living' }, { heightFt: 8, measuredNet: false });
+assert.ok(statusWithCeiling.indexOf('500 sq ft ceiling') !== -1, statusWithCeiling);
+assert.ok(statusWithCeiling.indexOf('500 sq ft floor') !== -1, statusWithCeiling);
+assert.ok(statusWithCeiling.indexOf('wall drywall') !== -1, statusWithCeiling);
+
+const noCeilingProposed = layout.proposedQuantities({ perimeter_lf: 90 }, 8);
+assert.strictEqual(noCeilingProposed.ceiling_sf, null);
+const statusWithoutCeiling = layout.importStatusText(noCeilingProposed, { name: 'Walls only' }, { heightFt: 8 });
+assert.ok(statusWithoutCeiling.indexOf('ceiling') === -1, statusWithoutCeiling);
+assert.ok(statusWithoutCeiling.indexOf('Walls only') !== -1, statusWithoutCeiling);
+
 console.log('admin-basement-layout-import: ok');

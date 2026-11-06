@@ -27,6 +27,10 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             $html
         );
         $this->assertStringContainsString('One ceiling area for this quote', $html);
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
     }
 
     public function test_unified_ceiling_persists_on_save_reload_and_preview(): void
@@ -116,6 +120,99 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             (float) $quote->final_quote_total,
             (float) $recalc['summary']['final_quote_total'],
             0.05
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
+    }
+
+    public function test_layout_import_fills_ceiling_area_then_preview_save_and_reload(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = \App\Models\RoomAreaProject::create([
+            'name' => 'Ceiling import project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = \App\Models\RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Ceiling rec',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 80,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'v' => 3,
+                'groups' => [[
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [[
+                        'id' => 'p1',
+                        'vertices' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 120, 'y' => 0],
+                            ['x' => 120, 'y' => 96],
+                            ['x' => 0, 'y' => 96],
+                        ],
+                    ]],
+                ]],
+                'objects' => [],
+            ],
+        ]);
+
+        $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Ceiling rec']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($opt);
+        $proposed = \App\Services\BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertGreaterThan(0, (float) $proposed['ceiling_sf']);
+        $this->assertEqualsWithDelta((float) $proposed['area_sqft'], (float) $proposed['ceiling_sf'], 0.05);
+
+        $payload = $this->publishPayload([
+            'client_name' => 'Ceiling Import Persist',
+            'area_sqft' => $proposed['area_sqft'],
+            'ceiling_type' => 'drywall',
+            'ceiling_sf' => $proposed['ceiling_sf'],
+            'drywall_wall_sf' => $proposed['drywall_wall_sf'] ?? 640,
+            'paint_ceiling_sf' => $proposed['paint_ceiling_sf'],
+            'flooring_sf' => $proposed['flooring_sf'],
+            'room_area_import_id' => 'room:'.$room->id,
+            'room_area_import_label' => 'Ceiling rec',
+        ]);
+        unset($payload['drywall_ceiling_sf']);
+
+        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
+            ->assertOk()
+            ->json();
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) ($preview['scope']['drywall_ceiling_sf'] ?? 0), 0.05);
+        $hang = collect($preview['labor'] ?? [])->firstWhere('key', 'dw_hang');
+        $this->assertIsArray($hang);
+        $this->assertStringNotContainsString('118', $hang['detail']);
+
+        $store = $this->post(route('admin.quotations.basement.store'), $payload);
+        $quote = BasementQuotation::query()->where('client_name', 'Ceiling Import Persist')->first();
+        $this->assertNotNull($quote);
+        $store->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) ($quote->inputs['ceiling_sf'] ?? 0), 0.05);
+        $this->assertEqualsWithDelta(
+            (float) $proposed['ceiling_sf'],
+            (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0),
+            0.05
+        );
+
+        $edit = $this->get(route('admin.quotations.basement.edit', $quote))
+            ->assertOk()
+            ->getContent();
+        $this->assertTrue(
+            (bool) preg_match(
+                '/<input(?=[^>]*\bid="br-ceil-sf")(?=[^>]*\bvalue="'.preg_quote((string) (0 + $proposed['ceiling_sf']), '/').')/',
+                $edit
+            ),
+            'edit form should show imported ceiling area'
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-br-split-ceiling-field[^>]*\bhidden\b/',
+            $edit
         );
     }
 

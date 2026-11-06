@@ -96,6 +96,12 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertSame(1, $mapped['window_trim_qty']);
         $this->assertSame(1, $mapped['drywall_openings']);
         $this->assertSame(30.0, $mapped['baseboard_lf']);
+        $this->assertGreaterThan(0, (float) $mapped['area_sqft']);
+        $this->assertGreaterThan(0, (float) $mapped['ceiling_sf']);
+        $this->assertEqualsWithDelta((float) $mapped['area_sqft'], (float) $mapped['ceiling_sf'], 0.05);
+        if (array_key_exists('ceiling_area_sqft', $canvasOpt) && (float) $canvasOpt['ceiling_area_sqft'] <= 0) {
+            $this->assertEqualsWithDelta((float) $canvasOpt['area_sqft'], (float) $mapped['ceiling_sf'], 0.05);
+        }
     }
 
     public function test_layout_search_exposes_bulkhead_and_partition_for_basement_import(): void

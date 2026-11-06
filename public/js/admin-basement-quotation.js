@@ -368,23 +368,14 @@
 
     if (status) {
       status.classList.remove('is-warning');
-      var floor = formatLayoutQty(proposed.area_sqft != null ? proposed.area_sqft : 0);
-      var periLabel = formatLayoutQty(proposed.perimeter_lf != null ? proposed.perimeter_lf : 0);
-      var height = formatLayoutQty(ceilingHeightFt());
-      var walls = formatLayoutQty(proposed.drywall_wall_sf != null ? proposed.drywall_wall_sf : 0);
-      var name = opt.short_name || opt.name || 'layout';
-      var openingTotal = (proposed.drywall_door_openings || 0)
-        + (proposed.drywall_window_openings || 0)
-        + (proposed.drywall_openings || 0);
-      var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
       status.hidden = false;
       status.classList.add('is-set');
-      var ceilLabel = formatLayoutQty(proposed.ceiling_sf != null ? proposed.ceiling_sf : 0);
-      status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
-        + ceilLabel + ' sq ft ceiling, '
-        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
-        + (measuredNet ? ' (openings already deducted)' : '')
-        + ', ' + openLabel + '.';
+      status.textContent = (layoutImport && layoutImport.importStatusText)
+        ? layoutImport.importStatusText(proposed, opt, {
+            heightFt: ceilingHeightFt(),
+            measuredNet: measuredNet
+          })
+        : ('Imported ' + (opt.short_name || opt.name || 'layout') + '.');
     }
     applyingLayout = false;
     syncUnifiedCeilingArea();

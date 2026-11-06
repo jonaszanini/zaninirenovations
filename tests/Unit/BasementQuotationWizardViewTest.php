@@ -322,6 +322,14 @@ class BasementQuotationWizardViewTest extends TestCase
             $html
         );
         $this->assertStringContainsString('One ceiling area for this quote', $html);
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-ceil-sf")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
     }
 
     public function test_legacy_split_ceiling_quote_shows_saved_drywall_ceiling_field(): void
@@ -340,6 +348,10 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringNotContainsString('hidden', $match[0]);
         $this->assertStringContainsString('saved a drywall ceiling area different from Ceiling Options', $html);
         $this->assertStringContainsString('id="br-dw-ceil"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
     }
 
     /**
