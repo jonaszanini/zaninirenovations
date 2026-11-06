@@ -133,6 +133,8 @@ class BasementQuotationWizardViewTest extends TestCase
             $this->assertStringContainsString('id="'.$id.'"', $html);
         }
         $this->assertStringContainsString('Does not change rates', $html);
+        $this->assertStringContainsString('use Import layout on Overview', $html);
+        $this->assertStringNotContainsString('on the Drywall step', $html);
         $this->assertStringNotContainsString('licensed', $html);
     }
 
