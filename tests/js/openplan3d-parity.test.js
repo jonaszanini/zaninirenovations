@@ -17,6 +17,7 @@ assert.strictEqual(empty.area_sqft, 0.0);
 assert.strictEqual(empty.perimeter_lf, 0.0);
 assert.strictEqual(empty.wall_height_ft, 8.0);
 assert.strictEqual(empty.door_count, 0);
+assert.strictEqual(empty.partition_lf, 0.0);
 
 // Test 2: Rectangle 10x12 ft clean
 // In cm: 10 ft = 304.8 cm, 12 ft = 365.76 cm
@@ -42,6 +43,7 @@ assert.strictEqual(rectMetrics.wall_area_sqft, 352.0, '44 * 8 = 352 sqft gross/n
 assert.strictEqual(rectMetrics.ceiling_area_sqft, 120.0);
 assert.strictEqual(rectMetrics.inside_corners, 4);
 assert.strictEqual(rectMetrics.outside_corners, 0);
+assert.strictEqual(rectMetrics.partition_lf, 0.0);
 
 // Test 3: Rectangle with door (32"x80") and window (36"x48", 4-side casing)
 // Door: 32" = 81.28 cm, 80" = 203.2 cm
@@ -246,6 +248,7 @@ const basementPlan = basementStubRegressionPlan(0);
 const basementMetrics = bridge.layoutMetrics(basementPlan, 'r1', { wall_height_ft: 8.0 });
 assert.ok(!basementMetrics.geometry_unmeasurable, 'Basement stubs with bad stored polygon is measurable');
 assert.strictEqual(basementMetrics.area_sqft, 600.0, 'Floor area uses outer loop (30x20 = 600 sq ft)');
+assert.strictEqual(basementMetrics.partition_lf, 20.0, 'Interior stub partitions total 20 lf');
 const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
 assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
 assert.ok(

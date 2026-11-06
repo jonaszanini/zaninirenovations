@@ -14,3 +14,4 @@ tests/js/admin-hotkey-save.test.js
 tests/js/admin-project-calendar-swipe.test.js
 tests/js/admin-project-calendar-popover.test.js
 tests/js/admin-info-tip.test.mjs
+tests/js/admin-basement-layout-import.test.js

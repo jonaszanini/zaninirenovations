@@ -49,6 +49,7 @@ class RoomAreaSharedWallsTest extends TestCase
         $this->assertSame(160.0, $metrics['area_sqft']);
         $this->assertSame(72.0, $metrics['perimeter_lf']);
         $this->assertSame(8.0, $metrics['shared_wall_lf']);
+        $this->assertSame(8.0, $metrics['partition_lf']);
         $this->assertSame(64.0, $metrics['framing_lf']);
         $this->assertSame(72.0, $metrics['baseboard_lf']);
         $this->assertSame(576.0, $metrics['wall_area_sqft']);

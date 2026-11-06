@@ -523,6 +523,7 @@
       outside_area_sqft: 0.0,
       shared_wall_lf: 0.0,
       framing_lf: 0.0,
+      partition_lf: 0.0,
       cabinet_base_lf: 0.0,
       cabinet_upper_lf: 0.0,
       stairs_count: 0,
@@ -982,7 +983,7 @@
       var totalArea = 0.0, totalPerimeter = 0.0, totalBaseboard = 0.0, totalNetWall = 0.0;
       var totalDoors = 0, totalWindows = 0, totalOpenings = 0, totalDrywall = 0;
       var totalInCorners = 0, totalOutCorners = 0, totalPolyCount = rooms.length;
-      var totalSharedWall = 0.0, totalFraming = 0.0, totalOutsideArea = 0.0, totalCeilingArea = 0.0, totalCasing = 0.0;
+      var totalSharedWall = 0.0, totalFraming = 0.0, totalPartition = 0.0, totalOutsideArea = 0.0, totalCeilingArea = 0.0, totalCasing = 0.0;
       var allWalls = [];
       var firstSub = null;
 
@@ -1001,6 +1002,7 @@
         totalOutCorners += sub.outside_corners;
         totalSharedWall += sub.shared_wall_lf;
         totalFraming += sub.framing_lf;
+        totalPartition += sub.partition_lf || 0;
         totalOutsideArea += sub.outside_area_sqft;
         totalCeilingArea += sub.ceiling_area_sqft;
         totalCasing += sub.casing_lf;
@@ -1034,6 +1036,7 @@
         outside_area_sqft: roundTo(totalOutsideArea, 2),
         shared_wall_lf: roundTo(totalSharedWall, 2),
         framing_lf: roundTo(totalFraming, 2),
+        partition_lf: roundTo(totalPartition, 2),
         cabinet_base_lf: lib.cabinet_base_lf,
         cabinet_upper_lf: lib.cabinet_upper_lf,
         stairs_count: lib.stairs_count,
@@ -1304,12 +1307,14 @@
     }
 
     // Partition walls (interior): count both faces (2x)
+    var partitionLf = 0.0;
     for (var i = 0; i < partitionWalls.length; i++) {
       var pw = partitionWalls[i];
       var pwId = String(pw.id);
       var dx = (pw.end.x - pw.start.x) * cmPerUnit;
       var dy = (pw.end.y - pw.start.y) * cmPerUnit;
       var wLenFt = hypot(dx, dy) / CM_PER_FOOT;
+      partitionLf += wLenFt;
       var wLenIn = wLenFt * 12.0;
       var wOpenings = openingsByWall[pwId] || [];
 
@@ -1398,6 +1403,7 @@
       outside_area_sqft: outsideAreaSqFt,
       shared_wall_lf: sharedLf,
       framing_lf: framingLf,
+      partition_lf: roundTo(partitionLf, 2),
       cabinet_base_lf: lib.cabinet_base_lf,
       cabinet_upper_lf: lib.cabinet_upper_lf,
       stairs_count: lib.stairs_count,

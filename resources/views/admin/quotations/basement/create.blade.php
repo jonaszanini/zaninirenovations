@@ -438,5 +438,6 @@
       electricalByPreset: @json($electricalByPreset),
     };
   </script>
+  <script src="{{ asset('js/admin-basement-layout-import.js') }}?v={{ @filemtime(public_path('js/admin-basement-layout-import.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-basement-quotation.js') }}?v={{ @filemtime(public_path('js/admin-basement-quotation.js')) ?: time() }}"></script>
 @endpush

@@ -321,6 +321,15 @@
       schedulePreview();
       return;
     }
+    var layoutImport = window.BasementLayoutImport;
+    if (layoutImport) {
+      var proposed = layoutImport.proposedQuantities(opt, ceilingHeightFt());
+      var current = layoutImport.currentQuantities(document);
+      if (layoutImport.wouldOverwrite(current, proposed)) {
+        var ok = window.confirm(layoutImport.CONFIRM_MESSAGE);
+        if (!ok) return;
+      }
+    }
     applyingLayout = true;
     var peri = Number(opt.perimeter_lf || 0);
     var area = Number(opt.area_sqft || 0);
@@ -359,6 +368,18 @@
     if (baseEl && opt.baseboard_lf != null && opt.baseboard_lf !== '') {
       var base = Number(opt.baseboard_lf);
       if (isFinite(base) && base >= 0) baseEl.value = formatLayoutQty(base);
+    }
+    var bulkEl = document.getElementById('br-bulkhead');
+    if (bulkEl) {
+      var bulk = (opt.bulkhead_lf != null && opt.bulkhead_lf !== '')
+        ? Number(opt.bulkhead_lf)
+        : Number(opt.bulkhead_framing_lf || 0);
+      if (isFinite(bulk) && bulk >= 0) bulkEl.value = formatLayoutQty(bulk);
+    }
+    var partEl = document.getElementById('br-partition');
+    if (partEl) {
+      var part = Number(opt.partition_lf || 0);
+      if (isFinite(part) && part >= 0) partEl.value = formatLayoutQty(part);
     }
     if (status) {
       status.classList.remove('is-warning');

@@ -2,8 +2,10 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\BasementQuotation;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
+use App\Services\BasementQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -84,6 +86,65 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             ]);
     }
 
+    public function test_layout_search_exposes_bulkhead_and_partition_for_basement_import(): void
+    {
+        $this->actingAsAdmin();
+
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Bulkhead partition project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Living',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 600,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 30 * $cm, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'p1', 'start' => ['x' => 14 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 14 * $cm, 'y' => 8 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'p2', 'start' => ['x' => 22 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 22 * $cm, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Living',
+                        'walls' => ['w1', 'w2', 'w3', 'w4', 'p1', 'p2'],
+                    ]],
+                ],
+                'zanini' => [
+                    'bulkheads' => [[
+                        'rect' => [
+                            'x1' => 0,
+                            'y1' => 0,
+                            'x2' => 10 * $cm,
+                            'y2' => 1 * $cm,
+                        ],
+                        'drop_height_ft' => 2.0,
+                        'against_wall' => true,
+                    ]],
+                ],
+            ],
+        ]);
+
+        $this->get(route('admin.utilities.room-area.layouts', ['q' => 'Living']))
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'room:'.$room->id,
+                'partition_lf' => 20,
+                'bulkhead_lf' => 27,
+                'bulkhead_framing_lf' => 27,
+                'bulkhead_drywall_sqft' => 30,
+            ]);
+    }
+
     public function test_drywall_step_exposes_openings_and_baseboard_fields(): void
     {
         $this->actingAsAdmin();
@@ -97,5 +158,118 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             ->assertSee('name="drywall_door_openings"', false)
             ->assertSee('name="drywall_sheet_size"', false)
             ->assertSee('Opening area', false);
+    }
+
+    public function test_imported_odd_and_decimal_qty_draft_and_publish_without_html5_step_block(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = RoomAreaProject::create([
+            'name' => 'N1 baseboard project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Rec 87',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 405,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'v' => 3,
+                'groups' => [[
+                    'id' => 'g1',
+                    'color' => '#024768',
+                    'polygons' => [[
+                        'id' => 'p1',
+                        'vertices' => [
+                            ['x' => 0, 'y' => 0],
+                            ['x' => 360, 'y' => 0],
+                            ['x' => 360, 'y' => 162],
+                            ['x' => 0, 'y' => 162],
+                        ],
+                    ]],
+                ]],
+            ],
+        ]);
+
+        $this->get(route('admin.utilities.room-area.layouts', ['q' => 'Rec 87']))
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => 'room:'.$room->id,
+                'baseboard_lf' => 87,
+            ]);
+
+        $createHtml = $this->get(route('admin.quotations.basement.create'))
+            ->assertOk()
+            ->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bstep="0\.01")/',
+            $createHtml
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bstep="10")/',
+            $createHtml
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-shoe")(?=[^>]*\bstep="0\.01")/',
+            $createHtml
+        );
+
+        $enabled = array_merge(
+            ['overview'],
+            array_keys(BasementQuotationCalculator::tradeSections())
+        );
+        $payload = [
+            'save_intent' => 'draft',
+            'client_name' => 'N1 Import Client',
+            'area_sqft' => 405,
+            'ceiling_height_ft' => 8,
+            'baseboard_lf' => 87,
+            'include_shoe' => 1,
+            'shoe_lf' => 12.5,
+            'room_area_import_id' => 'room:'.$room->id,
+            'room_area_import_label' => 'Rec 87',
+            'enabled_sections' => $enabled,
+            'payment_installments' => 3,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'ask_reply_to_accept' => '0',
+        ];
+
+        $this->post(route('admin.quotations.basement.store'), $payload);
+
+        $quote = BasementQuotation::query()->where('client_name', 'N1 Import Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertEquals(87.0, (float) ($quote->inputs['baseboard_lf'] ?? 0));
+        $this->assertEquals(12.5, (float) ($quote->inputs['shoe_lf'] ?? 0));
+        $this->assertSame('room:'.$room->id, $quote->inputs['room_area_import_id'] ?? null);
+
+        $payload['save_intent'] = 'publish';
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+
+        $quote->refresh();
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertEquals(87.0, (float) ($quote->inputs['baseboard_lf'] ?? 0));
+        $this->assertEquals(12.5, (float) ($quote->inputs['shoe_lf'] ?? 0));
+
+        $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))
+            ->assertOk()
+            ->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bstep="0\.01")/',
+            $editHtml
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bvalue="87)/',
+            $editHtml
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-shoe")(?=[^>]*\bvalue="12\.5")/',
+            $editHtml
+        );
     }
 }

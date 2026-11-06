@@ -683,6 +683,7 @@ class RoomAreaCanvasDataTest extends TestCase
         $this->assertSame(80.0, $metrics['outside_area_sqft']);
         $this->assertSame(0.0, $metrics['wall_thickness_in']);
         $this->assertSame(36.0, $metrics['framing_lf']);
+        $this->assertSame(0.0, $metrics['partition_lf']);
     }
 
     public function test_wall_thickness_grows_footprint_but_quotes_inside_area(): void

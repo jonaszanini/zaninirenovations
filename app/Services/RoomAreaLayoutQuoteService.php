@@ -230,6 +230,10 @@ class RoomAreaLayoutQuoteService
             $metrics['outside_area_sqft'] += $row['outside_area_sqft'] ?? $row['area_sqft'];
             $metrics['shared_wall_lf'] += $row['shared_wall_lf'] ?? 0;
             $metrics['framing_lf'] += $row['framing_lf'] ?? $row['perimeter_lf'];
+            $metrics['partition_lf'] += $row['partition_lf'] ?? $row['shared_wall_lf'] ?? 0;
+            $metrics['bulkhead_lf'] += $row['bulkhead_lf'] ?? $row['bulkhead_framing_lf'] ?? 0;
+            $metrics['bulkhead_framing_lf'] += $row['bulkhead_framing_lf'] ?? $row['bulkhead_lf'] ?? 0;
+            $metrics['bulkhead_drywall_sqft'] += $row['bulkhead_drywall_sqft'] ?? 0;
             $metrics['cabinet_base_lf'] += $row['cabinet_base_lf'] ?? 0;
             $metrics['cabinet_upper_lf'] += $row['cabinet_upper_lf'] ?? 0;
             $metrics['stairs_count'] += $row['stairs_count'] ?? 0;
@@ -258,6 +262,10 @@ class RoomAreaLayoutQuoteService
         $metrics['outside_area_sqft'] = round((float) ($metrics['outside_area_sqft'] ?? $metrics['area_sqft']), 2);
         $metrics['shared_wall_lf'] = round((float) ($metrics['shared_wall_lf'] ?? 0), 2);
         $metrics['framing_lf'] = round((float) ($metrics['framing_lf'] ?? $metrics['perimeter_lf']), 2);
+        $metrics['partition_lf'] = round((float) ($metrics['partition_lf'] ?? $metrics['shared_wall_lf'] ?? 0), 2);
+        $metrics['bulkhead_lf'] = round((float) ($metrics['bulkhead_lf'] ?? $metrics['bulkhead_framing_lf'] ?? 0), 2);
+        $metrics['bulkhead_framing_lf'] = round((float) ($metrics['bulkhead_framing_lf'] ?? $metrics['bulkhead_lf'] ?? 0), 2);
+        $metrics['bulkhead_drywall_sqft'] = round((float) ($metrics['bulkhead_drywall_sqft'] ?? 0), 2);
         $metrics['cabinet_base_lf'] = round((float) ($metrics['cabinet_base_lf'] ?? 0), 2);
         $metrics['cabinet_upper_lf'] = round((float) ($metrics['cabinet_upper_lf'] ?? 0), 2);
         $metrics['stairs_run_lf'] = round((float) ($metrics['stairs_run_lf'] ?? 0), 2);
@@ -354,6 +362,10 @@ class RoomAreaLayoutQuoteService
             'outside_area_sqft' => $metrics['outside_area_sqft'] ?? $metrics['area_sqft'],
             'shared_wall_lf' => (float) ($metrics['shared_wall_lf'] ?? 0),
             'framing_lf' => (float) ($metrics['framing_lf'] ?? $metrics['perimeter_lf']),
+            'partition_lf' => (float) ($metrics['partition_lf'] ?? $metrics['shared_wall_lf'] ?? 0),
+            'bulkhead_lf' => (float) ($metrics['bulkhead_lf'] ?? $metrics['bulkhead_framing_lf'] ?? 0),
+            'bulkhead_framing_lf' => (float) ($metrics['bulkhead_framing_lf'] ?? $metrics['bulkhead_lf'] ?? 0),
+            'bulkhead_drywall_sqft' => (float) ($metrics['bulkhead_drywall_sqft'] ?? 0),
             'cabinet_base_lf' => $cabinetBase,
             'cabinet_upper_lf' => $cabinetUpper,
             'stairs_count' => (int) ($metrics['stairs_count'] ?? 0),

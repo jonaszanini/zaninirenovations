@@ -45,6 +45,21 @@ class BasementQuotationCalculator
         'custom' => 'Custom',
     ];
 
+    /**
+     * Finish floors offered on the basement wizard.
+     * Hardwood / engineered wood / vinyl (LVP) / laminate / tile only — no carpet.
+     *
+     * @var array<string, string>
+     */
+    public const FLOORING_TYPES = [
+        'hardwood' => 'Hardwood',
+        'engineered' => 'Engineered wood',
+        'lvp' => 'LVP',
+        'laminate' => 'Laminate',
+        'tile' => 'Tile',
+        'none' => 'Skip flooring',
+    ];
+
     /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
     public const FINISH_LEVELS = [
         0 => 'Level 0 — hang only',
@@ -1028,8 +1043,9 @@ class BasementQuotationCalculator
             $flSf = $this->qtyOr($inputs['flooring_sf'], $area);
             $flCatalog = match ($flType) {
                 'laminate' => 'laminate',
-                'carpet' => 'carpet',
                 'tile' => 'tile',
+                'hardwood' => 'hardwood',
+                'engineered' => 'engineered',
                 'epoxy' => 'epoxy',
                 default => 'lvp',
             };
@@ -1580,7 +1596,8 @@ class BasementQuotationCalculator
     }
 
     /**
-     * Licensed electrical / plumbing lines (same HST handling as additional costs).
+     * Electrical / plumbing trade lines (same HST handling as additional costs).
+     * Priced from a qualified electrician or plumber.
      *
      * @param  array<string, mixed>  $inputs
      * @return array{
@@ -1735,9 +1752,10 @@ class BasementQuotationCalculator
     private function flooringLabel(string $type): string
     {
         return match ($type) {
+            'hardwood' => 'Hardwood',
+            'engineered' => 'Engineered wood',
             'laminate' => 'Laminate',
             'tile' => 'Tile',
-            'carpet' => 'Carpet',
             'epoxy' => 'Epoxy',
             'none' => 'No flooring',
             default => 'LVP',

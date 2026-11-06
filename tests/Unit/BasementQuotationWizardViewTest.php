@@ -130,6 +130,70 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('br-field--phone-wide', $html);
     }
 
+    public function test_qty_inputs_use_decimal_html5_step_not_wizard_section_index(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        foreach (['br-base', 'br-shoe', 'br-p-trim'] as $id) {
+            $this->assertMatchesRegularExpression(
+                '/<input(?=[^>]*\bid="'.preg_quote($id, '/').'")(?=[^>]*\bstep="0\.01")/',
+                $html
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/<input(?=[^>]*\bid="'.preg_quote($id, '/').'")(?=[^>]*\bstep="(?:10|11)")/',
+                $html
+            );
+        }
+        $this->assertStringContainsString('$wizardStep', file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php')));
+        $this->assertDoesNotMatchRegularExpression(
+            '/\$step\b/',
+            file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'))
+        );
+    }
+
+    public function test_trade_checkboxes_post_section_keys_not_one(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        foreach (array_keys(BasementQuotationCalculator::tradeSections()) as $tradeKey) {
+            $this->assertMatchesRegularExpression(
+                '/name="enabled_sections\[]"[^>]*value="'.preg_quote($tradeKey, '/').'"[^>]*data-br-enabled-section="'.preg_quote($tradeKey, '/').'"/',
+                $html
+            );
+        }
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="enabled_sections\[]"[^>]*value="1"/',
+            $html
+        );
+        $this->assertStringContainsString('name="enabled_sections[]" value="overview"', $html);
+    }
+
+    public function test_flooring_step_offers_allowed_types_without_carpet(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('value="hardwood"', $html);
+        $this->assertStringContainsString('value="engineered"', $html);
+        $this->assertStringContainsString('value="lvp"', $html);
+        $this->assertStringContainsString('value="laminate"', $html);
+        $this->assertStringContainsString('value="tile"', $html);
+        $this->assertStringNotContainsString('value="carpet"', $html);
+        $this->assertStringNotContainsString('>Carpet</option>', $html);
+        $this->assertStringContainsString('Underlayment (LVP / laminate)', $html);
+        $this->assertStringNotContainsString('Underlayment (LVP / laminate / carpet)', $html);
+        $this->assertStringContainsString('Foam or cork under LVP or laminate.', $html);
+        $this->assertStringNotContainsString('laminate, or carpet', $html);
+    }
+
     public function test_work_area_mode_toggle_sits_beside_the_label(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
