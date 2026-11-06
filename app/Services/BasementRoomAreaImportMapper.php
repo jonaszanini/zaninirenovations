@@ -140,9 +140,12 @@ class BasementRoomAreaImportMapper
 
         $peri = self::present($opt, 'perimeter_lf') ? (float) $opt['perimeter_lf'] : null;
         $area = self::present($opt, 'area_sqft') ? (float) $opt['area_sqft'] : null;
-        $ceilingArea = self::present($opt, 'ceiling_area_sqft')
-            ? (float) $opt['ceiling_area_sqft']
-            : $area;
+        $ceilingArea = null;
+        if (self::present($opt, 'ceiling_area_sqft') && (float) $opt['ceiling_area_sqft'] > 0) {
+            $ceilingArea = (float) $opt['ceiling_area_sqft'];
+        } elseif ($area !== null && $area > 0) {
+            $ceilingArea = $area;
+        }
 
         $netWall = null;
         if (self::present($opt, 'finish_drywall_sqft')) {

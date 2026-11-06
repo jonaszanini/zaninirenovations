@@ -56,6 +56,8 @@ class BasementRoomAreaImportMapperTest extends TestCase
 
         $this->assertSame(200.0, $proposed['area_sqft']);
         $this->assertSame(200.0, $proposed['flooring_sf']);
+        $this->assertSame(200.0, $proposed['ceiling_sf']);
+        $this->assertSame(200.0, $proposed['drywall_ceiling_sf']);
         $this->assertNull($proposed['partition_lf']);
         $this->assertNull($proposed['bulkhead_lf']);
         $this->assertNull($proposed['baseboard_lf']);
@@ -82,6 +84,30 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(0.0, $proposed['baseboard_lf']);
         $this->assertSame(0, $proposed['door_qty']);
         $this->assertSame(0, $proposed['window_trim_qty']);
+    }
+
+    public function test_zero_ceiling_area_falls_back_to_floor_area_instead_of_wiping(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 1500,
+            'ceiling_area_sqft' => 0,
+        ], 8);
+
+        $this->assertSame(1500.0, $proposed['ceiling_sf']);
+        $this->assertSame(1500.0, $proposed['drywall_ceiling_sf']);
+        $this->assertSame(1500.0, $proposed['paint_ceiling_sf']);
+        $this->assertSame(1500.0, $proposed['insulation_ceiling_sf']);
+    }
+
+    public function test_missing_ceiling_and_floor_leave_ceiling_fields_null(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'perimeter_lf' => 90,
+        ], 8);
+
+        $this->assertNull($proposed['ceiling_sf']);
+        $this->assertNull($proposed['drywall_ceiling_sf']);
+        $this->assertNull($proposed['area_sqft']);
     }
 
     public function test_wall_finish_takeoffs_win_over_gross_metrics(): void

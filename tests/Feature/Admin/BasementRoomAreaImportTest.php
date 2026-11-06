@@ -405,6 +405,9 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $proposed['bulkhead_lf'], (float) $quote->inputs['bulkhead_lf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['drywall_wall_sf'], (float) $quote->inputs['drywall_wall_sf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) $quote->inputs['paint_wall_sf'], 0.05);
+        $this->assertGreaterThan(0, (float) $proposed['ceiling_sf']);
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) $quote->inputs['ceiling_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.05);
         $this->assertEqualsWithDelta((float) $proposed['baseboard_lf'], (float) $quote->inputs['baseboard_lf'], 0.05);
         $this->assertSame(1, (int) $quote->inputs['door_qty']);
         $this->assertSame(1, (int) $quote->inputs['window_trim_qty']);

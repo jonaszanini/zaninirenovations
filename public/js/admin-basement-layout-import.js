@@ -108,7 +108,12 @@
 
     var peri = present(opt, 'perimeter_lf') ? num(opt.perimeter_lf) : null;
     var area = present(opt, 'area_sqft') ? num(opt.area_sqft) : null;
-    var ceilingArea = present(opt, 'ceiling_area_sqft') ? num(opt.ceiling_area_sqft) : area;
+    var ceilingArea = null;
+    if (present(opt, 'ceiling_area_sqft') && num(opt.ceiling_area_sqft) > 0) {
+      ceilingArea = num(opt.ceiling_area_sqft);
+    } else if (area !== null && area > 0) {
+      ceilingArea = area;
+    }
 
     var netWall = null;
     if (present(opt, 'finish_drywall_sqft')) netWall = num(opt.finish_drywall_sqft);

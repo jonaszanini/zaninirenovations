@@ -737,6 +737,7 @@ class BasementQuotationCalculator
         $settings = $settings ?? BasementSettings::current();
         $prod = $settings->resolvedProductivity();
         $matCatalog = $this->resolveMaterialCatalog($settings);
+        $originalInputs = $inputs;
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
         $inputs['stud_spacing_in'] = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
@@ -967,9 +968,13 @@ class BasementQuotationCalculator
             $openingSf = self::drywallOpeningSf($inputs);
             $dwWall = round(max(0, $dwWallGross - $openingSf), 2);
             $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
-            $dwCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
-                $inputs['drywall_ceiling_sf'],
-                $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0
+            $dwCeil = $this->resolvedDrywallCeilingSf(
+                $inputs,
+                $originalInputs,
+                $area,
+                $ceilingType,
+                $on('ceiling'),
+                $skipCeilingFinish
             );
             $dwSf = $dwWall + $dwCeil;
             $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
@@ -1030,12 +1035,10 @@ class BasementQuotationCalculator
         }
 
         // --- Ceiling ---
-        if ($on('ceiling')) {
+        if ($on('ceiling') && $ceilingType === 'drop') {
             $ceilSf = $this->qtyOr($inputs['ceiling_sf'], $area);
-            if ($ceilingType === 'drop') {
-                $addLabor('ceil_drop', 'ceiling', 'Drop ceiling', number_format($ceilSf, 0).' sq ft', $perHr($ceilSf, (float) $prod['ceiling_drop_sf_per_hr']));
-                $addMat('drop_ceiling', 'ceiling', $this->withMaterialWaste($ceilSf, $inputs), 'drop_ceiling');
-            }
+            $addLabor('ceil_drop', 'ceiling', 'Drop ceiling', number_format($ceilSf, 0).' sq ft', $perHr($ceilSf, (float) $prod['ceiling_drop_sf_per_hr']));
+            $addMat('drop_ceiling', 'ceiling', $this->withMaterialWaste($ceilSf, $inputs), 'drop_ceiling');
         }
 
         // --- Flooring ---
@@ -1396,6 +1399,7 @@ class BasementQuotationCalculator
                 'drywall_opening_sf' => $openingSf,
                 'drywall_wall_gross_sf' => $dwWallGross,
                 'drywall_wall_net_sf' => $dwWall,
+                'drywall_ceiling_sf' => $dwCeil,
             ],
             'labor' => $labor,
             'materials' => $materials,
@@ -1679,6 +1683,38 @@ class BasementQuotationCalculator
         }
 
         return (float) max(1, (int) ceil($needed / $perPackage));
+    }
+
+    /**
+     * Hang/mud ceiling area. New quotes follow Ceiling Options (ceiling_sf).
+     * Legacy quotes that stored a different drywall_ceiling_sf keep that figure.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, mixed>  $originalInputs
+     */
+    private function resolvedDrywallCeilingSf(
+        array $inputs,
+        array $originalInputs,
+        float $area,
+        string $ceilingType,
+        bool $ceilingOn,
+        bool $skipCeilingFinish,
+    ): float {
+        if ($skipCeilingFinish) {
+            return 0.0;
+        }
+        $drywallType = in_array($ceilingType, ['drywall', 'paint'], true);
+        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
+            return $this->qtyOr(
+                $inputs['drywall_ceiling_sf'] ?? null,
+                ($ceilingOn && $drywallType) ? $area : 0.0
+            );
+        }
+        if (! $ceilingOn || ! $drywallType) {
+            return 0.0;
+        }
+
+        return $this->qtyOr($inputs['ceiling_sf'] ?? null, $area);
     }
 
     /**

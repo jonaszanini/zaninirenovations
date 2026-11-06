@@ -253,6 +253,9 @@
       if (zero && qty) qty.value = '0';
       if (out) out.textContent = 'Enter length and width';
     }
+    if (qty && qty.id === 'br-ceil-sf') {
+      syncUnifiedCeilingArea();
+    }
   }
 
   function bindLw() {
@@ -376,14 +379,29 @@
       var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
       status.hidden = false;
       status.classList.add('is-set');
+      var ceilLabel = formatLayoutQty(proposed.ceiling_sf != null ? proposed.ceiling_sf : 0);
       status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
+        + ceilLabel + ' sq ft ceiling, '
         + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
         + (measuredNet ? ' (openings already deducted)' : '')
         + ', ' + openLabel + '.';
     }
     applyingLayout = false;
+    syncUnifiedCeilingArea();
     updateDwWallPlaceholder();
     schedulePreview();
+  }
+
+  function isSplitCeilingQuote() {
+    return form.getAttribute('data-br-split-ceiling') === '1';
+  }
+
+  function syncUnifiedCeilingArea() {
+    if (isSplitCeilingQuote()) return;
+    var src = document.getElementById('br-ceil-sf');
+    var dw = document.getElementById('br-dw-ceil');
+    if (!src || !dw) return;
+    setLwToSqft('br-dw-ceil', src.value === '' ? '' : src.value);
   }
 
   function refreshLayoutWallFromHeight() {
@@ -1246,6 +1264,13 @@
     }
     schedulePreview();
   });
+
+  var ceilSfEl = document.getElementById('br-ceil-sf');
+  if (ceilSfEl) {
+    ceilSfEl.addEventListener('input', syncUnifiedCeilingArea);
+    ceilSfEl.addEventListener('change', syncUnifiedCeilingArea);
+  }
+  syncUnifiedCeilingArea();
 
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);

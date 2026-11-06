@@ -78,6 +78,27 @@ assert.strictEqual(layout.wouldOverwrite(handEdited, proposed), true, 'D4: hand-
 const otherLayout = layout.proposedQuantities(Object.assign({}, opt, { area_sqft: 1200, perimeter_lf: 140 }), 8);
 assert.strictEqual(layout.wouldOverwrite(afterImport, otherLayout), true, 'D4: different layout confirms');
 
+const zeroCeiling = layout.proposedQuantities({ area_sqft: 1500, ceiling_area_sqft: 0 }, 8);
+assert.strictEqual(zeroCeiling.ceiling_sf, 1500);
+assert.strictEqual(zeroCeiling.drywall_ceiling_sf, 1500);
+assert.strictEqual(zeroCeiling.paint_ceiling_sf, 1500);
+
+const leftoverDrywall = {
+  area_sqft: 1500,
+  ceiling_sf: 1500,
+  drywall_ceiling_sf: 118,
+  drywall_wall_sf: 3767.65,
+  import_label: 'Basement'
+};
+const importedCeiling = layout.proposedQuantities({ area_sqft: 1500, ceiling_area_sqft: 1500 }, 8);
+assert.strictEqual(importedCeiling.ceiling_sf, 1500);
+assert.strictEqual(importedCeiling.drywall_ceiling_sf, 1500);
+assert.strictEqual(
+  layout.wouldOverwrite(leftoverDrywall, importedCeiling),
+  true,
+  'import must replace a leftover drywall ceiling that does not match the layout'
+);
+
 const missingPartition = layout.proposedQuantities({ area_sqft: 500, perimeter_lf: 90, wall_area_sqft: 720 }, 8);
 assert.strictEqual(missingPartition.partition_lf, null);
 const currentWithManualPartition = Object.assign({}, missingPartition, {

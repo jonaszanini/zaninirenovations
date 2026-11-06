@@ -121,7 +121,7 @@
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
       'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
-      'drywall_ceiling_sf' => 'Ceiling area to hang. Blank follows Ceiling type (skipped for drop ceiling or skip). New wall quotes skip ceiling — the basement is already finished.',
+      'drywall_ceiling_sf' => 'This quote saved a drywall ceiling area different from Ceiling Options. Hang, tape, and mud still use this saved figure so the total does not change. Clear it to follow Ceiling area.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labour.',
@@ -131,8 +131,8 @@
       'drywall_sheet_size' => '4×12 sheets cover a typical 8–9 ft basement wall in one piece (fewer seams). 4×8 is two rows. Sheet count and waste follow this choice.',
       'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, and corners. Does not change rates, flooring type, ceiling type, or shared prices. Measured zeros replace the form; takeoffs the drawing does not have are left as-is.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
-      'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
-      'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
+      'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
+      'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
       'flooring_type' => 'Finish floor product. Skip if the client is keeping existing floor or hiring flooring out.',
       'flooring_sf' => 'Floor area to install. Blank uses the work area.',
       'transition_qty' => 'Reducer or T-mould strips where the new floor meets another floor or a different height.',
@@ -145,7 +145,7 @@
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
       'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset).',
-      'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows drywall ceiling unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
+      'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows Ceiling area unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labour plus extra drywall finish time.',
       'paint_coats' => 'Finish coats after primer. Two is typical on new drywall.',
@@ -683,7 +683,10 @@
         'placeholder' => 'Auto',
         'info' => $brInfo['drywall_wall_sf'],
       ])
-      <div class="br-field--wide" data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
+      @php
+        $splitCeiling = ! empty($isEdit) && \App\Services\BasementCeilingQuantities::usesSplit(is_array($inputs ?? null) ? $inputs : []);
+      @endphp
+      <div class="br-field--wide" data-br-skip-on-wall data-br-split-ceiling-field @if($scopePreset === 'wall' || ! $splitCeiling) hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_ceiling_sf',
         'id' => 'br-dw-ceil',

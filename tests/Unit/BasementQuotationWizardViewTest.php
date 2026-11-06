@@ -308,6 +308,40 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertGreaterThan($permit, $amount);
     }
 
+    public function test_new_quote_hides_duplicate_drywall_ceiling_field(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('id="br-ceil-sf"', $html);
+        $this->assertStringContainsString('name="ceiling_sf"', $html);
+        $this->assertMatchesRegularExpression(
+            '/data-br-split-ceiling-field[^>]*\bhidden\b/',
+            $html
+        );
+        $this->assertStringContainsString('One ceiling area for this quote', $html);
+    }
+
+    public function test_legacy_split_ceiling_quote_shows_saved_drywall_ceiling_field(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['ceiling_sf'] = 1500;
+        $inputs['drywall_ceiling_sf'] = 118;
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($inputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+
+        $this->assertTrue((bool) preg_match('/<div class="br-field--wide"[^>]*data-br-split-ceiling-field[^>]*>/', $html, $match));
+        $this->assertStringNotContainsString('hidden', $match[0]);
+        $this->assertStringContainsString('saved a drywall ceiling area different from Ceiling Options', $html);
+        $this->assertStringContainsString('id="br-dw-ceil"', $html);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow
