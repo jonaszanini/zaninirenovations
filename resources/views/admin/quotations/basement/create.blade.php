@@ -85,8 +85,10 @@
     'typeLabel' => 'Basement',
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
-    'listUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+    'listUrl' => route('admin.quotations.basement.index'),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.basement.index'),
     'priceConfigUrl' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'br-main-form',
     'saveId' => 'br-btn-publish',
@@ -154,6 +156,9 @@
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
+    @if ($linkProject)
+      <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+    @endif
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">

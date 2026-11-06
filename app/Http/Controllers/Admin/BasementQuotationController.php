@@ -78,11 +78,7 @@ class BasementQuotationController extends Controller
 
         $resp = redirect()
             ->route('admin.quotations.basement.edit', $quote->fresh())
-            ->with('success', $intent === 'draft'
-                ? ($linkedNow ? 'Basement quotation saved as draft and linked.' : 'Basement quotation saved as draft.')
-                : ($linkedNow
-                    ? 'Basement quotation '.$quote->quote_number.' saved and linked to this project.'
-                    : 'Basement quotation '.$quote->quote_number.' saved.'));
+            ->with('success', $this->storeSuccessMessage($intent, $quote, $linkedNow, (bool) $hubProjectRequested));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -622,6 +618,29 @@ class BasementQuotationController extends Controller
         }
 
         return $out;
+    }
+
+    protected function storeSuccessMessage(string $intent, BasementQuotation $quote, bool $linkedNow, bool $hubProjectRequested): string
+    {
+        $number = trim((string) $quote->quote_number);
+
+        if ($intent === 'draft') {
+            if ($hubProjectRequested) {
+                return 'Basement quotation '.$number.' saved as a draft. It is not on the project until you click Save quotation. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
+            }
+
+            return 'Basement quotation '.$number.' saved as draft.';
+        }
+
+        if ($linkedNow) {
+            return 'Basement quotation '.$number.' saved and linked to this project.';
+        }
+
+        if ($hubProjectRequested) {
+            return 'Basement quotation '.$number.' saved, but it did not attach to the project. Find it under Basement Renovation quotations.';
+        }
+
+        return 'Basement quotation '.$number.' saved.';
     }
 
     protected function autoLinkIfRequested(BasementQuotation $quote, Request $request, array &$warnings): bool

@@ -76,6 +76,11 @@
         if (idx < 0) idx = 0;
         setWizardStep(idx, true);
       }
+      if (window.AdminQuoteDraftValidation && typeof window.AdminQuoteDraftValidation.reportInvalid === 'function') {
+        window.AdminQuoteDraftValidation.reportInvalid(form);
+      } else if (invalid && typeof invalid.reportValidity === 'function') {
+        invalid.reportValidity();
+      }
       return;
     }
 
