@@ -356,12 +356,24 @@
       margin-left: 4pt;
     }
 
+    .contractor-fee-clause {
+      margin-top: 24pt;
+      padding-top: 10pt;
+      font-size: 10pt;
+      color: #1f2937;
+      line-height: 1.55;
+    }
+
     .entire-agreement {
       margin-top: 36pt;
       padding-top: 14pt;
       font-size: 10pt;
       color: #1f2937;
       line-height: 1.55;
+    }
+
+    .contractor-fee-clause + .entire-agreement {
+      margin-top: 14pt;
     }
   </style>
 </head>
@@ -449,6 +461,9 @@
         </tr>
       </table>
 
+      @if (\App\Support\ContractContractorFeeClause::shouldRenderOverlay($contract))
+        <p class="contractor-fee-clause">{{ \App\Support\ContractContractorFeeClause::SENTENCE }}</p>
+      @endif
       <p class="entire-agreement">
         This contract represents the entire agreement between the parties and supersedes any prior negotiations or agreements. This contract may only be modified in writing and signed by both parties.
       </p>

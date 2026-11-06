@@ -790,6 +790,15 @@
                     data-br-floor-waste="{{ \App\Services\BasementQuotationCalculator::flooringWasteDefault($flKey) }}">{{ $flLabel }}</option>
           @endforeach
         </select>
+        <p class="br-hardwood-caution" id="br-hardwood-caution" @if($flCurrent !== 'hardwood') hidden @endif>
+          <span class="admin-label-with-tip">
+            <span>Basement humidity caution for solid hardwood</span>
+            @include('admin.partials.info_tip', [
+              'tipText' => 'Solid hardwood is more sensitive to slab moisture and seasonal humidity than vinyl plank, engineered wood, laminate, or tile. Choosing hardwood here does not change the quoted product specification; confirm moisture conditions before install.',
+              'tipLabel' => 'Basement humidity caution for solid hardwood',
+            ])
+          </span>
+        </p>
       </div>
       <div class="admin-form-group">
         <span class="admin-label-with-tip">

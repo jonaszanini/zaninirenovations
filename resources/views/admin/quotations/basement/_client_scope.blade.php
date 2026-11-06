@@ -9,6 +9,9 @@
   if (! is_array($pkgNotes)) {
       $pkgNotes = [];
   }
+  $scopeFieldLocked = function (string $name) use ($inputs): bool {
+      return old($name) !== null || filled($inputs[$name] ?? null);
+  };
 @endphp
 {{-- Client scope — always last trade-adjacent step, before Review --}}
 @php $wizardStep++; @endphp
@@ -42,7 +45,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-included" name="client_scope_included" rows="6"
-                    data-br-scope-field="included">{{ old('client_scope_included', $inputs['client_scope_included'] ?? $scopeCopy['included']) }}</textarea>
+                    data-br-scope-field="included"@if($scopeFieldLocked('client_scope_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_included', $inputs['client_scope_included'] ?? $scopeCopy['included']) }}</textarea>
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
@@ -53,7 +56,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-not-included" name="client_scope_not_included" rows="6"
-                    data-br-scope-field="not_included">{{ old('client_scope_not_included', $inputs['client_scope_not_included'] ?? $scopeCopy['not_included']) }}</textarea>
+                    data-br-scope-field="not_included"@if($scopeFieldLocked('client_scope_not_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_not_included', $inputs['client_scope_not_included'] ?? $scopeCopy['not_included']) }}</textarea>
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
@@ -64,7 +67,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-assumptions" name="client_scope_assumptions" rows="6"
-                    data-br-scope-field="assumptions">{{ old('client_scope_assumptions', $inputs['client_scope_assumptions'] ?? $scopeCopy['assumptions']) }}</textarea>
+                    data-br-scope-field="assumptions"@if($scopeFieldLocked('client_scope_assumptions')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_assumptions', $inputs['client_scope_assumptions'] ?? $scopeCopy['assumptions']) }}</textarea>
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
@@ -75,7 +78,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-allowances" name="client_scope_allowances" rows="6"
-                    data-br-scope-field="allowances">{{ old('client_scope_allowances', $inputs['client_scope_allowances'] ?? $scopeCopy['allowances']) }}</textarea>
+                    data-br-scope-field="allowances"@if($scopeFieldLocked('client_scope_allowances')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_allowances', $inputs['client_scope_allowances'] ?? $scopeCopy['allowances']) }}</textarea>
         </div>
       </div>
 

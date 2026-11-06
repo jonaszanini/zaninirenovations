@@ -1933,6 +1933,10 @@ html.admin-dark .fl-field-warning {
   color: #fbbf24;
 }
 
+html.admin-dark .br-hardwood-caution {
+  color: #fbbf24;
+}
+
 html.admin-dark .fl-material-summary {
   background: var(--admin-surface-hover);
   border-color: var(--admin-border);

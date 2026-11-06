@@ -1052,11 +1052,24 @@
     hint.textContent = parts.join(' · ') + '.';
   }
 
+  function clientScopeFieldLocked(el) {
+    return el.getAttribute('data-br-scope-dirty') === '1'
+      || el.getAttribute('data-br-scope-persisted') === '1';
+  }
+
+  function hydratePersistedClientScope() {
+    form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
+      if (el.getAttribute('data-br-scope-persisted') === '1') {
+        el.setAttribute('data-br-scope-dirty', '1');
+      }
+    });
+  }
+
   function updateClientScopeFromPreview(data) {
     var generated = data && data.client_scope && data.client_scope.generated;
     if (!generated) return;
     form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
-      if (el.getAttribute('data-br-scope-dirty') === '1') return;
+      if (clientScopeFieldLocked(el)) return;
       var key = el.getAttribute('data-br-scope-field');
       if (generated[key] != null) el.value = generated[key];
     });
@@ -1201,6 +1214,11 @@
   });
   var floorTypeEl = document.getElementById('br-fl-type');
   var floorWasteEl = document.getElementById('br-fl-waste');
+  function syncHardwoodCaution() {
+    var caution = document.getElementById('br-hardwood-caution');
+    if (!caution || !floorTypeEl) return;
+    caution.hidden = floorTypeEl.value !== 'hardwood';
+  }
   if (floorTypeEl && floorWasteEl) {
     floorWasteEl.addEventListener('input', function () {
       floorWasteEl.setAttribute('data-br-floor-waste-dirty', '1');
@@ -1214,6 +1232,10 @@
         schedulePreview();
       }
     });
+  }
+  if (floorTypeEl) {
+    floorTypeEl.addEventListener('change', syncHardwoodCaution);
+    syncHardwoodCaution();
   }
   initTileAreas();
   initExclusiveChecks();
@@ -1349,6 +1371,7 @@
     schedulePreview();
   });
 
+  hydratePersistedClientScope();
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);
   }

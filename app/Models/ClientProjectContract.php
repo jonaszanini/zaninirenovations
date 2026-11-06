@@ -21,11 +21,17 @@ class ClientProjectContract extends Model
         'pdf_path',
         'sent_at',
         'version',
+        'include_contractor_fee_change_order_clause',
+    ];
+
+    protected $attributes = [
+        'include_contractor_fee_change_order_clause' => true,
     ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'version' => 'integer',
+        'include_contractor_fee_change_order_clause' => 'boolean',
     ];
 
     public function project(): BelongsTo

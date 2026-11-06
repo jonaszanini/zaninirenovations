@@ -2815,6 +2815,16 @@ a:hover .cp-expense-receipt-pdf {
   color: #1f2937;
   line-height: 1.55;
 }
+.cp-contractor-fee-clause {
+  margin-top: 28px;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #1f2937;
+  line-height: 1.55;
+}
+.cp-contractor-fee-clause + .cp-contract-entire {
+  margin-top: 14px;
+}
 
 /* Editor view (TinyMCE). */
 .cp-contract-editor-card {
@@ -8193,6 +8203,25 @@ body.cp-modal-open {
   font-weight: 600;
 }
 html.admin-dark .br-layout-import__status.is-warning {
+  color: #fbbf24;
+}
+.br-hardwood-caution {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #92400e;
+  font-weight: 600;
+}
+.br-hardwood-caution[hidden] {
+  display: none !important;
+}
+.br-hardwood-caution .admin-label-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+html.admin-dark .br-hardwood-caution {
   color: #fbbf24;
 }
 .br-layout-import__open-label {
