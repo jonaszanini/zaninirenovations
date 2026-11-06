@@ -7,7 +7,7 @@
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
-      : ($linkProject ?? null);
+      : ($linkProject ?? ($isEdit ? $quotation->intendedProject : null));
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
   $qs = array_filter(['return' => $returnToProject ? 'project' : null, 'project' => $preservePid]);
   $formQuery = $qs !== [] ? '?'.http_build_query($qs) : '';
@@ -94,7 +94,7 @@
     'saveId' => 'br-btn-publish',
     'draftId' => 'br-btn-draft',
     'draftHotkey' => true,
-    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject ?? null) : null))->client_id,
   ])
   @php
     $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
@@ -128,7 +128,7 @@
     ] : null,
   ])
   <div class="br-project-context-slot">
-    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject) : null)])
   </div>
   @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
   @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
@@ -215,7 +215,7 @@
             'enabledCount' => $enabledCount,
             'filledKeys' => $filledKeys,
             'layoutClientProjectId' => $isEdit
-                ? ($quotation->client_project_id ?? null)
+                ? ($quotation->client_project_id ?? $quotation->intended_client_project_id ?? optional($linkProject)->id)
                 : optional($linkProject)->id,
         ])
 

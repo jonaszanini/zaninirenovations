@@ -77,6 +77,7 @@ class BasementProjectSaveDiscoverabilityTest extends IntegrationTestCase
         $this->assertNotNull($quote);
         $this->assertFalse((bool) $quote->is_draft);
         $this->assertSame($project->id, (int) $quote->client_project_id);
+        $this->assertSame($project->id, (int) $quote->intended_client_project_id);
         $response->assertRedirect(route('admin.quotations.basement.edit', $quote));
         $response->assertSessionHas('success', function ($message) use ($quote) {
             return is_string($message)
@@ -120,6 +121,7 @@ class BasementProjectSaveDiscoverabilityTest extends IntegrationTestCase
         $this->assertNotNull($quote);
         $this->assertTrue((bool) $quote->is_draft);
         $this->assertNull($quote->client_project_id);
+        $this->assertSame($project->id, (int) $quote->intended_client_project_id);
         $response->assertRedirect(route('admin.quotations.basement.edit', $quote));
         $response->assertSessionHas('success', function ($message) use ($quote) {
             return is_string($message)
@@ -221,6 +223,7 @@ class BasementProjectSaveDiscoverabilityTest extends IntegrationTestCase
         $this->assertNotNull($draft);
         $this->assertTrue((bool) $draft->is_draft);
         $this->assertNull($draft->client_project_id);
+        $this->assertSame($project->id, (int) $draft->intended_client_project_id);
         $this->assertSame('room:'.$room->id, $draft->inputs['room_area_import_id'] ?? null);
         $this->assertNull(ClientProjectQuotation::findForSource(
             ClientProjectQuotation::SOURCE_BASEMENT,
@@ -250,6 +253,141 @@ class BasementProjectSaveDiscoverabilityTest extends IntegrationTestCase
         $this->assertStringContainsString('if (!form.checkValidity())', $src);
         $this->assertStringContainsString('AdminQuoteDraftValidation.reportInvalid', $src);
         $this->assertStringContainsString('reportValidity', $src);
+    }
+
+    public function test_draft_reopen_without_query_publishes_to_stored_project_once(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_QUOTE_SENT,
+        ]);
+
+        $this->post(route('admin.quotations.basement.store'), $this->publishPayload([
+            'save_intent' => 'draft',
+            'client_name' => $project->client_name,
+            'link_client_project_id' => $project->id,
+        ]));
+
+        $quote = BasementQuotation::query()->where('client_name', $project->client_name)->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertNull($quote->client_project_id);
+        $this->assertSame($project->id, (int) $quote->intended_client_project_id);
+        $this->assertNull(ClientProjectQuotation::findForSource(
+            ClientProjectQuotation::SOURCE_BASEMENT,
+            (int) $quote->id
+        ));
+
+        $edit = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk();
+        $html = $edit->getContent();
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*name="link_client_project_id"[^>]*value="'.$project->id.'"/',
+            $html
+        );
+        $this->assertStringContainsString(
+            route('admin.client-projects.show', $project).'#quotation',
+            $html
+        );
+        $this->assertStringContainsString(route('admin.quotations.basement.index'), $html);
+
+        $publish = $this->put(
+            route('admin.quotations.basement.update', $quote),
+            $this->publishPayload([
+                'client_name' => $project->client_name,
+            ])
+        );
+
+        $quote->refresh();
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertSame($project->id, (int) $quote->client_project_id);
+        $this->assertSame($project->id, (int) $quote->intended_client_project_id);
+        $publish->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $publish->assertSessionHas('success', function ($message) use ($quote) {
+            return is_string($message)
+                && str_contains($message, $quote->quote_number)
+                && str_contains($message, 'published and linked to this project');
+        });
+
+        $this->assertSame(1, ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->count());
+
+        $resave = $this->put(
+            route('admin.quotations.basement.update', $quote),
+            $this->publishPayload([
+                'client_name' => $project->client_name,
+            ])
+        );
+        $quote->refresh();
+        $resave->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $resave->assertSessionHas('success', function ($message) use ($quote) {
+            return is_string($message)
+                && str_contains($message, $quote->quote_number)
+                && str_contains($message, 'updated (v'.$quote->version.')')
+                && str_contains($message, 'linked to this project');
+        });
+        $this->assertSame($project->id, (int) $quote->client_project_id);
+        $this->assertSame(1, ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->count());
+    }
+
+    public function test_mismatched_or_invalid_project_is_rejected_and_stays_unlinked(): void
+    {
+        $this->actingAsAdmin();
+
+        $intended = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_QUOTE_SENT,
+        ]);
+        $other = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_QUOTE_SENT,
+        ]);
+
+        $this->post(route('admin.quotations.basement.store'), $this->publishPayload([
+            'save_intent' => 'draft',
+            'client_name' => $intended->client_name,
+            'link_client_project_id' => $intended->id,
+        ]));
+
+        $quote = BasementQuotation::query()->where('client_name', $intended->client_name)->first();
+        $this->assertNotNull($quote);
+
+        $this->from(route('admin.quotations.basement.edit', $quote))
+            ->put(route('admin.quotations.basement.update', $quote), $this->publishPayload([
+                'client_name' => $intended->client_name,
+                'link_client_project_id' => $other->id,
+            ]))
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote))
+            ->assertSessionHasErrors('link_client_project_id');
+
+        $quote->refresh();
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertNull($quote->client_project_id);
+        $this->assertSame($intended->id, (int) $quote->intended_client_project_id);
+        $this->assertNull(ClientProjectQuotation::findForSource(
+            ClientProjectQuotation::SOURCE_BASEMENT,
+            (int) $quote->id
+        ));
+
+        $this->from(route('admin.quotations.basement.edit', $quote))
+            ->put(route('admin.quotations.basement.update', $quote), $this->publishPayload([
+                'client_name' => $intended->client_name,
+                'link_client_project_id' => 999999,
+            ]))
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote))
+            ->assertSessionHasErrors('link_client_project_id');
+
+        $quote->refresh();
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertNull($quote->client_project_id);
+        $this->assertSame($intended->id, (int) $quote->intended_client_project_id);
+        $this->assertNull(ClientProjectQuotation::findForSource(
+            ClientProjectQuotation::SOURCE_BASEMENT,
+            (int) $quote->id
+        ));
     }
 
     /**
