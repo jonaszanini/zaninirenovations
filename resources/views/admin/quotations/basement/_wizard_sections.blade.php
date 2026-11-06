@@ -78,7 +78,7 @@
   ];
   $brInfo = [
       'scope_preset' => 'Pick a starting point, then add or skip trades. Unused steps stay out of the wizard.',
-      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, import the Room Area drawing on the Drywall step so walls use the real perimeter instead of a square. Not used on New wall quotes — enter wall length instead.',
+      'area_sqft' => 'Finished floor area of the work. Leave later quantity fields blank to auto-fill from this. Enter 0 on a field to skip it. For an irregular room, use Import layout on Overview — it fills all available drawing quantities (floor, walls, ceiling, partitions, openings, trim, bulkheads). Not used on New wall quotes — enter wall length instead.',
       'room_count' => 'Rooms as they will exist when the work is done, including new dividing walls — not the current open basement. Example: rec room + bedroom + bath = 3, even if it is open now. Enter new wall length on the Framing step (or Overview for New wall).',
       'owner_hourly_rate' => 'Your labour rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
@@ -129,7 +129,7 @@
       'drywall_window_openings' => 'Window openings. Each deducts 12 sq ft (4×3 ft) from wall drywall unless you type Opening area.',
       'drywall_opening_sf' => 'Total opening area to subtract from wall drywall. Blank uses 21 sq ft per door and 12 sq ft per window. Enter 0 if the wall area you typed is already net.',
       'drywall_sheet_size' => '4×12 sheets cover a typical 8–9 ft basement wall in one piece (fewer seams). 4×8 is two rows. Sheet count and waste follow this choice.',
-      'room_area_import' => 'Saved Room Area drawing. Wall drywall uses the measured wall area (openings already deducted when the layout has doors/windows). Ceiling drywall uses the floor square footage. Corners and opening counts come from the outline.',
+      'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, and corners. Does not change rates, flooring type, ceiling type, or shared prices. Measured zeros replace the form; takeoffs the drawing does not have are left as-is.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drop ceiling uses grid and tiles instead of hanging drywall.',
       'ceiling_sf' => 'Ceiling area. Blank uses the work area.',
@@ -273,6 +273,38 @@
         'value' => $brVal('ceiling_height_ft', 8),
         'filledKeys' => $filledKeys,
       ])
+    </div>
+    <div class="br-layout-import" data-br-layout-import data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
+      <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
+      <input type="hidden" name="room_area_import_label" id="br-layout-import-label" value="{{ $layoutImportLabel }}">
+      <div class="admin-form-group br-layout-import__field">
+        <span class="admin-label-with-tip">
+  <label for="br-layout-import-input">Import layout</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['room_area_import'], 'tipLabel' => 'Import layout'])
+</span>
+        @include('admin.partials.search_select', [
+          'id' => 'br-layout-import',
+          'name' => 'room_area_import_id',
+          'value' => $layoutImportId,
+          'hideLabel' => true,
+          'placeholder' => 'Search rooms…',
+          'ariaLabel' => 'Import a Room Area layout',
+          'searchUrl' => $layoutSearchUrl,
+          'selectedOption' => $layoutSelected,
+          'metaKeys' => ['meta'],
+          'emptyMessage' => 'No matching Room Area layouts',
+          'emptyQueryMessage' => 'Type a room name, or pick a saved layout',
+          'listParent' => 'body',
+          'wrapperClass' => 'br-layout-import__picker',
+          'trailing' => '<a href="'.e(route('admin.utilities.room-area')).'" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener" title="Open Room Area"><i class="fa fa-object-ungroup" aria-hidden="true"></i><span class="br-layout-import__open-label">Room Area</span></a>',
+          'attrs' => ['data-br-layout-picker' => '1'],
+        ])
+      </div>
+      <p class="admin-form-help br-layout-import__status" id="br-layout-import-status" @if($layoutPerimeter === '' || (float) $layoutPerimeter <= 0) hidden @endif>
+        @if ($layoutPerimeter !== '' && (float) $layoutPerimeter > 0)
+          Using measured walls: {{ rtrim(rtrim(number_format((float) $layoutPerimeter, 2, '.', ''), '0'), '.') }} lf perimeter.
+        @endif
+      </p>
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
@@ -619,38 +651,6 @@
 <details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
-    <div class="br-layout-import" data-br-layout-import data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
-      <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
-      <input type="hidden" name="room_area_import_label" id="br-layout-import-label" value="{{ $layoutImportLabel }}">
-      <div class="admin-form-group br-layout-import__field">
-        <span class="admin-label-with-tip">
-  <label for="br-layout-import-input">Import layout</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['room_area_import'], 'tipLabel' => 'Import layout'])
-</span>
-        @include('admin.partials.search_select', [
-          'id' => 'br-layout-import',
-          'name' => 'room_area_import_id',
-          'value' => $layoutImportId,
-          'hideLabel' => true,
-          'placeholder' => 'Search rooms…',
-          'ariaLabel' => 'Import a Room Area layout',
-          'searchUrl' => $layoutSearchUrl,
-          'selectedOption' => $layoutSelected,
-          'metaKeys' => ['meta'],
-          'emptyMessage' => 'No matching Room Area layouts',
-          'emptyQueryMessage' => 'Type a room name, or pick a saved layout',
-          'listParent' => 'body',
-          'wrapperClass' => 'br-layout-import__picker',
-          'trailing' => '<a href="'.e(route('admin.utilities.room-area')).'" class="admin-btn admin-btn--ghost admin-btn--sm" target="_blank" rel="noopener" title="Open Room Area"><i class="fa fa-object-ungroup" aria-hidden="true"></i><span class="br-layout-import__open-label">Room Area</span></a>',
-          'attrs' => ['data-br-layout-picker' => '1'],
-        ])
-      </div>
-      <p class="admin-form-help br-layout-import__status" id="br-layout-import-status" @if($layoutPerimeter === '' || (float) $layoutPerimeter <= 0) hidden @endif>
-        @if ($layoutPerimeter !== '' && (float) $layoutPerimeter > 0)
-          Using measured walls: {{ rtrim(rtrim(number_format((float) $layoutPerimeter, 2, '.', ''), '0'), '.') }} lf perimeter.
-        @endif
-      </p>
-    </div>
     <fieldset class="br-sheet-size">
       <legend>
         <span class="admin-label-with-tip">

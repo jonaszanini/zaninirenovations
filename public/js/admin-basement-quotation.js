@@ -293,7 +293,6 @@
   }
 
   function applyRoomLayout(opt) {
-    var periEl = document.getElementById('br-perimeter-lf');
     var labelEl = document.getElementById('br-layout-import-label');
     var status = document.getElementById('br-layout-import-status');
     var wall = document.getElementById('br-dw-wall');
@@ -322,8 +321,10 @@
       return;
     }
     var layoutImport = window.BasementLayoutImport;
+    var proposed = layoutImport
+      ? layoutImport.proposedQuantities(opt, ceilingHeightFt())
+      : {};
     if (layoutImport) {
-      var proposed = layoutImport.proposedQuantities(opt, ceilingHeightFt());
       var current = layoutImport.currentQuantities(document);
       if (layoutImport.wouldOverwrite(current, proposed)) {
         var ok = window.confirm(layoutImport.CONFIRM_MESSAGE);
@@ -331,69 +332,53 @@
       }
     }
     applyingLayout = true;
-    var peri = Number(opt.perimeter_lf || 0);
-    var area = Number(opt.area_sqft || 0);
-    var measuredWall = Number(opt.wall_area_sqft || 0);
-    var wallSf = measuredWall > 0 ? measuredWall : (peri > 0 ? peri * ceilingHeightFt() : 0);
-    if (periEl) periEl.value = peri > 0 ? formatLayoutQty(peri) : '';
+    var fieldIds = (layoutImport && layoutImport.FIELD_IDS) || {};
+    var lwKeys = (layoutImport && layoutImport.LW_KEYS) || {};
     if (labelEl) labelEl.value = opt.name || opt.label || '';
-    setLwToSqft('br-area', area > 0 ? area : '');
-    setLwToSqft('br-dw-wall', wallSf > 0 ? wallSf : '');
-    if (wall) wall.setAttribute('data-br-from-layout', measuredWall > 0 ? 'net' : '1');
-    setLwToSqft('br-dw-ceil', area > 0 ? area : '');
-    var inside = document.getElementById('br-dw-inside-corners');
-    var outside = document.getElementById('br-dw-corners');
-    if (inside) inside.value = String(Math.max(0, parseInt(opt.inside_corners, 10) || 0));
-    if (outside) outside.value = String(Math.max(0, parseInt(opt.outside_corners, 10) || 0));
-    var doors = parseInt(opt.door_count, 10) || 0;
-    var windows = parseInt(opt.window_count, 10) || 0;
-    var extras = parseInt(opt.opening_count, 10) || 0;
-    var openings = parseInt(opt.drywall_openings, 10);
-    if (!isFinite(openings) || openings < 0) {
-      openings = doors + windows + extras;
+
+    var heightKey = 'ceiling_height_ft';
+    if (proposed[heightKey] != null && fieldIds[heightKey]) {
+      var heightEl = document.getElementById(fieldIds[heightKey]);
+      if (heightEl) heightEl.value = formatLayoutQty(proposed[heightKey]);
     }
-    var doorEl = document.getElementById('br-dw-door-open');
-    var windowEl = document.getElementById('br-dw-window-open');
-    var openEl = document.getElementById('br-dw-open');
-    var openingSfEl = document.getElementById('br-dw-opening-sf');
-    if (doorEl) doorEl.value = String(Math.max(0, doors));
-    if (windowEl) windowEl.value = String(Math.max(0, windows));
-    if (openEl) openEl.value = String(Math.max(0, extras));
-    if (openingSfEl && measuredWall > 0) {
-      openingSfEl.value = '0';
-    } else if (openingSfEl) {
-      openingSfEl.value = '';
-    }
-    var baseEl = document.getElementById('br-base');
-    if (baseEl && opt.baseboard_lf != null && opt.baseboard_lf !== '') {
-      var base = Number(opt.baseboard_lf);
-      if (isFinite(base) && base >= 0) baseEl.value = formatLayoutQty(base);
-    }
-    var bulkEl = document.getElementById('br-bulkhead');
-    if (bulkEl) {
-      var bulk = (opt.bulkhead_lf != null && opt.bulkhead_lf !== '')
-        ? Number(opt.bulkhead_lf)
-        : Number(opt.bulkhead_framing_lf || 0);
-      if (isFinite(bulk) && bulk >= 0) bulkEl.value = formatLayoutQty(bulk);
-    }
-    var partEl = document.getElementById('br-partition');
-    if (partEl) {
-      var part = Number(opt.partition_lf || 0);
-      if (isFinite(part) && part >= 0) partEl.value = formatLayoutQty(part);
-    }
+
+    Object.keys(proposed).forEach(function (key) {
+      if (key === heightKey) return;
+      if (proposed[key] == null) return;
+      var id = fieldIds[key];
+      if (!id) return;
+      if (lwKeys[key]) {
+        setLwToSqft(id, proposed[key]);
+        return;
+      }
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.value = formatLayoutQty(proposed[key]);
+    });
+
+    var measuredNet = (layoutImport && layoutImport.present)
+      ? (layoutImport.present(opt, 'finish_drywall_sqft')
+        || layoutImport.present(opt, 'net_wall_area_sqft')
+        || layoutImport.present(opt, 'wall_area_sqft'))
+      : Number(opt.wall_area_sqft || 0) > 0;
+    if (wall) wall.setAttribute('data-br-from-layout', measuredNet ? 'net' : '1');
+
     if (status) {
       status.classList.remove('is-warning');
-      var floor = formatLayoutQty(area);
-      var periLabel = formatLayoutQty(peri);
+      var floor = formatLayoutQty(proposed.area_sqft != null ? proposed.area_sqft : 0);
+      var periLabel = formatLayoutQty(proposed.perimeter_lf != null ? proposed.perimeter_lf : 0);
       var height = formatLayoutQty(ceilingHeightFt());
-      var walls = formatLayoutQty(wallSf);
+      var walls = formatLayoutQty(proposed.drywall_wall_sf != null ? proposed.drywall_wall_sf : 0);
       var name = opt.short_name || opt.name || 'layout';
-      var openLabel = openings === 1 ? '1 opening' : openings + ' openings';
+      var openingTotal = (proposed.drywall_door_openings || 0)
+        + (proposed.drywall_window_openings || 0)
+        + (proposed.drywall_openings || 0);
+      var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
       status.hidden = false;
       status.classList.add('is-set');
       status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
         + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
-        + (measuredWall > 0 ? ' (openings already deducted)' : '')
+        + (measuredNet ? ' (openings already deducted)' : '')
         + ', ' + openLabel + '.';
     }
     applyingLayout = false;

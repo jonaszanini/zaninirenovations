@@ -104,6 +104,40 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('Doors to frame', $html);
     }
 
+    public function test_layout_import_lives_on_overview_and_fills_all_destination_fields(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $overview = strstr($html, 'data-br-step="overview"');
+        $this->assertNotFalse($overview);
+        $overview = substr($overview, 0, (int) strpos($overview, 'data-br-step="demolition"'));
+        $this->assertStringContainsString('data-br-layout-picker', $overview);
+        $this->assertStringContainsString('Import layout', $overview);
+        $this->assertSame(1, substr_count($html, 'id="br-layout-import"'));
+        $this->assertSame(1, substr_count($html, 'id="br-perimeter-lf"'));
+
+        $drywall = strstr($html, 'data-br-step="drywall"');
+        $this->assertNotFalse($drywall);
+        $drywall = substr($drywall, 0, (int) strpos($drywall, 'data-br-step="flooring"'));
+        $this->assertStringNotContainsString('data-br-layout-picker', $drywall);
+
+        foreach ([
+            'br-area', 'br-height', 'br-rooms', 'br-partition', 'br-bulkhead', 'br-frame-doors',
+            'br-ins-wall-sf', 'br-ins-ceil-sf', 'br-ceil-sf', 'br-dw-wall', 'br-dw-ceil',
+            'br-dw-door-open', 'br-dw-window-open', 'br-dw-open', 'br-fl-sf', 'br-doors',
+            'br-base', 'br-casing', 'br-windows', 'br-p-wall', 'br-p-ceil', 'br-p-trim',
+        ] as $id) {
+            $this->assertStringContainsString('id="'.$id.'"', $html);
+        }
+        $this->assertStringContainsString('Does not change rates', $html);
+        $this->assertStringContainsString('use Import layout on Overview', $html);
+        $this->assertStringNotContainsString('on the Drywall step', $html);
+        $this->assertStringNotContainsString('licensed', $html);
+    }
+
     public function test_electrical_and_plumbing_steps_render_priced_lines_and_scope_hint(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
