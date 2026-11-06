@@ -19,7 +19,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.index'))
             ->assertOk()
-            ->assertSee('Basement Renovation');
+            ->assertSee('Basement Renovation')
+            ->assertSee('This hub does not list quotations');
 
         $this->get(route('admin.quotations.basement.index'))
             ->assertOk()

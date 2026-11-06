@@ -17,6 +17,7 @@ class BasementQuotation extends Model
 
     protected $fillable = [
         'client_project_id',
+        'intended_client_project_id',
         'quote_number',
         'client_name',
         'is_draft',
@@ -69,6 +70,11 @@ class BasementQuotation extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(ClientProject::class, 'client_project_id');
+    }
+
+    public function intendedProject(): BelongsTo
+    {
+        return $this->belongsTo(ClientProject::class, 'intended_client_project_id');
     }
 
     public function isLinked(): bool
