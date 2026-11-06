@@ -20,7 +20,7 @@
   $brOn = function (string $key, $fallback = false) use ($inputs) {
       return (bool) old($key, $inputs[$key] ?? $fallback);
   };
-  $step = 0;
+  $wizardStep = 0;
   $scopePreset = $scopePreset ?? \App\Services\BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
   $areaMode = \App\Services\BasementQuotationCalculator::normalizeAreaMode(old('area_entry_mode', $inputs['area_entry_mode'] ?? 'sqft'));
   $enabledNow = $enabledNow ?? \App\Services\BasementQuotationCalculator::enabledSections([
@@ -175,7 +175,7 @@
 
 {{-- 1. Overview --}}
 @php
-  $step++;
+  $wizardStep++;
   $areaLabels = [
       'full' => 'Total basement area (sq ft)',
       'bathroom' => 'Bathroom / work area (sq ft)',
@@ -191,7 +191,7 @@
   $wallPreset = $scopePreset === 'wall';
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Project Overview</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Project Overview</summary>
   <div class="br-acc__body">
     <fieldset class="br-scope-presets">
       <legend>
@@ -330,10 +330,10 @@
 </details>
 
 {{-- 2. Demolition --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="demolition" data-qh-step="2" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary">
-    <span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Demolition &amp; Preparation
+    <span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Demolition &amp; Preparation
     @include('admin.partials.quotation_price_config_gear', [
       'url' => route('admin.quotations.basement.price-configuration', request()->filled('project') ? ['project' => (int) request('project')] : []),
     ])
@@ -470,9 +470,9 @@
 </details>
 
 {{-- 3. Framing --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="framing" @if($bathNestTrades || ! in_array('framing', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Framing</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Framing</summary>
   <div class="br-acc__body">
     <div id="br-framing-slot-step">
       @unless($bathNestTrades)
@@ -483,9 +483,9 @@
 </details>
 
 {{-- 4. Electrical --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="electrical" @if($bathNestTrades || ! in_array('electrical', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Electrical</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Electrical</summary>
   <div class="br-acc__body">
     <div id="br-electrical-slot-step">
       @unless($bathNestTrades)
@@ -496,9 +496,9 @@
 </details>
 
 {{-- 5. Plumbing --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="plumbing" @if($bathNestTrades || ! in_array('plumbing', $enabledNow, true)) hidden @endif>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Plumbing</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Plumbing</summary>
   <div class="br-acc__body">
     <div id="br-plumbing-slot-step">
       @unless($bathNestTrades)
@@ -509,9 +509,9 @@
 </details>
 
 {{-- 6. Insulation --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="insulation" @unless(in_array('insulation', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Insulation &amp; Vapor Barrier</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Insulation &amp; Vapor Barrier</summary>
   <div class="br-acc__body">
     <div class="br-toggle-qty-grid">
       <div class="br-toggle-qty">
@@ -576,9 +576,9 @@
 </details>
 
 {{-- 7. Ceiling (before drywall so hang area follows the ceiling type) --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="ceiling" @unless(in_array('ceiling', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Ceiling Options</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Ceiling Options</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group br-field--wide">
@@ -613,11 +613,11 @@
 
 {{-- 8. Drywall --}}
 @php
-  $step++;
+  $wizardStep++;
   $sheetSizeNow = \App\Services\BasementQuotationCalculator::normalizeSheetSize($brVal('drywall_sheet_size', '4x8'));
 @endphp
 <details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
     <div class="br-layout-import" data-br-layout-import data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
       <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
@@ -761,9 +761,9 @@
 </details>
 
 {{-- 9. Flooring --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="flooring" @unless(in_array('flooring', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Flooring</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Flooring</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group br-field--wide">
@@ -823,9 +823,9 @@
 </details>
 
 {{-- 10. Doors & trim --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="doors_trim" @unless(in_array('doors_trim', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Doors, Trim &amp; Baseboards</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Doors, Trim &amp; Baseboards</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
       <div class="admin-form-group">
@@ -854,6 +854,7 @@
           'gearLabel' => 'Edit baseboard rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('baseboard'),
           'inputClass' => 'br-preview',
+          'step' => '0.01',
           'placeholder' => 'Auto',
         ])
       </div>
@@ -910,6 +911,7 @@
           'gearLabel' => 'Edit shoe moulding rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('shoe_install').' · '.\App\Services\SharedWorkCatalog::rateLine('shoe_caulk_paint'),
           'inputClass' => 'br-preview',
+          'step' => '0.01',
           'placeholder' => 'Auto',
         ])
       </div>
@@ -918,9 +920,9 @@
 </details>
 
 {{-- 11. Painting --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="painting" @unless(in_array('painting', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Painting</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Painting</summary>
   <div class="br-acc__body">
     <div class="br-qty-grid">
       @include('admin.quotations.basement._qty_lw', [
@@ -967,6 +969,7 @@
           'gearLabel' => 'Edit trim paint rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_trim'),
           'inputClass' => 'br-preview',
+          'step' => '0.01',
           'placeholder' => 'Auto',
         ])
       </div>
@@ -993,9 +996,9 @@
 </details>
 
 {{-- 12. Bathroom --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="bathroom" @unless(in_array('bathroom', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Bathroom</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Bathroom</summary>
   <div class="br-acc__body">
     <div class="br-bath-include" data-br-bath-include-wrap @if($bathNestTrades) hidden @endif>
       @include('admin.partials.checkbox', [
@@ -1183,9 +1186,9 @@
 </details>
 
 {{-- 13. Finishing --}}
-@php $step++; @endphp
+@php $wizardStep++; @endphp
 <details class="br-acc admin-card" data-br-step="finishing" @unless(in_array('finishing', $enabledNow, true)) hidden @endunless>
-  <summary class="br-acc__summary"><span class="br-acc__num">{{ $step }} of {{ $enabledCount }}</span> Final Details &amp; Cleanup</summary>
+  <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Final Details &amp; Cleanup</summary>
   <div class="br-acc__body">
     <div class="br-finishing">
       <div class="br-finishing-row">

@@ -81,6 +81,44 @@ BLADE);
         $this->assertStringContainsString('name="sync_client_directory" value="0"', $html);
     }
 
+    public function test_shared_qty_field_ignores_leaked_integer_wizard_step(): void
+    {
+        $html = Blade::render(<<<'BLADE'
+@php $step = 10; @endphp
+@include('admin.quotations._shared_qty_field', [
+  'id' => 'br-base',
+  'name' => 'baseboard_lf',
+  'label' => 'Baseboards (lin. ft)',
+  'value' => 87,
+])
+BLADE);
+
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bstep="0\.01")/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-base")(?=[^>]*\bstep="10")/',
+            $html
+        );
+    }
+
+    public function test_shared_qty_field_honors_explicit_string_step(): void
+    {
+        $html = view('admin.quotations._shared_qty_field', [
+            'id' => 'br-doors',
+            'name' => 'door_qty',
+            'label' => 'Interior doors',
+            'value' => 2,
+            'step' => '1',
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-doors")(?=[^>]*\bstep="1")/',
+            $html
+        );
+    }
+
     public function test_checkbox_uses_explicit_checkbox_value_for_trade_keys(): void
     {
         $html = view('admin.partials.checkbox', [

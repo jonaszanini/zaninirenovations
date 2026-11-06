@@ -130,6 +130,30 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('br-field--phone-wide', $html);
     }
 
+    public function test_qty_inputs_use_decimal_html5_step_not_wizard_section_index(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        foreach (['br-base', 'br-shoe', 'br-p-trim'] as $id) {
+            $this->assertMatchesRegularExpression(
+                '/<input(?=[^>]*\bid="'.preg_quote($id, '/').'")(?=[^>]*\bstep="0\.01")/',
+                $html
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/<input(?=[^>]*\bid="'.preg_quote($id, '/').'")(?=[^>]*\bstep="(?:10|11)")/',
+                $html
+            );
+        }
+        $this->assertStringContainsString('$wizardStep', file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php')));
+        $this->assertDoesNotMatchRegularExpression(
+            '/\$step\b/',
+            file_get_contents(resource_path('views/admin/quotations/basement/_wizard_sections.blade.php'))
+        );
+    }
+
     public function test_trade_checkboxes_post_section_keys_not_one(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
