@@ -44,6 +44,7 @@ class QuoteAcceptanceService
         string $via,
         ?string $ip = null,
         ?string $sourceNote = null,
+        ?string $valueTier = null,
     ): array {
         $project = $this->findProjectByNumber($projectNumber);
         if ($project === null) {
@@ -56,7 +57,7 @@ class QuoteAcceptanceService
         }
 
         return [
-            'status' => $this->accept($quotation, $via, $ip, $sourceNote),
+            'status' => $this->accept($quotation, $via, $ip, $sourceNote, $valueTier),
             'quotation' => $quotation->fresh(),
         ];
     }
@@ -66,6 +67,7 @@ class QuoteAcceptanceService
         string $via,
         ?string $ip = null,
         ?string $sourceNote = null,
+        ?string $valueTier = null,
     ): string {
         $quotation->loadMissing('project');
         $project = $quotation->project;
@@ -96,7 +98,10 @@ class QuoteAcceptanceService
             $note .= ' Source: '.trim((string) $sourceNote).'.';
         }
 
-        DB::transaction(function () use ($quotation, $project, $via, $ip, $sourceNote, $note) {
+        DB::transaction(function () use ($quotation, $project, $via, $ip, $sourceNote, $note, $valueTier) {
+            if (! $quotation->isAccepted()) {
+                app(BasementValueTierApplier::class)->apply($quotation, $valueTier);
+            }
             $quotation->status = ClientProjectQuotation::STATUS_ACCEPTED;
             $quotation->accepted_at = now();
             $quotation->accepted_via = $via;

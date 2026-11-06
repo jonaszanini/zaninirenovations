@@ -228,10 +228,10 @@ class BasementQuotationMathRoundTripTest extends IntegrationTestCase
         $descriptions = collect($cpq->pdfLineItems())->pluck('description')->all();
         $this->assertContains('Basement renovation (labour)', $descriptions);
         $this->assertContains('Basement renovation materials', $descriptions);
-        $this->assertContains('Building permit (optional, extra charge)', $descriptions);
+        $this->assertContains('City building permit (optional extra-charge service)', $descriptions);
         $this->assertNotContains('Basement renovation (labor)', $descriptions);
 
-        $permitLine = collect($cpq->pdfLineItems())->firstWhere('description', 'Building permit (optional, extra charge)');
+        $permitLine = collect($cpq->pdfLineItems())->firstWhere('description', 'City building permit (optional extra-charge service)');
         $this->assertEqualsWithDelta(175.0, (float) ($permitLine['amount'] ?? 0), 0.01);
 
         $materialsLine = collect($cpq->pdfLineItems())->firstWhere('description', 'Basement renovation materials');
@@ -246,7 +246,7 @@ class BasementQuotationMathRoundTripTest extends IntegrationTestCase
 
         $scope = $quote->scopeDescriptionForPdf();
         $this->assertStringContainsString('<table', $scope);
-        $this->assertStringContainsString('Building permit (optional, extra charge)', $scope);
+        $this->assertStringContainsString('City building permit (optional extra-charge service)', $scope);
         $this->assertDoesNotMatchRegularExpression('/licen[cs]e|licensed|WSIB|one-person|\\$3M/i', $scope.$this->materialsLabels($quote));
         $this->assertStringNotContainsString('vapor', strtolower($scope.$this->materialsLabels($quote)));
 

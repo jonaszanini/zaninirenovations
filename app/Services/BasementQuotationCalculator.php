@@ -60,6 +60,23 @@ class BasementQuotationCalculator
         'none' => 'Skip flooring',
     ];
 
+    /**
+     * Flooring_finish waste defaults by product. Vinyl (LVP) 7%, wood 8%, tile 10%.
+     * Other bulk materials still use material_waste_percent.
+     *
+     * @var array<string, float>
+     */
+    public const FLOORING_WASTE_DEFAULTS = [
+        'lvp' => 7.0,
+        'hardwood' => 8.0,
+        'engineered' => 8.0,
+        'laminate' => 8.0,
+        'tile' => 10.0,
+        'none' => 0.0,
+    ];
+
+    public const DEFAULT_CONTRACTOR_FEE_PERCENT = 10.0;
+
     /** Gypsum finish levels. Level 0 is hang only — no tape, mud, or sand. */
     public const FINISH_LEVELS = [
         0 => 'Level 0 — hang only',
@@ -680,7 +697,15 @@ class BasementQuotationCalculator
             'include_touchups' => true,
             'include_building_permit' => false,
             'building_permit_amount' => 0,
+            'include_bcin_drawings' => false,
+            'bcin_drawings_amount' => 0,
             'material_waste_percent' => 10,
+            'client_scope_included' => '',
+            'client_scope_not_included' => '',
+            'client_scope_assumptions' => '',
+            'client_scope_allowances' => '',
+            'selected_value_tier' => 'standard',
+            'value_package_notes' => [],
             'client_provides_all' => false,
             'client_provides_sections' => [],
             'client_provides_bath_items' => [],
@@ -732,11 +757,13 @@ class BasementQuotationCalculator
      * @param  array<string, mixed>  $inputs
      * @return array<string, mixed>
      */
-    public function calculate(array $inputs, ?BasementSettings $settings = null): array
+    public function calculate(array $inputs, ?BasementSettings $settings = null, bool $includePackages = true): array
     {
         $settings = $settings ?? BasementSettings::current();
         $prod = $settings->resolvedProductivity();
         $matCatalog = $this->resolveMaterialCatalog($settings);
+        $originalInputs = $inputs;
+        $feePercent = self::resolvedContractorFeePercent($originalInputs);
         $inputs = array_merge(self::defaultInputs(), $inputs);
         $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
         $inputs['stud_spacing_in'] = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
@@ -750,13 +777,21 @@ class BasementQuotationCalculator
             }
             $inputs['materials_override'] = $override;
         }
+        $bcinAmt = round(max(0, (float) ($inputs['bcin_drawings_amount'] ?? 0)), 2);
+        if (! empty($inputs['include_bcin_drawings']) && $bcinAmt > 0) {
+            $override = is_array($inputs['materials_override'] ?? null) ? $inputs['materials_override'] : [];
+            if (! isset($override['bcin_drawings']['unit_price']) || ! is_numeric($override['bcin_drawings']['unit_price'])) {
+                $override['bcin_drawings']['unit_price'] = $bcinAmt;
+            }
+            $inputs['materials_override'] = $override;
+        }
 
         $area = round(max(0, (float) $inputs['area_sqft']), 2);
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
         $partitionLf = max(0, (float) $inputs['partition_lf']);
         $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
         if ($area <= 0 && $partitionLf <= 0) {
-            return $this->emptyCalculation($inputs, $settings, $height);
+            return $this->emptyCalculation($originalInputs, $inputs, $settings, $height, $feePercent, $includePackages);
         }
         $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
         $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
@@ -778,6 +813,7 @@ class BasementQuotationCalculator
         };
         $ceilingType = (string) ($inputs['ceiling_type'] ?? 'drywall');
         $flType = (string) ($inputs['flooring_type'] ?? 'lvp');
+        $flooringWastePercent = self::resolvedFlooringWastePercent($originalInputs, $flType, $inputs);
         $dwWall = 0.0;
         $dwCeil = 0.0;
         $baseLf = 0.0;
@@ -1059,7 +1095,7 @@ class BasementQuotationCalculator
                     $addMat('underlayment', 'flooring', $this->packages($this->withMaterialWaste($flSf, $inputs), BasementSettings::UNDERLAYMENT_SF_PER_ROLL), 'underlayment');
                 }
                 $addLabor('fl_install', 'flooring', $this->flooringLabel($flType).' install', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['flooring_sf_per_hr']));
-                $addMat('flooring_finish', 'flooring', $this->withMaterialWaste($flSf, $inputs), $flCatalog);
+                $addMat('flooring_finish', 'flooring', $this->withPercentWaste($flSf, $flooringWastePercent), $flCatalog);
                 $transitions = max(0, (int) $inputs['transition_qty']);
                 $addLabor('fl_transitions', 'flooring', 'Transitions', $transitions.' piece(s)', $transitions * (float) $prod['transition_hours_each']);
                 $addMat('transition', 'flooring', $transitions, 'transition');
@@ -1251,7 +1287,10 @@ class BasementQuotationCalculator
                 $addLabor('fin_touch', 'finishing', 'Touch-ups', 'Walkthrough punch list', (float) $prod['touchup_hours']);
             }
             if (! empty($inputs['include_building_permit']) && $permitAmt > 0) {
-                $addMat('building_permit', 'finishing', 1, 'building_permit', 'Building permit');
+                $addMat('building_permit', 'finishing', 1, 'building_permit', 'City building permit (optional extra charge)');
+            }
+            if (! empty($inputs['include_bcin_drawings']) && $bcinAmt > 0) {
+                $addMat('bcin_drawings', 'finishing', 1, 'bcin_drawings', 'BCIN drawings (optional extra charge)');
             }
         }
 
@@ -1321,11 +1360,15 @@ class BasementQuotationCalculator
 
         $matAll = 0.0;
         $permitPre = 0.0;
+        $bcinPre = 0.0;
         foreach ($materials as $row) {
             $amount = (float) $row['amount'];
             $matAll += $amount;
             if (($row['key'] ?? '') === 'building_permit') {
                 $permitPre += $amount;
+            }
+            if (($row['key'] ?? '') === 'bcin_drawings') {
+                $bcinPre += $amount;
             }
         }
         foreach ($extraMaterials as $row) {
@@ -1333,13 +1376,18 @@ class BasementQuotationCalculator
         }
         $matAll = round($matAll, 2);
         $permitPre = round($permitPre, 2);
-        $matPre = round($matAll - $permitPre, 2);
+        $bcinPre = round($bcinPre, 2);
+        $matPre = round($matAll - $permitPre - $bcinPre, 2);
+        $trade = $this->tradeLineSummary($inputs);
+        $fee = self::contractorFeeBreakdown($feePercent, $matPre, $trade['pre_hst'], $bcinPre, $laborPre);
+        $feePre = $fee['amount'];
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
         $permitHst = round($permitPre * BasementQuotation::HST_RATE, 2);
+        $bcinHst = round($bcinPre * BasementQuotation::HST_RATE, 2);
         $laborHst = round($laborPre * BasementQuotation::HST_RATE, 2);
-        $subtotal = round($laborPre + $matPre + $permitPre, 2);
-        $hst = round($laborHst + $matHst + $permitHst, 2);
-        $trade = $this->tradeLineSummary($inputs);
+        $feeHst = round($feePre * BasementQuotation::HST_RATE, 2);
+        $subtotal = round($laborPre + $matPre + $permitPre + $bcinPre + $feePre, 2);
+        $hst = round($laborHst + $matHst + $permitHst + $bcinHst + $feeHst, 2);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
         $wastePercent = $this->materialWastePercent($inputs);
 
@@ -1376,7 +1424,7 @@ class BasementQuotationCalculator
 
         $finishLabel = self::finishLabel($inputs);
 
-        return [
+        $result = [
             'scope' => [
                 'area_sqft' => $area,
                 'area_entry_mode' => self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft'),
@@ -1416,7 +1464,17 @@ class BasementQuotationCalculator
                 'permit_pre_hst' => $permitPre,
                 'permit_hst' => $permitHst,
                 'permit_after_hst' => round($permitPre + $permitHst, 2),
+                'bcin_pre_hst' => $bcinPre,
+                'bcin_hst' => $bcinHst,
+                'bcin_after_hst' => round($bcinPre + $bcinHst, 2),
+                'contractor_fee_percent' => $feePercent,
+                'contractor_fee_pre_hst' => $feePre,
+                'contractor_fee_hst' => $feeHst,
+                'contractor_fee_after_hst' => round($feePre + $feeHst, 2),
+                'contractor_fee_base_pre_hst' => $fee['base'],
+                'contractor_fee_label' => BasementClientScope::contractorFeeLabel($feePercent),
                 'material_waste_percent' => $wastePercent,
+                'flooring_waste_percent' => $flooringWastePercent,
                 'subtotal_pre_hst' => $subtotal,
                 'hst' => $hst,
                 'grand_total' => $grand,
@@ -1431,6 +1489,8 @@ class BasementQuotationCalculator
                 ],
             ],
         ];
+
+        return $this->finalizeClientFacing($result, $originalInputs, $settings, $includePackages);
     }
 
     /**
@@ -1694,18 +1754,32 @@ class BasementQuotationCalculator
     }
 
     /**
+     * @param  array<string, mixed>  $originalInputs
      * @param  array<string, mixed>  $inputs
      * @return array<string, mixed>
      */
-    private function emptyCalculation(array $inputs, BasementSettings $settings, float $height): array
-    {
+    private function emptyCalculation(
+        array $originalInputs,
+        array $inputs,
+        BasementSettings $settings,
+        float $height,
+        float $feePercent,
+        bool $includePackages,
+    ): array {
         $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
         $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
         $includeHelper = QuotationHelperLabor::enabled($inputs);
         $hoursPerDay = max(0.5, (float) $settings->hours_per_day);
         $trade = $this->tradeLineSummary($inputs);
+        $flType = (string) ($inputs['flooring_type'] ?? 'lvp');
+        $fee = self::contractorFeeBreakdown($feePercent, 0.0, $trade['pre_hst'], 0.0, 0.0);
+        $feePre = $fee['amount'];
+        $feeHst = round($feePre * BasementQuotation::HST_RATE, 2);
+        $subtotal = $feePre;
+        $hst = $feeHst;
+        $grand = round($subtotal + $hst + $trade['tax_in'], 2);
 
-        return [
+        $result = [
             'scope' => [
                 'area_sqft' => 0.0,
                 'ceiling_height_ft' => $height,
@@ -1714,7 +1788,7 @@ class BasementQuotationCalculator
                 'suggested_perimeter_lf' => 0.0,
                 'finish_label' => self::finishLabel($inputs),
                 'ceiling_type' => (string) ($inputs['ceiling_type'] ?? 'drywall'),
-                'flooring_type' => (string) ($inputs['flooring_type'] ?? 'lvp'),
+                'flooring_type' => $flType,
             ],
             'labor' => [],
             'materials' => [],
@@ -1732,11 +1806,24 @@ class BasementQuotationCalculator
                 'materials_pre_hst' => 0.0,
                 'materials_hst' => 0.0,
                 'materials_after_hst' => 0.0,
+                'permit_pre_hst' => 0.0,
+                'permit_hst' => 0.0,
+                'permit_after_hst' => 0.0,
+                'bcin_pre_hst' => 0.0,
+                'bcin_hst' => 0.0,
+                'bcin_after_hst' => 0.0,
+                'contractor_fee_percent' => $feePercent,
+                'contractor_fee_pre_hst' => $feePre,
+                'contractor_fee_hst' => $feeHst,
+                'contractor_fee_after_hst' => round($feePre + $feeHst, 2),
+                'contractor_fee_base_pre_hst' => $fee['base'],
+                'contractor_fee_label' => BasementClientScope::contractorFeeLabel($feePercent),
                 'material_waste_percent' => $this->materialWastePercent($inputs),
-                'subtotal_pre_hst' => 0.0,
-                'hst' => 0.0,
-                'grand_total' => $trade['tax_in'],
-                'final_quote_total' => $trade['tax_in'],
+                'flooring_waste_percent' => self::resolvedFlooringWastePercent($originalInputs, $flType, $inputs),
+                'subtotal_pre_hst' => $subtotal,
+                'hst' => $hst,
+                'grand_total' => $grand,
+                'final_quote_total' => $grand,
                 'client_provides_all' => ! empty($inputs['client_provides_all']),
                 'trade_lines_pre_hst' => $trade['pre_hst'],
                 'trade_lines_hst' => $trade['hst'],
@@ -1747,6 +1834,141 @@ class BasementQuotationCalculator
                 ],
             ],
         ];
+
+        return $this->finalizeClientFacing($result, $originalInputs, $settings, $includePackages);
+    }
+
+    /**
+     * @param  array<string, mixed>  $result
+     * @param  array<string, mixed>  $originalInputs
+     * @return array<string, mixed>
+     */
+    private function finalizeClientFacing(
+        array $result,
+        array $originalInputs,
+        ?BasementSettings $settings,
+        bool $includePackages,
+    ): array {
+        $result['client_scope'] = BasementClientScope::resolveCopy($originalInputs, $result);
+        $result['value_packages'] = $includePackages
+            ? BasementClientScope::buildValuePackages($this, $originalInputs, $result, $settings)
+            : [];
+
+        return $result;
+    }
+
+    public static function flooringWasteDefault(string $type): float
+    {
+        $type = strtolower(trim($type));
+        if ($type === 'vinyl') {
+            $type = 'lvp';
+        }
+
+        return round((float) (self::FLOORING_WASTE_DEFAULTS[$type] ?? self::FLOORING_WASTE_DEFAULTS['lvp']), 2);
+    }
+
+    /**
+     * Explicit flooring_waste_percent wins. Missing key keeps the legacy
+     * global material_waste_percent so saved quotes are not silently repriced.
+     *
+     * @param  array<string, mixed>  $originalInputs
+     * @param  array<string, mixed>  $mergedInputs
+     */
+    public static function resolvedFlooringWastePercent(array $originalInputs, string $flooringType, array $mergedInputs): float
+    {
+        if (self::hasExplicitNumeric($originalInputs, 'flooring_waste_percent')) {
+            return self::clampPercent((float) $originalInputs['flooring_waste_percent']);
+        }
+
+        if (! array_key_exists('material_waste_percent', $mergedInputs) || $mergedInputs['material_waste_percent'] === null || $mergedInputs['material_waste_percent'] === '') {
+            return 10.0;
+        }
+
+        return self::clampPercent((float) $mergedInputs['material_waste_percent']);
+    }
+
+    /**
+     * New quotes post contractor_fee_percent (default 10). Legacy saved quotes
+     * without the key keep 0% so agreed totals do not change.
+     *
+     * @param  array<string, mixed>  $originalInputs
+     */
+    public static function resolvedContractorFeePercent(array $originalInputs): float
+    {
+        if (! self::hasExplicitNumeric($originalInputs, 'contractor_fee_percent')) {
+            return 0.0;
+        }
+
+        return self::clampPercent((float) $originalInputs['contractor_fee_percent']);
+    }
+
+    /**
+     * Fee applies to materials and subcontracted extras (trades + BCIN), never
+     * to Jonas hourly labour or the municipal permit disbursement.
+     *
+     * @return array{percent: float, base: float, amount: float}
+     */
+    public static function contractorFeeBreakdown(
+        float $percent,
+        float $materialsPreHst,
+        float $subcontractPreHst,
+        float $bcinPreHst = 0.0,
+        float $laborPreHst = 0.0,
+    ): array {
+        unset($laborPreHst);
+        $percent = self::clampPercent($percent);
+        $base = round(max(0.0, $materialsPreHst) + max(0.0, $subcontractPreHst) + max(0.0, $bcinPreHst), 2);
+        $amount = ($percent > 0 && $base > 0) ? round($base * ($percent / 100), 2) : 0.0;
+
+        return [
+            'percent' => $percent,
+            'base' => $base,
+            'amount' => $amount,
+        ];
+    }
+
+    /**
+     * Same classification as the live quote, for written change orders.
+     *
+     * @return array{percent: float, base: float, amount: float}
+     */
+    public static function contractorFeeForChangeOrder(
+        float $percent,
+        float $materialsPreHst,
+        float $subcontractPreHst,
+        float $laborPreHst = 0.0,
+        float $permitPreHst = 0.0,
+        float $bcinPreHst = 0.0,
+    ): array {
+        unset($permitPreHst);
+
+        return self::contractorFeeBreakdown($percent, $materialsPreHst, $subcontractPreHst, $bcinPreHst, $laborPreHst);
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function hasExplicitNumeric(array $inputs, string $key): bool
+    {
+        if (! array_key_exists($key, $inputs) || $inputs[$key] === null || $inputs[$key] === '') {
+            return false;
+        }
+
+        return is_numeric($inputs[$key]);
+    }
+
+    public static function clampPercent(float $percent): float
+    {
+        return round(max(0.0, min(100.0, $percent)), 2);
+    }
+
+    private function withPercentWaste(float $qty, float $percent): float
+    {
+        if ($qty <= 0) {
+            return 0.0;
+        }
+
+        return round($qty * (1 + (self::clampPercent($percent) / 100)), 4);
     }
 
     private function flooringLabel(string $type): string

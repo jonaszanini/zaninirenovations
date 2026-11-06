@@ -217,14 +217,57 @@ class BasementQuotation extends Model
         if (! array_key_exists('permit_pre_hst', $summary)) {
             $materials = max(0, round($materials - $this->permitPreTaxAmountForProjectQuotation(), 2));
         }
+        if (! array_key_exists('bcin_pre_hst', $summary)) {
+            $materials = max(0, round($materials - $this->bcinPreTaxAmountForProjectQuotation(), 2));
+        }
 
         return $materials;
+    }
+
+    public function bcinPreTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        if (array_key_exists('bcin_pre_hst', $summary)) {
+            return max(0, round((float) $summary['bcin_pre_hst'], 2));
+        }
+
+        foreach ($calc['materials'] ?? [] as $row) {
+            if (! is_array($row) || ($row['key'] ?? '') !== 'bcin_drawings') {
+                continue;
+            }
+
+            return max(0, round((float) ($row['amount'] ?? 0), 2));
+        }
+
+        return 0.0;
+    }
+
+    public function contractorFeePreTaxAmountForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+
+        return max(0, round((float) ($summary['contractor_fee_pre_hst'] ?? 0), 2));
+    }
+
+    public function contractorFeePercentForProjectQuotation(): float
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $summary = is_array($calc['summary'] ?? null) ? $calc['summary'] : [];
+        if (array_key_exists('contractor_fee_percent', $summary)) {
+            return BasementQuotationCalculator::clampPercent((float) $summary['contractor_fee_percent']);
+        }
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+
+        return BasementQuotationCalculator::resolvedContractorFeePercent($inputs);
     }
 
     public function includesMaterialCharge(): bool
     {
         return $this->materialsPreTaxAmountForProjectQuotation() > 0
-            || $this->permitPreTaxAmountForProjectQuotation() > 0;
+            || $this->permitPreTaxAmountForProjectQuotation() > 0
+            || $this->bcinPreTaxAmountForProjectQuotation() > 0;
     }
 
     public function summaryDescription(): string
@@ -316,7 +359,10 @@ class BasementQuotation extends Model
         }
 
         if (! empty($inputs['include_building_permit'])) {
-            $groups['Final Details & Cleanup'][] = 'Building permit (optional, extra charge)';
+            $groups['Final Details & Cleanup'][] = 'City building permit (optional extra-charge service)';
+        }
+        if (! empty($inputs['include_bcin_drawings'])) {
+            $groups['Final Details & Cleanup'][] = 'BCIN drawings (optional extra-charge service)';
         }
 
         $ordered = [];
@@ -366,6 +412,45 @@ class BasementQuotation extends Model
         $html .= '</table>';
 
         return $html;
+    }
+
+    /**
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string}
+     */
+    public function clientScopeCopy(): array
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $stored = is_array($calc['client_scope'] ?? null) ? $calc['client_scope'] : [];
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        $resolved = \App\Services\BasementClientScope::resolveCopy($inputs, $calc);
+
+        return [
+            'included' => (string) ($stored['included'] ?? $resolved['included']),
+            'not_included' => (string) ($stored['not_included'] ?? $resolved['not_included']),
+            'assumptions' => (string) ($stored['assumptions'] ?? $resolved['assumptions']),
+            'allowances' => (string) ($stored['allowances'] ?? $resolved['allowances']),
+        ];
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function valuePackages(): array
+    {
+        $calc = is_array($this->calculation) ? $this->calculation : [];
+        $packages = $calc['value_packages'] ?? null;
+        if (is_array($packages) && $packages !== []) {
+            return $packages;
+        }
+
+        return [];
+    }
+
+    public function selectedValueTier(): string
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+
+        return \App\Services\BasementClientScope::normalizeTier($inputs['selected_value_tier'] ?? 'standard');
     }
 
     public static function generateNumber(): string

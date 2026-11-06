@@ -27,6 +27,40 @@
     to ensure the safety and longevity of your home.
   </p>
 
+  @php
+    $emailScope = $quotation->clientScopeForPdf();
+    $emailPackages = $quotation->valuePackagesForPdf();
+    $emailCad = fn ($n) => 'CAD$'.number_format((float) $n, 2, '.', ',');
+  @endphp
+  @if ($emailScope)
+    <p style="margin:20px 0 8px 0;font-weight:700;color:#024768;">Value</p>
+    <p style="margin:0 0 4px 0;"><strong>Included</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['included'] }}</p>
+    <p style="margin:0 0 4px 0;"><strong>Not included</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['not_included'] }}</p>
+    <p style="margin:20px 0 8px 0;font-weight:700;color:#024768;">Special terms</p>
+    <p style="margin:0 0 4px 0;"><strong>Assumptions</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['assumptions'] }}</p>
+    <p style="margin:0 0 4px 0;"><strong>Allowances</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['allowances'] }}</p>
+  @endif
+  @if ($emailPackages !== [])
+    <p style="margin:20px 0 8px 0;font-weight:700;color:#024768;">Invest</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 16px 0;">
+      <tr>
+        @foreach (['base' => 'Base', 'standard' => 'Standard', 'upgrade' => 'Upgrade'] as $tier => $label)
+          @php $pkg = $emailPackages[$tier] ?? null; @endphp
+          <td width="33%" valign="top" style="border:1px solid #d8dee4;padding:10px;">
+            <p style="margin:0 0 4px 0;font-weight:700;color:#024768;">{{ $label }}</p>
+            <p style="margin:0 0 4px 0;font-weight:700;">{{ $pkg ? $emailCad($pkg['grand_total'] ?? 0) : '—' }}</p>
+            <p style="margin:0;font-size:12px;color:#5a6570;">{{ $pkg['note'] ?? '' }}</p>
+          </td>
+        @endforeach
+      </tr>
+    </table>
+    <p style="margin:0 0 16px 0;font-size:13px;color:#5a6570;">Choose Base, Standard, or Upgrade on the accept page. That total is the contract amount. There is no extra charge for picking one of these three options.</p>
+  @endif
+
   <p>
     If you have any questions regarding it or would like to adjust any of the
     details, please feel free to reach out. I am happy to hop on a quick call or

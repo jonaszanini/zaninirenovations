@@ -100,6 +100,7 @@ class ClientProjectQuotation extends Model
         'accepted_via',
         'accepted_ip',
         'accepted_source_note',
+        'accepted_value_tier',
         'ask_reply_to_accept',
     ];
 
@@ -382,6 +383,80 @@ class ClientProjectQuotation extends Model
         $stripped = preg_replace('/\s*[—–-]\s*[A-Z]{1,4}-\d{4}-\d+\s*$/u', '', $trimmed);
 
         return trim((string) $stripped);
+    }
+
+    public function basementSource(): ?BasementQuotation
+    {
+        if ($this->source_type !== self::SOURCE_BASEMENT || ! $this->source_id) {
+            return null;
+        }
+
+        return BasementQuotation::query()->find($this->source_id);
+    }
+
+    /**
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string}|null
+     */
+    public function clientScopeForPdf(): ?array
+    {
+        $basement = $this->basementSource();
+        if ($basement === null) {
+            return null;
+        }
+        $copy = $basement->clientScopeCopy();
+        $has = false;
+        foreach ($copy as $text) {
+            if (trim((string) $text) !== '') {
+                $has = true;
+                break;
+            }
+        }
+
+        return $has ? $copy : null;
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function valuePackagesForPdf(): array
+    {
+        $basement = $this->basementSource();
+        if ($basement === null) {
+            return [];
+        }
+        $packages = $basement->valuePackages();
+        foreach (['base', 'standard', 'upgrade'] as $tier) {
+            if (! isset($packages[$tier]) || ! is_array($packages[$tier])) {
+                return [];
+            }
+        }
+
+        return $packages;
+    }
+
+    public function selectedValueTier(): string
+    {
+        $basement = $this->basementSource();
+        if ($basement === null) {
+            return 'standard';
+        }
+
+        return $basement->selectedValueTier();
+    }
+
+    public function acceptedValueTier(): ?string
+    {
+        $tier = strtolower(trim((string) ($this->accepted_value_tier ?? '')));
+        if ($tier === '') {
+            return null;
+        }
+
+        return \App\Services\BasementClientScope::normalizeTier($tier);
+    }
+
+    public function requiresValueTierChoice(): bool
+    {
+        return $this->valuePackagesForPdf() !== [];
     }
 
     /**

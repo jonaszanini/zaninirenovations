@@ -291,6 +291,14 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="include_touchups"', $html);
         $this->assertStringContainsString('name="include_building_permit"', $html);
         $this->assertStringContainsString('name="building_permit_amount"', $html);
+        $this->assertStringContainsString('name="include_bcin_drawings"', $html);
+        $this->assertStringContainsString('name="bcin_drawings_amount"', $html);
+        $this->assertStringContainsString('City building permit — optional extra-charge service', $html);
+        $this->assertStringContainsString('BCIN drawings — optional extra-charge service', $html);
+        $this->assertStringContainsString('data-br-step="client_scope"', $html);
+        $this->assertStringContainsString('name="contractor_fee_percent"', $html);
+        $this->assertStringContainsString('name="client_scope_included"', $html);
+        $this->assertStringContainsString('name="flooring_waste_percent"', $html);
         $this->assertStringContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringNotContainsString('br-finishing-grid', $html);
 
@@ -324,7 +332,7 @@ class BasementQuotationWizardViewTest extends TestCase
             'isEdit' => false,
             'scopePreset' => $preset,
             'enabledNow' => $enabledNow,
-            'enabledCount' => count($enabledNow),
+            'enabledCount' => count($enabledNow) + 1,
             'filledKeys' => [],
         ];
     }

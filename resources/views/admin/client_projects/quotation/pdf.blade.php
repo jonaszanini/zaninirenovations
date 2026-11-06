@@ -297,6 +297,90 @@
       page-break-inside: avoid;
       break-inside: avoid;
     }
+    .quote-client-scope {
+      margin: 0 0 14pt;
+    }
+    .quote-client-scope-kicker {
+      margin: 0 0 6pt;
+      font-size: 9.5pt;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #024768;
+    }
+    .quote-client-scope-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0 0 10pt;
+    }
+    .quote-client-scope-table td {
+      width: 50%;
+      vertical-align: top;
+      padding: 0 8pt 8pt 0;
+    }
+    .quote-client-scope-table td:last-child {
+      padding-right: 0;
+    }
+    .quote-client-scope-block p.title {
+      margin: 0 0 3pt;
+      font-size: 10pt;
+      font-weight: 700;
+      color: #024768;
+    }
+    .quote-client-scope-block ul {
+      margin: 0 0 0 12pt;
+      padding: 0;
+      font-size: 9.5pt;
+      line-height: 1.35;
+    }
+    .quote-client-scope-block li {
+      margin: 0 0 2pt;
+    }
+    .quote-invest {
+      margin: 0 0 14pt;
+      page-break-inside: avoid;
+    }
+    .quote-invest-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .quote-invest-table th,
+    .quote-invest-table td {
+      border: 1pt solid #d8dee4;
+      padding: 6pt 7pt;
+      vertical-align: top;
+      width: 33.33%;
+    }
+    .quote-invest-table th {
+      background: #024768;
+      color: #ffffff;
+      font-size: 10pt;
+      font-weight: 700;
+      text-align: center;
+    }
+    .quote-invest-table th.is-selected {
+      background: #0369a1;
+    }
+    .quote-invest-amount {
+      margin: 0 0 4pt;
+      font-size: 12pt;
+      font-weight: 700;
+      color: #024768;
+      text-align: center;
+    }
+    .quote-invest-note {
+      margin: 0;
+      font-size: 8.5pt;
+      line-height: 1.3;
+      color: #374151;
+    }
+    .quote-invest-pick {
+      margin: 4pt 0 0;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #024768;
+      text-align: center;
+    }
 
     /* Table wrapper: DomPDF ignores page-break-inside on divs. */
     .quote-material-selection-wrap {
@@ -698,6 +782,11 @@
       @endif
     </div>
   @endif
+
+  @include('admin.client_projects._quotation_client_scope_pdf', [
+      'quotation' => $quotation,
+      'fmt' => fn ($n) => 'CAD$'.number_format((float) $n, 2, '.', ','),
+  ])
 
   @if ($flooringMaterial)
     <table class="quote-material-selection-wrap" role="presentation">
