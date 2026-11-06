@@ -9005,13 +9005,65 @@ html.admin-dark .br-layout-import__status.is-warning {
   margin-top: 8px;
 }
 .br-desc-acc__summary {
+  list-style: none;
+  box-sizing: border-box;
+  width: 100%;
   min-height: 44px;
   display: flex;
   align-items: center;
+  flex-wrap: nowrap;
   gap: 8px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
   cursor: pointer;
+  user-select: none;
   font-weight: 600;
   color: var(--admin-heading);
+  -webkit-tap-highlight-color: transparent;
+}
+.br-desc-acc__summary::-webkit-details-marker {
+  display: none;
+}
+.br-desc-acc__summary::marker {
+  content: '';
+}
+.br-desc-acc__summary:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+.br-desc-acc__summary:focus {
+  outline: none;
+}
+.br-desc-acc__summary:focus-visible {
+  outline: 2px solid var(--admin-primary);
+  outline-offset: 2px;
+  border-color: var(--admin-primary);
+}
+.br-desc-acc[open] > .br-desc-acc__summary {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-border);
+}
+.br-desc-acc__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.br-desc-acc__summary .admin-info-tip-wrap {
+  flex-shrink: 0;
+}
+.br-desc-acc__summary .admin-chevron-down {
+  margin-left: auto;
+}
+@media (max-width: 400px) {
+  .br-desc-acc__summary {
+    padding: 8px;
+    gap: 6px;
+  }
 }
 .br-input--narrow {
   max-width: 7.5rem;

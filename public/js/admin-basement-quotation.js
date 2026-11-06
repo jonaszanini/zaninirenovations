@@ -1113,10 +1113,35 @@
     wrap.hidden = !((vanity && vanity.checked) || (pedestal && pedestal.checked));
   }
 
+  function resizeProjectDescriptionEditor() {
+    if (typeof tinymce === 'undefined' || !tinymce.get) return;
+    var ed = tinymce.get('br-work-description');
+    if (!ed) return;
+    requestAnimationFrame(function () {
+      try {
+        if (typeof ed.dispatch === 'function') ed.dispatch('ResizeEditor');
+        else if (typeof ed.fire === 'function') ed.fire('ResizeEditor');
+      } catch (err) {}
+    });
+  }
+
+  function initProjectDescriptionDisclosure() {
+    var acc = document.getElementById('br-desc-acc');
+    if (!acc) return;
+    var summary = acc.querySelector('.br-desc-acc__summary');
+    function sync() {
+      if (summary) summary.setAttribute('aria-expanded', acc.open ? 'true' : 'false');
+      if (acc.open) resizeProjectDescriptionEditor();
+    }
+    acc.addEventListener('toggle', sync);
+    sync();
+  }
+
   form.querySelectorAll('.br-preview').forEach(bindPreview);
   initTileAreas();
   initExclusiveChecks();
   syncBathSinkQty();
+  initProjectDescriptionDisclosure();
 
   var dwWallEl = document.getElementById('br-dw-wall');
   var layoutImportVal = document.getElementById('br-layout-import-value');
