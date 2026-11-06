@@ -186,9 +186,23 @@
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
           </div>
-          <details class="br-desc-acc" @if ($isEdit && filled($quotation->work_description)) open @endif>
-            <summary class="br-desc-acc__summary">Project description <span class="admin-form-help">(optional — client PDF)</span></summary>
-            <div class="admin-form-group quotation-work-desc">
+          @php
+            $descOpen = old('work_description') !== null
+                || $errors->has('work_description')
+                || ($isEdit && filled($quotation->work_description ?? ''));
+          @endphp
+          <details class="br-desc-acc" id="br-desc-acc" @if ($descOpen) open @endif>
+            <summary class="br-desc-acc__summary"
+                     aria-expanded="{{ $descOpen ? 'true' : 'false' }}"
+                     aria-controls="br-desc-panel">
+              <span class="br-desc-acc__title" id="br-desc-acc-title">Project description</span>
+              @include('admin.partials.info_tip', [
+                'tipText' => 'Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.',
+                'tipLabel' => 'Project description',
+              ])
+              <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+            </summary>
+            <div class="admin-form-group quotation-work-desc" id="br-desc-panel" role="region" aria-labelledby="br-desc-acc-title">
               <label for="br-work-description" class="visually-hidden">Project description</label>
               <textarea class="admin-input" id="br-work-description" name="work_description" rows="4"
                         placeholder="Optional scope summary for the client PDF.">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>

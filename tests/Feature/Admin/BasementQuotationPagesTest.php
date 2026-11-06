@@ -50,7 +50,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Import layout')
             ->assertSee('Search rooms', false)
             ->assertSee('Project description', false)
-            ->assertSee('optional — client PDF', false)
+            ->assertSee('Optional — appears on the client PDF', false)
             ->assertSee('4×8 (32 sq ft)', false)
             ->assertSee('4×12 (48 sq ft)', false)
             ->assertSee('Stud spacing')

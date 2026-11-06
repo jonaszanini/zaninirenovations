@@ -2025,6 +2025,18 @@ html.admin-dark .admin-input.is-invalid {
 html.admin-dark .br-desc-acc__summary {
   color: var(--admin-heading);
 }
+html.admin-dark .br-desc-acc__summary:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-desc-acc[open] > .br-desc-acc__summary {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-desc-acc__summary:focus-visible {
+  outline-color: var(--admin-primary);
+  border-color: var(--admin-primary);
+}
 html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);
 }
