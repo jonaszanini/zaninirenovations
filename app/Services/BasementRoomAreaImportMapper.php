@@ -126,6 +126,59 @@ class BasementRoomAreaImportMapper
     }
 
     /**
+     * Search JSON always used to emit ceiling_area_sqft (emptyLayoutMetrics
+     * defaults it to 0.0). That 0 is a struct placeholder, not a measurement.
+     * A successful drawing sets ceiling from floor after exclusions, so floor > 0
+     * with ceiling 0 and no exclusions is treated as unavailable.
+     *
+     * Explicit ceiling_area_available from the layout option wins.
+     *
+     * @param  array<string, mixed>  $opt
+     */
+    public static function ceilingTakeoffAvailable(array $opt): bool
+    {
+        if (! empty($opt['geometry_unmeasurable'])) {
+            return false;
+        }
+        if (array_key_exists('ceiling_area_available', $opt) && $opt['ceiling_area_available'] !== null && $opt['ceiling_area_available'] !== '') {
+            return (bool) $opt['ceiling_area_available'];
+        }
+        if (! self::present($opt, 'ceiling_area_sqft')) {
+            return false;
+        }
+        $ceiling = (float) $opt['ceiling_area_sqft'];
+        $area = self::present($opt, 'area_sqft') ? (float) $opt['area_sqft'] : null;
+        $excluded = self::present($opt, 'excluded_area_sqft') ? (float) $opt['excluded_area_sqft'] : 0.0;
+        $polygons = (int) ($opt['polygon_count'] ?? 0);
+        if ($ceiling <= 0 && ($area === null || $area <= 0) && $excluded <= 0 && $polygons <= 0) {
+            return false;
+        }
+        if ($ceiling <= 0 && $area !== null && $area > 0 && $excluded <= 0) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Measured ceiling (including 0) when available; otherwise measured floor;
+     * otherwise null so the form is not wiped.
+     *
+     * @param  array<string, mixed>  $opt
+     */
+    public static function resolveImportedCeilingArea(array $opt, ?float $area): ?float
+    {
+        if (self::ceilingTakeoffAvailable($opt) && self::present($opt, 'ceiling_area_sqft')) {
+            return (float) $opt['ceiling_area_sqft'];
+        }
+        if ($area !== null && $area > 0) {
+            return $area;
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array<string, mixed>  $opt
      * @return array<string, float|int|null>
      */
@@ -140,12 +193,7 @@ class BasementRoomAreaImportMapper
 
         $peri = self::present($opt, 'perimeter_lf') ? (float) $opt['perimeter_lf'] : null;
         $area = self::present($opt, 'area_sqft') ? (float) $opt['area_sqft'] : null;
-        $ceilingArea = null;
-        if (self::present($opt, 'ceiling_area_sqft') && (float) $opt['ceiling_area_sqft'] > 0) {
-            $ceilingArea = (float) $opt['ceiling_area_sqft'];
-        } elseif ($area !== null && $area > 0) {
-            $ceilingArea = $area;
-        }
+        $ceilingArea = self::resolveImportedCeilingArea($opt, $area);
 
         $netWall = null;
         if (self::present($opt, 'finish_drywall_sqft')) {

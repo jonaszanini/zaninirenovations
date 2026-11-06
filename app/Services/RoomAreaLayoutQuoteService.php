@@ -318,7 +318,17 @@ class RoomAreaLayoutQuoteService
         $cabinetUpper = (float) ($metrics['cabinet_upper_lf'] ?? 0);
         $stairsTreads = (int) ($metrics['stairs_treads'] ?? 0);
         $netWall = $this->formatQty((float) ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0));
-        $ceiling = $this->formatQty((float) ($metrics['ceiling_area_sqft'] ?? $metrics['area_sqft'] ?? 0));
+        $geometryMessage = trim((string) ($metrics['geometry_message'] ?? ''));
+        $unmeasurable = $geometryUnmeasurable || ! empty($metrics['geometry_unmeasurable']);
+        $metricsForCeiling = $metrics;
+        $metricsForCeiling['geometry_unmeasurable'] = $unmeasurable;
+        $ceilingAvailable = BasementRoomAreaImportMapper::ceilingTakeoffAvailable($metricsForCeiling);
+        $measuredCeiling = $ceilingAvailable
+            ? (BasementRoomAreaImportMapper::present($metrics, 'ceiling_area_sqft')
+                ? (float) $metrics['ceiling_area_sqft']
+                : (BasementRoomAreaImportMapper::present($metrics, 'area_sqft') ? (float) $metrics['area_sqft'] : 0.0))
+            : null;
+        $ceiling = $this->formatQty((float) ($measuredCeiling ?? $metrics['area_sqft'] ?? 0));
         $casing = $this->formatQty((float) ($metrics['casing_lf'] ?? 0));
         $boxes = (int) ($metrics['flooring_boxes'] ?? 0);
         $meta = $area.' sq ft floor · '.$peri.' lf perimeter · '.$base.' lf baseboard'
@@ -332,8 +342,7 @@ class RoomAreaLayoutQuoteService
         if ($stairsTreads > 0) {
             $meta .= ' · '.$stairsTreads.' stair treads';
         }
-        $geometryMessage = trim((string) ($metrics['geometry_message'] ?? ''));
-        if ($geometryUnmeasurable || ! empty($metrics['geometry_unmeasurable'])) {
+        if ($unmeasurable) {
             if ($geometryMessage === '') {
                 $geometryMessage = 'Fix the room outline in Room Area before trusting measurements or quotes.';
             }
@@ -347,14 +356,15 @@ class RoomAreaLayoutQuoteService
             'kind' => $kind,
             'linked' => $linked,
             'short_name' => $shortName,
-            'geometry_unmeasurable' => $geometryUnmeasurable || ! empty($metrics['geometry_unmeasurable']),
+            'geometry_unmeasurable' => $unmeasurable,
             'geometry_message' => $geometryMessage !== '' ? $geometryMessage : null,
             'area_sqft' => $metrics['area_sqft'],
             'perimeter_lf' => $metrics['perimeter_lf'],
             'baseboard_lf' => $metrics['baseboard_lf'] ?? $metrics['perimeter_lf'],
             'wall_height_ft' => $metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT,
             'ceiling_height_ft' => $metrics['ceiling_height_ft'] ?? ($metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT),
-            'ceiling_area_sqft' => $metrics['ceiling_area_sqft'] ?? $metrics['area_sqft'],
+            'ceiling_area_sqft' => $measuredCeiling,
+            'ceiling_area_available' => $ceilingAvailable,
             'wall_area_sqft' => $metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0,
             'net_wall_area_sqft' => $metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft'] ?? 0,
             'flooring_waste_percent' => $metrics['flooring_waste_percent'] ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT,

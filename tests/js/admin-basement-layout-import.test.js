@@ -79,9 +79,48 @@ const otherLayout = layout.proposedQuantities(Object.assign({}, opt, { area_sqft
 assert.strictEqual(layout.wouldOverwrite(afterImport, otherLayout), true, 'D4: different layout confirms');
 
 const zeroCeiling = layout.proposedQuantities({ area_sqft: 1500, ceiling_area_sqft: 0 }, 8);
+assert.strictEqual(layout.ceilingTakeoffAvailable({ area_sqft: 1500, ceiling_area_sqft: 0 }), false);
 assert.strictEqual(zeroCeiling.ceiling_sf, 1500);
 assert.strictEqual(zeroCeiling.drywall_ceiling_sf, 1500);
 assert.strictEqual(zeroCeiling.paint_ceiling_sf, 1500);
+
+const flaggedUnavailable = layout.proposedQuantities({
+  area_sqft: 1500,
+  ceiling_area_sqft: 0,
+  ceiling_area_available: false
+}, 8);
+assert.strictEqual(flaggedUnavailable.ceiling_sf, 1500);
+
+const measuredCeilingZero = layout.proposedQuantities({
+  area_sqft: 0,
+  ceiling_area_sqft: 0,
+  ceiling_area_available: true,
+  excluded_area_sqft: 1500,
+  polygon_count: 1
+}, 8);
+assert.strictEqual(measuredCeilingZero.ceiling_sf, 0);
+assert.strictEqual(measuredCeilingZero.flooring_sf, 0);
+
+const excludedZero = layout.proposedQuantities({
+  area_sqft: 0,
+  ceiling_area_sqft: 0,
+  excluded_area_sqft: 80,
+  polygon_count: 1
+}, 8);
+assert.strictEqual(excludedZero.ceiling_sf, 0);
+
+const unavailableNoFloor = layout.proposedQuantities({ perimeter_lf: 90, ceiling_area_sqft: 0 }, 8);
+assert.strictEqual(unavailableNoFloor.ceiling_sf, null);
+assert.strictEqual(unavailableNoFloor.drywall_ceiling_sf, null);
+assert.strictEqual(
+  layout.wouldOverwrite(Object.assign({}, unavailableNoFloor, {
+    ceiling_sf: 1500,
+    drywall_ceiling_sf: 118,
+    import_label: 'Manual'
+  }), unavailableNoFloor),
+  false,
+  'unavailable ceiling must not wipe a hand-typed ceiling'
+);
 
 const leftoverDrywall = {
   area_sqft: 1500,
@@ -97,6 +136,11 @@ assert.strictEqual(
   layout.wouldOverwrite(leftoverDrywall, importedCeiling),
   true,
   'import must replace a leftover drywall ceiling that does not match the layout'
+);
+assert.strictEqual(
+  layout.wouldOverwrite(leftoverDrywall, measuredCeilingZero),
+  true,
+  'measured zero ceiling overwrites a leftover hang after confirm'
 );
 
 const missingPartition = layout.proposedQuantities({ area_sqft: 500, perimeter_lf: 90, wall_area_sqft: 720 }, 8);
@@ -150,6 +194,27 @@ const statusWithCeiling = layout.importStatusText(proposed, { name: 'Living' }, 
 assert.ok(statusWithCeiling.indexOf('500 sq ft ceiling') !== -1, statusWithCeiling);
 assert.ok(statusWithCeiling.indexOf('500 sq ft floor') !== -1, statusWithCeiling);
 assert.ok(statusWithCeiling.indexOf('wall drywall') !== -1, statusWithCeiling);
+
+const emptyLayoutMetrics = {
+  area_sqft: 0.0,
+  perimeter_lf: 0.0,
+  polygon_count: 0,
+  ceiling_area_sqft: 0.0,
+  excluded_area_sqft: 0.0
+};
+assert.strictEqual(layout.ceilingTakeoffAvailable(emptyLayoutMetrics), false);
+const emptyProposed = layout.proposedQuantities(emptyLayoutMetrics, 8);
+assert.strictEqual(emptyProposed.ceiling_sf, null);
+assert.strictEqual(emptyProposed.drywall_ceiling_sf, null);
+assert.strictEqual(
+  layout.wouldOverwrite(Object.assign({}, emptyProposed, {
+    ceiling_sf: 1500,
+    drywall_ceiling_sf: 118,
+    import_label: 'Manual'
+  }), emptyProposed),
+  false,
+  'emptyLayoutMetrics placeholder zero must not wipe a hand-typed ceiling'
+);
 
 const noCeilingProposed = layout.proposedQuantities({ perimeter_lf: 90 }, 8);
 assert.strictEqual(noCeilingProposed.ceiling_sf, null);

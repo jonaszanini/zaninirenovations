@@ -99,9 +99,9 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertGreaterThan(0, (float) $mapped['area_sqft']);
         $this->assertGreaterThan(0, (float) $mapped['ceiling_sf']);
         $this->assertEqualsWithDelta((float) $mapped['area_sqft'], (float) $mapped['ceiling_sf'], 0.05);
-        if (array_key_exists('ceiling_area_sqft', $canvasOpt) && (float) $canvasOpt['ceiling_area_sqft'] <= 0) {
-            $this->assertEqualsWithDelta((float) $canvasOpt['area_sqft'], (float) $mapped['ceiling_sf'], 0.05);
-        }
+        $this->assertTrue($canvasOpt['ceiling_area_available']);
+        $this->assertGreaterThan(0, (float) $canvasOpt['ceiling_area_sqft']);
+        $this->assertEqualsWithDelta((float) $canvasOpt['area_sqft'], (float) $canvasOpt['ceiling_area_sqft'], 0.05);
     }
 
     public function test_layout_search_exposes_bulkhead_and_partition_for_basement_import(): void
@@ -170,6 +170,9 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertArrayHasKey('finish_insulation_sqft', $opt);
         $this->assertArrayHasKey('casing_lf', $opt);
         $this->assertArrayHasKey('ceiling_area_sqft', $opt);
+        $this->assertTrue($opt['ceiling_area_available']);
+        $this->assertGreaterThan(0, (float) $opt['ceiling_area_sqft']);
+        $this->assertEqualsWithDelta((float) $opt['area_sqft'], (float) $opt['ceiling_area_sqft'], 0.05);
         $this->assertArrayNotHasKey('bulkhead_corner_bead_lf', $opt);
         $this->assertGreaterThan(0, (float) $opt['finish_drywall_sqft']);
         $this->assertSame(20.0, (float) $opt['finish_stud_lf']);

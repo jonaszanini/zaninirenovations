@@ -27,6 +27,7 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             $html
         );
         $this->assertStringContainsString('One ceiling area for this quote', $html);
+        $this->assertStringNotContainsString('data-br-legacy-ceiling-notice', $html);
         $this->assertMatchesRegularExpression(
             '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
             $html
@@ -112,7 +113,8 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bvalue="118)/',
             $html
         );
-        $this->assertStringContainsString('saved a drywall ceiling area different from Ceiling Options', $html);
+        $this->assertStringContainsString('Saved hang area for this quote', $html);
+        $this->assertStringContainsString('keep that hang', $html);
 
         $recalc = (new BasementQuotationCalculator)->calculate($quote->inputs);
         $this->assertEqualsWithDelta(118.0, (float) $recalc['scope']['drywall_ceiling_sf'], 0.01);
@@ -214,6 +216,83 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             '/data-br-split-ceiling-field[^>]*\bhidden\b/',
             $edit
         );
+    }
+
+    public function test_legacy_drop_skip_and_ceiling_off_preview_and_resave_keep_totals(): void
+    {
+        $this->actingAsAdmin();
+
+        $cases = [
+            'drop' => [
+                'client_name' => 'Legacy Drop Split',
+                'ceiling_type' => 'drop',
+                'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+            ],
+            'none' => [
+                'client_name' => 'Legacy Skip Split',
+                'ceiling_type' => 'none',
+                'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+            ],
+            'off' => [
+                'client_name' => 'Legacy Ceiling Off Split',
+                'ceiling_type' => 'drywall',
+                'enabled_sections' => array_values(array_filter(
+                    BasementQuotationCalculator::presetEnabledSections('full'),
+                    fn ($key) => $key !== 'ceiling'
+                )),
+            ],
+        ];
+
+        foreach ($cases as $label => $case) {
+            $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+                'area_sqft' => 1500,
+                'ceiling_height_ft' => 8,
+                'ceiling_type' => $case['ceiling_type'],
+                'ceiling_sf' => 1500,
+                'drywall_ceiling_sf' => 118,
+                'drywall_wall_sf' => 3767.65,
+                'owner_hourly_rate' => 80,
+                'helper_hourly_rate' => 40,
+                'enabled_sections' => $case['enabled_sections'],
+                'flooring_type' => 'none',
+                'include_demolition' => false,
+                'insulate_walls' => false,
+                'underlayment' => false,
+            ]);
+            $calc = (new BasementQuotationCalculator)->calculate($inputs);
+            $this->assertEqualsWithDelta(118.0, (float) $calc['scope']['drywall_ceiling_sf'], 0.01, $label);
+            $storedTotal = (float) $calc['summary']['final_quote_total'];
+            $quote = BasementQuotation::create([
+                'quote_number' => BasementQuotation::generateNumber(),
+                'client_name' => $case['client_name'],
+                'is_draft' => false,
+                'inputs' => $inputs,
+                'calculation' => $calc,
+                'final_quote_total' => $storedTotal,
+                'version' => 1,
+            ]);
+
+            $html = $this->get(route('admin.quotations.basement.edit', $quote))
+                ->assertOk()
+                ->getContent();
+            $this->assertStringContainsString('data-br-split-ceiling="1"', $html, $label);
+            $this->assertStringContainsString('keep that hang', $html, $label);
+            $this->assertStringContainsString('data-br-legacy-ceiling-notice', $html, $label);
+            $this->assertStringContainsString('Saved hang 118 sq ft stays on preview and resave', $html, $label);
+
+            $preview = $this->post(route('admin.quotations.basement.preview'), array_merge($inputs, [
+                'client_name' => $case['client_name'],
+            ]))->assertOk()->json();
+            $this->assertEqualsWithDelta(118.0, (float) ($preview['scope']['drywall_ceiling_sf'] ?? 0), 0.01, $label);
+            $this->assertEqualsWithDelta($storedTotal, (float) ($preview['summary']['final_quote_total'] ?? 0), 0.05, $label);
+
+            $this->put(route('admin.quotations.basement.update', $quote), $this->publishPayload(array_merge($inputs, [
+                'client_name' => $case['client_name'],
+            ])))->assertRedirect(route('admin.quotations.basement.edit', $quote));
+            $quote->refresh();
+            $this->assertEqualsWithDelta($storedTotal, (float) $quote->final_quote_total, 0.05, $label);
+            $this->assertEqualsWithDelta(118.0, (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.01, $label);
+        }
     }
 
     /**

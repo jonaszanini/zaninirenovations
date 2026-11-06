@@ -322,6 +322,7 @@ class BasementQuotationWizardViewTest extends TestCase
             $html
         );
         $this->assertStringContainsString('One ceiling area for this quote', $html);
+        $this->assertStringNotContainsString('data-br-legacy-ceiling-notice', $html);
         $this->assertMatchesRegularExpression(
             '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
             $html
@@ -346,7 +347,10 @@ class BasementQuotationWizardViewTest extends TestCase
 
         $this->assertTrue((bool) preg_match('/<div class="br-field--wide"[^>]*data-br-split-ceiling-field[^>]*>/', $html, $match));
         $this->assertStringNotContainsString('hidden', $match[0]);
-        $this->assertStringContainsString('saved a drywall ceiling area different from Ceiling Options', $html);
+        $this->assertStringContainsString('Saved hang area for this quote', $html);
+        $this->assertStringContainsString('keep that hang', $html);
+        $this->assertStringContainsString('data-br-legacy-ceiling-notice', $html);
+        $this->assertStringContainsString('Saved hang 118 sq ft stays on preview and resave', $html);
         $this->assertStringContainsString('id="br-dw-ceil"', $html);
         $this->assertDoesNotMatchRegularExpression(
             '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',

@@ -62,6 +62,7 @@
       ]
       : null;
   $layoutPerimeter = $brQty('perimeter_lf');
+  $splitCeiling = ! empty($isEdit) && \App\Services\BasementCeilingQuantities::usesSplit(is_array($inputs ?? null) ? $inputs : []);
   $tradeInfo = [
       'demolition' => 'Tear-out of existing flooring, studs, drywall, and/or baseboard, plus dumpster / bin cost.',
       'framing' => 'New wood walls, bulkheads around ducts, headers, and door openings.',
@@ -121,7 +122,7 @@
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
       'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
-      'drywall_ceiling_sf' => 'This quote saved a drywall ceiling area different from Ceiling Options. Hang, tape, and mud still use this saved figure so the total does not change. Clear it to follow Ceiling area.',
+      'drywall_ceiling_sf' => 'Saved hang area for this quote. Totals keep this figure — including leftover hang on drop or skip — until you clear it. Clearing follows Ceiling area on Ceiling Options.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labour.',
@@ -133,6 +134,7 @@
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
       'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
+      'ceiling_sf_legacy' => 'This saved quote has a different hang area on Drywall. Preview and resave keep that hang (and the total) until you clear Ceiling drywall there.',
       'flooring_type' => 'Finish floor product. Skip if the client is keeping existing floor or hiring flooring out.',
       'flooring_sf' => 'Floor area to install. Blank uses the work area.',
       'transition_qty' => 'Reducer or T-mould strips where the new floor meets another floor or a different height.',
@@ -637,8 +639,13 @@
         'lengthValue' => $qtyDim('ceiling_sf')['length'],
         'widthValue' => $qtyDim('ceiling_sf')['width'],
         'placeholder' => 'Auto',
-        'info' => $brInfo['ceiling_sf'],
+        'info' => $splitCeiling ? $brInfo['ceiling_sf_legacy'] : $brInfo['ceiling_sf'],
       ])
+      @if($splitCeiling)
+        <p class="admin-form-help" data-br-legacy-ceiling-notice>
+          Saved hang {{ $brQty('drywall_ceiling_sf') !== '' ? $brQty('drywall_ceiling_sf').' sq ft' : 'on Drywall' }} stays on preview and resave. Clear Ceiling drywall to follow this ceiling area.
+        </p>
+      @endif
     </div>
   </div>
 </details>
@@ -683,9 +690,6 @@
         'placeholder' => 'Auto',
         'info' => $brInfo['drywall_wall_sf'],
       ])
-      @php
-        $splitCeiling = ! empty($isEdit) && \App\Services\BasementCeilingQuantities::usesSplit(is_array($inputs ?? null) ? $inputs : []);
-      @endphp
       <div class="br-field--wide" data-br-skip-on-wall data-br-split-ceiling-field @if($scopePreset === 'wall' || ! $splitCeiling) hidden @endif>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'drywall_ceiling_sf',

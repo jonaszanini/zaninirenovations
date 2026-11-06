@@ -1685,10 +1685,10 @@ class BasementQuotationCalculator
     }
 
     /**
-     * Hang/mud ceiling area. New quotes follow Ceiling Options (ceiling_sf).
-     * Drop, skip, and a disabled ceiling trade never hang ceiling drywall.
-     * Legacy drywall-type quotes that stored a different drywall_ceiling_sf
-     * keep that figure so agreed totals do not change.
+     * Hang/mud ceiling area. New quotes follow Ceiling Options (ceiling_sf)
+     * and never hang leftover ceiling drywall on drop, skip, or ceiling-off.
+     * Saved quotes that stored a different drywall_ceiling_sf keep that hang
+     * figure — including drop/skip leftover — until the field is cleared.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $originalInputs
@@ -1705,11 +1705,14 @@ class BasementQuotationCalculator
             return 0.0;
         }
         $drywallType = in_array($ceilingType, ['drywall', 'paint'], true);
+        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
+            return $this->qtyOr(
+                $inputs['drywall_ceiling_sf'] ?? null,
+                ($ceilingOn && $drywallType) ? $area : 0.0
+            );
+        }
         if (! $ceilingOn || ! $drywallType) {
             return 0.0;
-        }
-        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
-            return $this->qtyOr($inputs['drywall_ceiling_sf'] ?? null, $area);
         }
 
         return $this->qtyOr($inputs['ceiling_sf'] ?? null, $area);

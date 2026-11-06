@@ -91,6 +91,33 @@
     return v !== null && v !== undefined && v !== '';
   }
 
+  function ceilingTakeoffAvailable(opt) {
+    opt = opt || {};
+    if (opt.geometry_unmeasurable) return false;
+    if (Object.prototype.hasOwnProperty.call(opt, 'ceiling_area_available')
+      && opt.ceiling_area_available !== null
+      && opt.ceiling_area_available !== undefined
+      && opt.ceiling_area_available !== '') {
+      return !!opt.ceiling_area_available;
+    }
+    if (!present(opt, 'ceiling_area_sqft')) return false;
+    var ceiling = num(opt.ceiling_area_sqft);
+    var area = present(opt, 'area_sqft') ? num(opt.area_sqft) : null;
+    var excluded = present(opt, 'excluded_area_sqft') ? num(opt.excluded_area_sqft) : 0;
+    var polygons = parseInt(opt.polygon_count, 10) || 0;
+    if (ceiling <= 0 && (area === null || area <= 0) && excluded <= 0 && polygons <= 0) return false;
+    if (ceiling <= 0 && area !== null && area > 0 && excluded <= 0) return false;
+    return true;
+  }
+
+  function resolveImportedCeilingArea(opt, area) {
+    if (ceilingTakeoffAvailable(opt) && present(opt, 'ceiling_area_sqft')) {
+      return num(opt.ceiling_area_sqft);
+    }
+    if (area !== null && area > 0) return area;
+    return null;
+  }
+
   function readFieldNumber(el) {
     if (!el) return 0;
     var n = parseFloat(el.value);
@@ -108,12 +135,7 @@
 
     var peri = present(opt, 'perimeter_lf') ? num(opt.perimeter_lf) : null;
     var area = present(opt, 'area_sqft') ? num(opt.area_sqft) : null;
-    var ceilingArea = null;
-    if (present(opt, 'ceiling_area_sqft') && num(opt.ceiling_area_sqft) > 0) {
-      ceilingArea = num(opt.ceiling_area_sqft);
-    } else if (area !== null && area > 0) {
-      ceilingArea = area;
-    }
+    var ceilingArea = resolveImportedCeilingArea(opt, area);
 
     var netWall = null;
     if (present(opt, 'finish_drywall_sqft')) netWall = num(opt.finish_drywall_sqft);
@@ -270,6 +292,8 @@
   var api = {
     formatQty: formatQty,
     present: present,
+    ceilingTakeoffAvailable: ceilingTakeoffAvailable,
+    resolveImportedCeilingArea: resolveImportedCeilingArea,
     proposedQuantities: proposedQuantities,
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,

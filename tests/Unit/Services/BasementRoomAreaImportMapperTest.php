@@ -3,6 +3,10 @@
 namespace Tests\Unit\Services;
 
 use App\Services\BasementRoomAreaImportMapper;
+use App\Services\OpenPlan3DMeasurementBridge;
+use App\Services\RoomAreaCanvasData;
+use App\Services\RoomAreaLayoutQuoteService;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class BasementRoomAreaImportMapperTest extends TestCase
@@ -86,17 +90,66 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(0, $proposed['window_trim_qty']);
     }
 
-    public function test_zero_ceiling_area_falls_back_to_floor_area_instead_of_wiping(): void
+    public function test_default_unavailable_zero_ceiling_falls_back_to_floor(): void
     {
         $proposed = BasementRoomAreaImportMapper::proposedQuantities([
             'area_sqft' => 1500,
             'ceiling_area_sqft' => 0,
         ], 8);
 
+        $this->assertFalse(BasementRoomAreaImportMapper::ceilingTakeoffAvailable([
+            'area_sqft' => 1500,
+            'ceiling_area_sqft' => 0,
+        ]));
         $this->assertSame(1500.0, $proposed['ceiling_sf']);
         $this->assertSame(1500.0, $proposed['drywall_ceiling_sf']);
         $this->assertSame(1500.0, $proposed['paint_ceiling_sf']);
         $this->assertSame(1500.0, $proposed['insulation_ceiling_sf']);
+    }
+
+    public function test_explicit_unavailable_flag_falls_back_to_floor(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 1500,
+            'ceiling_area_sqft' => 0,
+            'ceiling_area_available' => false,
+        ], 8);
+
+        $this->assertSame(1500.0, $proposed['ceiling_sf']);
+    }
+
+    public function test_measured_zero_ceiling_is_imported_as_zero(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 0,
+            'ceiling_area_sqft' => 0,
+            'ceiling_area_available' => true,
+            'excluded_area_sqft' => 1500,
+            'polygon_count' => 1,
+        ], 8);
+
+        $this->assertSame(0.0, $proposed['ceiling_sf']);
+        $this->assertSame(0.0, $proposed['drywall_ceiling_sf']);
+        $this->assertSame(0.0, $proposed['paint_ceiling_sf']);
+        $this->assertSame(0.0, $proposed['flooring_sf']);
+    }
+
+    public function test_exclusion_zero_without_flag_is_still_measured(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 0,
+            'ceiling_area_sqft' => 0,
+            'excluded_area_sqft' => 80,
+            'polygon_count' => 1,
+        ], 8);
+
+        $this->assertTrue(BasementRoomAreaImportMapper::ceilingTakeoffAvailable([
+            'area_sqft' => 0,
+            'ceiling_area_sqft' => 0,
+            'excluded_area_sqft' => 80,
+            'polygon_count' => 1,
+        ]));
+        $this->assertSame(0.0, $proposed['ceiling_sf']);
     }
 
     public function test_missing_ceiling_and_floor_leave_ceiling_fields_null(): void
@@ -108,6 +161,99 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertNull($proposed['ceiling_sf']);
         $this->assertNull($proposed['drywall_ceiling_sf']);
         $this->assertNull($proposed['area_sqft']);
+    }
+
+    public function test_unavailable_zero_without_floor_does_not_wipe_manual_ceiling(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'perimeter_lf' => 90,
+            'ceiling_area_sqft' => 0,
+        ], 8);
+
+        $this->assertNull($proposed['ceiling_sf']);
+        $this->assertNull($proposed['drywall_ceiling_sf']);
+        $this->assertNull($proposed['paint_ceiling_sf']);
+    }
+
+    public function test_canvas_empty_layout_metrics_default_zero_is_unavailable(): void
+    {
+        $empty = app(RoomAreaCanvasData::class)->emptyLayoutMetrics();
+        $this->assertSame(0.0, $empty['ceiling_area_sqft']);
+        $this->assertSame(0.0, $empty['area_sqft']);
+        $this->assertFalse(BasementRoomAreaImportMapper::ceilingTakeoffAvailable($empty));
+
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($empty, 8);
+        $this->assertNull($proposed['ceiling_sf']);
+        $this->assertNull($proposed['drywall_ceiling_sf']);
+        $this->assertNull($proposed['paint_ceiling_sf']);
+    }
+
+    public function test_openplan_empty_layout_metrics_default_zero_is_unavailable(): void
+    {
+        $empty = app(OpenPlan3DMeasurementBridge::class)->emptyLayoutMetrics();
+        $this->assertSame(0.0, $empty['ceiling_area_sqft']);
+        $this->assertFalse(BasementRoomAreaImportMapper::ceilingTakeoffAvailable($empty));
+
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($empty, 8);
+        $this->assertNull($proposed['ceiling_sf']);
+        $this->assertNull($proposed['drywall_ceiling_sf']);
+    }
+
+    public function test_empty_metrics_with_measured_floor_use_floor_not_placeholder_zero(): void
+    {
+        $opt = app(RoomAreaCanvasData::class)->emptyLayoutMetrics();
+        $opt['area_sqft'] = 1500.0;
+        $opt['perimeter_lf'] = 160.0;
+        $this->assertSame(0.0, $opt['ceiling_area_sqft']);
+        $this->assertFalse(BasementRoomAreaImportMapper::ceilingTakeoffAvailable($opt));
+
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertSame(1500.0, $proposed['ceiling_sf']);
+        $this->assertSame(1500.0, $proposed['drywall_ceiling_sf']);
+    }
+
+    public function test_search_option_payload_nulls_unavailable_ceiling_and_keeps_measured_zero(): void
+    {
+        $service = app(RoomAreaLayoutQuoteService::class);
+        $payloadFor = new ReflectionMethod(RoomAreaLayoutQuoteService::class, 'optionPayload');
+        $payloadFor->setAccessible(true);
+
+        $unavailable = app(RoomAreaCanvasData::class)->emptyLayoutMetrics();
+        $unavailable['area_sqft'] = 1500.0;
+        $unavailable['perimeter_lf'] = 160.0;
+        $unavailablePayload = $payloadFor->invoke(
+            $service,
+            'room:1',
+            'Rec',
+            'room',
+            $unavailable,
+            false,
+            'Rec',
+            false
+        );
+        $this->assertFalse($unavailablePayload['ceiling_area_available']);
+        $this->assertNull($unavailablePayload['ceiling_area_sqft']);
+        $this->assertSame(1500.0, BasementRoomAreaImportMapper::proposedQuantities($unavailablePayload, 8)['ceiling_sf']);
+
+        $measuredZero = app(RoomAreaCanvasData::class)->emptyLayoutMetrics();
+        $measuredZero['area_sqft'] = 0.0;
+        $measuredZero['ceiling_area_sqft'] = 0.0;
+        $measuredZero['excluded_area_sqft'] = 80.0;
+        $measuredZero['polygon_count'] = 1;
+        $measuredZero['perimeter_lf'] = 40.0;
+        $zeroPayload = $payloadFor->invoke(
+            $service,
+            'room:2',
+            'Excluded',
+            'room',
+            $measuredZero,
+            false,
+            'Excluded',
+            false
+        );
+        $this->assertTrue($zeroPayload['ceiling_area_available']);
+        $this->assertSame(0.0, $zeroPayload['ceiling_area_sqft']);
+        $this->assertSame(0.0, BasementRoomAreaImportMapper::proposedQuantities($zeroPayload, 8)['ceiling_sf']);
     }
 
     public function test_wall_finish_takeoffs_win_over_gross_metrics(): void
