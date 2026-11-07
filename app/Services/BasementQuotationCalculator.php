@@ -720,9 +720,10 @@ class BasementQuotationCalculator
 
     /**
      * @param  array<string, mixed>  $inputs
+     * @param  array{stored?: ?array<string, mixed>, published?: bool}  $context
      * @return list<string>
      */
-    public function validationHints(array $inputs, bool $draft = false): array
+    public function validationHints(array $inputs, bool $draft = false, array $context = []): array
     {
         if ($draft) {
             return [];
@@ -748,7 +749,169 @@ class BasementQuotationCalculator
             }
         }
 
+        if (self::sectionEnabled($inputs, 'demolition')) {
+            if (! array_key_exists('include_demolition', $inputs)) {
+                $hints[] = 'Choose Yes or No for demolition.';
+            } elseif (! empty($inputs['include_demolition'])) {
+                $lineErrors = self::demolitionFieldErrors($inputs, $context);
+                foreach ($lineErrors as $message) {
+                    $hints[] = $message;
+                }
+                if ($lineErrors === [] && ! self::demolitionHasPositiveQuantity($inputs)) {
+                    $hints[] = 'Yes for demolition needs a tear-out quantity or a debris bin.';
+                }
+            }
+        }
+
         return $hints;
+    }
+
+    /**
+     * Resolved demolition quantity after length×width overlays. Flooring blank
+     * uses work area; studs blank uses partition; drywall blank/0 is not a
+     * positive quantity; bins count.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function demolitionHasPositiveQuantity(array $inputs): bool
+    {
+        $merged = array_merge(self::defaultInputs(), $inputs);
+        $merged = self::applyAreaEntry($merged);
+        $area = max(0, (float) ($merged['area_sqft'] ?? 0));
+        $partitionLf = max(0, (float) ($merged['partition_lf'] ?? 0));
+        $measuredPerimeter = round(max(0, (float) ($merged['perimeter_lf'] ?? 0)), 2);
+        $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
+
+        $qty = static function (mixed $value, float $fallback): float {
+            if ($value === null || $value === '') {
+                return round(max(0, $fallback), 2);
+            }
+
+            return round(max(0, (float) $value), 2);
+        };
+
+        if (! empty($merged['demo_include_flooring']) && $qty($merged['demo_flooring_sf'] ?? null, $area) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_studs']) && $qty($merged['demo_studs_lf'] ?? null, $partitionLf) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_drywall']) && $qty($merged['demo_drywall_sf'] ?? null, 0) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_baseboard'])) {
+            $baseFallback = ($merged['scope_preset'] ?? '') === 'wall'
+                ? round($partitionLf * 2, 2)
+                : $perimeter;
+            if ($qty($merged['demo_baseboard_lf'] ?? null, $baseFallback) > 0) {
+                return true;
+            }
+        }
+
+        return max(0, (int) ($merged['demo_bin_qty'] ?? 0)) > 0;
+    }
+
+    /**
+     * Per-line Yes demolition errors. Checked tear-out types with a non-positive
+     * resolved quantity are rejected. Bin-only remains allowed. Published quotes
+     * keep a previously saved checked-and-zero line on plain resave.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array{stored?: ?array<string, mixed>, published?: bool}  $context
+     * @return array<string, string>
+     */
+    public static function demolitionFieldErrors(array $inputs, array $context = []): array
+    {
+        if (empty($inputs['include_demolition'])) {
+            return [];
+        }
+
+        $merged = array_merge(self::defaultInputs(), $inputs);
+        $merged = self::applyAreaEntry($merged);
+        $area = max(0, (float) ($merged['area_sqft'] ?? 0));
+        $partitionLf = max(0, (float) ($merged['partition_lf'] ?? 0));
+        $measuredPerimeter = round(max(0, (float) ($merged['perimeter_lf'] ?? 0)), 2);
+        $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
+        $baseFallback = ($merged['scope_preset'] ?? '') === 'wall'
+            ? round($partitionLf * 2, 2)
+            : $perimeter;
+
+        $lines = [
+            ['demo_include_flooring', 'demo_flooring_sf', $area, 'flooring'],
+            ['demo_include_studs', 'demo_studs_lf', $partitionLf, 'studs'],
+            ['demo_include_drywall', 'demo_drywall_sf', 0.0, 'drywall'],
+            ['demo_include_baseboard', 'demo_baseboard_lf', $baseFallback, 'baseboard'],
+        ];
+
+        $errors = [];
+        foreach ($lines as [$includeKey, $qtyKey, $fallback, $label]) {
+            if (empty($merged[$includeKey])) {
+                continue;
+            }
+            if (self::resolvedDemoQty($merged, $qtyKey, $fallback) > 0) {
+                continue;
+            }
+            if (self::demolitionLineGrandfathered($context, $includeKey, $qtyKey, $fallback)) {
+                continue;
+            }
+            $errors[$qtyKey] = 'Enter a positive '.$label.' tear-out quantity, or uncheck '.$label.'.';
+        }
+
+        return $errors;
+    }
+
+    /**
+     * @param  array<string, mixed>  $merged
+     */
+    private static function resolvedDemoQty(array $merged, string $qtyKey, float $fallback): float
+    {
+        $value = $merged[$qtyKey] ?? null;
+        if ($value === null || $value === '') {
+            return round(max(0, $fallback), 2);
+        }
+
+        return round(max(0, (float) $value), 2);
+    }
+
+    /**
+     * @param  array{stored?: ?array<string, mixed>, published?: bool}  $context
+     */
+    private static function demolitionLineGrandfathered(
+        array $context,
+        string $includeKey,
+        string $qtyKey,
+        float $fallback
+    ): bool {
+        if (empty($context['published']) || ! is_array($context['stored'] ?? null)) {
+            return false;
+        }
+        $stored = $context['stored'];
+        if (empty($stored['include_demolition']) || empty($stored[$includeKey])) {
+            return false;
+        }
+        $storedMerged = array_merge(self::defaultInputs(), $stored);
+        $storedMerged = self::applyAreaEntry($storedMerged);
+        $storedFallback = $fallback;
+        if ($qtyKey === 'demo_flooring_sf') {
+            $storedFallback = max(0, (float) ($storedMerged['area_sqft'] ?? 0));
+        } elseif ($qtyKey === 'demo_studs_lf') {
+            $storedFallback = max(0, (float) ($storedMerged['partition_lf'] ?? 0));
+        } elseif ($qtyKey === 'demo_drywall_sf') {
+            $storedFallback = 0.0;
+        } elseif ($qtyKey === 'demo_baseboard_lf') {
+            $area = max(0, (float) ($storedMerged['area_sqft'] ?? 0));
+            $partitionLf = max(0, (float) ($storedMerged['partition_lf'] ?? 0));
+            $measuredPerimeter = round(max(0, (float) ($storedMerged['perimeter_lf'] ?? 0)), 2);
+            $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+            $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
+            $storedFallback = ($storedMerged['scope_preset'] ?? '') === 'wall'
+                ? round($partitionLf * 2, 2)
+                : $perimeter;
+        }
+
+        return self::resolvedDemoQty($storedMerged, $qtyKey, $storedFallback) <= 0;
     }
 
     /**

@@ -62,6 +62,9 @@ class BasementClientScope
                 } elseif ($key === 'bathroom' && empty($inputs['include_bathroom'])) {
                     $notIncluded[] = $label;
                     continue;
+                } elseif ($key === 'demolition' && empty($inputs['include_demolition'])) {
+                    $notIncluded[] = $label;
+                    continue;
                 } else {
                     $included[] = $label;
                 }

@@ -67,6 +67,79 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('class="admin-form-group br-demo-bins"', $html);
     }
 
+    public function test_create_demolition_yes_no_starts_unselected(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('data-br-demo-choice="1"', $html);
+        $this->assertStringContainsString('data-br-demo-choice="0"', $html);
+        $this->assertStringContainsString('name="include_demolition"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*name="include_demolition"[^>]*checked/i',
+            $html
+        );
+        $this->assertStringNotContainsString('data-br-reveal="br-demo-fields"', $html);
+        $this->assertStringContainsString('id="br-demo-fields"', $html);
+        $this->assertMatchesRegularExpression('/id="br-demo-fields"[^>]*\bhidden\b/', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*data-br-demo-choice="1"[^>]*required/i',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*data-br-demo-choice="0"[^>]*required/i',
+            $html
+        );
+    }
+
+    public function test_edit_demolition_restores_saved_no_and_yes(): void
+    {
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $noInputs = BasementQuotationCalculator::defaultInputs();
+        $noInputs['include_demolition'] = false;
+        $noHtml = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($noInputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*data-br-demo-choice="0"[^>]*checked/i',
+            $noHtml
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*data-br-demo-choice="1"[^>]*checked/i',
+            $noHtml
+        );
+
+        $yesInputs = BasementQuotationCalculator::defaultInputs();
+        $yesInputs['include_demolition'] = true;
+        $yesHtml = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($yesInputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*data-br-demo-choice="1"[^>]*checked/i',
+            $yesHtml
+        );
+        $this->assertDoesNotMatchRegularExpression('/id="br-demo-fields"[^>]*\bhidden\b/', $yesHtml);
+    }
+
+    public function test_edit_draft_without_stored_demo_choice_stays_unselected(): void
+    {
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        unset($inputs['include_demolition']);
+        $html = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($inputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input[^>]*name="include_demolition"[^>]*checked/i',
+            $html
+        );
+    }
+
     public function test_wall_wizard_includes_doors_trim_step(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

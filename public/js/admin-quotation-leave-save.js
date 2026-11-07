@@ -5,6 +5,7 @@
     'input[name="include_debris_removal"]',
     'input[name="debris_removal_amount"]',
     'input[name="include_commute"]',
+    'input[name="include_demolition"]',
     'input[name="ask_reply_to_accept"]',
     'input[name="client_name"]'
   ].join(', ');

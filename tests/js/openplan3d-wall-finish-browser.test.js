@@ -80,11 +80,15 @@ function startServer() {
 async function main() {
   const puppeteer = require('puppeteer');
   const { server, port } = await startServer();
-  const browser = await puppeteer.launch({
+  const launchOpts = {
     headless: 'new',
     protocolTimeout: 120000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
+  };
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const browser = await puppeteer.launch(launchOpts);
 
   try {
     const page = await browser.newPage();
@@ -147,6 +151,54 @@ async function main() {
     });
     assert.strictEqual(panelOne, true, 'finish panel mounts for one selected wall');
 
+    const paintStart = await page.evaluate(() => {
+      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+      return input
+        ? { exists: true, checked: !!input.checked, indeterminate: !!input.indeterminate }
+        : { exists: false, checked: false, indeterminate: false };
+    });
+    assert.strictEqual(paintStart.exists, true, 'Paint finish checkbox is in the wall panel');
+    assert.strictEqual(paintStart.checked, false, 'Paint starts unselected');
+    assert.strictEqual(paintStart.indeterminate, true, 'new/legacy walls start with Paint unassigned (indeterminate)');
+
+    const shotsDir = path.join(ROOT, 'storage/app/qa-screenshots');
+    fs.mkdirSync(shotsDir, { recursive: true });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-1280.png') });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-390.png') });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    try {
+      fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
+      fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-1280.png'), '/opt/cursor/artifacts/room-area-paint-ui-1280.png');
+      fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-390.png'), '/opt/cursor/artifacts/room-area-paint-ui-390.png');
+    } catch (e) { /* CI runners may not have /opt/cursor/artifacts */ }
+
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
+    await page.waitForFunction(() => {
+      const plan = window.__openPlan3D.getProject();
+      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
+        && plan.zanini.wallFinishes.pw0.paint === true);
+    }, { timeout: 8000 });
+
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
+    await page.waitForFunction(() => {
+      const plan = window.__openPlan3D.getProject();
+      const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
+      return !!(flags && Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
+    }, { timeout: 8000 });
+
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(false));
     await page.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
@@ -173,9 +225,16 @@ async function main() {
         const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
         if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
         mod.X.set(null);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       },
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
+    await page.waitForFunction(() => {
+      const ids = window.OpenPlan3DZaniniTools.readSelectedWallIds
+        ? window.OpenPlan3DZaniniTools.readSelectedWallIds()
+        : [];
+      return !ids || ids.length === 0;
+    }, { timeout: 8000 });
     await page.evaluate(() => window.OpenPlan3DZaniniTools.renderFinishPanel());
     const hidden = await page.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');

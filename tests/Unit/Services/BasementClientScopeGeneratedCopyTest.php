@@ -55,4 +55,40 @@ class BasementClientScopeGeneratedCopyTest extends TestCase
             $copy['not_included']
         );
     }
+
+    public function test_enabled_demolition_with_no_choice_is_not_included_in_generated_scope(): void
+    {
+        $copy = BasementClientScope::generatedCopy([
+            'scope_preset' => 'full',
+            'include_demolition' => false,
+            'demo_include_flooring' => true,
+            'demo_flooring_sf' => 400,
+        ]);
+
+        $this->assertStringContainsString(
+            BasementQuotationCalculator::SECTIONS['demolition'],
+            $copy['not_included']
+        );
+        $this->assertStringNotContainsString(
+            BasementQuotationCalculator::SECTIONS['demolition'],
+            $copy['included']
+        );
+    }
+
+    public function test_enabled_demolition_yes_stays_in_generated_included_scope(): void
+    {
+        $copy = BasementClientScope::generatedCopy([
+            'scope_preset' => 'full',
+            'include_demolition' => true,
+        ]);
+
+        $this->assertStringContainsString(
+            BasementQuotationCalculator::SECTIONS['demolition'],
+            $copy['included']
+        );
+        $this->assertStringNotContainsString(
+            BasementQuotationCalculator::SECTIONS['demolition'],
+            $copy['not_included']
+        );
+    }
 }

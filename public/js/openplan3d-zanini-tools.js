@@ -586,6 +586,7 @@
     });
     state.selectedBulkheadId = null;
     scheduleOverlay();
+    renderFinishPanel();
   }
 
   function onOverlayClick(e) {
@@ -595,6 +596,7 @@
     scheduleOverlay();
     var delBtn = document.getElementById('openplan3d-delete-bulkhead-btn');
     if (delBtn) delBtn.hidden = !state.selectedBulkheadId;
+    renderFinishPanel();
   }
 
   function onPointerDown(e) {
@@ -606,6 +608,7 @@
       if (bulkId) {
         state.selectedBulkheadId = bulkId;
         scheduleOverlay();
+        renderFinishPanel();
         return;
       }
       return;
@@ -851,10 +854,60 @@
     }
   }
 
+  function renderBulkheadFinishPanelNow(host) {
+    var id = state.selectedBulkheadId;
+    var plan = readPlan();
+    var bulkheads = (plan && plan.zanini && plan.zanini.bulkheads) || [];
+    var bulkhead = null;
+    for (var i = 0; i < bulkheads.length; i++) {
+      if (bulkheads[i] && String(bulkheads[i].id) === String(id)) {
+        bulkhead = bulkheads[i];
+        break;
+      }
+    }
+    if (!bulkhead) {
+      host.innerHTML = '';
+      host.hidden = true;
+      return;
+    }
+    host.hidden = false;
+    var hasKey = Object.prototype.hasOwnProperty.call(bulkhead, 'paint');
+    var checked = hasKey ? !!bulkhead.paint : false;
+    host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">Bulkhead finishes · '
+      + (bulkhead.name || id) + '</div>';
+    var row = document.createElement('label');
+    row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
+    row.innerHTML = '<input type="checkbox" data-bulkhead-paint="1"' + (checked ? ' checked' : '') + '> Paint';
+    host.appendChild(row);
+    var input = row.querySelector('input');
+    if (input && !hasKey) input.indeterminate = true;
+    var note = document.createElement('p');
+    note.style.cssText = 'margin:4px 0 0;opacity:.85;font-size:11px;line-height:1.35;';
+    note.textContent = 'Unchecked/unassigned bulkheads are not added to wall paint. Drywall takeoff is separate.';
+    host.appendChild(note);
+    if (input) {
+      input.addEventListener('change', function () {
+        var val = input.checked;
+        writePlan(function (next) {
+          var list = next.zanini.bulkheads || [];
+          for (var bi = 0; bi < list.length; bi++) {
+            if (list[bi] && String(list[bi].id) === String(id)) {
+              list[bi].paint = val;
+            }
+          }
+        });
+      });
+    }
+  }
+
   function renderFinishPanelNow() {
     var wallIds = readSelectedWallIds();
     var host = ensureFinishHost();
     if (!host) return;
+    if (!wallIds.length && state.selectedBulkheadId) {
+      renderBulkheadFinishPanelNow(host);
+      return;
+    }
     if (!wallIds.length) {
       host.innerHTML = '';
       host.hidden = true;
@@ -886,23 +939,41 @@
       ? ('Wall finishes (' + wallIds.length + ' walls)')
       : ('Wall finishes · ' + primary);
     host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">' + heading + '</div>';
-    ['drywall', 'insulation', 'studs', 'baseboard'].forEach(function (key) {
-      var checked = Object.prototype.hasOwnProperty.call(flags, key) ? !!flags[key] : defaults[key];
+    var finishKeys = ['drywall', 'paint', 'insulation', 'studs', 'baseboard'];
+    var finishLabels = {
+      drywall: 'Drywall',
+      paint: 'Paint',
+      insulation: 'Insulation',
+      studs: 'Studs',
+      baseboard: 'Baseboard'
+    };
+    finishKeys.forEach(function (key) {
+      var defaultVal = key === 'paint' ? false : defaults[key];
+      var hasKey = Object.prototype.hasOwnProperty.call(flags, key);
+      var checked = hasKey ? !!flags[key] : defaultVal;
+      var indeterminate = key === 'paint' && !hasKey;
       if (wallIds.length > 1) {
         var mixed = false;
-        var first = checked;
+        var firstState = hasKey ? (checked ? 'on' : 'off') : (key === 'paint' ? 'unassigned' : (defaultVal ? 'on' : 'off'));
         for (var wi2 = 1; wi2 < wallIds.length; wi2++) {
           var f2 = wallFinishes[wallIds[wi2]] || {};
           var wallDefaults = finishDefaultsForWall(wallIds[wi2]);
-          var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : wallDefaults[key];
-          if (c2 !== first) mixed = true;
+          var wallHas = Object.prototype.hasOwnProperty.call(f2, key);
+          var wallDefault = key === 'paint' ? false : wallDefaults[key];
+          var state2 = wallHas ? (f2[key] ? 'on' : 'off') : (key === 'paint' ? 'unassigned' : (wallDefault ? 'on' : 'off'));
+          if (state2 !== firstState) mixed = true;
         }
-        if (mixed) checked = false;
+        if (mixed) {
+          checked = false;
+          indeterminate = key === 'paint';
+        }
       }
       var row = document.createElement('label');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
-      row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + key;
+      row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + (finishLabels[key] || key);
       host.appendChild(row);
+      var inputEl = row.querySelector('input');
+      if (inputEl && indeterminate) inputEl.indeterminate = true;
     });
     if (sidesEligible.length === 0 && wallIds.length > 0) {
       var perimeterNote = document.createElement('p');

@@ -208,6 +208,7 @@ class BasementDisabledTradeScopeTest extends IntegrationTestCase
             'scope_preset' => 'custom',
             'enabled_sections' => ['overview', 'demolition', 'framing', 'drywall', 'doors_trim', 'finishing'],
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,

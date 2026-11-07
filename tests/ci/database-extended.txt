@@ -6,6 +6,8 @@ tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
 tests/Feature/Admin/BasementCeilingAreaTest.php
 tests/Feature/Admin/BasementCeilingLegacyBrowserTest.php
 tests/Feature/Admin/BasementClientScopePersistenceTest.php
+tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
+tests/Feature/Admin/BasementDemoChoiceTest.php
 tests/Feature/Admin/BasementDisabledTradeScopeTest.php
 tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/BasementRoomAreaImportTest.php

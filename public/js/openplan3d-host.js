@@ -350,6 +350,7 @@
     var metricCasing = doc.getElementById('metric-casing');
     var metricBoxes = doc.getElementById('metric-boxes');
     var metricDrywall = doc.getElementById('metric-finish-drywall');
+    var metricPaint = doc.getElementById('metric-finish-paint');
     var metricInsulation = doc.getElementById('metric-finish-insulation');
     var metricStuds = doc.getElementById('metric-finish-studs');
     var metricBulkheadDrywall = doc.getElementById('metric-bulkhead-drywall');
@@ -495,6 +496,7 @@
         metricBoxes.textContent = String(stored.flooring_boxes != null ? stored.flooring_boxes : 0);
       }
       setMetricEl(metricDrywall, stored.finish_drywall_sqft != null ? stored.finish_drywall_sqft : stored.net_wall_area_sqft, 2);
+      setMetricElOrUnavailable(metricPaint, stored.finish_paint_sqft, 2);
       setMetricEl(metricInsulation, stored.finish_insulation_sqft, 2);
       setMetricEl(metricStuds, stored.finish_stud_lf, 2);
       setMetricEl(metricBulkheadDrywall, stored.bulkhead_drywall_sqft, 2);
@@ -864,6 +866,15 @@
       el.textContent = n.toFixed(digits != null ? digits : 2);
     }
 
+    function setMetricElOrUnavailable(el, value, digits) {
+      if (!el) return;
+      if (value === null || value === undefined || value === '') {
+        el.textContent = '—';
+        return;
+      }
+      setMetricEl(el, value, digits);
+    }
+
     function pushPlanToEditor(plan) {
       if (!plan) return;
       requestEditorLoad(plan);
@@ -1184,6 +1195,7 @@
           metricBoxes.textContent = String(metrics.flooring_boxes != null ? metrics.flooring_boxes : (metrics.boxes || 0));
         }
         setMetricEl(metricDrywall, metrics.finish_drywall_sqft != null ? metrics.finish_drywall_sqft : metrics.net_wall_area_sqft, 2);
+        setMetricElOrUnavailable(metricPaint, Object.prototype.hasOwnProperty.call(metrics, 'finish_paint_sqft') ? metrics.finish_paint_sqft : null, 2);
         setMetricEl(metricInsulation, metrics.finish_insulation_sqft, 2);
         setMetricEl(metricStuds, metrics.finish_stud_lf, 2);
         setMetricEl(metricBulkheadDrywall, metrics.bulkhead_drywall_sqft, 2);

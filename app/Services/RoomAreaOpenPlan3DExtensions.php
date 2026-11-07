@@ -185,6 +185,11 @@ class RoomAreaOpenPlan3DExtensions
         $framingLf = 0.0;
         $drywallSqFt = 0.0;
         $cornerBeadLf = 0.0;
+        $paintSqFt = 0.0;
+        $paintMarked = 0;
+        $paintOff = 0;
+        $paintUnassigned = 0;
+        $paintSeen = false;
 
         foreach ($zanini['bulkheads'] ?? [] as $bulkhead) {
             if (! is_array($bulkhead)) {
@@ -207,12 +212,32 @@ class RoomAreaOpenPlan3DExtensions
             $framingLf += $takeoff['framing_lf'];
             $drywallSqFt += $takeoff['drywall_sqft'];
             $cornerBeadLf += $takeoff['corner_bead_lf'];
+
+            if (array_key_exists('paint', $bulkhead)) {
+                $paintSeen = true;
+                if ($this->flagEnabled($bulkhead, 'paint', false)) {
+                    $paintMarked++;
+                    $paintSqFt += $takeoff['drywall_sqft'];
+                } else {
+                    $paintOff++;
+                }
+            } else {
+                $paintUnassigned++;
+            }
         }
 
         $metrics['bulkhead_framing_lf'] = round($framingLf, 2);
         $metrics['bulkhead_drywall_sqft'] = round($drywallSqFt, 2);
         $metrics['bulkhead_corner_bead_lf'] = round($cornerBeadLf, 2);
         $metrics['bulkhead_lf'] = $metrics['bulkhead_framing_lf'];
+        $metrics['paint_bulkheads_marked'] = $paintMarked;
+        $metrics['paint_bulkheads_explicit_off'] = $paintOff;
+        $metrics['paint_bulkheads_unassigned'] = $paintUnassigned;
+        if ($paintSeen) {
+            $metrics['bulkhead_paint_sqft'] = round(max(0.0, $paintSqFt), 2);
+        } else {
+            unset($metrics['bulkhead_paint_sqft']);
+        }
 
         return $metrics;
     }
@@ -259,6 +284,11 @@ class RoomAreaOpenPlan3DExtensions
         $insulation = 0.0;
         $studs = 0.0;
         $baseboard = 0.0;
+        $paint = 0.0;
+        $paintMarked = 0;
+        $paintOff = 0;
+        $paintUnassigned = 0;
+        $paintSeen = false;
 
         if ($finishes === [] && $walls !== []) {
             foreach ($walls as $wall) {
@@ -270,6 +300,7 @@ class RoomAreaOpenPlan3DExtensions
                 $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $drywall += $netSqFt;
+                $paintUnassigned++;
                 if ($isBoundary) {
                     $insulation += $netSqFt;
                 } else {
@@ -291,6 +322,17 @@ class RoomAreaOpenPlan3DExtensions
                 if ($this->flagEnabled($flags, 'drywall', true)) {
                     $drywall += $netSqFt;
                 }
+                if (array_key_exists('paint', $flags)) {
+                    $paintSeen = true;
+                    if ($this->flagEnabled($flags, 'paint', false)) {
+                        $paintMarked++;
+                        $paint += $netSqFt;
+                    } else {
+                        $paintOff++;
+                    }
+                } else {
+                    $paintUnassigned++;
+                }
                 if ($this->flagEnabled($flags, 'insulation', $isBoundary)) {
                     $insulation += $netSqFt;
                 }
@@ -307,11 +349,21 @@ class RoomAreaOpenPlan3DExtensions
             }
         }
 
+        $bulkheadPaintSeen = array_key_exists('bulkhead_paint_sqft', $metrics);
+        $bulkheadPaint = $bulkheadPaintSeen ? (float) $metrics['bulkhead_paint_sqft'] : 0.0;
         $metrics['finish_drywall_sqft'] = round(max(0.0, $drywall), 2);
         $metrics['finish_insulation_sqft'] = round(max(0.0, $insulation), 2);
         $metrics['finish_stud_lf'] = round(max(0.0, $studs), 2);
         $metrics['finish_baseboard_lf'] = round(max(0.0, $baseboard), 2);
         $metrics['finish_casing_lf'] = round((float) ($metrics['casing_lf'] ?? 0.0), 2);
+        $metrics['paint_walls_marked'] = $paintMarked;
+        $metrics['paint_walls_explicit_off'] = $paintOff;
+        $metrics['paint_walls_unassigned'] = $paintUnassigned;
+        if ($paintSeen || $bulkheadPaintSeen) {
+            $metrics['finish_paint_sqft'] = round(max(0.0, $paint + $bulkheadPaint), 2);
+        } else {
+            unset($metrics['finish_paint_sqft']);
+        }
 
         return $metrics;
     }

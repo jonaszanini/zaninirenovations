@@ -211,7 +211,7 @@
       baseboard_lf: baseboard,
       casing_openings: casingOpenings,
       window_trim_qty: windows,
-      paint_wall_sf: wallSf,
+      paint_wall_sf: present(opt, 'finish_paint_sqft') ? num(opt.finish_paint_sqft) : null,
       paint_ceiling_sf: ceilingArea,
       paint_trim_lf: paintTrim
     };
@@ -272,6 +272,56 @@
     return false;
   }
 
+  function paintAssignmentMixed(opt) {
+    opt = opt || {};
+    var unassigned = (parseInt(opt.paint_walls_unassigned, 10) || 0)
+      + (parseInt(opt.paint_bulkheads_unassigned, 10) || 0);
+    var assigned = (parseInt(opt.paint_walls_marked, 10) || 0)
+      + (parseInt(opt.paint_walls_explicit_off, 10) || 0)
+      + (parseInt(opt.paint_bulkheads_marked, 10) || 0)
+      + (parseInt(opt.paint_bulkheads_explicit_off, 10) || 0);
+    return unassigned > 0 && assigned > 0;
+  }
+
+  function needsImportConfirm(current, proposed, opt) {
+    if (wouldOverwrite(current, proposed)) return true;
+    if (!paintAssignmentMixed(opt)) return false;
+    proposed = proposed || {};
+    if (proposed.paint_wall_sf == null) return false;
+    return valuesDiverge(current && current.paint_wall_sf, proposed.paint_wall_sf);
+  }
+
+  function confirmImportMessage(current, proposed, opt) {
+    proposed = proposed || {};
+    opt = opt || {};
+    current = current || {};
+    var parts = [api.CONFIRM_MESSAGE];
+    var marked = parseInt(opt.paint_walls_marked, 10) || 0;
+    var unassigned = parseInt(opt.paint_walls_unassigned, 10) || 0;
+    var off = parseInt(opt.paint_walls_explicit_off, 10) || 0;
+    var bhMarked = parseInt(opt.paint_bulkheads_marked, 10) || 0;
+    var bhUnassigned = parseInt(opt.paint_bulkheads_unassigned, 10) || 0;
+    var imported = proposed.paint_wall_sf;
+    var previous = current.paint_wall_sf;
+    if (marked > 0 || unassigned > 0 || off > 0 || imported != null || bhMarked > 0 || bhUnassigned > 0) {
+      parts.push('Paint: ' + marked + ' wall(s) marked Paint, ' + unassigned + ' wall(s) with no Paint choice'
+        + (off > 0 ? ', ' + off + ' wall(s) explicitly off' : '') + '.');
+      if (bhMarked > 0 || bhUnassigned > 0) {
+        parts.push('Bulkheads: ' + bhMarked + ' marked Paint, ' + bhUnassigned + ' with no Paint choice.');
+      }
+      if (imported != null) {
+        parts.push('Imported wall paint: ' + formatQty(imported) + ' sq ft.');
+      }
+      if (previous != null && imported != null && valuesDiverge(previous, imported)) {
+        parts.push('This replaces the current wall paint of ' + formatQty(previous) + ' sq ft.');
+      }
+      if (unassigned > 0 && imported != null) {
+        parts.push('Walls without a Paint choice are not counted as painted. Confirm to import this quantity.');
+      }
+    }
+    return parts.join(' ');
+  }
+
   function importStatusText(proposed, opt, extras) {
     proposed = proposed || {};
     extras = extras || {};
@@ -303,6 +353,9 @@
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,
     wouldOverwrite: wouldOverwrite,
+    paintAssignmentMixed: paintAssignmentMixed,
+    needsImportConfirm: needsImportConfirm,
+    confirmImportMessage: confirmImportMessage,
     importStatusText: importStatusText,
     FIELD_IDS: FIELD_IDS,
     LW_KEYS: LW_KEYS,
