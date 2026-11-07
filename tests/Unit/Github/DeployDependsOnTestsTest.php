@@ -326,9 +326,11 @@ class DeployDependsOnTestsTest extends TestCase
             'require-tests must also run for workflow_run so the tested SHA is pinned'
         );
         $this->assertStringContainsString('pin-deploy-sha.sh', $require);
+        $this->assertStringContainsString('require-tests-conclusion.sh', $require);
         $this->assertStringContainsString('WORKFLOW_RUN_SHA', $require);
         $this->assertStringContainsString('DISPATCH_SHA', $require);
         $this->assertStringContainsString('repos/${REPO}/commits/main', $require);
+        $this->assertStringContainsString('PINNED_SHA', $require);
         $this->assertStringContainsString('needs.require-tests.outputs.sha', $deploy);
         $this->assertDoesNotMatchRegularExpression(
             '/head_sha\s*\|\|\s*github\.sha/',
@@ -336,11 +338,20 @@ class DeployDependsOnTestsTest extends TestCase
             'Checkout must not fall back from the Tests SHA to the current default-branch tip'
         );
         $this->assertStringContainsString('git rev-parse HEAD', $deploy);
+        $this->assertMatchesRegularExpression(
+            '/Recheck pin is still current main before deploy side effects[\s\S]*Deploy to server/',
+            $deploy,
+            'Fresh main HEAD must be rechecked after environment waits and immediately before rsync'
+        );
+        $this->assertStringContainsString('pin-deploy-sha.sh', $deploy);
         $deployIf = $this->jobIf($yaml);
         $this->assertStringContainsString("needs.require-tests.result == 'success'", $deployIf);
 
-        exec('bash '.escapeshellarg(base_path('tests/ci/pin-deploy-sha.test.sh')).' 2>&1', $output, $code);
-        $this->assertSame(0, $code, implode("\n", $output));
+        exec('bash '.escapeshellarg(base_path('tests/ci/pin-deploy-sha.test.sh')).' 2>&1', $pinOutput, $pinCode);
+        $this->assertSame(0, $pinCode, implode("\n", $pinOutput));
+
+        exec('bash '.escapeshellarg(base_path('tests/ci/require-tests-conclusion.test.sh')).' 2>&1', $testsOutput, $testsCode);
+        $this->assertSame(0, $testsCode, implode("\n", $testsOutput));
     }
 
     /**
