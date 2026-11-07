@@ -174,27 +174,19 @@ async function main() {
       fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-390.png'), '/opt/cursor/artifacts/room-area-paint-ui-390.png');
     } catch (e) { /* CI runners may not have /opt/cursor/artifacts */ }
 
-    const painted = await page.evaluate(() => {
-      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
-      if (!input) return false;
-      input.checked = true;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.click('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+    await page.waitForFunction(() => {
       const plan = window.__openPlan3D.getProject();
-      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0 && plan.zanini.wallFinishes.pw0.paint);
-    });
-    assert.strictEqual(painted, true, 'checking Paint writes wallFinishes.paint true');
+      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
+        && plan.zanini.wallFinishes.pw0.paint === true);
+    }, { timeout: 8000 });
 
-    const unpainted = await page.evaluate(() => {
-      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
-      if (!input) return null;
-      input.checked = false;
-      input.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.click('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+    await page.waitForFunction(() => {
       const plan = window.__openPlan3D.getProject();
-      return plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
-        ? plan.zanini.wallFinishes.pw0.paint
-        : null;
-    });
-    assert.strictEqual(unpainted, false, 'unchecking Paint writes explicit false, not missing');
+      const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
+      return !!(flags && Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
+    }, { timeout: 8000 });
 
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(false));
     await page.evaluate(
