@@ -105,7 +105,7 @@
   @if (filled($rate ?? null))
     <p class="sq-qty__rate">{{ $rate }}</p>
   @endif
-  @error($name)
-    <p class="admin-form-error" id="{{ $id }}-error" role="alert">{{ $message }}</p>
-  @enderror
+  @if (isset($errors) && $errors->has($name))
+    <p class="admin-form-error" id="{{ $id }}-error" role="alert">{{ $errors->first($name) }}</p>
+  @endif
 </div>
