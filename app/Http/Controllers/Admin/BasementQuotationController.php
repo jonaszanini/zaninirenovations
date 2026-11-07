@@ -22,6 +22,7 @@ use App\Services\QuotationPaymentSchedule;
 use App\Services\SharedWorkCatalog;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
+use App\Support\QuotationDraftFlash;
 use App\Support\QuotationSaveIntent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -660,11 +661,15 @@ class BasementQuotationController extends Controller
         $version = (int) ($quote->version ?? 0);
 
         if ($intent === 'draft' || $quote->is_draft) {
-            if ($hasIntendedProject) {
-                return 'Basement quotation '.$number.' saved as a draft. It is not on the project until you click Save quotation. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
+            $message = 'Basement quotation '.$number.' saved as a draft.';
+            if (! $wasDraft && $quote->isLinked()) {
+                return $message.' '.QuotationDraftFlash::CLIENT_LINK_PAUSED_SENTENCE;
+            }
+            if (! $quote->isLinked() && $hasIntendedProject) {
+                return $message.' It is not on the project until you click Save quotation. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
             }
 
-            return 'Basement quotation '.$number.' saved as a draft.';
+            return $message;
         }
 
         if ($linkedNow) {

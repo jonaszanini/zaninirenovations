@@ -296,9 +296,13 @@ class DeployDependsOnTestsTest extends TestCase
             $this->deployIfAllows($if, 'workflow_run', 'success', 'main', 'pull_request'),
             'A green Tests run triggered by a pull_request must not deploy'
         );
+        $this->assertFalse(
+            $this->deployIfAllows($if, 'workflow_run', 'success', 'main', 'push', 'skipped'),
+            'workflow_run must not deploy while require-tests is skipped (Nov 6 SHA race)'
+        );
         $this->assertTrue(
-            $this->deployIfAllows($if, 'workflow_run', 'success', 'main', 'push'),
-            'Tests success on a push to main may deploy'
+            $this->deployIfAllows($if, 'workflow_run', 'success', 'main', 'push', 'success'),
+            'Tests success on a push to main may deploy only after require-tests pins that SHA'
         );
         $this->assertFalse(
             $this->deployIfAllows($if, 'workflow_dispatch', null, null, null, 'skipped'),
@@ -308,6 +312,35 @@ class DeployDependsOnTestsTest extends TestCase
             $this->deployIfAllows($if, 'workflow_dispatch', null, null, null, 'success'),
             'Manual workflow_dispatch may deploy after Tests success'
         );
+    }
+
+    public function test_deploy_pins_exact_green_tested_sha_and_does_not_fall_back_to_tip(): void
+    {
+        $yaml = $this->workflow('deploy.yml');
+        $require = $this->extractYamlJobBlock($yaml, 'require-tests');
+        $deploy = $this->extractYamlJobBlock($yaml, 'deploy');
+
+        $this->assertStringNotContainsString(
+            "if: github.event_name == 'workflow_dispatch'",
+            $require,
+            'require-tests must also run for workflow_run so the tested SHA is pinned'
+        );
+        $this->assertStringContainsString('pin-deploy-sha.sh', $require);
+        $this->assertStringContainsString('WORKFLOW_RUN_SHA', $require);
+        $this->assertStringContainsString('DISPATCH_SHA', $require);
+        $this->assertStringContainsString('repos/${REPO}/commits/main', $require);
+        $this->assertStringContainsString('needs.require-tests.outputs.sha', $deploy);
+        $this->assertDoesNotMatchRegularExpression(
+            '/head_sha\s*\|\|\s*github\.sha/',
+            $yaml,
+            'Checkout must not fall back from the Tests SHA to the current default-branch tip'
+        );
+        $this->assertStringContainsString('git rev-parse HEAD', $deploy);
+        $deployIf = $this->jobIf($yaml);
+        $this->assertStringContainsString("needs.require-tests.result == 'success'", $deployIf);
+
+        exec('bash '.escapeshellarg(base_path('tests/ci/pin-deploy-sha.test.sh')).' 2>&1', $output, $code);
+        $this->assertSame(0, $code, implode("\n", $output));
     }
 
     /**
