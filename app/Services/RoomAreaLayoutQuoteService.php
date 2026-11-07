@@ -404,9 +404,22 @@ class RoomAreaLayoutQuoteService
             'finish_baseboard_lf',
             'finish_casing_lf',
             'excluded_area_sqft',
+            'bulkhead_paint_sqft',
         ] as $finishKey) {
             if (array_key_exists($finishKey, $metrics) && $metrics[$finishKey] !== null && $metrics[$finishKey] !== '') {
                 $payload[$finishKey] = round((float) $metrics[$finishKey], 2);
+            }
+        }
+        foreach ([
+            'paint_walls_marked',
+            'paint_walls_explicit_off',
+            'paint_walls_unassigned',
+            'paint_bulkheads_marked',
+            'paint_bulkheads_explicit_off',
+            'paint_bulkheads_unassigned',
+        ] as $countKey) {
+            if (array_key_exists($countKey, $metrics)) {
+                $payload[$countKey] = max(0, (int) $metrics[$countKey]);
             }
         }
 

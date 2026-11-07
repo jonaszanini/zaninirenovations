@@ -227,7 +227,7 @@
         Paint
         @include('admin.partials.info_tip', [
           'tipLabel' => 'Paint takeoff',
-          'tipText' => 'Net wall area on walls marked Paint in Wall Finishes. Independent of Drywall. Legacy drawings with no Paint choice leave this unavailable (—), not zero.',
+          'tipText' => 'Net wall area on walls marked Paint, plus bulkheads marked Paint. Independent of Drywall. Walls or bulkheads with no Paint choice are unassigned, not off. Legacy drawings with no Paint choice leave this unavailable (—). Explicit all-off is measured 0.',
         ])
       </span>
       <span class="openplan3d-metric-val" id="metric-finish-paint">—</span>

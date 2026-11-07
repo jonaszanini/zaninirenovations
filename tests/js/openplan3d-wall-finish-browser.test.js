@@ -80,11 +80,15 @@ function startServer() {
 async function main() {
   const puppeteer = require('puppeteer');
   const { server, port } = await startServer();
-  const browser = await puppeteer.launch({
+  const launchOpts = {
     headless: 'new',
     protocolTimeout: 120000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  });
+  };
+  if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+    launchOpts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
+  const browser = await puppeteer.launch(launchOpts);
 
   try {
     const page = await browser.newPage();
@@ -149,10 +153,26 @@ async function main() {
 
     const paintStart = await page.evaluate(() => {
       const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
-      return input ? { exists: true, checked: !!input.checked } : { exists: false, checked: false };
+      return input
+        ? { exists: true, checked: !!input.checked, indeterminate: !!input.indeterminate }
+        : { exists: false, checked: false, indeterminate: false };
     });
     assert.strictEqual(paintStart.exists, true, 'Paint finish checkbox is in the wall panel');
     assert.strictEqual(paintStart.checked, false, 'Paint starts unselected');
+    assert.strictEqual(paintStart.indeterminate, true, 'new/legacy walls start with Paint unassigned (indeterminate)');
+
+    const shotsDir = path.join(ROOT, 'storage/app/qa-screenshots');
+    fs.mkdirSync(shotsDir, { recursive: true });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-1280.png') });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-390.png') });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    try {
+      fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
+      fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-1280.png'), '/opt/cursor/artifacts/room-area-paint-ui-1280.png');
+      fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-390.png'), '/opt/cursor/artifacts/room-area-paint-ui-390.png');
+    } catch (e) { /* CI runners may not have /opt/cursor/artifacts */ }
 
     const painted = await page.evaluate(() => {
       const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
@@ -163,6 +183,18 @@ async function main() {
       return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0 && plan.zanini.wallFinishes.pw0.paint);
     });
     assert.strictEqual(painted, true, 'checking Paint writes wallFinishes.paint true');
+
+    const unpainted = await page.evaluate(() => {
+      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+      if (!input) return null;
+      input.checked = false;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      const plan = window.__openPlan3D.getProject();
+      return plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
+        ? plan.zanini.wallFinishes.pw0.paint
+        : null;
+    });
+    assert.strictEqual(unpainted, false, 'unchecking Paint writes explicit false, not missing');
 
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(false));
     await page.evaluate(

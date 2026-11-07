@@ -443,6 +443,10 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertSame('drywall', $quote->inputs['ceiling_type']);
         $this->assertSame(80.0, (float) $quote->inputs['owner_hourly_rate']);
         $this->assertSame(10.0, (float) $quote->inputs['material_waste_percent']);
+        $this->assertArrayHasKey('paint_walls_marked', $opt);
+        $this->assertGreaterThan(0, (int) $opt['paint_walls_marked']);
+        $this->assertGreaterThan(0, (int) $opt['paint_walls_explicit_off']);
+        $this->assertSame(0, (int) ($opt['paint_walls_unassigned'] ?? 0));
 
         $laborKeys = collect($quote->calculation['labor'] ?? [])->pluck('key')->all();
         $this->assertContains('framing_walls', $laborKeys);
@@ -462,5 +466,66 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/<input(?=[^>]*\bid="br-partition")(?=[^>]*\bvalue=")/', $editHtml);
         $this->assertStringContainsString('name="flooring_type"', $editHtml);
         $this->assertMatchesRegularExpression('/name="flooring_type"[^>]*>[\s\S]*value="lvp"[^>]*selected/', $editHtml);
+        $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) $quote->inputs['paint_wall_sf'], 0.05);
+    }
+
+    public function test_legacy_one_explicit_off_paint_is_mixed_not_unavailable(): void
+    {
+        $this->actingAsAdmin();
+
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Legacy paint project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Legacy paint mixed',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 600,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 30 * $cm, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Legacy paint mixed',
+                        'walls' => ['w1', 'w2', 'w3', 'w4'],
+                    ]],
+                ],
+                'zanini' => [
+                    'wallFinishes' => [
+                        'w1' => ['drywall' => true, 'paint' => false],
+                        'w2' => ['drywall' => true],
+                        'w3' => ['drywall' => true],
+                        'w4' => ['drywall' => true],
+                    ],
+                ],
+            ],
+        ]);
+
+        $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Legacy paint mixed']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($opt);
+        $this->assertArrayHasKey('finish_paint_sqft', $opt);
+        $this->assertEqualsWithDelta(0.0, (float) $opt['finish_paint_sqft'], 0.05);
+        $this->assertSame(1, (int) $opt['paint_walls_explicit_off']);
+        $this->assertSame(3, (int) $opt['paint_walls_unassigned']);
+        $this->assertTrue(BasementRoomAreaImportMapper::paintAssignmentMixed($opt));
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertSame(0.0, $proposed['paint_wall_sf']);
+        $this->assertTrue(BasementRoomAreaImportMapper::needsImportConfirm(
+            ['paint_wall_sf' => 400, 'import_label' => 'Manual', 'area_sqft' => 80],
+            $proposed,
+            $opt
+        ));
     }
 }

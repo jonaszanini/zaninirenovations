@@ -130,9 +130,153 @@ class BasementRoomAreaImportMapper
         'wall_height_ft',
     ];
 
+    public const CONFIRM_MESSAGE = 'This layout’s quantities differ from the values currently in the form. Replace the form values with the imported layout?';
+
     public static function present(array $opt, string $key): bool
     {
         return array_key_exists($key, $opt) && $opt[$key] !== null && $opt[$key] !== '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $opt
+     */
+    public static function paintWallsMarked(array $opt): int
+    {
+        return max(0, (int) ($opt['paint_walls_marked'] ?? 0));
+    }
+
+    /**
+     * @param  array<string, mixed>  $opt
+     */
+    public static function paintWallsUnassigned(array $opt): int
+    {
+        return max(0, (int) ($opt['paint_walls_unassigned'] ?? 0));
+    }
+
+    /**
+     * Mixed legacy: some walls/bulkheads have an explicit Paint choice and others do not.
+     *
+     * @param  array<string, mixed>  $opt
+     */
+    public static function paintAssignmentMixed(array $opt): bool
+    {
+        $unassigned = self::paintWallsUnassigned($opt)
+            + max(0, (int) ($opt['paint_bulkheads_unassigned'] ?? 0));
+        $assigned = self::paintWallsMarked($opt)
+            + max(0, (int) ($opt['paint_walls_explicit_off'] ?? 0))
+            + max(0, (int) ($opt['paint_bulkheads_marked'] ?? 0))
+            + max(0, (int) ($opt['paint_bulkheads_explicit_off'] ?? 0));
+
+        return $unassigned > 0 && $assigned > 0;
+    }
+
+    /**
+     * @param  array<string, float|int|string|null>  $current
+     * @param  array<string, float|int|null>  $proposed
+     * @param  array<string, mixed>  $opt
+     */
+    public static function valuesDiverge(mixed $currentVal, mixed $proposedVal): bool
+    {
+        if ($proposedVal === null) {
+            return false;
+        }
+        if (is_numeric($currentVal) && is_numeric($proposedVal)) {
+            return abs((float) $currentVal - (float) $proposedVal) > 0.009;
+        }
+
+        return (string) $currentVal !== (string) $proposedVal;
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $proposed
+     */
+    public static function wouldOverwrite(array $current, array $proposed): bool
+    {
+        $hasQty = false;
+        foreach (self::FIELD_IDS as $key => $_id) {
+            if (abs((float) ($current[$key] ?? 0)) > 0.009) {
+                $hasQty = true;
+                break;
+            }
+        }
+        if (! $hasQty && trim((string) ($current['import_label'] ?? '')) === '') {
+            return false;
+        }
+        foreach ($proposed as $key => $value) {
+            if (in_array($key, self::SKIP_FORM_KEYS, true) || $value === null) {
+                continue;
+            }
+            if (self::valuesDiverge($current[$key] ?? 0, $value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $proposed
+     * @param  array<string, mixed>  $opt
+     */
+    public static function needsImportConfirm(array $current, array $proposed, array $opt = []): bool
+    {
+        if (self::wouldOverwrite($current, $proposed)) {
+            return true;
+        }
+        if (! self::paintAssignmentMixed($opt)) {
+            return false;
+        }
+        if (! array_key_exists('paint_wall_sf', $proposed) || $proposed['paint_wall_sf'] === null) {
+            return false;
+        }
+
+        return self::valuesDiverge($current['paint_wall_sf'] ?? 0, $proposed['paint_wall_sf']);
+    }
+
+    /**
+     * @param  array<string, mixed>  $current
+     * @param  array<string, mixed>  $proposed
+     * @param  array<string, mixed>  $opt
+     */
+    public static function confirmImportMessage(array $current, array $proposed, array $opt = []): string
+    {
+        $parts = [self::CONFIRM_MESSAGE];
+        $marked = self::paintWallsMarked($opt);
+        $unassigned = self::paintWallsUnassigned($opt);
+        $off = max(0, (int) ($opt['paint_walls_explicit_off'] ?? 0));
+        $bhMarked = max(0, (int) ($opt['paint_bulkheads_marked'] ?? 0));
+        $bhUnassigned = max(0, (int) ($opt['paint_bulkheads_unassigned'] ?? 0));
+        $imported = $proposed['paint_wall_sf'] ?? null;
+        $previous = $current['paint_wall_sf'] ?? null;
+
+        if ($marked > 0 || $unassigned > 0 || $off > 0 || $imported !== null || $bhMarked > 0 || $bhUnassigned > 0) {
+            $parts[] = 'Paint: '.$marked.' wall(s) marked Paint, '.$unassigned.' wall(s) with no Paint choice'
+                .($off > 0 ? ', '.$off.' wall(s) explicitly off' : '').'.';
+            if ($bhMarked > 0 || $bhUnassigned > 0) {
+                $parts[] = 'Bulkheads: '.$bhMarked.' marked Paint, '.$bhUnassigned.' with no Paint choice.';
+            }
+            if ($imported !== null) {
+                $parts[] = 'Imported wall paint: '.self::formatQty((float) $imported).' sq ft.';
+            }
+            if ($previous !== null && $imported !== null && self::valuesDiverge($previous, $imported)) {
+                $parts[] = 'This replaces the current wall paint of '.self::formatQty((float) $previous).' sq ft.';
+            }
+            if ($unassigned > 0 && $imported !== null) {
+                $parts[] = 'Walls without a Paint choice are not counted as painted. Confirm to import this quantity.';
+            }
+        }
+
+        return implode(' ', $parts);
+    }
+
+    public static function formatQty(float $n): string
+    {
+        $rounded = round($n, 2);
+        $text = rtrim(rtrim(number_format($rounded, 2, '.', ''), '0'), '.');
+
+        return $text === '' ? '0' : $text;
     }
 
     /**

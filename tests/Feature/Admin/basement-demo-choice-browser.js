@@ -152,6 +152,116 @@ async function openDemolition(page) {
     report.cases[spec.key] = row;
   }
 
+  if (process.env.QH_DEMO_DRAFT === '1') {
+    const draft = { widths: {} };
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.goto(base + process.env.QH_DEMO_DRAFT_PATH, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#br-main-form');
+    await page.type('[name="client_name"]', 'Demo Draft Blank Choice');
+    const area = await page.$('#br-area');
+    if (area) {
+      await area.click({ clickCount: 3 });
+      await area.type('400');
+    }
+    await openDemolition(page);
+    const before = await readDemo(page);
+    draft.before = before;
+    draft.radiosRequiredAtRest = await page.evaluate(() => {
+      const radios = [...document.querySelectorAll('[data-br-demo-choice]')];
+      return radios.some((el) => !!(el && el.required));
+    });
+    draft.demoBlocksValidityAtRest = await page.evaluate(() => {
+      const radios = [...document.querySelectorAll('[data-br-demo-choice]')];
+      return radios.some((el) => !!(el && (el.required || (typeof el.matches === 'function' && el.matches(':invalid')))));
+    });
+    draft.hotkeyOnDraft = await page.$eval('#br-btn-draft', (el) => el.hasAttribute('data-hotkey-save'));
+    draft.hotkeyOnPublish = await page.$eval('#br-btn-publish', (el) => el.hasAttribute('data-hotkey-save'));
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
+      page.click('#br-btn-draft'),
+    ]);
+    await page.waitForSelector('#br-main-form');
+    await openDemolition(page);
+    draft.afterSave = await readDemo(page);
+    draft.editUrl = page.url();
+    draft.draftMarker = await page.$eval('#br-main-form', (el) => el.getAttribute('data-quotation-is-draft'));
+    await page.click('#br-btn-publish');
+    await new Promise((r) => setTimeout(r, 800));
+    draft.publishUrl = page.url();
+    draft.publishError = await page.evaluate(() => {
+      const flash = document.querySelector('.admin-flash--danger, .admin-form-error, .admin-toast');
+      const yes = document.querySelector('[data-br-demo-choice="1"]');
+      const no = document.querySelector('[data-br-demo-choice="0"]');
+      return {
+        flash: flash ? String(flash.textContent || '').trim() : '',
+        stillEdit: /\/edit(?:\/|$)/.test(location.pathname),
+        yesChecked: !!(yes && yes.checked),
+        noChecked: !!(no && no.checked),
+        yesRequired: !!(yes && yes.required),
+        invalidRadio: !!document.querySelector('[data-br-demo-choice]:invalid'),
+      };
+    });
+    report.draft = draft;
+  }
+
+  if (process.env.QH_IMPORT_PATH) {
+    const importRow = { ok: false };
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.goto(base + process.env.QH_IMPORT_PATH, { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#br-main-form');
+    const layoutsUrl = base + process.env.QH_IMPORT_LAYOUTS + '?q=' + encodeURIComponent(process.env.QH_IMPORT_LAYOUT_Q || '');
+    const opt = await page.evaluate(async (url) => {
+      const res = await fetch(url, { credentials: 'same-origin' });
+      const rows = await res.json();
+      return Array.isArray(rows) ? rows[0] : null;
+    }, layoutsUrl);
+    importRow.layoutId = opt && opt.id;
+    if (!opt) {
+      throw new Error('layouts search returned no Paint import mixed option');
+    }
+    const fireImport = async () => {
+      await page.evaluate((option) => {
+        const picker = document.querySelector('[data-br-layout-picker]');
+        if (!picker) throw new Error('missing layout picker');
+        picker.dispatchEvent(new CustomEvent('admin-search-select:change', {
+          bubbles: true,
+          detail: { option: option },
+        }));
+      }, opt);
+    };
+    await fireImport();
+    await page.waitForSelector('#admin-dialog:not([hidden])', { timeout: 8000 });
+    importRow.message = await page.$eval('#admin-dialog-message', (el) => String(el.textContent || ''));
+    importRow.shot1280 = await shot(page, 'paint-import-confirm-1280.png');
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await new Promise((r) => setTimeout(r, 200));
+    importRow.shot390 = await shot(page, 'paint-import-confirm-390.png');
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.click('#admin-dialog .admin-btn--ghost');
+    await page.waitForFunction(() => {
+      const dlg = document.getElementById('admin-dialog');
+      return !dlg || dlg.hidden;
+    });
+    importRow.keptPaint = await page.$eval('#br-p-wall', (el) => parseFloat(el.value || '0'));
+    await fireImport();
+    await page.waitForSelector('#admin-dialog:not([hidden])', { timeout: 8000 });
+    await page.click('#admin-dialog .admin-btn--primary');
+    await page.waitForFunction(() => {
+      const dlg = document.getElementById('admin-dialog');
+      return !dlg || dlg.hidden;
+    });
+    importRow.replacedPaint = await page.$eval('#br-p-wall', (el) => parseFloat(el.value || '1'));
+    await Promise.all([
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
+      page.click('#br-btn-draft'),
+    ]);
+    await page.waitForSelector('#br-p-wall');
+    importRow.reopenPaint = await page.$eval('#br-p-wall', (el) => parseFloat(el.value || '1'));
+    importRow.reopenRate = await page.$eval('[name="owner_hourly_rate"]', (el) => parseFloat(el.value || '0'));
+    importRow.ok = importRow.keptPaint === 400 && importRow.replacedPaint === 0 && importRow.reopenPaint === 0;
+    report.import = importRow;
+  }
+
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
   await browser.close();

@@ -4,13 +4,19 @@ namespace Tests\Feature\Admin;
 
 use App\Models\BasementQuotation;
 use App\Models\ClientProject;
+use App\Models\ClientProjectQuotation;
+use App\Models\RoomAreaProject;
+use App\Models\RoomAreaRoom;
 use App\Models\User;
 use App\Services\BasementQuotationCalculator;
 use Illuminate\Support\Facades\Hash;
 use Tests\IntegrationTestCase;
+use Tests\Support\ExtractsPdfText;
 
 class BasementDemoChoiceBrowserTest extends IntegrationTestCase
 {
+    use ExtractsPdfText;
+
     /** @var list<string> */
     protected $connectionsToTransact = [];
 
@@ -32,6 +38,7 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
 
         $no = $this->seedQuote('no', false);
         $yes = $this->seedQuote('yes', true);
+        $import = $this->seedPaintImport();
 
         $cases = [
             [
@@ -74,6 +81,11 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
             'QH_DEMO_OUT' => $out,
             'QH_DEMO_SHOTS' => $shots,
             'QH_DEMO_CASES' => json_encode($cases),
+            'QH_DEMO_DRAFT' => '1',
+            'QH_DEMO_DRAFT_PATH' => route('admin.quotations.basement.create', [], false),
+            'QH_IMPORT_PATH' => route('admin.quotations.basement.edit', $import['quote'], false),
+            'QH_IMPORT_LAYOUT_Q' => $import['query'],
+            'QH_IMPORT_LAYOUTS' => route('admin.utilities.room-area.layouts', [], false),
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -105,6 +117,68 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
 
         $this->assertGreaterThan((float) $no['total'], (float) $yes['total']);
 
+        $draft = $report['draft'] ?? [];
+        $this->assertFalse((bool) ($draft['before']['yesChecked'] ?? true), 'create draft start yes off');
+        $this->assertFalse((bool) ($draft['before']['noChecked'] ?? true), 'create draft start no off');
+        $this->assertFalse((bool) ($draft['radiosRequiredAtRest'] ?? true), 'demo radios must not be HTML-required at rest or on draft');
+        $this->assertFalse((bool) ($draft['demoBlocksValidityAtRest'] ?? true), 'blank demo choice must not fail leave-save/hotkey checkValidity');
+        $this->assertFalse((bool) ($draft['afterSave']['yesChecked'] ?? true), 'reopen draft yes still off');
+        $this->assertFalse((bool) ($draft['afterSave']['noChecked'] ?? true), 'reopen draft no still off');
+        $this->assertTrue((bool) ($draft['hotkeyOnDraft'] ?? false), 'create Ctrl+S is bound to Save as draft');
+        $this->assertFalse((bool) ($draft['hotkeyOnPublish'] ?? true), 'create must not hotkey-publish');
+        $this->assertSame('1', (string) ($draft['draftMarker'] ?? ''), 'saved as draft');
+        $this->assertMatchesRegularExpression('#/edit(?:/|$)#', (string) ($draft['editUrl'] ?? ''));
+        $quote = BasementQuotation::query()->where('client_name', 'Demo Draft Blank Choice')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+        $this->assertArrayNotHasKey('include_demolition', $quote->inputs ?? []);
+        $this->assertTrue((bool) ($draft['publishError']['stillEdit'] ?? false), 'publish still rejects blank choice');
+        $this->assertTrue(
+            (bool) ($draft['publishError']['yesRequired'] ?? false)
+            || (bool) ($draft['publishError']['invalidRadio'] ?? false)
+            || (string) ($draft['publishError']['flash'] ?? '') !== '',
+            'publish restore required or server error: '.json_encode($draft['publishError'] ?? [])
+        );
+        $this->assertFalse((bool) ($draft['publishError']['yesChecked'] ?? true));
+        $this->assertFalse((bool) ($draft['publishError']['noChecked'] ?? true));
+        $quote->refresh();
+        $this->assertTrue((bool) $quote->is_draft, 'failed publish must not publish the draft');
+
+        $importRow = $report['import'] ?? [];
+        $this->assertTrue((bool) ($importRow['ok'] ?? false), json_encode($importRow));
+        $this->assertSame(400, (int) round((float) ($importRow['keptPaint'] ?? 0)));
+        $this->assertSame(0, (int) round((float) ($importRow['replacedPaint'] ?? 1)));
+        $this->assertStringContainsString('0 wall(s) marked Paint', (string) ($importRow['message'] ?? ''));
+        $this->assertStringContainsString('no Paint choice', (string) ($importRow['message'] ?? ''));
+        $this->assertStringContainsString('400', (string) ($importRow['message'] ?? ''));
+        $this->assertFileExists((string) ($importRow['shot1280'] ?? ''));
+        $this->assertFileExists((string) ($importRow['shot390'] ?? ''));
+        $import['quote']->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) ($import['quote']->inputs['paint_wall_sf'] ?? 1), 0.05);
+        $this->assertSame(80.0, (float) ($import['quote']->inputs['owner_hourly_rate'] ?? 0));
+        $this->assertSame(10.0, (float) ($import['quote']->inputs['material_waste_percent'] ?? 0));
+        $this->assertSame('lvp', (string) ($import['quote']->inputs['flooring_type'] ?? ''));
+        $expectedImportTotal = (float) (new BasementQuotationCalculator)->calculate($import['quote']->inputs ?? [])['summary']['final_quote_total'];
+        $this->assertEqualsWithDelta($expectedImportTotal, (float) $import['quote']->final_quote_total, 0.02);
+        $import['quote']->is_draft = false;
+        $import['quote']->save();
+        $project = ClientProject::factory()->create();
+        $this->post(route('admin.quotations.basement.link', $import['quote']), [
+            'client_project_id' => $project->id,
+        ])->assertSessionHasNoErrors();
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $import['quote']->id)
+            ->first();
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $import['quote']->final_quote_total, $cpq->pdfGrandTotal(), 0.02);
+        $importPdf = $this->get(route('admin.client-projects.quotation.pdf', [$project, $cpq]));
+        $importPdf->assertOk();
+        $importPdfPath = storage_path('app/paint-import-'.$import['quote']->id.'.pdf');
+        file_put_contents($importPdfPath, $importPdf->getContent());
+        $importPdfText = $this->extractPdfText($importPdfPath);
+        $this->assertStringContainsString(ClientProject::formatMoney((float) $import['quote']->final_quote_total), $importPdfText);
+
         $this->copyShots($shots, [
             'demo-create-unselected-1280.png',
             'demo-create-unselected-390.png',
@@ -112,7 +186,86 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
             'demo-edit-no-390.png',
             'demo-edit-yes-1280.png',
             'demo-edit-yes-390.png',
+            'paint-import-confirm-1280.png',
+            'paint-import-confirm-390.png',
         ]);
+    }
+
+    /**
+     * @return array{quote: BasementQuotation, query: string}
+     */
+    private function seedPaintImport(): array
+    {
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Paint import project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Paint import mixed',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 600,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 30 * $cm, 'y' => 0], 'end' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 30 * $cm, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 20 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 20 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Paint import mixed',
+                        'walls' => ['w1', 'w2', 'w3', 'w4'],
+                    ]],
+                ],
+                'zanini' => [
+                    'wallFinishes' => [
+                        'w1' => ['drywall' => true, 'paint' => false],
+                        'w2' => ['drywall' => true],
+                        'w3' => ['drywall' => true],
+                        'w4' => ['drywall' => true],
+                    ],
+                ],
+            ],
+        ]);
+
+        $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 80,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => false,
+            'paint_wall_sf' => 400,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'material_waste_percent' => 10,
+            'flooring_type' => 'lvp',
+            'insulate_walls' => false,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+        ]);
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
+            'client_name' => 'Paint import quote',
+            'is_draft' => true,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => (float) $calc['summary']['final_quote_total'],
+            'version' => 1,
+            'payment_installments' => 3,
+        ]);
+
+        return ['quote' => $quote, 'query' => 'Paint import mixed'];
     }
 
     /**
@@ -126,6 +279,7 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
             'include_demolition' => $includeDemo,
             'demo_include_flooring' => true,
             'demo_flooring_sf' => 400,
+            'demo_include_drywall' => false,
             'demo_bin_qty' => 1,
             'owner_hourly_rate' => 80,
             'helper_hourly_rate' => 40,

@@ -155,6 +155,40 @@ const zeroPaintOut = ext.applyToMetrics(Object.assign({}, metrics), {
 }, {}, 1.0);
 assert.strictEqual(zeroPaintOut.finish_paint_sqft, 0);
 assert.strictEqual(zeroPaintOut.finish_drywall_sqft, 288);
+assert.strictEqual(zeroPaintOut.paint_walls_explicit_off, 3);
+assert.strictEqual(zeroPaintOut.paint_walls_unassigned, 0);
+
+const legacyOneOff = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    wallFinishes: {
+      w1: { drywall: true, paint: false },
+      w2: { drywall: true },
+      w3: { drywall: true },
+    },
+  },
+}, {}, 1.0);
+assert.strictEqual(legacyOneOff.finish_paint_sqft, 0);
+assert.strictEqual(legacyOneOff.paint_walls_explicit_off, 1);
+assert.strictEqual(legacyOneOff.paint_walls_unassigned, 2);
+
+const bulkheadPaintOn = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    bulkheads: [{
+      rect: { x1: 0, y1: 0, x2: 304.8, y2: 30.48 },
+      drop_height_ft: 2,
+      against_wall: true,
+      paint: true,
+    }],
+    wallFinishes: { w1: { paint: false }, w2: { paint: false }, w3: { paint: false } },
+  },
+}, {}, 1.0);
+assert.strictEqual(bulkheadPaintOn.bulkhead_drywall_sqft, 30);
+assert.strictEqual(bulkheadPaintOn.bulkhead_paint_sqft, 30);
+assert.strictEqual(bulkheadPaintOn.finish_paint_sqft, 30);
 
 const roomPoly = [
   { x: 0, y: 0 },

@@ -14,7 +14,11 @@
   $title = $isEdit ? 'Edit '.$quotation->quote_number : 'New basement renovation quotation';
   $formAction = ($isEdit ? route('admin.quotations.basement.update', $quotation) : route('admin.quotations.basement.store')).$formQuery;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : BasementQuotationCalculator::defaultInputs();
+  $demoChoiceStored = array_key_exists('include_demolition', is_array($inputs) ? $inputs : []);
   foreach (BasementQuotationCalculator::defaultInputs() as $k => $v) {
+      if ($k === 'include_demolition' && $isEdit && ! $demoChoiceStored) {
+          continue;
+      }
       if (! array_key_exists($k, $inputs)) {
           $inputs[$k] = $v;
       }

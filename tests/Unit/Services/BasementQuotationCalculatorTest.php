@@ -1864,13 +1864,79 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertTrue(BasementQuotationCalculator::demolitionHasPositiveQuantity([
             'area_sqft' => 400,
             'include_demolition' => true,
+            'demo_include_drywall' => false,
         ]));
         $hints = (new BasementQuotationCalculator)->validationHints([
             'area_sqft' => 400,
             'include_demolition' => true,
+            'demo_include_drywall' => false,
         ]);
         $this->assertNotContains('Yes for demolition needs a tear-out quantity or a debris bin.', $hints);
         $this->assertNotContains('Choose Yes or No for demolition.', $hints);
+        $this->assertSame([], BasementQuotationCalculator::demolitionFieldErrors([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_drywall' => false,
+        ]));
+    }
+
+    public function test_yes_demolition_rejects_checked_zero_line_even_when_another_line_is_positive(): void
+    {
+        $inputs = [
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_flooring' => true,
+            'demo_flooring_sf' => 400,
+            'demo_include_drywall' => true,
+            'demo_drywall_sf' => 0,
+            'demo_include_studs' => false,
+            'demo_include_baseboard' => false,
+            'demo_bin_qty' => 1,
+        ];
+        $errors = BasementQuotationCalculator::demolitionFieldErrors($inputs);
+        $this->assertArrayHasKey('demo_drywall_sf', $errors);
+        $hints = (new BasementQuotationCalculator)->validationHints($inputs);
+        $this->assertContains('Enter a positive drywall tear-out quantity, or uncheck drywall.', $hints);
+    }
+
+    public function test_yes_demolition_bin_only_is_valid(): void
+    {
+        $inputs = [
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => false,
+            'demo_include_drywall' => false,
+            'demo_include_baseboard' => false,
+            'demo_bin_qty' => 1,
+        ];
+        $this->assertTrue(BasementQuotationCalculator::demolitionHasPositiveQuantity($inputs));
+        $this->assertSame([], BasementQuotationCalculator::demolitionFieldErrors($inputs));
+        $this->assertNotContains(
+            'Yes for demolition needs a tear-out quantity or a debris bin.',
+            (new BasementQuotationCalculator)->validationHints($inputs)
+        );
+    }
+
+    public function test_published_yes_with_historical_zero_drywall_line_is_grandfathered_on_resave(): void
+    {
+        $stored = [
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_flooring' => true,
+            'demo_flooring_sf' => 400,
+            'demo_include_drywall' => true,
+            'demo_drywall_sf' => 0,
+            'demo_bin_qty' => 1,
+        ];
+        $this->assertSame([], BasementQuotationCalculator::demolitionFieldErrors($stored, [
+            'stored' => $stored,
+            'published' => true,
+        ]));
+        $this->assertNotSame([], BasementQuotationCalculator::demolitionFieldErrors($stored, [
+            'stored' => $stored,
+            'published' => false,
+        ]));
     }
 
     public function test_missing_vs_false_demolition_keep_the_same_historical_total(): void

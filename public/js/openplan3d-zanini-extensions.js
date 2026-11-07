@@ -491,6 +491,7 @@
 
   function applyBulkheadMetrics(metrics, zanini, cmPerUnit) {
     var framingLf = 0.0, drywallSqFt = 0.0, cornerBeadLf = 0.0;
+    var paintSqFt = 0.0, paintMarked = 0, paintOff = 0, paintUnassigned = 0, paintSeen = false;
     var bulkheads = zanini.bulkheads || [];
     for (var i = 0; i < bulkheads.length; i++) {
       var bulkhead = bulkheads[i];
@@ -508,11 +509,30 @@
       framingLf += takeoff.framing_lf;
       drywallSqFt += takeoff.drywall_sqft;
       cornerBeadLf += takeoff.corner_bead_lf;
+      if (Object.prototype.hasOwnProperty.call(bulkhead, 'paint')) {
+        paintSeen = true;
+        if (flagEnabled(bulkhead, 'paint', false)) {
+          paintMarked += 1;
+          paintSqFt += takeoff.drywall_sqft;
+        } else {
+          paintOff += 1;
+        }
+      } else {
+        paintUnassigned += 1;
+      }
     }
     metrics.bulkhead_framing_lf = roundTo(framingLf, 2);
     metrics.bulkhead_drywall_sqft = roundTo(drywallSqFt, 2);
     metrics.bulkhead_corner_bead_lf = roundTo(cornerBeadLf, 2);
     metrics.bulkhead_lf = metrics.bulkhead_framing_lf;
+    metrics.paint_bulkheads_marked = paintMarked;
+    metrics.paint_bulkheads_explicit_off = paintOff;
+    metrics.paint_bulkheads_unassigned = paintUnassigned;
+    if (paintSeen) {
+      metrics.bulkhead_paint_sqft = roundTo(Math.max(0, paintSqFt), 2);
+    } else if (Object.prototype.hasOwnProperty.call(metrics, 'bulkhead_paint_sqft')) {
+      delete metrics.bulkhead_paint_sqft;
+    }
     return metrics;
   }
 
@@ -531,7 +551,7 @@
     var finishes = zanini.wallFinishes || {};
     var finishKeys = Object.keys(finishes);
     var drywall = 0.0, insulation = 0.0, studs = 0.0, baseboard = 0.0;
-    var paint = 0.0, paintSeen = false;
+    var paint = 0.0, paintSeen = false, paintMarked = 0, paintOff = 0, paintUnassigned = 0;
 
     if (finishKeys.length === 0 && walls.length > 0) {
       for (var i = 0; i < walls.length; i++) {
@@ -542,6 +562,7 @@
         var lengthLf = Number(wall.length_lf || 0);
         var netSqFt = Number(wall.net_area_sqft || 0);
         drywall += netSqFt;
+        paintUnassigned += 1;
         if (isBoundary) {
           insulation += netSqFt;
         } else {
@@ -561,7 +582,14 @@
         if (flagEnabled(flags, 'drywall', true)) drywall += net;
         if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
           paintSeen = true;
-          if (flagEnabled(flags, 'paint', false)) paint += net;
+          if (flagEnabled(flags, 'paint', false)) {
+            paintMarked += 1;
+            paint += net;
+          } else {
+            paintOff += 1;
+          }
+        } else {
+          paintUnassigned += 1;
         }
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += len;
@@ -572,13 +600,18 @@
       }
     }
 
+    var bulkheadPaintSeen = Object.prototype.hasOwnProperty.call(metrics, 'bulkhead_paint_sqft');
+    var bulkheadPaint = bulkheadPaintSeen ? Number(metrics.bulkhead_paint_sqft) : 0;
     metrics.finish_drywall_sqft = roundTo(Math.max(0, drywall), 2);
     metrics.finish_insulation_sqft = roundTo(Math.max(0, insulation), 2);
     metrics.finish_stud_lf = roundTo(Math.max(0, studs), 2);
     metrics.finish_baseboard_lf = roundTo(Math.max(0, baseboard), 2);
     metrics.finish_casing_lf = roundTo(Number(metrics.casing_lf || 0), 2);
-    if (paintSeen) {
-      metrics.finish_paint_sqft = roundTo(Math.max(0, paint), 2);
+    metrics.paint_walls_marked = paintMarked;
+    metrics.paint_walls_explicit_off = paintOff;
+    metrics.paint_walls_unassigned = paintUnassigned;
+    if (paintSeen || bulkheadPaintSeen) {
+      metrics.finish_paint_sqft = roundTo(Math.max(0, paint + bulkheadPaint), 2);
     } else if (Object.prototype.hasOwnProperty.call(metrics, 'finish_paint_sqft')) {
       delete metrics.finish_paint_sqft;
     }

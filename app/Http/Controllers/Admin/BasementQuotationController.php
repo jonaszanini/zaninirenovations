@@ -371,11 +371,18 @@ class BasementQuotationController extends Controller
             $rawInputs['ceiling_hang_unified'] = true;
         }
         if (! $draft) {
-            $hints = (new BasementQuotationCalculator)->validationHints($rawInputs, false);
-            if ($hints !== []) {
-                throw ValidationException::withMessages([
-                    'calculation' => implode(' ', $hints),
-                ]);
+            $hintContext = [
+                'stored' => is_array($existing?->inputs) ? $existing->inputs : null,
+                'published' => (bool) ($existing && ! $existing->is_draft),
+            ];
+            $hints = (new BasementQuotationCalculator)->validationHints($rawInputs, false, $hintContext);
+            $demoFields = BasementQuotationCalculator::demolitionFieldErrors($rawInputs, $hintContext);
+            if ($hints !== [] || $demoFields !== []) {
+                $messages = $demoFields;
+                if ($hints !== []) {
+                    $messages['calculation'] = implode(' ', $hints);
+                }
+                throw ValidationException::withMessages($messages);
             }
         }
 

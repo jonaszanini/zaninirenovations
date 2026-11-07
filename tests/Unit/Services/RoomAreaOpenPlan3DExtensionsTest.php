@@ -254,6 +254,73 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         ], [], 1.0);
         $this->assertSame(0.0, $allOff['finish_paint_sqft']);
         $this->assertSame(288.0, $allOff['finish_drywall_sqft']);
+        $this->assertSame(0, $allOff['paint_walls_marked']);
+        $this->assertSame(3, $allOff['paint_walls_explicit_off']);
+        $this->assertSame(0, $allOff['paint_walls_unassigned']);
+
+        $legacyOneOff = $this->extensions->applyToMetrics($metrics, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w1' => ['drywall' => true, 'paint' => false],
+                    'w2' => ['drywall' => true],
+                    'w3' => ['drywall' => true],
+                ],
+            ],
+        ], [], 1.0);
+        $this->assertSame(0.0, $legacyOneOff['finish_paint_sqft']);
+        $this->assertSame(1, $legacyOneOff['paint_walls_explicit_off']);
+        $this->assertSame(2, $legacyOneOff['paint_walls_unassigned']);
+        $this->assertSame(0, $legacyOneOff['paint_walls_marked']);
+    }
+
+    public function test_bulkhead_paint_uses_matching_finish_not_full_drywall(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'boundary_wall_ids' => ['w1'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+            ],
+            'baseboard_lf' => 10.0,
+        ];
+        $unassigned = $this->extensions->applyToMetrics($metrics, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'bulkheads' => [[
+                    'rect' => ['x1' => 0, 'y1' => 0, 'x2' => 304.8, 'y2' => 30.48],
+                    'drop_height_ft' => 2.0,
+                    'against_wall' => true,
+                ]],
+            ],
+        ], [], 1.0);
+        $this->assertSame(30.0, $unassigned['bulkhead_drywall_sqft']);
+        $this->assertArrayNotHasKey('finish_paint_sqft', $unassigned);
+        $this->assertArrayNotHasKey('bulkhead_paint_sqft', $unassigned);
+        $this->assertSame(1, $unassigned['paint_bulkheads_unassigned']);
+
+        $painted = $this->extensions->applyToMetrics($metrics, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'bulkheads' => [[
+                    'rect' => ['x1' => 0, 'y1' => 0, 'x2' => 304.8, 'y2' => 30.48],
+                    'drop_height_ft' => 2.0,
+                    'against_wall' => true,
+                    'paint' => true,
+                ]],
+                'wallFinishes' => [
+                    'w1' => ['paint' => false],
+                ],
+            ],
+        ], [], 1.0);
+        $this->assertSame(30.0, $painted['bulkhead_drywall_sqft']);
+        $this->assertSame(30.0, $painted['bulkhead_paint_sqft']);
+        $this->assertSame(30.0, $painted['finish_paint_sqft']);
+        $this->assertSame(1, $painted['paint_bulkheads_marked']);
+        $this->assertSame(0, $painted['paint_walls_marked']);
     }
 
     public function test_extract_and_merge_zanini_payload(): void

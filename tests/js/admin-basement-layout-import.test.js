@@ -234,6 +234,37 @@ assert.strictEqual(
 
 assert.ok(layout.CONFIRM_MESSAGE.indexOf('differ') !== -1);
 assert.ok(layout.CONFIRM_MESSAGE.indexOf('Replace') !== -1);
+
+const mixedLegacyOpt = {
+  finish_paint_sqft: 0,
+  paint_walls_marked: 0,
+  paint_walls_explicit_off: 1,
+  paint_walls_unassigned: 2,
+  paint_bulkheads_unassigned: 1
+};
+const mixedProposed = layout.proposedQuantities(mixedLegacyOpt, 8);
+assert.strictEqual(mixedProposed.paint_wall_sf, 0);
+const currentPaint400 = { paint_wall_sf: 400, import_label: 'Manual', area_sqft: 80 };
+assert.strictEqual(layout.needsImportConfirm(currentPaint400, mixedProposed, mixedLegacyOpt), true);
+const confirmMsg = layout.confirmImportMessage(currentPaint400, mixedProposed, mixedLegacyOpt);
+assert.ok(confirmMsg.indexOf('1 wall(s) marked Paint') !== -1 || confirmMsg.indexOf('0 wall(s) marked Paint') !== -1, confirmMsg);
+assert.ok(confirmMsg.indexOf('2 wall(s) with no Paint choice') !== -1, confirmMsg);
+assert.ok(confirmMsg.indexOf('Imported wall paint: 0 sq ft') !== -1, confirmMsg);
+assert.ok(confirmMsg.indexOf('current wall paint of 400 sq ft') !== -1, confirmMsg);
+
+const untouchedLegacy = layout.proposedQuantities({
+  area_sqft: 80,
+  finish_drywall_sqft: 640,
+  paint_walls_unassigned: 3
+}, 8);
+assert.strictEqual(untouchedLegacy.paint_wall_sf, null);
+assert.strictEqual(
+  layout.needsImportConfirm(Object.assign({}, untouchedLegacy, { paint_wall_sf: 400, import_label: 'Manual' }), untouchedLegacy, {
+    paint_walls_unassigned: 3
+  }),
+  false,
+  'untouched legacy missing paint must not confirm-wipe 400'
+);
 assert.ok(layout.FIELD_IDS.flooring_sf === 'br-fl-sf');
 assert.ok(layout.FIELD_IDS.paint_wall_sf === 'br-p-wall');
 assert.ok(layout.LW_KEYS.flooring_sf);

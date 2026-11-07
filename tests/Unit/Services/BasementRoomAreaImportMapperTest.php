@@ -328,6 +328,39 @@ class BasementRoomAreaImportMapperTest extends TestCase
         );
     }
 
+    public function test_mixed_legacy_paint_confirm_names_counts_and_previous_quantity(): void
+    {
+        $opt = [
+            'finish_paint_sqft' => 0,
+            'paint_walls_marked' => 0,
+            'paint_walls_explicit_off' => 1,
+            'paint_walls_unassigned' => 2,
+            'paint_bulkheads_unassigned' => 1,
+        ];
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertSame(0.0, $proposed['paint_wall_sf']);
+        $current = ['paint_wall_sf' => 400, 'import_label' => 'Manual', 'area_sqft' => 80];
+        $this->assertTrue(BasementRoomAreaImportMapper::needsImportConfirm($current, $proposed, $opt));
+        $this->assertTrue(BasementRoomAreaImportMapper::paintAssignmentMixed($opt));
+        $msg = BasementRoomAreaImportMapper::confirmImportMessage($current, $proposed, $opt);
+        $this->assertStringContainsString('0 wall(s) marked Paint', $msg);
+        $this->assertStringContainsString('2 wall(s) with no Paint choice', $msg);
+        $this->assertStringContainsString('Imported wall paint: 0 sq ft', $msg);
+        $this->assertStringContainsString('current wall paint of 400 sq ft', $msg);
+
+        $missing = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 80,
+            'finish_drywall_sqft' => 640,
+            'paint_walls_unassigned' => 3,
+        ], 8);
+        $this->assertNull($missing['paint_wall_sf']);
+        $this->assertFalse(BasementRoomAreaImportMapper::needsImportConfirm(
+            array_merge($missing, ['paint_wall_sf' => 400, 'import_label' => 'Manual']),
+            $missing,
+            ['paint_walls_unassigned' => 3]
+        ));
+    }
+
     public function test_unmapped_keys_are_documented_and_exclude_corner_bead(): void
     {
         $this->assertContains('bulkhead_corner_bead_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
