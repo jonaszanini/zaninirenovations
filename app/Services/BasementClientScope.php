@@ -103,15 +103,19 @@ class BasementClientScope
         ];
 
         $allowances = [];
-        $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
-        $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
-        $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
-        $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
-        if ($elecTax > 0) {
-            $allowances[] = 'Electrical work allowance CAD$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
+        if (BasementQuotationCalculator::sectionEnabled($inputs, 'electrical')) {
+            $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
+            $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
+            if ($elecTax > 0) {
+                $allowances[] = 'Electrical work allowance CAD$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
+            }
         }
-        if ($plumbTax > 0) {
-            $allowances[] = 'Plumbing work allowance CAD$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
+        if (BasementQuotationCalculator::sectionEnabled($inputs, 'plumbing')) {
+            $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
+            $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
+            if ($plumbTax > 0) {
+                $allowances[] = 'Plumbing work allowance CAD$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
+            }
         }
         $permitAmt = $permitOn ? round(max(0, (float) ($inputs['building_permit_amount'] ?? 0)), 2) : 0.0;
         $bcinAmt = $bcinOn ? round(max(0, (float) ($inputs['bcin_drawings_amount'] ?? 0)), 2) : 0.0;

@@ -39,7 +39,24 @@
 
   function syncAmount(el, total) {
     if (!el) return;
+    el.removeAttribute('data-qh-footer-unavailable');
+    el.removeAttribute('data-qh-footer-pending');
+    el.removeAttribute('aria-busy');
     el.textContent = formatCad(total);
+  }
+
+  function markUnavailable(el, pending) {
+    if (!el) return;
+    el.setAttribute('data-qh-footer-unavailable', '1');
+    if (pending) {
+      el.setAttribute('data-qh-footer-pending', '1');
+      el.setAttribute('aria-busy', 'true');
+      el.textContent = '…';
+    } else {
+      el.removeAttribute('data-qh-footer-pending');
+      el.removeAttribute('aria-busy');
+      el.textContent = '—';
+    }
   }
 
   function measure(footer, doc) {
@@ -61,12 +78,19 @@
     if (!footer) return null;
 
     var amount = amountEl(footer);
-    if (typeof win.__quoteGrandTotal === 'number') {
+    if (win.__quoteGrandTotalUnavailable) {
+      markUnavailable(amount, !!win.__quoteGrandTotalPending);
+    } else if (typeof win.__quoteGrandTotal === 'number') {
       syncAmount(amount, win.__quoteGrandTotal);
     }
 
     function onTotal(e) {
-      var t = e && e.detail ? Number(e.detail.total) : NaN;
+      var d = e && e.detail ? e.detail : {};
+      if (d.unavailable === true) {
+        markUnavailable(amount, !!d.pending);
+        return;
+      }
+      var t = Number(d.total);
       if (!isFinite(t)) return;
       syncAmount(amount, t);
     }
@@ -103,6 +127,7 @@
     formatCad: formatCad,
     bind: bind,
     syncAmount: syncAmount,
+    markUnavailable: markUnavailable,
     measure: measure,
   };
 });

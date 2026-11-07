@@ -5,10 +5,12 @@ namespace Tests\Feature\Admin;
 use App\Models\BasementQuotation;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\ExtractsPdfText;
 
 class BasementClientScopePersistenceTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use ExtractsPdfText;
 
     public function test_second_editing_session_keeps_custom_scope_and_marks_fields_dirty(): void
     {
@@ -80,6 +82,37 @@ class BasementClientScopePersistenceTest extends IntegrationTestCase
             '/<textarea[^>]*name="client_scope_included"[^>]*data-br-scope-dirty="1"/s',
             $secondEdit
         );
+
+        $project = \App\Models\ClientProject::factory()->create([
+            'status' => \App\Models\ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => \App\Models\ClientProject::BILLING_FIXED,
+        ]);
+        $this->post(route('admin.quotations.basement.link', $quote), [
+            'client_project_id' => $project->id,
+        ])->assertSessionHasNoErrors();
+        $cpq = \App\Models\ClientProjectQuotation::query()
+            ->where('source_type', \App\Models\ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->first();
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.02);
+        $pdfResponse = $this->get(route('admin.client-projects.quotation.pdf', [$project, $cpq]));
+        $pdfResponse->assertOk();
+        $pdfBytes = $pdfResponse->getContent();
+        $this->assertStringStartsWith('%PDF', $pdfBytes);
+        $pdfPath = storage_path('app/basement-custom-scope.pdf');
+        file_put_contents($pdfPath, $pdfBytes);
+        $pdfText = $this->extractPdfText($pdfPath);
+        $this->assertStringContainsString('SESSION CUSTOM INCLUDED', $pdfText);
+        $this->assertStringContainsString('SESSION CUSTOM NOT INCLUDED', $pdfText);
+        $this->assertStringContainsString('SESSION CUSTOM ASSUMPTIONS', $pdfText);
+        $this->assertStringContainsString('SESSION CUSTOM ALLOWANCES', $pdfText);
+        $this->assertStringContainsString(\App\Models\ClientProject::formatMoney((float) $quote->final_quote_total), $pdfText);
+        $destDir = '/opt/cursor/artifacts';
+        if (is_dir($destDir) || @mkdir($destDir, 0777, true)) {
+            @copy($pdfPath, $destDir.'/basement-custom-scope.pdf');
+            @file_put_contents($destDir.'/basement-custom-scope.txt', $pdfText);
+        }
     }
 
     public function test_create_form_does_not_lock_empty_generated_scope(): void

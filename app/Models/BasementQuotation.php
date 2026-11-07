@@ -325,9 +325,18 @@ class BasementQuotation extends Model
         if ($rooms > 0) {
             $intro[] = 'Finished rooms / zones: '.$rooms;
         }
-        if (! empty($inputs['include_bathroom'])) {
+        if (! empty($inputs['include_bathroom']) && BasementQuotationCalculator::sectionEnabled($inputs, 'bathroom')) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bath' : 'Full bath';
             $intro[] = 'Bathroom: '.$type;
+        }
+        $notIncludedTrades = [];
+        foreach (BasementQuotationCalculator::tradeSections() as $section => $heading) {
+            if (! BasementQuotationCalculator::sectionEnabled($inputs, $section)) {
+                $notIncludedTrades[] = $heading;
+            }
+        }
+        if ($notIncludedTrades !== []) {
+            $intro[] = 'Not included: '.implode(', ', $notIncludedTrades);
         }
         $notes = trim((string) ($inputs['existing_notes'] ?? ''));
         if ($notes !== '') {
@@ -335,7 +344,10 @@ class BasementQuotation extends Model
         }
 
         $groups = [];
-        foreach (['electrical_lines' => 'Electrical', 'plumbing_lines' => 'Plumbing'] as $key => $heading) {
+        foreach (['electrical' => ['electrical_lines', 'Electrical'], 'plumbing' => ['plumbing_lines', 'Plumbing']] as $section => [$key, $heading]) {
+            if (! BasementQuotationCalculator::sectionEnabled($inputs, $section)) {
+                continue;
+            }
             $rows = AdditionalCostsService::normalizeRows($inputs[$key] ?? [], $heading.' work');
             foreach ($rows as $row) {
                 $label = trim((string) ($row['description'] ?? ''));
@@ -354,6 +366,9 @@ class BasementQuotation extends Model
                 continue;
             }
             $section = (string) ($row['section'] ?? 'finishing');
+            if (! $this->tradeSectionIsInGeneratedScope($inputs, $section)) {
+                continue;
+            }
             $heading = BasementQuotationCalculator::SECTIONS[$section] ?? ucfirst(str_replace('_', ' ', $section));
             $groups[$heading][] = $label;
         }
@@ -412,6 +427,46 @@ class BasementQuotation extends Model
         $html .= '</table>';
 
         return $html;
+    }
+
+    /**
+     * Electrical/plumbing project lines only when those trades are enabled.
+     * Disabled trades may keep stale inputs for re-enable; they must not bill.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function enabledTradeProjectLineItems(): array
+    {
+        $inputs = is_array($this->inputs) ? $this->inputs : [];
+        $items = [];
+        foreach ([
+            'electrical' => ['electrical_lines', 'Electrical work'],
+            'plumbing' => ['plumbing_lines', 'Plumbing work'],
+        ] as $section => [$key, $prefix]) {
+            if (! BasementQuotationCalculator::sectionEnabled($inputs, $section)) {
+                continue;
+            }
+            foreach (AdditionalCostsService::visibleProjectLineItems($inputs[$key] ?? [], $prefix) as $line) {
+                $items[] = $line;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    protected function tradeSectionIsInGeneratedScope(array $inputs, string $section): bool
+    {
+        if ($section === '' || $section === 'overview') {
+            return true;
+        }
+        if (! isset(BasementQuotationCalculator::SECTIONS[$section])) {
+            return true;
+        }
+
+        return BasementQuotationCalculator::sectionEnabled($inputs, $section);
     }
 
     /**

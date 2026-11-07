@@ -872,11 +872,7 @@ class BasementQuotationController extends Controller
             ];
         }
 
-        $inputs = is_array($quote->inputs) ? $quote->inputs : [];
-        foreach (AdditionalCostsService::visibleProjectLineItems($inputs['electrical_lines'] ?? [], 'Electrical work') as $line) {
-            $items[] = $line;
-        }
-        foreach (AdditionalCostsService::visibleProjectLineItems($inputs['plumbing_lines'] ?? [], 'Plumbing work') as $line) {
+        foreach ($quote->enabledTradeProjectLineItems() as $line) {
             $items[] = $line;
         }
 

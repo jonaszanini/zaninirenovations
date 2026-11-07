@@ -20,7 +20,7 @@
     <div class="admin-form-grid-2 pq-marble-type-row">
       <div class="admin-form-group">
         <label for="pq-marble-type">Marble type</label>
-        <select id="pq-marble-type" name="marble_type_id" class="admin-input pq-calc-in pq-marble-type-select" @if($marbleEnabled) required @endif>
+        <select id="pq-marble-type" name="marble_type_id" class="admin-input pq-calc-in pq-marble-type-select" @if($marbleEnabled) required @else disabled @endif>
           <option value="">— Select marble —</option>
           @foreach ($marbleTypes as $mt)
             <option value="{{ $mt->id }}"
@@ -44,16 +44,16 @@
       <div class="admin-form-group">
         <label for="pq-marble-area">Marble area (sq ft)</label>
         <input type="number" id="pq-marble-area" name="marble_area_sq_ft" class="admin-input pq-calc-in"
-               step="0.01" min="0.1" inputmode="decimal"
+               step="0.01" inputmode="decimal"
                value="{{ $marbleArea }}" placeholder="e.g. 50"
-               @if($marbleEnabled) required @endif>
+               @if($marbleEnabled) min="0.1" required @else disabled @endif>
       </div>
       <div class="admin-form-group">
         <label for="pq-marble-depth">Marble bed depth (in)</label>
         <input type="number" id="pq-marble-depth" name="marble_depth_in" class="admin-input pq-calc-in"
-               step="0.01" min="0.5" max="12" inputmode="decimal"
+               step="0.01" inputmode="decimal"
                value="{{ $marbleDepth }}" placeholder="2"
-               @if($marbleEnabled) required @endif>
+               @if($marbleEnabled) min="0.5" max="12" required @else disabled @endif>
       </div>
     </div>
 

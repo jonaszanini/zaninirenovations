@@ -218,6 +218,7 @@
     .pq-marble-section { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; }
     .pq-marble-section__head { margin-bottom: 12px; }
     .pq-marble-section__fields { display: flex; flex-direction: column; gap: 12px; }
+    .pq-marble-section__fields[hidden] { display: none; }
     .pq-marble-preview { margin: 0; font-size: 15px; font-weight: 600; color: #024768; padding-top: 6px; }
     .pq-marble-preview-wrap .admin-form-group-label { margin-bottom: 0; }
     .pq-area-block { grid-column: 1 / -1; }
@@ -296,6 +297,10 @@
     }
     .pq-total-area-line { margin: 0; font-weight: 600; }
     .pq-preview-status { margin: 0; }
+    .pq-preview-status--pending {
+      font-size: 13px;
+      color: #475569;
+    }
     .pq-preview-status__title {
       margin: 0 0 8px;
       font-size: 13px;
@@ -522,7 +527,7 @@
               'url' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
             ])
           </div>
-          <div id="pq-live-root">
+          <div id="pq-live-root" data-pq-preview-state="idle">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
         </div>
@@ -854,8 +859,26 @@
 
         function syncMarbleRequired(on) {
           [typeSel, areaIn, depthIn].forEach(function (el) {
-            if (el) el.required = !!on;
+            if (!el) return;
+            el.required = !!on;
+            el.disabled = !on;
           });
+          if (areaIn) {
+            if (on) {
+              areaIn.min = '0.1';
+            } else {
+              areaIn.removeAttribute('min');
+            }
+          }
+          if (depthIn) {
+            if (on) {
+              depthIn.min = '0.5';
+              depthIn.max = '12';
+            } else {
+              depthIn.removeAttribute('min');
+              depthIn.removeAttribute('max');
+            }
+          }
         }
 
         function updateMarbleBagPreview() {
@@ -933,6 +956,25 @@
       var lastAdditionalMaterialsTaxIn = 0;
       var lastAdditionalLaborPreTax = 0;
       var lastPreviewCalc = null;
+      var previewSeq = 0;
+      var previewAbort = null;
+      function setPreviewState(state) {
+        if (root && root.setAttribute) {
+          root.setAttribute('data-pq-preview-state', state);
+        }
+      }
+      function isAbortError(err) {
+        return !!(err && (err.name === 'AbortError' || (String(err.message || '').toLowerCase().indexOf('abort') !== -1)));
+      }
+      function markTotalUnavailable(pending) {
+        lastPreviewCalc = null;
+        try { delete window.__quoteGrandTotal; } catch (e) { window.__quoteGrandTotal = undefined; }
+        window.__quoteGrandTotalUnavailable = true;
+        window.__quoteGrandTotalPending = !!pending;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', {
+          detail: pending ? { unavailable: true, pending: true } : { unavailable: true },
+        }));
+      }
       function schedule() {
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
@@ -962,6 +1004,9 @@
       function render(c) {
         if (!c || !c.summary) return;
         lastPreviewCalc = c;
+        window.__quoteGrandTotalUnavailable = false;
+        window.__quoteGrandTotalPending = false;
+        setPreviewState('ready');
         var s = c.summary;
         var m = c.materials;
         var f = c.fixed_costs;
@@ -1112,41 +1157,62 @@
       }
 
       function runPreview() {
+        var seq = ++previewSeq;
+        if (previewAbort && typeof previewAbort.abort === 'function') {
+          try { previewAbort.abort(); } catch (e) {}
+        }
+        previewAbort = null;
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
+          markTotalUnavailable();
           renderMissingSummary(missing);
-          lastPreviewCalc = null;
+          setPreviewState('missing');
           return;
         }
+        markTotalUnavailable(true);
+        root.innerHTML = '<p class="pq-preview-status pq-preview-status--pending" data-pq-preview-pending>Updating totals…</p>';
+        setPreviewState('loading');
         var fd = new FormData(form);
         fd.delete('_method');
         appendPreviewFormData(fd);
-        fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        previewAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        fetch(previewUrl, {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          signal: previewAbort ? previewAbort.signal : undefined,
+        })
           .then(function (r) {
             return r.json().then(function (data) {
               return { ok: r.ok, data: data };
             });
           })
           .then(function (result) {
+            if (seq !== previewSeq) return;
             if (!result.ok) {
               var errItems = flattenValidationErrors(result.data);
               if (!errItems.length && result.data && result.data.message) {
                 errItems.push(result.data.message);
               }
+              markTotalUnavailable();
               renderMissingSummary(errItems.length ? errItems : ['Could not calculate — check your inputs.']);
-              lastPreviewCalc = null;
+              setPreviewState('missing');
               return;
             }
             if (!result.data || !result.data.summary) {
+              markTotalUnavailable();
               renderMissingSummary(['Calculator did not return a summary.']);
-              lastPreviewCalc = null;
+              setPreviewState('missing');
               return;
             }
             render(result.data);
           })
-          .catch(function () {
-            root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>';
-            lastPreviewCalc = null;
+          .catch(function (err) {
+            if (seq !== previewSeq) return;
+            if (isAbortError(err)) return;
+            markTotalUnavailable();
+            root.innerHTML = '<p class="pq-preview-status pq-preview-status--pending">Could not refresh preview.</p>';
+            setPreviewState('error');
           });
       }
       form.addEventListener('input', schedule);

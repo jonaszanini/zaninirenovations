@@ -41,6 +41,8 @@ class QuotationEditorFooterMarkupTest extends TestCase
         $this->assertStringContainsString("doc.querySelector('[data-qh-footer]')", $js);
         $this->assertStringContainsString("quote:grand-total", $js);
         $this->assertStringContainsString('__quoteGrandTotal', $js);
+        $this->assertStringContainsString('unavailable', $js);
+        $this->assertStringContainsString('data-qh-footer-unavailable', $js);
         $this->assertStringContainsString('[data-qh-header] .qh-actions__save', $js);
         $this->assertStringContainsString('preventDefault', $js);
         $this->assertStringNotContainsString('1.13', $js);
