@@ -71,6 +71,12 @@
       <span class="cp-vd-field__label">Materials (pre-HST)</span>
       <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($matPre) }}</span>
     </div>
+    @if ((float) ($summary['contractor_fee_pre_hst'] ?? 0) > 0)
+      <div class="cp-vd-field">
+        <span class="cp-vd-field__label">{{ $summary['contractor_fee_label'] ?? 'Contractor fee' }}</span>
+        <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($summary['contractor_fee_pre_hst'] ?? 0) }}</span>
+      </div>
+    @endif
     <div class="cp-vd-field">
       <span class="cp-vd-field__label">Materials + HST</span>
       <span class="cp-vd-field__value">{{ \App\Models\ClientProject::formatMoney($summary['materials_after_hst'] ?? 0) }}</span>

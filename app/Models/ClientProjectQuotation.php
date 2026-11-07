@@ -384,6 +384,36 @@ class ClientProjectQuotation extends Model
         return trim((string) $stripped);
     }
 
+    public function basementSource(): ?BasementQuotation
+    {
+        if ($this->source_type !== self::SOURCE_BASEMENT || ! $this->source_id) {
+            return null;
+        }
+
+        return BasementQuotation::query()->find($this->source_id);
+    }
+
+    /**
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string}|null
+     */
+    public function clientScopeForPdf(): ?array
+    {
+        $basement = $this->basementSource();
+        if ($basement === null) {
+            return null;
+        }
+        $copy = $basement->clientScopeCopy();
+        $has = false;
+        foreach ($copy as $text) {
+            if (trim((string) $text) !== '') {
+                $has = true;
+                break;
+            }
+        }
+
+        return $has ? $copy : null;
+    }
+
     /**
      * Free-form scope text for the quotation PDF "Description of the work" block.
      */

@@ -2815,6 +2815,16 @@ a:hover .cp-expense-receipt-pdf {
   color: #1f2937;
   line-height: 1.55;
 }
+.cp-contractor-fee-clause {
+  margin-top: 28px;
+  padding-top: 12px;
+  font-size: 13px;
+  color: #1f2937;
+  line-height: 1.55;
+}
+.cp-contractor-fee-clause + .cp-contract-entire {
+  margin-top: 14px;
+}
 
 /* Editor view (TinyMCE). */
 .cp-contract-editor-card {
@@ -8195,6 +8205,25 @@ body.cp-modal-open {
 html.admin-dark .br-layout-import__status.is-warning {
   color: #fbbf24;
 }
+.br-hardwood-caution {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #92400e;
+  font-weight: 600;
+}
+.br-hardwood-caution[hidden] {
+  display: none !important;
+}
+.br-hardwood-caution .admin-label-with-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+html.admin-dark .br-hardwood-caution {
+  color: #fbbf24;
+}
 .br-layout-import__open-label {
   margin-left: 6px;
 }
@@ -9151,6 +9180,43 @@ html.admin-dark .br-layout-import__status.is-warning {
 }
 .br-permit-amount[hidden] {
   display: none !important;
+}
+.br-client-scope {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.br-client-scope__fee {
+  max-width: 12rem;
+}
+.br-input--fee {
+  width: 7.5rem;
+  max-width: 100%;
+}
+.br-client-scope__grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  min-width: 0;
+}
+.br-client-scope__grid textarea {
+  min-height: 7.5rem;
+  font-size: 14px;
+  line-height: 1.4;
+}
+@media (min-width: 720px) {
+  .br-client-scope__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 390px) {
+  .br-client-scope__grid {
+    grid-template-columns: 1fr;
+  }
+  .br-client-scope__grid textarea {
+    min-height: 6.5rem;
+  }
 }
 .br-sheet-size {
   margin: 0 0 12px;

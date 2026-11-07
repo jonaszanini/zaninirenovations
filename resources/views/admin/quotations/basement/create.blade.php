@@ -21,6 +21,10 @@
   }
   if (! $isEdit) {
       $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+      $inputs['contractor_fee_percent'] = BasementQuotationCalculator::DEFAULT_CONTRACTOR_FEE_PERCENT;
+      $inputs['flooring_waste_percent'] = BasementQuotationCalculator::flooringWasteDefault(
+          (string) ($inputs['flooring_type'] ?? 'lvp')
+      );
   }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
   $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
@@ -46,7 +50,7 @@
       'scope_preset' => $scopePreset,
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
   ]);
-  $enabledCount = max(1, count($enabledNow));
+  $enabledCount = max(1, count($enabledNow)) + 1; // + client scope step before Review
   $presetSections = [
       'full' => BasementQuotationCalculator::presetEnabledSections('full'),
       'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
@@ -173,6 +177,10 @@
             <span class="br-progress__label">{{ $label }}</span>
           </button>
         @endforeach
+        <button type="button" class="br-progress__item" data-br-goto="client_scope">
+          <span class="br-progress__num"><i class="fa fa-list" aria-hidden="true"></i></span>
+          <span class="br-progress__label">Client scope</span>
+        </button>
         <button type="button" class="br-progress__item" data-br-goto="review">
           <span class="br-progress__num"><i class="fa fa-list-alt" aria-hidden="true"></i></span>
           <span class="br-progress__label">Review &amp; totals</span>

@@ -13,6 +13,7 @@ use App\Services\ClientProjectStatusService;
 use App\Services\ClientSmsService;
 use App\Services\GeminiService;
 use App\Services\MoceanSmsService;
+use App\Support\ContractContractorFeeClause;
 use App\Support\SignedPublicLink;
 use App\Support\SimpleMarkdownHtml;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -82,8 +83,10 @@ class ClientProjectContractController extends Controller
         }
 
         try {
-            $text = $gemini->generate($instruction->instruction, $data['context']);
-            $html = SimpleMarkdownHtml::convert($text);
+            $text = ContractContractorFeeClause::ensureInMarkdown(
+                $gemini->generate($instruction->instruction, $data['context'])
+            );
+            $html = ContractContractorFeeClause::ensureInHtml(SimpleMarkdownHtml::convert($text));
 
             return response()->json([
                 'text' => $text,

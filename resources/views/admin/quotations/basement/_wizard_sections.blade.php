@@ -166,9 +166,12 @@
       'hardware_sets' => 'Extra towel bars, paper holders, or similar, beyond what comes with the vanity.',
       'include_cleaning' => 'Final broom/vacuum, wipe, and dust so the space is handover-ready.',
       'include_touchups' => 'Small paint and caulk fixes on a punch list after the main work.',
-      'include_building_permit' => 'Optional extra-charge line for a municipal building permit. Leave off if the client handles the permit or none is needed.',
-      'building_permit_amount' => 'Permit allowance in CAD$. HST is added like other materials. Use 0 if you only want the reminder without a price.',
-      'material_waste_percent' => 'Ordering buffer on bulk materials (drywall, lumber, paint, insulation, flooring, trim). Doors and toilets stay exact. Default 10%.',
+      'include_building_permit' => 'Optional extra-charge municipal building-permit fee (city hall disbursement). Not included by default. Leave off unless you are pricing that city fee on this quotation. The contractor fee does not apply to this amount.',
+      'building_permit_amount' => 'Municipal / city-hall permit fee in CAD$ before HST (pass-through). Use 0 if you only want the reminder without a price. This city fee is not marked up with the contractor fee. Engineer signing is not this amount — that professional service belongs on BCIN drawings.',
+      'include_bcin_drawings' => 'Optional extra-charge service for BCIN drawings. A BCIN qualified designer is not the same credential as a professional engineer. When a professional engineer must sign or stamp, that signing service is part of this extra. Not included by default.',
+      'bcin_drawings_amount' => 'BCIN drawings extra-charge in CAD$ before HST. Treated as a subcontracted professional service for the contractor fee, including engineer signing when required. Not the municipal permit fee.',
+      'flooring_waste_percent' => 'Ordering buffer for finish flooring only. Defaults: vinyl (LVP) 7%, wood (hardwood / engineered / laminate) 8%, tile 10%. Drywall sheets, batt bags, and studs at 16 inch centres still use the global material waste below. No carpet.',
+      'material_waste_percent' => 'Ordering buffer on bulk materials other than finish flooring (drywall sheets, lumber, paint, insulation batts, trim). Doors and toilets stay exact. Default 10%. Finish flooring has its own waste on the Flooring step.',
       'client_provides_all' => 'Labour only — you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
   ];
 @endphp
@@ -771,17 +774,39 @@
   <label for="br-fl-type">@include('admin.quotations.basement._client_filled', ['key' => 'flooring_type', 'filledKeys' => $filledKeys]) Final flooring type</label>
   @include('admin.partials.info_tip', ['tipText' => $brInfo['flooring_type'], 'tipLabel' => 'Final flooring type'])
 </span>
-        <select class="admin-input br-preview" id="br-fl-type" name="flooring_type">
+        <select class="admin-input br-preview" id="br-fl-type" name="flooring_type" data-br-flooring-type>
           @php
             $flCurrent = (string) $brVal('flooring_type', 'lvp');
             if (! array_key_exists($flCurrent, \App\Services\BasementQuotationCalculator::FLOORING_TYPES)) {
               $flCurrent = 'lvp';
             }
+            $floorWasteDefault = \App\Services\BasementQuotationCalculator::flooringWasteDefault($flCurrent);
+            if (! empty($isEdit) && is_array($inputs) && ! array_key_exists('flooring_waste_percent', $inputs)) {
+                $floorWasteDefault = (float) ($inputs['material_waste_percent'] ?? 10);
+            }
           @endphp
           @foreach (\App\Services\BasementQuotationCalculator::FLOORING_TYPES as $flKey => $flLabel)
-            <option value="{{ $flKey }}" @selected($flCurrent === $flKey)>{{ $flLabel }}</option>
+            <option value="{{ $flKey }}" @selected($flCurrent === $flKey)
+                    data-br-floor-waste="{{ \App\Services\BasementQuotationCalculator::flooringWasteDefault($flKey) }}">{{ $flLabel }}</option>
           @endforeach
         </select>
+        <p class="br-hardwood-caution" id="br-hardwood-caution" @if($flCurrent !== 'hardwood') hidden @endif>
+          <span class="admin-label-with-tip">
+            <span>Basement humidity caution for solid hardwood</span>
+            @include('admin.partials.info_tip', [
+              'tipText' => 'Solid hardwood is more sensitive to slab moisture and seasonal humidity than vinyl plank, engineered wood, laminate, or tile. Choosing hardwood here does not change the quoted product specification; confirm moisture conditions before install.',
+              'tipLabel' => 'Basement humidity caution for solid hardwood',
+            ])
+          </span>
+        </p>
+      </div>
+      <div class="admin-form-group">
+        <span class="admin-label-with-tip">
+          <label for="br-fl-waste">Flooring waste (%)</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['flooring_waste_percent'], 'tipLabel' => 'Flooring waste (%)'])
+        </span>
+        <input type="number" min="0" max="100" step="0.1" class="admin-input br-preview" id="br-fl-waste"
+               name="flooring_waste_percent" value="{{ old('flooring_waste_percent', $inputs['flooring_waste_percent'] ?? $floorWasteDefault) }}">
       </div>
       @include('admin.quotations.basement._qty_lw', [
         'name' => 'flooring_sf',
@@ -1210,7 +1235,7 @@
           'name' => 'include_building_permit',
           'hiddenFallback' => true,
           'checked' => $brOn('include_building_permit'),
-          'label' => 'Building permit (extra charge)',
+          'label' => 'City building permit — optional extra-charge service',
           'info' => $brInfo['include_building_permit'],
           'inputClass' => 'admin-checkbox__input br-preview',
           'class' => 'br-finishing-check',
@@ -1218,14 +1243,37 @@
         ])
         <div id="br-permit-fields" class="admin-form-group br-permit-amount" @unless($brOn('include_building_permit')) hidden @endunless>
           <span class="admin-label-with-tip">
-  <label for="br-permit-amount">Permit amount (CAD$)</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['building_permit_amount'], 'tipLabel' => 'Permit amount (CAD$)'])
+  <label for="br-permit-amount">City permit amount (CAD$)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['building_permit_amount'], 'tipLabel' => 'City permit amount (CAD$)'])
 </span>
           <input type="text" inputmode="decimal" autocomplete="off"
                  class="admin-input cp-money-input br-preview br-input--permit" id="br-permit-amount" name="building_permit_amount"
                  value="{{ number_format((float) $brVal('building_permit_amount', 0), 2, '.', '') }}" data-cp-money-entry="direct">
         </div>
       </div>
+      <div class="br-finishing-row br-finishing-row--permit">
+        @include('admin.partials.checkbox', [
+          'name' => 'include_bcin_drawings',
+          'hiddenFallback' => true,
+          'checked' => $brOn('include_bcin_drawings'),
+          'label' => 'BCIN drawings — optional extra-charge service',
+          'info' => $brInfo['include_bcin_drawings'],
+          'inputClass' => 'admin-checkbox__input br-preview',
+          'class' => 'br-finishing-check',
+          'attrs' => ['data-br-reveal' => 'br-bcin-fields'],
+        ])
+        <div id="br-bcin-fields" class="admin-form-group br-permit-amount" @unless($brOn('include_bcin_drawings')) hidden @endunless>
+          <span class="admin-label-with-tip">
+  <label for="br-bcin-amount">BCIN drawings amount (CAD$)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['bcin_drawings_amount'], 'tipLabel' => 'BCIN drawings amount (CAD$)'])
+</span>
+          <input type="text" inputmode="decimal" autocomplete="off"
+                 class="admin-input cp-money-input br-preview br-input--permit" id="br-bcin-amount" name="bcin_drawings_amount"
+                 value="{{ number_format((float) $brVal('bcin_drawings_amount', 0), 2, '.', '') }}" data-cp-money-entry="direct">
+        </div>
+      </div>
     </div>
   </div>
 </details>
+
+@include('admin.quotations.basement._client_scope')

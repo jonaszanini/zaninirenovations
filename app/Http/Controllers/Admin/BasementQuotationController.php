@@ -319,6 +319,10 @@ class BasementQuotationController extends Controller
         $previewInputs = BasementQuotationCalculator::defaultInputs();
         if (! $quotation) {
             $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+            $previewInputs['contractor_fee_percent'] = BasementQuotationCalculator::DEFAULT_CONTRACTOR_FEE_PERCENT;
+            $previewInputs['flooring_waste_percent'] = BasementQuotationCalculator::flooringWasteDefault(
+                (string) ($previewInputs['flooring_type'] ?? 'lvp')
+            );
         }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
@@ -408,6 +412,7 @@ class BasementQuotationController extends Controller
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
             'building_permit_amount',
+            'bcin_drawings_amount',
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
@@ -438,9 +443,10 @@ class BasementQuotationController extends Controller
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups', 'include_shoe',
             'include_building_permit',
+            'include_bcin_drawings',
             'client_provides_all', 'include_helper',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -528,6 +534,9 @@ class BasementQuotationController extends Controller
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
         $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
         $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
+
+        $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
+        $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');
         unset($draft);
 
         return $out;
@@ -581,6 +590,31 @@ class BasementQuotationController extends Controller
             if ($mapped !== []) {
                 $out[(string) $key] = $mapped;
             }
+        }
+
+        return $out;
+    }
+
+    /**
+     * Persist an explicit percent when posted or already stored. Omitting the
+     * key keeps calculator legacy behaviour (fee 0, flooring uses global waste).
+     *
+     * @param  array<string, mixed>  $out
+     * @param  array<string, mixed>|null  $storedInputs
+     * @return array<string, mixed>
+     */
+    private function mergeExplicitPercent(array $out, Request $request, ?array $storedInputs, string $key): array
+    {
+        $raw = $request->input($key);
+        if ($raw !== null && $raw !== '' && is_numeric(str_replace([',', '$', ' '], '', (string) $raw))) {
+            $out[$key] = BasementQuotationCalculator::clampPercent((float) str_replace([',', '$', ' '], '', (string) $raw));
+
+            return $out;
+        }
+        if (is_array($storedInputs) && BasementQuotationCalculator::hasExplicitNumeric($storedInputs, $key)) {
+            $out[$key] = BasementQuotationCalculator::clampPercent((float) $storedInputs[$key]);
+        } else {
+            unset($out[$key]);
         }
 
         return $out;
@@ -775,8 +809,17 @@ class BasementQuotationController extends Controller
         $permitAmt = $quote->permitPreTaxAmountForProjectQuotation();
         if ($permitAmt > 0) {
             $items[] = [
-                'description' => 'Building permit (optional, extra charge)',
+                'description' => 'City building permit (optional extra-charge service)',
                 'amount' => $permitAmt,
+                'apply_hst' => true,
+            ];
+        }
+
+        $bcinAmt = $quote->bcinPreTaxAmountForProjectQuotation();
+        if ($bcinAmt > 0) {
+            $items[] = [
+                'description' => 'BCIN drawings (optional extra-charge service)',
+                'amount' => $bcinAmt,
                 'apply_hst' => true,
             ];
         }
@@ -787,6 +830,17 @@ class BasementQuotationController extends Controller
         }
         foreach (AdditionalCostsService::visibleProjectLineItems($inputs['plumbing_lines'] ?? [], 'Plumbing work') as $line) {
             $items[] = $line;
+        }
+
+        $feeAmt = $quote->contractorFeePreTaxAmountForProjectQuotation();
+        if ($feeAmt > 0) {
+            $items[] = [
+                'description' => \App\Services\BasementClientScope::contractorFeeLabel(
+                    $quote->contractorFeePercentForProjectQuotation()
+                ),
+                'amount' => $feeAmt,
+                'apply_hst' => true,
+            ];
         }
 
         $this->appendCommuteProjectLine($items, $quote);
