@@ -367,6 +367,9 @@ class BasementQuotationController extends Controller
         ], QuotationPaymentSchedule::validationMessages(), CommuteExpenseService::commuteValidationMessages(), DebrisRemovalExpenseService::validationMessages(), AdditionalCostsService::validationMessages(), AdditionalCostsService::validationMessagesFor('electrical_lines', 'electrical line'), AdditionalCostsService::validationMessagesFor('plumbing_lines', 'plumbing line')));
 
         $rawInputs = $this->gatherInputsFromRequest($request, $draft, $existing);
+        if ($existing === null) {
+            $rawInputs['ceiling_hang_unified'] = true;
+        }
         if (! $draft) {
             $hints = (new BasementQuotationCalculator)->validationHints($rawInputs, false);
             if ($hints !== []) {
@@ -539,7 +542,46 @@ class BasementQuotationController extends Controller
 
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');
+        $out = $this->applyCeilingHangUnifiedFlag($out, $request, $storedInputs, $existing);
         unset($draft);
+
+        return $out;
+    }
+
+    /**
+     * New quotes stamp ceiling_hang_unified on save. Preexisting quotes keep a
+     * missing key until the user confirms; do not backfill false.
+     *
+     * @param  array<string, mixed>  $out
+     * @param  array<string, mixed>|null  $storedInputs
+     * @return array<string, mixed>
+     */
+    private function applyCeilingHangUnifiedFlag(
+        array $out,
+        Request $request,
+        ?array $storedInputs,
+        ?BasementQuotation $existing
+    ): array {
+        $requested = $request->boolean('ceiling_hang_unified');
+        $already = \App\Services\BasementCeilingQuantities::hasAdoptedUnifiedHang($storedInputs ?? []);
+
+        if ($existing === null) {
+            if ($request->exists('ceiling_hang_unified')) {
+                $out['ceiling_hang_unified'] = $requested;
+            } else {
+                unset($out['ceiling_hang_unified']);
+            }
+
+            return $out;
+        }
+
+        if ($requested || $already) {
+            $out['ceiling_hang_unified'] = true;
+
+            return $out;
+        }
+
+        unset($out['ceiling_hang_unified']);
 
         return $out;
     }

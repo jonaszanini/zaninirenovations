@@ -664,7 +664,6 @@ class BasementQuotationCalculator
             'drywall_sheet_size' => '4x8',
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
-            'ceiling_hang_unified' => false,
             'ceiling_sf' => null,
             'subfloor_prep' => false,
             'underlayment' => true,
@@ -1133,9 +1132,15 @@ class BasementQuotationCalculator
         if ($on('painting')) {
             $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
             $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $dwWallFallback);
-            $pCeil = $skipCeilingFinish ? 0.0 : $this->qtyOr(
-                $inputs['paint_ceiling_sf'],
-                (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0.0 : $dwCeil
+            $pCeil = $this->resolvedPaintCeilingSf(
+                $inputs,
+                $originalInputs,
+                $area,
+                $dwCeil,
+                $ceilingType,
+                $on('ceiling'),
+                $on('drywall'),
+                $skipCeilingFinish
             );
             $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
             $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
@@ -1745,8 +1750,9 @@ class BasementQuotationCalculator
     /**
      * Hang/mud ceiling area. New and adopted quotes follow Ceiling Options
      * (ceiling_sf) and never hang leftover ceiling drywall on drop, skip, or
-     * ceiling-off. Saved quotes that stored an explicit drywall_ceiling_sf
-     * keep that hang — including matching numbers — until ceiling_hang_unified.
+     * ceiling-off. Preexisting quotes without ceiling_hang_unified keep the
+     * original hang fallback (blank/missing → work area when the type is
+     * drywall) until the user confirms.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $originalInputs
@@ -1774,6 +1780,44 @@ class BasementQuotationCalculator
         }
 
         return $this->qtyOr($inputs['ceiling_sf'] ?? null, $area);
+    }
+
+    /**
+     * Blank paint on adopted quotes follows resolved hang (including explicit
+     * hang 0). Preexisting quotes without ceiling_hang_unified keep the
+     * original hang-or-work-area fallback: computed hang 0, drywall off, and
+     * blank hang still paint the work area when the ceiling type is drywall.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, mixed>  $originalInputs
+     */
+    private function resolvedPaintCeilingSf(
+        array $inputs,
+        array $originalInputs,
+        float $area,
+        float $dwCeil,
+        string $ceilingType,
+        bool $ceilingOn,
+        bool $drywallOn,
+        bool $skipCeilingFinish,
+    ): float {
+        if ($skipCeilingFinish) {
+            return 0.0;
+        }
+        $typeBlocksPaint = ! $ceilingOn || in_array($ceilingType, ['drop', 'none'], true);
+        if (BasementCeilingQuantities::usesSplit($originalInputs)) {
+            $hangForPaint = $drywallOn ? $dwCeil : 0.0;
+
+            return $this->qtyOr(
+                $inputs['paint_ceiling_sf'] ?? null,
+                $typeBlocksPaint ? 0.0 : ($hangForPaint ?: $area)
+            );
+        }
+
+        return $this->qtyOr(
+            $inputs['paint_ceiling_sf'] ?? null,
+            $typeBlocksPaint ? 0.0 : $dwCeil
+        );
     }
 
     /**

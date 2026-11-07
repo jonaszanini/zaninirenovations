@@ -5,11 +5,12 @@ namespace App\Services;
 /**
  * Ceiling Options area vs a saved Drywall ceiling hang figure.
  *
- * New quotes use ceiling_sf only. Hang, tape, mud, sheets, drop tiles, and
- * blank paint follow that one area (and the ceiling type). Saved quotes that
- * stored an explicit drywall_ceiling_sf keep that hang — including drop,
- * skip, ceiling-off, and matching numbers — until the user confirms adopting
- * the single Ceiling area source.
+ * New quotes stamp ceiling_hang_unified and use ceiling_sf only. Hang, tape,
+ * mud, sheets, drop tiles, and blank paint follow that one area (and the
+ * ceiling type). Every preexisting quote that does not carry that flag keeps
+ * the original hang/paint fallbacks — blank, missing, zero, or numeric hang —
+ * until the user confirms adopting the single Ceiling area source. Missing
+ * the key is not an implicit migration.
  */
 class BasementCeilingQuantities
 {
@@ -18,11 +19,7 @@ class BasementCeilingQuantities
      */
     public static function usesSplit(array $originalInputs): bool
     {
-        if (self::hasAdoptedUnifiedHang($originalInputs)) {
-            return false;
-        }
-
-        return self::hasExplicitNumeric($originalInputs, 'drywall_ceiling_sf');
+        return ! self::hasAdoptedUnifiedHang($originalInputs);
     }
 
     /**

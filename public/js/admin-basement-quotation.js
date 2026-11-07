@@ -403,7 +403,7 @@
   function adoptUnifiedCeilingHang() {
     var btn = form.querySelector('[data-br-adopt-ceiling-hang]');
     var message = (btn && btn.getAttribute('data-br-adopt-message'))
-      || 'Use Ceiling area for hang, tape, and mud from now on? Totals will change.';
+      || 'Use Ceiling area for hang, tape, mud, and blank paint from now on? Totals will change.';
     if (!window.confirm(message)) return;
     form.setAttribute('data-br-split-ceiling', '0');
     var flag = document.getElementById('br-ceiling-hang-unified');

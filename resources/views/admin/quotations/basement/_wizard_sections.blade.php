@@ -134,7 +134,7 @@
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
       'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
-      'ceiling_sf_legacy' => 'This saved quote still hangs a stored ceiling drywall figure. Preview and resave keep that hang (and the total) until you confirm using this Ceiling area.',
+      'ceiling_sf_legacy' => 'This saved quote has not switched to Ceiling area. Preview and resave keep the original hang (blank or missing follows work area; an explicit 0 stays 0) and the original blank-paint fallback until you confirm.',
       'flooring_type' => 'Finish floor product. Skip if the client is keeping existing floor or hiring flooring out.',
       'flooring_sf' => 'Floor area to install. Blank uses the work area.',
       'transition_qty' => 'Reducer or T-mould strips where the new floor meets another floor or a different height.',
@@ -644,13 +644,19 @@
         'placeholder' => 'Auto',
         'info' => $splitCeiling ? $brInfo['ceiling_sf_legacy'] : $brInfo['ceiling_sf'],
       ])
-      <input type="hidden" name="ceiling_hang_unified" id="br-ceiling-hang-unified" value="{{ ! empty($isEdit) && \App\Services\BasementCeilingQuantities::hasAdoptedUnifiedHang(is_array($inputs ?? null) ? $inputs : []) ? '1' : '0' }}">
+      <input type="hidden" name="ceiling_hang_unified" id="br-ceiling-hang-unified" value="{{ ! empty($isEdit) ? (\App\Services\BasementCeilingQuantities::hasAdoptedUnifiedHang(is_array($inputs ?? null) ? $inputs : []) ? '1' : '0') : '1' }}">
       @if($splitCeiling)
         <input type="hidden" name="drywall_ceiling_sf" id="br-dw-ceil" value="{{ $brQty('drywall_ceiling_sf') }}">
         <div class="admin-form-help" data-br-legacy-ceiling-notice>
-          Saved hang {{ $brQty('drywall_ceiling_sf') !== '' ? $brQty('drywall_ceiling_sf').' sq ft' : 'on Drywall' }} stays on preview and resave.
+          @php
+            $savedHangQty = $brQty('drywall_ceiling_sf');
+            $savedHangLabel = $savedHangQty === '' || $savedHangQty === null
+              ? 'follows work area'
+              : ((string) $savedHangQty).' sq ft';
+          @endphp
+          Saved hang ({{ $savedHangLabel }}) stays on preview and resave. Blank paint keeps the original hang-or-work-area fallback.
           <button type="button" class="admin-btn admin-btn--small" data-br-adopt-ceiling-hang
-                  data-br-adopt-message="Use Ceiling area for hang, tape, and mud from now on? Drop, skip, and ceiling-off will stop charging the saved hang. Totals will change.">
+                  data-br-adopt-message="Use Ceiling area for hang, tape, mud, and blank paint from now on? Drop, skip, and ceiling-off will stop charging the saved hang. Totals will change.">
             Use Ceiling area
           </button>
         </div>

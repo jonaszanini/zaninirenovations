@@ -12,18 +12,22 @@ class BasementCeilingQuantitiesTest extends TestCase
     public function test_unified_ceiling_sf_drives_drywall_hang_when_type_is_drywall(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate($this->quote([
+            'area_sqft' => 1200,
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
 
         $this->assertFalse(BasementCeilingQuantities::usesSplit([
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
         ]));
         $this->assertEqualsWithDelta(1500.0, $calc['scope']['drywall_ceiling_sf'], 0.01);
         $hang = collect($calc['labor'])->firstWhere('key', 'dw_hang');
         $this->assertNotNull($hang);
         $this->assertStringContainsString('1,600', $hang['detail']);
+        $this->assertStringNotContainsString('1,300', $hang['detail']);
         $this->assertNull(collect($calc['labor'])->firstWhere('key', 'ceil_drop'));
         $this->assertNull(collect($calc['materials'])->firstWhere('key', 'drop_ceiling'));
     }
@@ -52,6 +56,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $calc = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drop',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
 
@@ -71,12 +76,14 @@ class BasementCeilingQuantitiesTest extends TestCase
         $calc = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drop',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 3767.65,
         ]), $this->settings());
 
         $this->assertFalse(BasementCeilingQuantities::usesSplit([
             'ceiling_type' => 'drop',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
         ]));
         $this->assertEqualsWithDelta(0.0, $calc['scope']['drywall_ceiling_sf'], 0.01);
         $hang = collect($calc['labor'])->firstWhere('key', 'dw_hang');
@@ -144,20 +151,18 @@ class BasementCeilingQuantitiesTest extends TestCase
         );
     }
 
-    public function test_clearing_legacy_hang_adopts_unified_drop_gating(): void
+    public function test_clearing_legacy_hang_without_adoption_flag_stays_legacy(): void
     {
-        $adopted = (new BasementQuotationCalculator)->calculate($this->quote([
+        $inputs = $this->quote([
             'ceiling_type' => 'drop',
             'ceiling_sf' => 1500,
             'drywall_ceiling_sf' => '',
             'drywall_wall_sf' => 100,
-        ]), $this->settings());
-        $this->assertFalse(BasementCeilingQuantities::usesSplit([
-            'ceiling_sf' => 1500,
-            'drywall_ceiling_sf' => '',
-        ]));
-        $this->assertEqualsWithDelta(0.0, $adopted['scope']['drywall_ceiling_sf'], 0.01);
-        $this->assertStringContainsString('100', collect($adopted['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        ]);
+        $this->assertTrue(BasementCeilingQuantities::usesSplit($inputs));
+        $cleared = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertEqualsWithDelta(0.0, $cleared['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('100', collect($cleared['labor'])->firstWhere('key', 'dw_hang')['detail']);
     }
 
     public function test_matching_hang_and_ceiling_area_on_drop_stays_legacy_until_confirm(): void
@@ -199,6 +204,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $skip = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'none',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
         $this->assertEqualsWithDelta(0.0, $skip['scope']['drywall_ceiling_sf'], 0.01);
@@ -210,6 +216,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $off = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
             'enabled_sections' => $enabled,
         ]), $this->settings());
@@ -223,6 +230,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $calc = (new BasementQuotationCalculator)->calculate($this->quote([
             'area_sqft' => 1500,
             'ceiling_type' => 'drywall',
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
         $this->assertEqualsWithDelta(1500.0, $calc['scope']['drywall_ceiling_sf'], 0.01);
@@ -235,6 +243,7 @@ class BasementCeilingQuantitiesTest extends TestCase
             'area_sqft' => 1500,
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 0,
+            'ceiling_hang_unified' => true,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
         $this->assertEqualsWithDelta(0.0, $calc['scope']['drywall_ceiling_sf'], 0.01);
@@ -264,6 +273,7 @@ class BasementCeilingQuantitiesTest extends TestCase
             'area_sqft' => 1500,
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'paint_ceiling_sf' => 0,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
@@ -276,6 +286,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $off = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'insulate_ceiling' => false,
             'drywall_wall_sf' => 100,
         ]), $this->settings());
@@ -284,6 +295,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $on = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drywall',
             'ceiling_sf' => 400,
+            'ceiling_hang_unified' => true,
             'insulate_ceiling' => true,
             'insulation_ceiling_sf' => 400,
             'drywall_wall_sf' => 100,
@@ -295,6 +307,7 @@ class BasementCeilingQuantitiesTest extends TestCase
         $drop = (new BasementQuotationCalculator)->calculate($this->quote([
             'ceiling_type' => 'drop',
             'ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
             'insulate_ceiling' => true,
             'insulation_ceiling_sf' => 400,
             'drywall_wall_sf' => 100,
@@ -304,6 +317,212 @@ class BasementCeilingQuantitiesTest extends TestCase
         $this->assertStringContainsString('400', $dropIns['detail']);
         $this->assertNotNull(collect($drop['labor'])->firstWhere('key', 'ceil_drop'));
         $this->assertEqualsWithDelta(0.0, $drop['scope']['drywall_ceiling_sf'], 0.01);
+    }
+
+    public function test_legacy_blank_hang_keeps_work_area_not_ceiling_sf(): void
+    {
+        $inputs = $this->quote([
+            'area_sqft' => 1200,
+            'ceiling_type' => 'drywall',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => '',
+            'drywall_wall_sf' => 100,
+        ]);
+        $this->assertTrue(BasementCeilingQuantities::usesSplit($inputs));
+        $legacy = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertEqualsWithDelta(1200.0, $legacy['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('1,300', collect($legacy['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        $this->assertStringContainsString('1,200', collect($legacy['labor'])->firstWhere('key', 'paint_ceiling')['detail']);
+        $this->assertStringNotContainsString('1,500', collect($legacy['labor'])->firstWhere('key', 'dw_hang')['detail']);
+
+        $unified = (new BasementQuotationCalculator)->calculate(
+            array_merge($inputs, ['ceiling_hang_unified' => true]),
+            $this->settings()
+        );
+        $this->assertEqualsWithDelta(1500.0, $unified['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertNotEquals(
+            $legacy['summary']['grand_total'],
+            $unified['summary']['grand_total']
+        );
+    }
+
+    public function test_legacy_hang_zero_and_blank_paint_still_paints_work_area(): void
+    {
+        $inputs = $this->quote([
+            'area_sqft' => 1200,
+            'ceiling_type' => 'drywall',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => 0,
+            'drywall_wall_sf' => 100,
+        ]);
+        $legacy = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertEqualsWithDelta(0.0, $legacy['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('100', collect($legacy['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        $paint = collect($legacy['labor'])->firstWhere('key', 'paint_ceiling');
+        $this->assertNotNull($paint);
+        $this->assertStringContainsString('1,200', $paint['detail']);
+
+        $unified = (new BasementQuotationCalculator)->calculate(
+            array_merge($inputs, ['ceiling_hang_unified' => true]),
+            $this->settings()
+        );
+        $this->assertEqualsWithDelta(1500.0, $unified['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('1,500', collect($unified['labor'])->firstWhere('key', 'paint_ceiling')['detail']);
+        $this->assertNotEquals(
+            $legacy['summary']['grand_total'],
+            $unified['summary']['grand_total']
+        );
+    }
+
+    public function test_legacy_drywall_off_numeric_hang_paints_work_area(): void
+    {
+        $enabled = array_values(array_filter(
+            BasementQuotationCalculator::presetEnabledSections('full'),
+            fn ($key) => $key !== 'drywall'
+        ));
+        $inputs = $this->quote([
+            'area_sqft' => 1200,
+            'ceiling_type' => 'drywall',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => 118,
+            'drywall_wall_sf' => 100,
+            'enabled_sections' => $enabled,
+        ]);
+        $legacy = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertNull(collect($legacy['labor'])->firstWhere('key', 'dw_hang'));
+        $paint = collect($legacy['labor'])->firstWhere('key', 'paint_ceiling');
+        $this->assertNotNull($paint);
+        $this->assertStringContainsString('1,200', $paint['detail']);
+        $this->assertStringNotContainsString('118', $paint['detail']);
+    }
+
+    /**
+     * @dataProvider legacyHangPaintMatrix
+     * @param  array<string, mixed>  $hang
+     * @param  array<string, mixed>  $mode
+     */
+    public function test_legacy_hang_paint_matrix_matches_original_calculator(
+        string $label,
+        array $hang,
+        $paint,
+        array $mode
+    ): void {
+        $inputs = $this->quote(array_merge([
+            'area_sqft' => 1200,
+            'ceiling_sf' => 1500,
+            'drywall_wall_sf' => 100,
+            'ceiling_type' => $mode['ceiling_type'],
+            'enabled_sections' => $mode['enabled_sections'],
+        ], $hang));
+        if ($paint === 'blank') {
+            unset($inputs['paint_ceiling_sf']);
+        } else {
+            $inputs['paint_ceiling_sf'] = $paint;
+        }
+
+        $this->assertTrue(BasementCeilingQuantities::usesSplit($inputs), $label);
+        $this->assertArrayNotHasKey('ceiling_hang_unified', $inputs, $label);
+
+        [$expectedHang, $expectedPaint] = $this->legacyHangPaintSf($inputs);
+        $calc = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $drywallOn = BasementQuotationCalculator::sectionEnabled($inputs, 'drywall');
+        if ($drywallOn) {
+            $this->assertEqualsWithDelta($expectedHang, (float) $calc['scope']['drywall_ceiling_sf'], 0.01, $label.' hang');
+        }
+        $paintLine = collect($calc['labor'])->firstWhere('key', 'paint_ceiling');
+        if ($expectedPaint > 0 && BasementQuotationCalculator::sectionEnabled($inputs, 'painting')) {
+            $this->assertNotNull($paintLine, $label.' paint line');
+            $this->assertStringContainsString(number_format($expectedPaint, 0), $paintLine['detail'], $label);
+        } else {
+            $this->assertNull($paintLine, $label.' no paint');
+        }
+
+        $again = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertEqualsWithDelta(
+            $calc['summary']['grand_total'],
+            $again['summary']['grand_total'],
+            0.01,
+            $label.' total stable'
+        );
+    }
+
+    /**
+     * @return list<array{0: string, 1: array<string, mixed>, 2: mixed, 3: array<string, mixed>}>
+     */
+    public function legacyHangPaintMatrix(): array
+    {
+        $full = BasementQuotationCalculator::presetEnabledSections('full');
+        $ceilingOff = array_values(array_filter($full, fn ($key) => $key !== 'ceiling'));
+        $drywallOff = array_values(array_filter($full, fn ($key) => $key !== 'drywall'));
+        $modes = [
+            'drywall' => ['ceiling_type' => 'drywall', 'enabled_sections' => $full],
+            'drop' => ['ceiling_type' => 'drop', 'enabled_sections' => $full],
+            'skip' => ['ceiling_type' => 'none', 'enabled_sections' => $full],
+            'ceiling-off' => ['ceiling_type' => 'drywall', 'enabled_sections' => $ceilingOff],
+            'drywall-off' => ['ceiling_type' => 'drywall', 'enabled_sections' => $drywallOff],
+        ];
+        $hangs = [
+            'missing' => [],
+            'null' => ['drywall_ceiling_sf' => null],
+            'blank' => ['drywall_ceiling_sf' => ''],
+            'zero' => ['drywall_ceiling_sf' => 0],
+            'numeric' => ['drywall_ceiling_sf' => 118],
+        ];
+        $paints = ['blank', 0];
+        $rows = [];
+        foreach ($modes as $modeName => $mode) {
+            foreach ($hangs as $hangName => $hang) {
+                foreach ($paints as $paint) {
+                    $paintName = $paint === 'blank' ? 'blank-paint' : 'paint-0';
+                    $rows[] = [$modeName.' '.$hangName.' '.$paintName, $hang, $paint, $mode];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Original hang/paint fallbacks from main before unified ceiling_sf.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return array{0: float, 1: float}
+     */
+    private function legacyHangPaintSf(array $inputs): array
+    {
+        $area = round(max(0, (float) ($inputs['area_sqft'] ?? 0)), 2);
+        $ceilingType = (string) ($inputs['ceiling_type'] ?? 'drywall');
+        $on = function (string $section) use ($inputs): bool {
+            return BasementQuotationCalculator::sectionEnabled($inputs, $section);
+        };
+        $skip = (($inputs['scope_preset'] ?? 'full') === 'wall') && ! $on('ceiling');
+        $dwCeil = 0.0;
+        if ($on('drywall')) {
+            $hangRaw = array_key_exists('drywall_ceiling_sf', $inputs) ? $inputs['drywall_ceiling_sf'] : null;
+            $dwCeil = $skip ? 0.0 : $this->qtyOrLegacy(
+                $hangRaw,
+                $on('ceiling') && in_array($ceilingType, ['drywall', 'paint'], true) ? $area : 0.0
+            );
+        }
+        $pCeil = 0.0;
+        if ($on('painting')) {
+            $paintRaw = array_key_exists('paint_ceiling_sf', $inputs) ? $inputs['paint_ceiling_sf'] : null;
+            $pCeil = $skip ? 0.0 : $this->qtyOrLegacy(
+                $paintRaw,
+                (! $on('ceiling') || in_array($ceilingType, ['drop', 'none'], true)) ? 0.0 : ($dwCeil ?: $area)
+            );
+        }
+
+        return [$dwCeil, $pCeil];
+    }
+
+    private function qtyOrLegacy(mixed $value, float $fallback): float
+    {
+        if ($value === null || $value === '') {
+            return round(max(0, $fallback), 2);
+        }
+
+        return round(max(0, (float) $value), 2);
     }
 
     /**
