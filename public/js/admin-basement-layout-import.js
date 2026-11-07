@@ -48,6 +48,10 @@
     paint_ceiling_sf: true
   };
 
+  var SKIP_FORM_KEYS = {
+    drywall_ceiling_sf: true
+  };
+
   var NEVER_OVERWRITE = [
     'owner_hourly_rate',
     'helper_hourly_rate',
@@ -91,6 +95,33 @@
     return v !== null && v !== undefined && v !== '';
   }
 
+  function ceilingTakeoffAvailable(opt) {
+    opt = opt || {};
+    if (opt.geometry_unmeasurable) return false;
+    if (Object.prototype.hasOwnProperty.call(opt, 'ceiling_area_available')
+      && opt.ceiling_area_available !== null
+      && opt.ceiling_area_available !== undefined
+      && opt.ceiling_area_available !== '') {
+      return !!opt.ceiling_area_available;
+    }
+    if (!present(opt, 'ceiling_area_sqft')) return false;
+    var ceiling = num(opt.ceiling_area_sqft);
+    var area = present(opt, 'area_sqft') ? num(opt.area_sqft) : null;
+    var excluded = present(opt, 'excluded_area_sqft') ? num(opt.excluded_area_sqft) : 0;
+    var polygons = parseInt(opt.polygon_count, 10) || 0;
+    if (ceiling <= 0 && (area === null || area <= 0) && excluded <= 0 && polygons <= 0) return false;
+    if (ceiling <= 0 && area !== null && area > 0 && excluded <= 0) return false;
+    return true;
+  }
+
+  function resolveImportedCeilingArea(opt, area) {
+    if (ceilingTakeoffAvailable(opt) && present(opt, 'ceiling_area_sqft')) {
+      return num(opt.ceiling_area_sqft);
+    }
+    if (area !== null && area > 0) return area;
+    return null;
+  }
+
   function readFieldNumber(el) {
     if (!el) return 0;
     var n = parseFloat(el.value);
@@ -108,7 +139,7 @@
 
     var peri = present(opt, 'perimeter_lf') ? num(opt.perimeter_lf) : null;
     var area = present(opt, 'area_sqft') ? num(opt.area_sqft) : null;
-    var ceilingArea = present(opt, 'ceiling_area_sqft') ? num(opt.ceiling_area_sqft) : area;
+    var ceilingArea = resolveImportedCeilingArea(opt, area);
 
     var netWall = null;
     if (present(opt, 'finish_drywall_sqft')) netWall = num(opt.finish_drywall_sqft);
@@ -234,22 +265,49 @@
     var keys = Object.keys(proposed);
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
+      if (SKIP_FORM_KEYS[k]) continue;
       if (proposed[k] == null) continue;
       if (valuesDiverge(current[k], proposed[k])) return true;
     }
     return false;
   }
 
+  function importStatusText(proposed, opt, extras) {
+    proposed = proposed || {};
+    extras = extras || {};
+    var name = (opt && (opt.short_name || opt.name)) || 'layout';
+    var floor = formatQty(proposed.area_sqft != null ? proposed.area_sqft : 0);
+    var parts = ['Imported ' + name + ': ' + floor + ' sq ft floor'];
+    if (proposed.ceiling_sf != null) {
+      parts.push(formatQty(proposed.ceiling_sf) + ' sq ft ceiling');
+    }
+    var periLabel = formatQty(proposed.perimeter_lf != null ? proposed.perimeter_lf : 0);
+    var height = formatQty(extras.heightFt != null ? extras.heightFt : 8);
+    var walls = formatQty(proposed.drywall_wall_sf != null ? proposed.drywall_wall_sf : 0);
+    var openingTotal = (proposed.drywall_door_openings || 0)
+      + (proposed.drywall_window_openings || 0)
+      + (proposed.drywall_openings || 0);
+    var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
+    parts.push(periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
+      + (extras.measuredNet ? ' (openings already deducted)' : ''));
+    parts.push(openLabel + '.');
+    return parts.join(', ');
+  }
+
   var api = {
     formatQty: formatQty,
     present: present,
+    ceilingTakeoffAvailable: ceilingTakeoffAvailable,
+    resolveImportedCeilingArea: resolveImportedCeilingArea,
     proposedQuantities: proposedQuantities,
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,
     wouldOverwrite: wouldOverwrite,
+    importStatusText: importStatusText,
     FIELD_IDS: FIELD_IDS,
     LW_KEYS: LW_KEYS,
     NEVER_OVERWRITE: NEVER_OVERWRITE,
+    SKIP_FORM_KEYS: SKIP_FORM_KEYS,
     CONFIRM_MESSAGE: 'This layout’s quantities differ from the values currently in the form. Replace the form values with the imported layout?'
   };
 

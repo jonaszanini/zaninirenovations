@@ -126,7 +126,7 @@ class BasementQuotationWizardViewTest extends TestCase
 
         foreach ([
             'br-area', 'br-height', 'br-rooms', 'br-partition', 'br-bulkhead', 'br-frame-doors',
-            'br-ins-wall-sf', 'br-ins-ceil-sf', 'br-ceil-sf', 'br-dw-wall', 'br-dw-ceil',
+            'br-ins-wall-sf', 'br-ins-ceil-sf', 'br-ceil-sf', 'br-dw-wall',
             'br-dw-door-open', 'br-dw-window-open', 'br-dw-open', 'br-fl-sf', 'br-doors',
             'br-base', 'br-casing', 'br-windows', 'br-p-wall', 'br-p-ceil', 'br-p-trim',
         ] as $id) {
@@ -403,6 +403,69 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertGreaterThan($clean, $touch);
         $this->assertGreaterThan($touch, $permit);
         $this->assertGreaterThan($permit, $amount);
+    }
+
+    public function test_new_quote_hides_duplicate_drywall_ceiling_field(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('id="br-ceil-sf"', $html);
+        $this->assertStringContainsString('name="ceiling_sf"', $html);
+        $this->assertStringContainsString('One ceiling area for this quote', $html);
+        $this->assertStringNotContainsString('data-br-legacy-ceiling-notice', $html);
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $html);
+        $this->assertStringNotContainsString('id="br-dw-ceil"', $html);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<input(?=[^>]*\bid="br-ceil-sf")(?=[^>]*\bdisabled\b)/',
+            $html
+        );
+    }
+
+    public function test_legacy_split_ceiling_quote_shows_saved_hang_notice_not_a_second_input(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['ceiling_sf'] = 1500;
+        $inputs['drywall_ceiling_sf'] = 118;
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($inputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $html);
+        $this->assertStringContainsString('original hang-or-work-area fallback', $html);
+        $this->assertStringContainsString('data-br-legacy-ceiling-notice', $html);
+        $this->assertStringContainsString('Saved hang (118 sq ft) stays on preview and resave', $html);
+        $this->assertStringContainsString('Use Ceiling area', $html);
+        $this->assertStringContainsString('data-br-adopt-ceiling-hang', $html);
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\btype="hidden")(?=[^>]*\bvalue="118")/',
+            $html
+        );
+    }
+
+    public function test_legacy_blank_hang_quote_shows_adoption_notice(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        unset($inputs['ceiling_hang_unified']);
+        $inputs['ceiling_sf'] = 1500;
+        $inputs['area_sqft'] = 1200;
+        $inputs['drywall_ceiling_sf'] = '';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view(
+            'admin.quotations.basement._wizard_sections',
+            array_merge($this->wizardData($inputs, 'full', $enabledNow), ['isEdit' => true])
+        )->render();
+
+        $this->assertStringContainsString('data-br-legacy-ceiling-notice', $html);
+        $this->assertStringContainsString('Saved hang (follows work area) stays on preview and resave', $html);
+        $this->assertStringContainsString('Use Ceiling area', $html);
+        $this->assertStringContainsString('id="br-dw-ceil"', $html);
     }
 
     /**
