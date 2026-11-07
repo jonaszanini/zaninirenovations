@@ -79,6 +79,7 @@ tests/Unit/Views/HomeKitchenTileImageTest.php
 tests/Unit/Views/PublicCssLightOnlyTest.php
 tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
 tests/Unit/Views/PublicMobileNavDropdownTest.php
+tests/Unit/Views/QuotationEditorFooterMarkupTest.php
 tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 tests/Unit/Views/QuotationExpensePairLayoutTest.php
 tests/Unit/Views/QuotationPdfPageBreakTest.php

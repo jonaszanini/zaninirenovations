@@ -7846,7 +7846,7 @@ body.cp-modal-open {
   flex-wrap: nowrap;
   gap: 10px;
   min-height: 52px;
-  padding: 6px 14px;
+  padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0px));
   margin: 0;
   background: var(--admin-surface);
   border: 1px solid var(--admin-border);
@@ -9502,7 +9502,7 @@ html.admin-dark .br-hardwood-caution {
 @media (max-width: 767px) {
   .br-sticky-total {
     left: 0;
-    padding: 6px 10px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
   }
   .br-sticky-total .br-toolbar-grand__label {
     display: none;

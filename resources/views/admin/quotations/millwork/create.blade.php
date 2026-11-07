@@ -53,7 +53,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
     'listUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.millwork.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.millwork.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'mw-main-form',
     'saveId' => 'mw-btn-publish',
@@ -341,7 +343,7 @@
       </div>
     </aside>
 
-    <div class="mw-totals-bar" id="mw-totals-bar" aria-live="polite">
+    <div class="mw-totals-bar qh-sticky-footer" id="mw-totals-bar" data-qh-footer aria-live="polite" aria-label="Quotation total and save">
       <button type="button" class="mw-totals-bar__expand" id="mw-bar-expand" aria-expanded="false" aria-controls="mw-totals-bar" aria-label="Show totals details">
         <i class="fa fa-chevron-down" aria-hidden="true"></i>
       </button>
@@ -351,7 +353,16 @@
       <span class="mw-totals-bar__detail" id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
       <span class="mw-totals-bar__core"><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
       <span class="mw-totals-bar__detail"><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
-      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total">CA$0.00</strong></span>
+      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total" data-qh-footer-amount>CA$0.00</strong></span>
+      <button type="submit"
+              class="admin-btn admin-btn--primary admin-btn--sm qh-sticky-footer__save"
+              form="mw-main-form"
+              data-qh-footer-save
+              aria-label="Save quotation">
+        <i class="fa fa-save" aria-hidden="true"></i>
+        <span class="qh-sticky-footer__save-full">Save quotation</span>
+        <span class="qh-sticky-footer__save-short">Save</span>
+      </button>
     </div>
   </form>
 

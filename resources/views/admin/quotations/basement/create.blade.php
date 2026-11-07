@@ -403,19 +403,21 @@
       </div>
     </aside>
 
-    <div class="br-sticky-spacer" aria-hidden="true"></div>
-
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>← Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">→ Next</button>
-      </div>
-      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
+    @include('admin.partials.quotation_editor_footer', [
+      'formId' => 'br-main-form',
+      'footerId' => 'br-sticky-total',
+      'extraClass' => 'br-sticky-total',
+      'amountId' => 'br-toolbar-grand-amount',
+      'grandWrapId' => 'br-toolbar-grand',
+      'initialTotal' => $toolbarGrand,
+      'wizard' => [
+        'navId' => 'br-step-nav',
+        'prevId' => 'br-prev',
+        'nextId' => 'br-next',
+        'statusId' => 'br-step-status',
+        'count' => $enabledCount,
+      ],
+    ])
   </form>
 
   @if ($isEdit && $canSendEmail)

@@ -174,7 +174,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
     'listUrl' => route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.low-deck.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.low-deck.config', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'ld-form',
     'saveId' => 'ld-btn-save',
@@ -352,6 +354,10 @@
             </label>
           </div>
         </div>
+        @include('admin.partials.quotation_editor_footer', [
+          'formId' => 'ld-form',
+          'amountId' => 'ld-footer-grand-amount',
+        ])
       </form>
 
       @if ($isEdit && !$quotation->project)

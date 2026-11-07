@@ -5472,3 +5472,84 @@ select.admin-field-invalid,
     font-size: 1.15rem;
   }
 }
+
+/* Persistent quotation footer (non-painting). Mirrors basement sticky bar. */
+.qh-sticky-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 14px calc(6px + env(safe-area-inset-bottom, 0px));
+  margin: 0;
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-left: 0;
+  border-right: 0;
+  border-bottom: 0;
+  border-radius: 0;
+  position: fixed;
+  left: var(--admin-sidebar-w);
+  right: 0;
+  bottom: 0;
+  z-index: 40;
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.1);
+  box-sizing: border-box;
+}
+.qh-sticky-footer__nav {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
+  min-width: 0;
+}
+.qh-sticky-footer__total {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 0;
+  padding: 0;
+  margin-left: auto;
+}
+.qh-sticky-footer__save {
+  flex: 0 0 auto;
+  flex-shrink: 0;
+  min-height: var(--admin-control-height);
+  white-space: nowrap;
+}
+.qh-sticky-footer__save-short {
+  display: none;
+}
+.admin-content:has([data-qh-footer]):not(:has(#mw-totals-bar)) {
+  padding-bottom: calc(var(--qh-sticky-bar-h, var(--br-sticky-bar-h, 64px)) + 16px);
+}
+@media (max-width: 768px) {
+  .qh-sticky-footer {
+    left: 0;
+  }
+}
+@media (max-width: 390px) {
+  .qh-sticky-footer {
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .qh-sticky-footer .br-toolbar-grand__label,
+  .qh-sticky-footer__total .br-toolbar-grand__label,
+  .qh-sticky-footer .br-step-nav__status {
+    display: none;
+  }
+  .qh-sticky-footer__save {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .qh-sticky-footer__save-full {
+    display: none;
+  }
+  .qh-sticky-footer__save-short {
+    display: inline;
+  }
+}
+form:has([data-qh-footer]) :is(input, select, textarea, button, .admin-form-group, .admin-input) {
+  scroll-margin-bottom: calc(var(--qh-sticky-bar-h, var(--br-sticky-bar-h, 64px)) + 12px);
+}

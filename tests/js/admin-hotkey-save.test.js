@@ -474,6 +474,7 @@ assert.ok(!toast.rectsOverlap(
   { left: 0, top: 0, right: 20, bottom: 20 },
   { left: 80, top: 80, right: 120, bottom: 120 }
 ), 'far rects do not overlap');
+assert.ok(toast.AVOID_SEL.indexOf('.qh-sticky-footer') !== -1, 'toast avoids shared quotation footer');
 assert.ok(toast.AVOID_SEL.indexOf('.br-sticky-total') !== -1, 'toast avoids sticky totals');
 assert.ok(toast.AVOID_SEL.indexOf('.br-step-nav') !== -1, 'toast avoids step nav');
 assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
