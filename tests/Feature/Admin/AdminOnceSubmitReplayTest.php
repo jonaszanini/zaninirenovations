@@ -192,6 +192,7 @@ class AdminOnceSubmitReplayTest extends IntegrationTestCase
     {
         $quoteExtras = [
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,

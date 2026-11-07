@@ -1808,6 +1808,114 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertStringNotContainsString('Carpet', $carpetLabor['label']);
     }
 
+    public function test_new_quote_without_demolition_choice_fails_publish_hints(): void
+    {
+        $calc = new BasementQuotationCalculator;
+        $hints = $calc->validationHints([
+            'area_sqft' => 400,
+        ]);
+        $this->assertContains('Choose Yes or No for demolition.', $hints);
+    }
+
+    public function test_explicit_no_demolition_skips_choice_hint_and_charges(): void
+    {
+        $inputs = [
+            'area_sqft' => 400,
+            'include_demolition' => false,
+            'demo_include_flooring' => true,
+            'demo_flooring_sf' => 400,
+            'demo_bin_qty' => 1,
+            'owner_hourly_rate' => 80,
+            'insulate_walls' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+        ];
+        $calc = new BasementQuotationCalculator;
+        $this->assertNotContains('Choose Yes or No for demolition.', $calc->validationHints($inputs));
+        $out = $calc->calculate($inputs, $this->settings());
+        $keys = collect($out['labor'])->pluck('key')->all();
+        $this->assertNotContains('demo_floor', $keys);
+        $this->assertNotContains('demo_bins', $keys);
+    }
+
+    public function test_yes_demolition_without_positive_quantity_fails_publish_hints(): void
+    {
+        $hints = (new BasementQuotationCalculator)->validationHints([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+            'demo_include_flooring' => false,
+            'demo_include_studs' => false,
+            'demo_include_drywall' => false,
+            'demo_include_baseboard' => false,
+            'demo_bin_qty' => 0,
+        ]);
+        $this->assertContains('Yes for demolition needs a tear-out quantity or a debris bin.', $hints);
+    }
+
+    public function test_yes_demolition_with_flooring_area_fallback_is_valid(): void
+    {
+        $this->assertTrue(BasementQuotationCalculator::demolitionHasPositiveQuantity([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+        ]));
+        $hints = (new BasementQuotationCalculator)->validationHints([
+            'area_sqft' => 400,
+            'include_demolition' => true,
+        ]);
+        $this->assertNotContains('Yes for demolition needs a tear-out quantity or a debris bin.', $hints);
+        $this->assertNotContains('Choose Yes or No for demolition.', $hints);
+    }
+
+    public function test_missing_vs_false_demolition_keep_the_same_historical_total(): void
+    {
+        $base = [
+            'area_sqft' => 400,
+            'owner_hourly_rate' => 80,
+            'insulate_walls' => false,
+            'flooring_type' => 'none',
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'demo_flooring_sf' => 400,
+            'demo_bin_qty' => 1,
+        ];
+        $calc = new BasementQuotationCalculator;
+        $missing = $calc->calculate($base, $this->settings());
+        $explicitNo = $calc->calculate(array_merge($base, ['include_demolition' => false]), $this->settings());
+        $this->assertEqualsWithDelta(
+            (float) $missing['summary']['final_quote_total'],
+            (float) $explicitNo['summary']['final_quote_total'],
+            0.01
+        );
+        $yes = $calc->calculate(array_merge($base, ['include_demolition' => true]), $this->settings());
+        $this->assertGreaterThan(
+            (float) $explicitNo['summary']['final_quote_total'],
+            (float) $yes['summary']['final_quote_total']
+        );
+        $this->assertContains('demo_floor', collect($yes['labor'])->pluck('key')->all());
+    }
+
+    public function test_wall_preset_does_not_require_a_demolition_choice(): void
+    {
+        $hints = (new BasementQuotationCalculator)->validationHints([
+            'scope_preset' => 'wall',
+            'partition_lf' => 12,
+        ]);
+        $this->assertNotContains('Choose Yes or No for demolition.', $hints);
+    }
+
     public function test_trade_line_helper_does_not_claim_licensed_contractors(): void
     {
         $src = (string) file_get_contents((new \ReflectionClass(BasementQuotationCalculator::class))->getFileName());

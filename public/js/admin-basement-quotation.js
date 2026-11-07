@@ -66,6 +66,7 @@
         el.hidden = false;
       });
     }
+    syncDemoChoiceRequired();
 
     if (!form.checkValidity()) {
       var invalid = form.querySelector(':invalid');
@@ -115,6 +116,39 @@
     cb.addEventListener('change', sync);
     target.hidden = !cb.checked;
   });
+
+  function demolitionSectionEnabled() {
+    return enabledTradeKeys().indexOf('demolition') !== -1;
+  }
+
+  function syncDemoChoiceRequired() {
+    var need = demolitionSectionEnabled();
+    form.querySelectorAll('[data-br-demo-choice]').forEach(function (el) {
+      el.required = need;
+    });
+  }
+
+  function syncDemoChoiceFields() {
+    var yes = form.querySelector('[data-br-demo-choice="1"]');
+    var fields = document.getElementById('br-demo-fields');
+    if (fields) {
+      fields.hidden = !(yes && yes.checked);
+    }
+    syncDemoChoiceRequired();
+  }
+
+  form.querySelectorAll('[data-br-demo-choice]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      form.querySelectorAll('.q-commute-choice__option').forEach(function (opt) {
+        if (opt.querySelector('[data-br-demo-choice]')) {
+          opt.classList.toggle('is-selected', !!(opt.querySelector('[data-br-demo-choice]:checked')));
+        }
+      });
+      syncDemoChoiceFields();
+      schedulePreview();
+    });
+  });
+  syncDemoChoiceFields();
 
   var lightingType = document.getElementById('br-lighting-type');
   var lightingLabel = document.getElementById('br-lights-label');
@@ -609,6 +643,7 @@
     }
     relocateNestedTrades();
     syncBathroomElectricalHints();
+    syncDemoChoiceRequired();
   }
 
   function relocateNestedTrades() {

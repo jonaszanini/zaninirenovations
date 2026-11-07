@@ -84,7 +84,7 @@
       'owner_hourly_rate' => 'Your labour rate used in the live total. Helpers use the helper rate.',
       'helper_hourly_rate' => 'Hourly rate for each helper in the 2- and 3-person ETA scenarios.',
       'existing_notes' => 'Site notes for you (moisture, headroom, existing bath). Not printed on the client PDF unless you copy them into the description.',
-      'include_demolition' => 'Adds tear-out labour and dumpster cost. Then check flooring, studs, drywall, and/or baseboard and enter the quantities. Uncheck if the space is already stripped.',
+      'include_demolition' => 'Choose Yes or No. Yes adds tear-out labour and dumpster cost — then check flooring, studs, drywall, and/or baseboard and enter the quantities. No keeps those fields for later but charges nothing and leaves demolition out of generated client scope.',
       'demo_include_flooring' => 'Pull up existing floor covering. Uncheck if the floor stays.',
       'demo_include_studs' => 'Tear out existing stud walls. Enter linear feet, or leave blank to use the new partition length from Framing.',
       'demo_include_drywall' => 'Strip existing drywall or ceiling. Uncheck if the concrete or joists are already exposed.',
@@ -130,7 +130,7 @@
       'drywall_window_openings' => 'Window openings. Each deducts 12 sq ft (4×3 ft) from wall drywall unless you type Opening area.',
       'drywall_opening_sf' => 'Total opening area to subtract from wall drywall. Blank uses 21 sq ft per door and 12 sq ft per window. Enter 0 if the wall area you typed is already net.',
       'drywall_sheet_size' => '4×12 sheets cover a typical 8–9 ft basement wall in one piece (fewer seams). 4×8 is two rows. Sheet count and waste follow this choice.',
-      'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, and corners. Does not change rates, flooring type, ceiling type, or shared prices. Measured zeros replace the form; takeoffs the drawing does not have are left as-is.',
+      'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, and corners. Wall paint uses walls marked Paint in Room Area, independently of Drywall. Does not change rates, flooring type, ceiling type, paint colors/coats, or shared prices. Measured zeros replace the form; takeoffs the drawing does not have are left as-is.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
       'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
@@ -146,7 +146,7 @@
       'shoe_lf' => 'Shoe length. Blank uses the baseboard length.',
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
-      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset).',
+      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset). Import fills this only from walls marked Paint in Room Area — not automatically from drywall or bulkheads.',
       'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows Ceiling area unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labour plus extra drywall finish time.',
@@ -367,7 +367,17 @@
 </details>
 
 {{-- 2. Demolition --}}
-@php $wizardStep++; @endphp
+@php
+  $wizardStep++;
+  $demoChoice = null;
+  $oldDemo = old('include_demolition');
+  if ($oldDemo !== null && $oldDemo !== '') {
+      $demoChoice = $oldDemo === '1' || $oldDemo === 1 || $oldDemo === true || $oldDemo === 'true' || $oldDemo === 'on';
+  } elseif (! empty($isEdit) && array_key_exists('include_demolition', $inputs)) {
+      $demoChoice = (bool) $inputs['include_demolition'];
+  }
+  $demoChoiceRequired = in_array('demolition', $enabledNow, true);
+@endphp
 <details class="br-acc admin-card" data-br-step="demolition" data-qh-step="2" @unless(in_array('demolition', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary">
     <span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Demolition &amp; Preparation
@@ -376,17 +386,37 @@
     ])
   </summary>
   <div class="br-acc__body">
-    @include('admin.partials.checkbox', [
-      'name' => 'include_demolition',
-      'hiddenFallback' => true,
-      'checked' => $brOn('include_demolition'),
-      'label' => 'Include demolition & debris',
-      'info' => $brInfo['include_demolition'],
-      'inputClass' => 'admin-checkbox__input br-preview',
-      'attrs' => ['data-br-reveal' => 'br-demo-fields'],
-      'clientFilled' => $brFilled('include_demolition'),
-    ])
-    <div id="br-demo-fields" @unless($brOn('include_demolition')) hidden @endunless>
+    <div class="admin-label-with-tip" style="margin-bottom:8px;">
+      <span>Include demolition &amp; debris? <span class="cp-required">*</span></span>
+      @include('admin.partials.info_tip', [
+        'tipText' => $brInfo['include_demolition'],
+        'tipLabel' => 'Include demolition & debris?',
+      ])
+      @if ($brFilled('include_demolition'))
+        <span class="admin-filled-from-client" title="Filled from client form">Filled</span>
+      @endif
+    </div>
+    <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include demolition and debris">
+      <legend class="util-sr-only">Include demolition and debris on this quotation?</legend>
+      <label class="q-commute-choice__option{{ $demoChoice === true ? ' is-selected' : '' }}">
+        <input type="radio" name="include_demolition" value="1" class="q-commute-choice__input br-preview"
+               data-br-demo-choice="1"
+               @checked($demoChoice === true)
+               @if ($demoChoiceRequired) required @endif>
+        <span class="q-commute-choice__text">Yes</span>
+      </label>
+      <label class="q-commute-choice__option{{ $demoChoice === false ? ' is-selected' : '' }}">
+        <input type="radio" name="include_demolition" value="0" class="q-commute-choice__input br-preview"
+               data-br-demo-choice="0"
+               @checked($demoChoice === false)
+               @if ($demoChoiceRequired) required @endif>
+        <span class="q-commute-choice__text">No</span>
+      </label>
+    </fieldset>
+    @error('include_demolition')
+      <p class="admin-form-error" style="margin-top:8px;">{{ $message }}</p>
+    @enderror
+    <div id="br-demo-fields" @unless($demoChoice === true) hidden @endunless>
       <p class="br-demo-scope-label">What to tear out</p>
       <div class="br-demo-types br-qty-grid--inset">
         <div class="br-toggle-qty">

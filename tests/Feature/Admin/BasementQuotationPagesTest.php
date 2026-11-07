@@ -69,7 +69,10 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('data-cp-money-entry="direct"', false)
             ->assertSee('Optional extras (rentals, extra labour, etc.)', false)
             ->assertDontSee('Optional extras (permits, rentals')
-            ->assertSee('placeholder="e.g. Dumpster"', false);
+            ->assertSee('placeholder="e.g. Dumpster"', false)
+            ->assertSee('data-br-demo-choice="1"', false)
+            ->assertSee('data-br-demo-choice="0"', false)
+            ->assertSee('Include demolition', false);
 
         $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
@@ -350,6 +353,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'ceiling_height_ft' => 8,
             'room_count' => 3,
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
@@ -387,6 +391,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             'ceiling_height_ft' => 8,
             'room_count' => 3,
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,

@@ -748,7 +748,61 @@ class BasementQuotationCalculator
             }
         }
 
+        if (self::sectionEnabled($inputs, 'demolition')) {
+            if (! array_key_exists('include_demolition', $inputs)) {
+                $hints[] = 'Choose Yes or No for demolition.';
+            } elseif (! empty($inputs['include_demolition']) && ! self::demolitionHasPositiveQuantity($inputs)) {
+                $hints[] = 'Yes for demolition needs a tear-out quantity or a debris bin.';
+            }
+        }
+
         return $hints;
+    }
+
+    /**
+     * Resolved demolition quantity after length×width overlays. Flooring blank
+     * uses work area; studs blank uses partition; drywall blank/0 is not a
+     * positive quantity; bins count.
+     *
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function demolitionHasPositiveQuantity(array $inputs): bool
+    {
+        $merged = array_merge(self::defaultInputs(), $inputs);
+        $merged = self::applyAreaEntry($merged);
+        $area = max(0, (float) ($merged['area_sqft'] ?? 0));
+        $partitionLf = max(0, (float) ($merged['partition_lf'] ?? 0));
+        $measuredPerimeter = round(max(0, (float) ($merged['perimeter_lf'] ?? 0)), 2);
+        $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
+        $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
+
+        $qty = static function (mixed $value, float $fallback): float {
+            if ($value === null || $value === '') {
+                return round(max(0, $fallback), 2);
+            }
+
+            return round(max(0, (float) $value), 2);
+        };
+
+        if (! empty($merged['demo_include_flooring']) && $qty($merged['demo_flooring_sf'] ?? null, $area) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_studs']) && $qty($merged['demo_studs_lf'] ?? null, $partitionLf) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_drywall']) && $qty($merged['demo_drywall_sf'] ?? null, 0) > 0) {
+            return true;
+        }
+        if (! empty($merged['demo_include_baseboard'])) {
+            $baseFallback = ($merged['scope_preset'] ?? '') === 'wall'
+                ? round($partitionLf * 2, 2)
+                : $perimeter;
+            if ($qty($merged['demo_baseboard_lf'] ?? null, $baseFallback) > 0) {
+                return true;
+            }
+        }
+
+        return max(0, (int) ($merged['demo_bin_qty'] ?? 0)) > 0;
     }
 
     /**

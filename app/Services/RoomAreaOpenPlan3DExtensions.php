@@ -259,6 +259,8 @@ class RoomAreaOpenPlan3DExtensions
         $insulation = 0.0;
         $studs = 0.0;
         $baseboard = 0.0;
+        $paint = 0.0;
+        $paintSeen = false;
 
         if ($finishes === [] && $walls !== []) {
             foreach ($walls as $wall) {
@@ -291,6 +293,12 @@ class RoomAreaOpenPlan3DExtensions
                 if ($this->flagEnabled($flags, 'drywall', true)) {
                     $drywall += $netSqFt;
                 }
+                if (array_key_exists('paint', $flags)) {
+                    $paintSeen = true;
+                    if ($this->flagEnabled($flags, 'paint', false)) {
+                        $paint += $netSqFt;
+                    }
+                }
                 if ($this->flagEnabled($flags, 'insulation', $isBoundary)) {
                     $insulation += $netSqFt;
                 }
@@ -312,6 +320,11 @@ class RoomAreaOpenPlan3DExtensions
         $metrics['finish_stud_lf'] = round(max(0.0, $studs), 2);
         $metrics['finish_baseboard_lf'] = round(max(0.0, $baseboard), 2);
         $metrics['finish_casing_lf'] = round((float) ($metrics['casing_lf'] ?? 0.0), 2);
+        if ($paintSeen) {
+            $metrics['finish_paint_sqft'] = round(max(0.0, $paint), 2);
+        } else {
+            unset($metrics['finish_paint_sqft']);
+        }
 
         return $metrics;
     }

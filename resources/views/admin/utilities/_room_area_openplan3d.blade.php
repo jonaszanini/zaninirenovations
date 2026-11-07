@@ -224,6 +224,17 @@
     </div>
     <div class="openplan3d-metric-card">
       <span class="openplan3d-metric-label openplan3d-metric-label--tip">
+        Paint
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Paint takeoff',
+          'tipText' => 'Net wall area on walls marked Paint in Wall Finishes. Independent of Drywall. Legacy drawings with no Paint choice leave this unavailable (—), not zero.',
+        ])
+      </span>
+      <span class="openplan3d-metric-val" id="metric-finish-paint">—</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label openplan3d-metric-label--tip">
         Insulation
         @include('admin.partials.info_tip', [
           'tipLabel' => 'Insulation takeoff',

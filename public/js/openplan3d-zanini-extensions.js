@@ -531,6 +531,7 @@
     var finishes = zanini.wallFinishes || {};
     var finishKeys = Object.keys(finishes);
     var drywall = 0.0, insulation = 0.0, studs = 0.0, baseboard = 0.0;
+    var paint = 0.0, paintSeen = false;
 
     if (finishKeys.length === 0 && walls.length > 0) {
       for (var i = 0; i < walls.length; i++) {
@@ -558,6 +559,10 @@
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
         if (flagEnabled(flags, 'drywall', true)) drywall += net;
+        if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
+          paintSeen = true;
+          if (flagEnabled(flags, 'paint', false)) paint += net;
+        }
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += len;
         if (flagEnabled(flags, 'baseboard', true)) {
@@ -572,6 +577,11 @@
     metrics.finish_stud_lf = roundTo(Math.max(0, studs), 2);
     metrics.finish_baseboard_lf = roundTo(Math.max(0, baseboard), 2);
     metrics.finish_casing_lf = roundTo(Number(metrics.casing_lf || 0), 2);
+    if (paintSeen) {
+      metrics.finish_paint_sqft = roundTo(Math.max(0, paint), 2);
+    } else if (Object.prototype.hasOwnProperty.call(metrics, 'finish_paint_sqft')) {
+      delete metrics.finish_paint_sqft;
+    }
     return metrics;
   }
 

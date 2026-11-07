@@ -146,6 +146,7 @@ class BasementClientScopePersistenceTest extends IntegrationTestCase
             'ceiling_height_ft' => 8,
             'room_count' => 3,
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,

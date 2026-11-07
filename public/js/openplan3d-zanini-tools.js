@@ -886,22 +886,32 @@
       ? ('Wall finishes (' + wallIds.length + ' walls)')
       : ('Wall finishes · ' + primary);
     host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">' + heading + '</div>';
-    ['drywall', 'insulation', 'studs', 'baseboard'].forEach(function (key) {
-      var checked = Object.prototype.hasOwnProperty.call(flags, key) ? !!flags[key] : defaults[key];
+    var finishKeys = ['drywall', 'paint', 'insulation', 'studs', 'baseboard'];
+    var finishLabels = {
+      drywall: 'Drywall',
+      paint: 'Paint',
+      insulation: 'Insulation',
+      studs: 'Studs',
+      baseboard: 'Baseboard'
+    };
+    finishKeys.forEach(function (key) {
+      var defaultVal = key === 'paint' ? false : defaults[key];
+      var checked = Object.prototype.hasOwnProperty.call(flags, key) ? !!flags[key] : defaultVal;
       if (wallIds.length > 1) {
         var mixed = false;
         var first = checked;
         for (var wi2 = 1; wi2 < wallIds.length; wi2++) {
           var f2 = wallFinishes[wallIds[wi2]] || {};
           var wallDefaults = finishDefaultsForWall(wallIds[wi2]);
-          var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : wallDefaults[key];
+          var wallDefault = key === 'paint' ? false : wallDefaults[key];
+          var c2 = Object.prototype.hasOwnProperty.call(f2, key) ? !!f2[key] : wallDefault;
           if (c2 !== first) mixed = true;
         }
         if (mixed) checked = false;
       }
       var row = document.createElement('label');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
-      row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + key;
+      row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + (finishLabels[key] || key);
       host.appendChild(row);
     });
     if (sidesEligible.length === 0 && wallIds.length > 0) {

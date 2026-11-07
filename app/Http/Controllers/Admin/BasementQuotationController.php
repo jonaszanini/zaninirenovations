@@ -484,6 +484,9 @@ class BasementQuotationController extends Controller
         $out['stud_spacing_in'] = BasementQuotationCalculator::normalizeStudSpacing($out['stud_spacing_in'] ?? 16);
         $out['drywall_sheet_size'] = BasementQuotationCalculator::normalizeSheetSize($out['drywall_sheet_size'] ?? '4x8');
         foreach ($bools as $key) {
+            if ($key === 'include_demolition') {
+                continue;
+            }
             $raw = $request->input($key);
             if (is_array($raw)) {
                 $out[$key] = in_array('1', $raw, true)
@@ -494,6 +497,13 @@ class BasementQuotationController extends Controller
             } else {
                 $out[$key] = $request->boolean($key);
             }
+        }
+        if ($request->exists('include_demolition')) {
+            $out['include_demolition'] = $request->boolean('include_demolition');
+        } elseif (is_array($storedInputs) && array_key_exists('include_demolition', $storedInputs)) {
+            $out['include_demolition'] = (bool) $storedInputs['include_demolition'];
+        } else {
+            unset($out['include_demolition']);
         }
         foreach (['demo_include_flooring', 'demo_include_studs', 'demo_include_drywall', 'demo_include_baseboard'] as $key) {
             if (! $request->exists($key)) {

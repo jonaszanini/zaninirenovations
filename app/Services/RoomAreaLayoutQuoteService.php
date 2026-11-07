@@ -398,6 +398,7 @@ class RoomAreaLayoutQuoteService
         ];
         foreach ([
             'finish_drywall_sqft',
+            'finish_paint_sqft',
             'finish_insulation_sqft',
             'finish_stud_lf',
             'finish_baseboard_lf',

@@ -211,7 +211,7 @@
       baseboard_lf: baseboard,
       casing_openings: casingOpenings,
       window_trim_qty: windows,
-      paint_wall_sf: wallSf,
+      paint_wall_sf: present(opt, 'finish_paint_sqft') ? num(opt.finish_paint_sqft) : null,
       paint_ceiling_sf: ceilingArea,
       paint_trim_lf: paintTrim
     };

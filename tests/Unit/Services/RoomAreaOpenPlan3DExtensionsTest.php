@@ -209,6 +209,51 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(8.0, $out['finish_stud_lf']);
         $this->assertSame(20.0, $out['finish_baseboard_lf']);
         $this->assertSame(12.5, $out['finish_casing_lf']);
+        $this->assertArrayNotHasKey('finish_paint_sqft', $out);
+    }
+
+    public function test_paint_finish_is_independent_of_drywall_and_omitted_when_unset(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => ['w1', 'w2'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w2', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w3', 'length_lf' => 8.0, 'net_area_sqft' => 128.0],
+            ],
+        ];
+        $mixed = $this->extensions->applyToMetrics($metrics, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w1' => ['drywall' => true, 'paint' => true],
+                    'w2' => ['drywall' => true, 'paint' => false],
+                    'w3' => ['drywall' => false, 'paint' => true],
+                ],
+            ],
+        ], [], 1.0);
+
+        $this->assertSame(160.0, $mixed['finish_drywall_sqft']);
+        $this->assertSame(208.0, $mixed['finish_paint_sqft']);
+
+        $allOff = $this->extensions->applyToMetrics($metrics, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w1' => ['paint' => false],
+                    'w2' => ['paint' => false],
+                    'w3' => ['paint' => false],
+                ],
+            ],
+        ], [], 1.0);
+        $this->assertSame(0.0, $allOff['finish_paint_sqft']);
+        $this->assertSame(288.0, $allOff['finish_drywall_sqft']);
     }
 
     public function test_extract_and_merge_zanini_payload(): void

@@ -264,6 +264,7 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             'room_area_import_label' => 'Rec 87',
             'enabled_sections' => $enabled,
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'owner_hourly_rate' => 80,
@@ -365,6 +366,13 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
                         'drop_height_ft' => 2.0,
                         'against_wall' => true,
                     ]],
+                    'wallFinishes' => [
+                        'w1' => ['drywall' => true, 'paint' => true],
+                        'w2' => ['drywall' => true, 'paint' => false],
+                        'w3' => ['drywall' => true, 'paint' => true],
+                        'w4' => ['drywall' => false, 'paint' => true],
+                        'p1' => ['drywall' => true, 'paint' => false],
+                    ],
                 ],
             ],
         ]);
@@ -398,6 +406,7 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             'room_area_import_label' => 'Rec complete',
             'enabled_sections' => $enabled,
             'payment_installments' => 3,
+            'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
             'ask_reply_to_accept' => '0',
@@ -413,7 +422,16 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $proposed['partition_lf'], (float) $quote->inputs['partition_lf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['bulkhead_lf'], (float) $quote->inputs['bulkhead_lf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['drywall_wall_sf'], (float) $quote->inputs['drywall_wall_sf'], 0.05);
+        $this->assertNotNull($proposed['paint_wall_sf']);
         $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) $quote->inputs['paint_wall_sf'], 0.05);
+        $this->assertNotEquals(
+            (float) $proposed['drywall_wall_sf'],
+            (float) $proposed['paint_wall_sf']
+        );
+        $bulkheadDw = (float) ($opt['bulkhead_drywall_sqft'] ?? 0);
+        $finishDw = (float) ($opt['finish_drywall_sqft'] ?? 0);
+        $this->assertEqualsWithDelta($finishDw + $bulkheadDw, (float) $proposed['drywall_wall_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) ($opt['finish_paint_sqft'] ?? 0), (float) $proposed['paint_wall_sf'], 0.05);
         $this->assertGreaterThan(0, (float) $proposed['ceiling_sf']);
         $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) $quote->inputs['ceiling_sf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.05);

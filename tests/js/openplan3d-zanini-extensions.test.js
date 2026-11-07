@@ -126,6 +126,35 @@ assert.strictEqual(finishOut.finish_drywall_sqft, 288);
 assert.strictEqual(finishOut.finish_insulation_sqft, 160);
 assert.strictEqual(finishOut.finish_stud_lf, 8);
 assert.strictEqual(finishOut.finish_baseboard_lf, 171.99);
+assert.strictEqual(finishOut.finish_paint_sqft, undefined);
+
+const mixedPaintOut = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    wallFinishes: {
+      w1: { drywall: true, paint: true },
+      w2: { drywall: true, paint: false },
+      w3: { drywall: false, paint: true },
+    },
+  },
+}, {}, 1.0);
+assert.strictEqual(mixedPaintOut.finish_drywall_sqft, 160);
+assert.strictEqual(mixedPaintOut.finish_paint_sqft, 208);
+
+const zeroPaintOut = ext.applyToMetrics(Object.assign({}, metrics), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    wallFinishes: {
+      w1: { paint: false },
+      w2: { paint: false },
+      w3: { paint: false },
+    },
+  },
+}, {}, 1.0);
+assert.strictEqual(zeroPaintOut.finish_paint_sqft, 0);
+assert.strictEqual(zeroPaintOut.finish_drywall_sqft, 288);
 
 const roomPoly = [
   { x: 0, y: 0 },

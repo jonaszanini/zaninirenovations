@@ -183,6 +183,7 @@ trait PublishesLinkedQuotations
                 'area_sqft' => $draftMutation ? 400 : 850,
                 'ceiling_height_ft' => 8,
                 'room_count' => 3,
+                'include_demolition' => 0,
                 'owner_hourly_rate' => 80,
                 'helper_hourly_rate' => 40,
             ],

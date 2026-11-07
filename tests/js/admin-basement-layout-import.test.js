@@ -35,7 +35,7 @@ assert.strictEqual(proposed.area_sqft, 500);
 assert.strictEqual(proposed.flooring_sf, 500);
 assert.strictEqual(proposed.perimeter_lf, 90);
 assert.strictEqual(proposed.drywall_wall_sf, 750);
-assert.strictEqual(proposed.paint_wall_sf, 750);
+assert.strictEqual(proposed.paint_wall_sf, null);
 assert.strictEqual(proposed.bulkhead_lf, 16);
 assert.strictEqual(proposed.partition_lf, 12);
 assert.strictEqual(proposed.baseboard_lf, 87);
@@ -184,10 +184,53 @@ const finishes = layout.proposedQuantities({
   finish_casing_lf: 18,
 }, 8);
 assert.strictEqual(finishes.drywall_wall_sf, 210);
+assert.strictEqual(finishes.paint_wall_sf, null);
 assert.strictEqual(finishes.insulation_wall_sf, 180);
 assert.strictEqual(finishes.partition_lf, 12.5);
 assert.strictEqual(finishes.baseboard_lf, 70);
 assert.strictEqual(finishes.paint_trim_lf, 88);
+
+const mixedPaint = layout.proposedQuantities({
+  area_sqft: 500,
+  finish_drywall_sqft: 720,
+  finish_paint_sqft: 208,
+  bulkhead_drywall_sqft: 30,
+  bulkhead_lf: 16,
+  ceiling_area_sqft: 500
+}, 8);
+assert.strictEqual(mixedPaint.drywall_wall_sf, 750);
+assert.strictEqual(mixedPaint.paint_wall_sf, 208);
+assert.strictEqual(mixedPaint.paint_ceiling_sf, 500);
+assert.strictEqual(mixedPaint.bulkhead_lf, 16);
+
+const zeroPaint = layout.proposedQuantities({
+  area_sqft: 80,
+  finish_drywall_sqft: 640,
+  finish_paint_sqft: 0,
+  bulkhead_drywall_sqft: 12
+}, 8);
+assert.strictEqual(zeroPaint.paint_wall_sf, 0);
+assert.strictEqual(zeroPaint.drywall_wall_sf, 652);
+
+const missingPaint = layout.proposedQuantities({
+  area_sqft: 80,
+  finish_drywall_sqft: 640,
+  bulkhead_drywall_sqft: 12
+}, 8);
+assert.strictEqual(missingPaint.paint_wall_sf, null);
+assert.strictEqual(
+  layout.wouldOverwrite(Object.assign({}, missingPaint, {
+    paint_wall_sf: 400,
+    import_label: 'Manual'
+  }), missingPaint),
+  false,
+  'unavailable wall paint must not wipe a hand-typed paint qty'
+);
+assert.strictEqual(
+  layout.wouldOverwrite({ paint_wall_sf: 400, import_label: 'Manual' }, zeroPaint),
+  true,
+  'measured zero paint overwrites a hand-typed value after confirm'
+);
 
 assert.ok(layout.CONFIRM_MESSAGE.indexOf('differ') !== -1);
 assert.ok(layout.CONFIRM_MESSAGE.indexOf('Replace') !== -1);

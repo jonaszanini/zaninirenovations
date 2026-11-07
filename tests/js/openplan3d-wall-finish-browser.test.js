@@ -147,6 +147,23 @@ async function main() {
     });
     assert.strictEqual(panelOne, true, 'finish panel mounts for one selected wall');
 
+    const paintStart = await page.evaluate(() => {
+      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+      return input ? { exists: true, checked: !!input.checked } : { exists: false, checked: false };
+    });
+    assert.strictEqual(paintStart.exists, true, 'Paint finish checkbox is in the wall panel');
+    assert.strictEqual(paintStart.checked, false, 'Paint starts unselected');
+
+    const painted = await page.evaluate(() => {
+      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+      if (!input) return false;
+      input.checked = true;
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      const plan = window.__openPlan3D.getProject();
+      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0 && plan.zanini.wallFinishes.pw0.paint);
+    });
+    assert.strictEqual(painted, true, 'checking Paint writes wallFinishes.paint true');
+
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(false));
     await page.evaluate(
       async ({ storeChunk, vendorPrefix }) => {

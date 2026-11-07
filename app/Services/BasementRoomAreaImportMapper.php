@@ -296,7 +296,9 @@ class BasementRoomAreaImportMapper
             'baseboard_lf' => $baseboard,
             'casing_openings' => $casingOpenings,
             'window_trim_qty' => $windows,
-            'paint_wall_sf' => $wallSf,
+            'paint_wall_sf' => self::present($opt, 'finish_paint_sqft')
+                ? (float) $opt['finish_paint_sqft']
+                : null,
             'paint_ceiling_sf' => $ceilingArea,
             'paint_trim_lf' => $paintTrim,
         ];
