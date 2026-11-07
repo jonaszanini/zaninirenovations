@@ -258,6 +258,9 @@
       if (zero && qty) qty.value = '0';
       if (out) out.textContent = 'Enter length and width';
     }
+    if (qty && qty.id === 'br-ceil-sf') {
+      syncUnifiedCeilingArea();
+    }
   }
 
   function bindLw() {
@@ -347,8 +350,10 @@
       if (heightEl) heightEl.value = formatLayoutQty(proposed[heightKey]);
     }
 
+    var skipForm = (layoutImport && layoutImport.SKIP_FORM_KEYS) || { drywall_ceiling_sf: true };
     Object.keys(proposed).forEach(function (key) {
       if (key === heightKey) return;
+      if (skipForm[key]) return;
       if (proposed[key] == null) return;
       var id = fieldIds[key];
       if (!id) return;
@@ -370,24 +375,46 @@
 
     if (status) {
       status.classList.remove('is-warning');
-      var floor = formatLayoutQty(proposed.area_sqft != null ? proposed.area_sqft : 0);
-      var periLabel = formatLayoutQty(proposed.perimeter_lf != null ? proposed.perimeter_lf : 0);
-      var height = formatLayoutQty(ceilingHeightFt());
-      var walls = formatLayoutQty(proposed.drywall_wall_sf != null ? proposed.drywall_wall_sf : 0);
-      var name = opt.short_name || opt.name || 'layout';
-      var openingTotal = (proposed.drywall_door_openings || 0)
-        + (proposed.drywall_window_openings || 0)
-        + (proposed.drywall_openings || 0);
-      var openLabel = openingTotal === 1 ? '1 opening' : openingTotal + ' openings';
       status.hidden = false;
       status.classList.add('is-set');
-      status.textContent = 'Imported ' + name + ': ' + floor + ' sq ft floor, '
-        + periLabel + ' lf walls × ' + height + ' ft = ' + walls + ' sq ft wall drywall'
-        + (measuredNet ? ' (openings already deducted)' : '')
-        + ', ' + openLabel + '.';
+      status.textContent = (layoutImport && layoutImport.importStatusText)
+        ? layoutImport.importStatusText(proposed, opt, {
+            heightFt: ceilingHeightFt(),
+            measuredNet: measuredNet
+          })
+        : ('Imported ' + (opt.short_name || opt.name || 'layout') + '.');
     }
     applyingLayout = false;
+    syncUnifiedCeilingArea();
     updateDwWallPlaceholder();
+    schedulePreview();
+  }
+
+  function isSplitCeilingQuote() {
+    return form.getAttribute('data-br-split-ceiling') === '1';
+  }
+
+  function syncUnifiedCeilingArea() {
+    // Hang is derived server-side from Ceiling area on new/adopted quotes.
+    // Do not copy into drywall_ceiling_sf: posting that field would mark a
+    // new quote as a legacy hang source on the next save.
+  }
+
+  function adoptUnifiedCeilingHang() {
+    var btn = form.querySelector('[data-br-adopt-ceiling-hang]');
+    var message = (btn && btn.getAttribute('data-br-adopt-message'))
+      || 'Use Ceiling area for hang, tape, mud, and blank paint from now on? Totals will change.';
+    if (!window.confirm(message)) return;
+    form.setAttribute('data-br-split-ceiling', '0');
+    var flag = document.getElementById('br-ceiling-hang-unified');
+    if (flag) flag.value = '1';
+    var dw = document.getElementById('br-dw-ceil');
+    if (dw) {
+      dw.value = '';
+      dw.disabled = true;
+    }
+    var notice = form.querySelector('[data-br-legacy-ceiling-notice]');
+    if (notice) notice.hidden = true;
     schedulePreview();
   }
 
@@ -1350,6 +1377,17 @@
     }
     schedulePreview();
   });
+
+  var ceilSfEl = document.getElementById('br-ceil-sf');
+  if (ceilSfEl) {
+    ceilSfEl.addEventListener('input', syncUnifiedCeilingArea);
+    ceilSfEl.addEventListener('change', syncUnifiedCeilingArea);
+  }
+  var adoptCeil = form.querySelector('[data-br-adopt-ceiling-hang]');
+  if (adoptCeil) {
+    adoptCeil.addEventListener('click', adoptUnifiedCeilingHang);
+  }
+  syncUnifiedCeilingArea();
 
   hydratePersistedClientScope();
   if (cfg.initialPreview) {

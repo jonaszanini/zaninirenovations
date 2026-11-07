@@ -96,6 +96,12 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertSame(1, $mapped['window_trim_qty']);
         $this->assertSame(1, $mapped['drywall_openings']);
         $this->assertSame(30.0, $mapped['baseboard_lf']);
+        $this->assertGreaterThan(0, (float) $mapped['area_sqft']);
+        $this->assertGreaterThan(0, (float) $mapped['ceiling_sf']);
+        $this->assertEqualsWithDelta((float) $mapped['area_sqft'], (float) $mapped['ceiling_sf'], 0.05);
+        $this->assertTrue($canvasOpt['ceiling_area_available']);
+        $this->assertGreaterThan(0, (float) $canvasOpt['ceiling_area_sqft']);
+        $this->assertEqualsWithDelta((float) $canvasOpt['area_sqft'], (float) $canvasOpt['ceiling_area_sqft'], 0.05);
     }
 
     public function test_layout_search_exposes_bulkhead_and_partition_for_basement_import(): void
@@ -164,6 +170,9 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertArrayHasKey('finish_insulation_sqft', $opt);
         $this->assertArrayHasKey('casing_lf', $opt);
         $this->assertArrayHasKey('ceiling_area_sqft', $opt);
+        $this->assertTrue($opt['ceiling_area_available']);
+        $this->assertGreaterThan(0, (float) $opt['ceiling_area_sqft']);
+        $this->assertEqualsWithDelta((float) $opt['area_sqft'], (float) $opt['ceiling_area_sqft'], 0.05);
         $this->assertArrayNotHasKey('bulkhead_corner_bead_lf', $opt);
         $this->assertGreaterThan(0, (float) $opt['finish_drywall_sqft']);
         $this->assertSame(20.0, (float) $opt['finish_stud_lf']);
@@ -405,6 +414,9 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $proposed['bulkhead_lf'], (float) $quote->inputs['bulkhead_lf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['drywall_wall_sf'], (float) $quote->inputs['drywall_wall_sf'], 0.05);
         $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) $quote->inputs['paint_wall_sf'], 0.05);
+        $this->assertGreaterThan(0, (float) $proposed['ceiling_sf']);
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) $quote->inputs['ceiling_sf'], 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['ceiling_sf'], (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.05);
         $this->assertEqualsWithDelta((float) $proposed['baseboard_lf'], (float) $quote->inputs['baseboard_lf'], 0.05);
         $this->assertSame(1, (int) $quote->inputs['door_qty']);
         $this->assertSame(1, (int) $quote->inputs['window_trim_qty']);
