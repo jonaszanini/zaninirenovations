@@ -160,6 +160,40 @@ class BasementCeilingQuantitiesTest extends TestCase
         $this->assertStringContainsString('100', collect($adopted['labor'])->firstWhere('key', 'dw_hang')['detail']);
     }
 
+    public function test_matching_hang_and_ceiling_area_on_drop_stays_legacy_until_confirm(): void
+    {
+        $inputs = $this->quote([
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => 1500,
+            'drywall_wall_sf' => 100,
+        ]);
+        $this->assertTrue(BasementCeilingQuantities::usesSplit($inputs));
+        $first = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $this->assertEqualsWithDelta(1500.0, $first['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('1,600', collect($first['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        $this->assertEqualsWithDelta(
+            $first['summary']['grand_total'],
+            (new BasementQuotationCalculator)->calculate($inputs, $this->settings())['summary']['grand_total'],
+            0.01
+        );
+
+        $adopted = (new BasementQuotationCalculator)->calculate($this->quote([
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
+            'drywall_wall_sf' => 100,
+        ]), $this->settings());
+        $this->assertFalse(BasementCeilingQuantities::usesSplit([
+            'drywall_ceiling_sf' => 1500,
+            'ceiling_hang_unified' => true,
+        ]));
+        $this->assertEqualsWithDelta(0.0, $adopted['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertStringContainsString('100', collect($adopted['labor'])->firstWhere('key', 'dw_hang')['detail']);
+        $this->assertStringNotContainsString('1,600', collect($adopted['labor'])->firstWhere('key', 'dw_hang')['detail']);
+    }
+
     public function test_skip_and_disabled_ceiling_trade_do_not_hang_ceiling_on_new_quotes(): void
     {
         $skip = (new BasementQuotationCalculator)->calculate($this->quote([
@@ -224,6 +258,19 @@ class BasementCeilingQuantitiesTest extends TestCase
         $this->assertStringNotContainsString('1,500', $paint['detail']);
     }
 
+    public function test_explicit_paint_zero_is_not_replaced_by_hang_area(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate($this->quote([
+            'area_sqft' => 1500,
+            'ceiling_type' => 'drywall',
+            'ceiling_sf' => 1500,
+            'paint_ceiling_sf' => 0,
+            'drywall_wall_sf' => 100,
+        ]), $this->settings());
+        $this->assertEqualsWithDelta(1500.0, $calc['scope']['drywall_ceiling_sf'], 0.01);
+        $this->assertNull(collect($calc['labor'])->firstWhere('key', 'paint_ceiling'));
+    }
+
     public function test_insulation_ceiling_stays_on_its_own_toggle(): void
     {
         $off = (new BasementQuotationCalculator)->calculate($this->quote([
@@ -244,6 +291,19 @@ class BasementCeilingQuantitiesTest extends TestCase
         $ins = collect($on['labor'])->firstWhere('key', 'ins_ceiling');
         $this->assertNotNull($ins);
         $this->assertStringContainsString('400', $ins['detail']);
+
+        $drop = (new BasementQuotationCalculator)->calculate($this->quote([
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 1500,
+            'insulate_ceiling' => true,
+            'insulation_ceiling_sf' => 400,
+            'drywall_wall_sf' => 100,
+        ]), $this->settings());
+        $dropIns = collect($drop['labor'])->firstWhere('key', 'ins_ceiling');
+        $this->assertNotNull($dropIns);
+        $this->assertStringContainsString('400', $dropIns['detail']);
+        $this->assertNotNull(collect($drop['labor'])->firstWhere('key', 'ceil_drop'));
+        $this->assertEqualsWithDelta(0.0, $drop['scope']['drywall_ceiling_sf'], 0.01);
     }
 
     /**

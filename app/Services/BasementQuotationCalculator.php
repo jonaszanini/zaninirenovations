@@ -664,6 +664,7 @@ class BasementQuotationCalculator
             'drywall_sheet_size' => '4x8',
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
+            'ceiling_hang_unified' => false,
             'ceiling_sf' => null,
             'subfloor_prep' => false,
             'underlayment' => true,
@@ -1742,10 +1743,10 @@ class BasementQuotationCalculator
     }
 
     /**
-     * Hang/mud ceiling area. New quotes follow Ceiling Options (ceiling_sf)
-     * and never hang leftover ceiling drywall on drop, skip, or ceiling-off.
-     * Saved quotes that stored a different drywall_ceiling_sf keep that hang
-     * figure — including drop/skip leftover — until the field is cleared.
+     * Hang/mud ceiling area. New and adopted quotes follow Ceiling Options
+     * (ceiling_sf) and never hang leftover ceiling drywall on drop, skip, or
+     * ceiling-off. Saved quotes that stored an explicit drywall_ceiling_sf
+     * keep that hang — including matching numbers — until ceiling_hang_unified.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $originalInputs

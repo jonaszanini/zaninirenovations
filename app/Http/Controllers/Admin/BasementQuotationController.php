@@ -445,6 +445,7 @@ class BasementQuotationController extends Controller
             'include_cleaning', 'include_touchups', 'include_shoe',
             'include_building_permit',
             'include_bcin_drawings',
+            'ceiling_hang_unified',
             'client_provides_all', 'include_helper',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];

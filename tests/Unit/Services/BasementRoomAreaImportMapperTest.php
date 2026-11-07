@@ -50,6 +50,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         foreach (BasementRoomAreaImportMapper::NEVER_OVERWRITE as $key) {
             $this->assertArrayNotHasKey($key, $proposed);
         }
+        $this->assertContains('drywall_ceiling_sf', BasementRoomAreaImportMapper::SKIP_FORM_KEYS);
     }
 
     public function test_missing_keys_are_null_so_manual_values_are_not_wiped(): void

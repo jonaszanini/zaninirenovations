@@ -122,7 +122,7 @@
       'underslab' => 'Rigid foam under a new slab or on the existing concrete before flooring, where specified.',
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
       'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
-      'drywall_ceiling_sf' => 'Saved hang area for this quote. Totals keep this figure — including leftover hang on drop or skip — until you clear it. Clearing follows Ceiling area on Ceiling Options.',
+      'drywall_ceiling_sf' => 'Saved hang area for this quote. Totals keep this figure — including leftover hang on drop or skip — until you confirm using Ceiling area.',
       'drywall_corners' => 'Outside corners that need metal or paper bead.',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labour.',
@@ -134,7 +134,7 @@
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
       'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
-      'ceiling_sf_legacy' => 'This saved quote has a different hang area on Drywall. Preview and resave keep that hang (and the total) until you clear Ceiling drywall there.',
+      'ceiling_sf_legacy' => 'This saved quote still hangs a stored ceiling drywall figure. Preview and resave keep that hang (and the total) until you confirm using this Ceiling area.',
       'flooring_type' => 'Finish floor product. Skip if the client is keeping existing floor or hiring flooring out.',
       'flooring_sf' => 'Floor area to install. Blank uses the work area.',
       'transition_qty' => 'Reducer or T-mould strips where the new floor meets another floor or a different height.',
@@ -644,10 +644,16 @@
         'placeholder' => 'Auto',
         'info' => $splitCeiling ? $brInfo['ceiling_sf_legacy'] : $brInfo['ceiling_sf'],
       ])
+      <input type="hidden" name="ceiling_hang_unified" id="br-ceiling-hang-unified" value="{{ ! empty($isEdit) && \App\Services\BasementCeilingQuantities::hasAdoptedUnifiedHang(is_array($inputs ?? null) ? $inputs : []) ? '1' : '0' }}">
       @if($splitCeiling)
-        <p class="admin-form-help" data-br-legacy-ceiling-notice>
-          Saved hang {{ $brQty('drywall_ceiling_sf') !== '' ? $brQty('drywall_ceiling_sf').' sq ft' : 'on Drywall' }} stays on preview and resave. Clear Ceiling drywall to follow this ceiling area.
-        </p>
+        <input type="hidden" name="drywall_ceiling_sf" id="br-dw-ceil" value="{{ $brQty('drywall_ceiling_sf') }}">
+        <div class="admin-form-help" data-br-legacy-ceiling-notice>
+          Saved hang {{ $brQty('drywall_ceiling_sf') !== '' ? $brQty('drywall_ceiling_sf').' sq ft' : 'on Drywall' }} stays on preview and resave.
+          <button type="button" class="admin-btn admin-btn--small" data-br-adopt-ceiling-hang
+                  data-br-adopt-message="Use Ceiling area for hang, tape, and mud from now on? Drop, skip, and ceiling-off will stop charging the saved hang. Totals will change.">
+            Use Ceiling area
+          </button>
+        </div>
       @endif
     </div>
   </div>
@@ -693,23 +699,6 @@
         'placeholder' => 'Auto',
         'info' => $brInfo['drywall_wall_sf'],
       ])
-      <div class="br-field--wide" data-br-skip-on-wall data-br-split-ceiling-field @if($scopePreset === 'wall' || ! $splitCeiling) hidden @endif>
-      @include('admin.quotations.basement._qty_lw', [
-        'name' => 'drywall_ceiling_sf',
-        'id' => 'br-dw-ceil',
-        'label' => 'Ceiling drywall (sq ft)',
-        'value' => $brQty('drywall_ceiling_sf'),
-        'modeName' => 'qty_dims[drywall_ceiling_sf][mode]',
-        'lengthName' => 'qty_dims[drywall_ceiling_sf][length_ft]',
-        'widthName' => 'qty_dims[drywall_ceiling_sf][width_ft]',
-        'mode' => $qtyDim('drywall_ceiling_sf')['mode'],
-        'lengthValue' => $qtyDim('drywall_ceiling_sf')['length'],
-        'widthValue' => $qtyDim('drywall_ceiling_sf')['width'],
-        'placeholder' => 'Auto',
-        'info' => $brInfo['drywall_ceiling_sf'],
-        'disabled' => ! $splitCeiling,
-      ])
-      </div>
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="br-dw-door-open">Door openings</label>

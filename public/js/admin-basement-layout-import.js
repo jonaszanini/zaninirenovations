@@ -48,6 +48,10 @@
     paint_ceiling_sf: true
   };
 
+  var SKIP_FORM_KEYS = {
+    drywall_ceiling_sf: true
+  };
+
   var NEVER_OVERWRITE = [
     'owner_hourly_rate',
     'helper_hourly_rate',
@@ -261,6 +265,7 @@
     var keys = Object.keys(proposed);
     for (var i = 0; i < keys.length; i++) {
       var k = keys[i];
+      if (SKIP_FORM_KEYS[k]) continue;
       if (proposed[k] == null) continue;
       if (valuesDiverge(current[k], proposed[k])) return true;
     }
@@ -302,6 +307,7 @@
     FIELD_IDS: FIELD_IDS,
     LW_KEYS: LW_KEYS,
     NEVER_OVERWRITE: NEVER_OVERWRITE,
+    SKIP_FORM_KEYS: SKIP_FORM_KEYS,
     CONFIRM_MESSAGE: 'This layout’s quantities differ from the values currently in the form. Replace the form values with the imported layout?'
   };
 

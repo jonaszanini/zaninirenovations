@@ -3,11 +3,13 @@
 namespace App\Services;
 
 /**
- * Ceiling Options area vs Drywall ceiling area.
+ * Ceiling Options area vs a saved Drywall ceiling hang figure.
  *
- * They are the same physical ceiling. New quotes use ceiling_sf only.
- * Saved quotes that stored two different numbers keep the old hang figure
- * so agreed totals are not silently repriced.
+ * New quotes use ceiling_sf only. Hang, tape, mud, sheets, drop tiles, and
+ * blank paint follow that one area (and the ceiling type). Saved quotes that
+ * stored an explicit drywall_ceiling_sf keep that hang — including drop,
+ * skip, ceiling-off, and matching numbers — until the user confirms adopting
+ * the single Ceiling area source.
  */
 class BasementCeilingQuantities
 {
@@ -16,14 +18,21 @@ class BasementCeilingQuantities
      */
     public static function usesSplit(array $originalInputs): bool
     {
-        if (! self::hasExplicitNumeric($originalInputs, 'drywall_ceiling_sf')) {
+        if (self::hasAdoptedUnifiedHang($originalInputs)) {
             return false;
         }
-        if (! self::hasExplicitNumeric($originalInputs, 'ceiling_sf')) {
-            return true;
-        }
 
-        return abs((float) $originalInputs['drywall_ceiling_sf'] - (float) $originalInputs['ceiling_sf']) > 0.009;
+        return self::hasExplicitNumeric($originalInputs, 'drywall_ceiling_sf');
+    }
+
+    /**
+     * @param  array<string, mixed>  $inputs
+     */
+    public static function hasAdoptedUnifiedHang(array $inputs): bool
+    {
+        $flag = $inputs['ceiling_hang_unified'] ?? null;
+
+        return $flag === true || $flag === 1 || $flag === '1';
     }
 
     /**

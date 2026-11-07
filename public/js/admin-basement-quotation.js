@@ -350,8 +350,10 @@
       if (heightEl) heightEl.value = formatLayoutQty(proposed[heightKey]);
     }
 
+    var skipForm = (layoutImport && layoutImport.SKIP_FORM_KEYS) || { drywall_ceiling_sf: true };
     Object.keys(proposed).forEach(function (key) {
       if (key === heightKey) return;
+      if (skipForm[key]) return;
       if (proposed[key] == null) return;
       var id = fieldIds[key];
       if (!id) return;
@@ -393,11 +395,27 @@
   }
 
   function syncUnifiedCeilingArea() {
-    if (isSplitCeilingQuote()) return;
-    var src = document.getElementById('br-ceil-sf');
+    // Hang is derived server-side from Ceiling area on new/adopted quotes.
+    // Do not copy into drywall_ceiling_sf: posting that field would mark a
+    // new quote as a legacy hang source on the next save.
+  }
+
+  function adoptUnifiedCeilingHang() {
+    var btn = form.querySelector('[data-br-adopt-ceiling-hang]');
+    var message = (btn && btn.getAttribute('data-br-adopt-message'))
+      || 'Use Ceiling area for hang, tape, and mud from now on? Totals will change.';
+    if (!window.confirm(message)) return;
+    form.setAttribute('data-br-split-ceiling', '0');
+    var flag = document.getElementById('br-ceiling-hang-unified');
+    if (flag) flag.value = '1';
     var dw = document.getElementById('br-dw-ceil');
-    if (!src || !dw) return;
-    setLwToSqft('br-dw-ceil', src.value === '' ? '' : src.value);
+    if (dw) {
+      dw.value = '';
+      dw.disabled = true;
+    }
+    var notice = form.querySelector('[data-br-legacy-ceiling-notice]');
+    if (notice) notice.hidden = true;
+    schedulePreview();
   }
 
   function refreshLayoutWallFromHeight() {
@@ -1364,6 +1382,10 @@
   if (ceilSfEl) {
     ceilSfEl.addEventListener('input', syncUnifiedCeilingArea);
     ceilSfEl.addEventListener('change', syncUnifiedCeilingArea);
+  }
+  var adoptCeil = form.querySelector('[data-br-adopt-ceiling-hang]');
+  if (adoptCeil) {
+    adoptCeil.addEventListener('click', adoptUnifiedCeilingHang);
   }
   syncUnifiedCeilingArea();
 

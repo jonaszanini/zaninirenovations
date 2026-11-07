@@ -22,16 +22,11 @@ class BasementCeilingAreaTest extends IntegrationTestCase
         $this->assertStringContainsString('id="br-ceil-sf"', $html);
         $this->assertStringContainsString('name="ceiling_sf"', $html);
         $this->assertStringContainsString('data-br-split-ceiling="0"', $html);
-        $this->assertMatchesRegularExpression(
-            '/data-br-split-ceiling-field[^>]*\bhidden\b/',
-            $html
-        );
+        $this->assertStringContainsString('id="br-sticky-total"', $html);
         $this->assertStringContainsString('One ceiling area for this quote', $html);
         $this->assertStringNotContainsString('data-br-legacy-ceiling-notice', $html);
-        $this->assertMatchesRegularExpression(
-            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
-            $html
-        );
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $html);
+        $this->assertStringNotContainsString('id="br-dw-ceil"', $html);
     }
 
     public function test_unified_ceiling_persists_on_save_reload_and_preview(): void
@@ -63,10 +58,8 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             '/<input(?=[^>]*\bid="br-ceil-sf")(?=[^>]*\bvalue="1500)/',
             $edit
         );
-        $this->assertMatchesRegularExpression(
-            '/data-br-split-ceiling-field[^>]*\bhidden\b/',
-            $edit
-        );
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $edit);
+        $this->assertStringNotContainsString('id="br-dw-ceil"', $edit);
 
         $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
             ->assertOk()
@@ -77,7 +70,7 @@ class BasementCeilingAreaTest extends IntegrationTestCase
         $this->assertStringContainsString('5,268', $hang['detail']);
     }
 
-    public function test_legacy_split_quote_keeps_saved_drywall_ceiling_and_shows_the_field(): void
+    public function test_legacy_split_quote_keeps_saved_hang_and_shows_adoption_notice(): void
     {
         $this->actingAsAdmin();
 
@@ -107,13 +100,12 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             ->assertOk()
             ->getContent();
         $this->assertStringContainsString('data-br-split-ceiling="1"', $html);
-        $this->assertTrue((bool) preg_match('/<div class="br-field--wide"[^>]*data-br-split-ceiling-field[^>]*>/', $html, $match));
-        $this->assertStringNotContainsString('hidden', $match[0]);
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $html);
         $this->assertMatchesRegularExpression(
-            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bvalue="118)/',
+            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\btype="hidden")(?=[^>]*\bvalue="118")/',
             $html
         );
-        $this->assertStringContainsString('Saved hang area for this quote', $html);
+        $this->assertStringContainsString('Use Ceiling area', $html);
         $this->assertStringContainsString('keep that hang', $html);
 
         $recalc = (new BasementQuotationCalculator)->calculate($quote->inputs);
@@ -123,10 +115,7 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             (float) $recalc['summary']['final_quote_total'],
             0.05
         );
-        $this->assertDoesNotMatchRegularExpression(
-            '/<input(?=[^>]*\bid="br-dw-ceil")(?=[^>]*\bdisabled\b)/',
-            $html
-        );
+        $this->assertStringContainsString('data-br-adopt-ceiling-hang', $html);
     }
 
     public function test_layout_import_fills_ceiling_area_then_preview_save_and_reload(): void
@@ -212,10 +201,8 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             ),
             'edit form should show imported ceiling area'
         );
-        $this->assertMatchesRegularExpression(
-            '/data-br-split-ceiling-field[^>]*\bhidden\b/',
-            $edit
-        );
+        $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $edit);
+        $this->assertStringNotContainsString('id="br-dw-ceil"', $edit);
     }
 
     public function test_legacy_drop_skip_and_ceiling_off_preview_and_resave_keep_totals(): void
@@ -279,6 +266,8 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             $this->assertStringContainsString('keep that hang', $html, $label);
             $this->assertStringContainsString('data-br-legacy-ceiling-notice', $html, $label);
             $this->assertStringContainsString('Saved hang 118 sq ft stays on preview and resave', $html, $label);
+            $this->assertStringContainsString('Use Ceiling area', $html, $label);
+            $this->assertStringNotContainsString('Ceiling drywall (sq ft)', $html, $label);
 
             $preview = $this->post(route('admin.quotations.basement.preview'), array_merge($inputs, [
                 'client_name' => $case['client_name'],
@@ -293,6 +282,122 @@ class BasementCeilingAreaTest extends IntegrationTestCase
             $this->assertEqualsWithDelta($storedTotal, (float) $quote->final_quote_total, 0.05, $label);
             $this->assertEqualsWithDelta(118.0, (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.01, $label);
         }
+    }
+
+    public function test_legacy_matching_hang_and_ceiling_area_on_drop_is_kept_until_adopted(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 1500,
+            'ceiling_height_ft' => 8,
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 1500,
+            'drywall_ceiling_sf' => 1500,
+            'drywall_wall_sf' => 100,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+            'flooring_type' => 'none',
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+        ]);
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $this->assertTrue(\App\Services\BasementCeilingQuantities::usesSplit($inputs));
+        $this->assertEqualsWithDelta(1500.0, (float) $calc['scope']['drywall_ceiling_sf'], 0.01);
+        $storedTotal = (float) $calc['summary']['final_quote_total'];
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
+            'client_name' => 'Legacy Equal Hang Drop',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $storedTotal,
+            'version' => 1,
+        ]);
+
+        $this->put(route('admin.quotations.basement.update', $quote), $this->publishPayload(array_merge($inputs, [
+            'client_name' => 'Legacy Equal Hang Drop',
+        ])))->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $quote->refresh();
+        $this->assertEqualsWithDelta($storedTotal, (float) $quote->final_quote_total, 0.05);
+        $this->assertEqualsWithDelta(1500.0, (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.01);
+
+        $adoptedPayload = $this->publishPayload(array_merge($inputs, [
+            'client_name' => 'Legacy Equal Hang Drop',
+            'ceiling_hang_unified' => '1',
+            'drywall_ceiling_sf' => '',
+        ]));
+        $this->put(route('admin.quotations.basement.update', $quote), $adoptedPayload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $quote->refresh();
+        $this->assertFalse(\App\Services\BasementCeilingQuantities::usesSplit($quote->inputs ?? []));
+        $this->assertEqualsWithDelta(0.0, (float) ($quote->calculation['scope']['drywall_ceiling_sf'] ?? 0), 0.01);
+        $this->assertNotEquals($storedTotal, (float) $quote->final_quote_total);
+        $hang = collect($quote->calculation['labor'] ?? [])->firstWhere('key', 'dw_hang');
+        $this->assertIsArray($hang);
+        $this->assertStringContainsString('100', $hang['detail']);
+        $this->assertStringNotContainsString('1,500', $hang['detail']);
+    }
+
+    public function test_new_drop_skip_and_off_do_not_hang_ceiling(): void
+    {
+        $this->actingAsAdmin();
+
+        foreach ([
+            ['ceiling_type' => 'drop', 'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full')],
+            ['ceiling_type' => 'none', 'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full')],
+            ['ceiling_type' => 'drywall', 'enabled_sections' => array_values(array_filter(
+                BasementQuotationCalculator::presetEnabledSections('full'),
+                fn ($key) => $key !== 'ceiling'
+            ))],
+        ] as $case) {
+            $payload = $this->publishPayload([
+                'client_name' => 'New Ceiling Mode '.$case['ceiling_type'],
+                'area_sqft' => 1500,
+                'ceiling_type' => $case['ceiling_type'],
+                'ceiling_sf' => 1500,
+                'drywall_wall_sf' => 100,
+                'enabled_sections' => $case['enabled_sections'],
+            ]);
+            unset($payload['drywall_ceiling_sf']);
+            $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
+                ->assertOk()
+                ->json();
+            $this->assertEqualsWithDelta(0.0, (float) ($preview['scope']['drywall_ceiling_sf'] ?? 0), 0.01, $case['ceiling_type']);
+            $hang = collect($preview['labor'] ?? [])->firstWhere('key', 'dw_hang');
+            $this->assertIsArray($hang, $case['ceiling_type']);
+            $this->assertStringContainsString('100', $hang['detail']);
+            $this->assertStringNotContainsString('1,500', $hang['detail']);
+        }
+    }
+
+    public function test_explicit_paint_zero_and_independent_insulation_survive_preview(): void
+    {
+        $this->actingAsAdmin();
+
+        $payload = $this->publishPayload([
+            'client_name' => 'Paint Zero Insulation',
+            'area_sqft' => 1500,
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 1500,
+            'paint_ceiling_sf' => 0,
+            'insulate_ceiling' => '1',
+            'insulation_ceiling_sf' => 400,
+            'drywall_wall_sf' => 100,
+        ]);
+        unset($payload['drywall_ceiling_sf']);
+
+        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
+            ->assertOk()
+            ->json();
+        $this->assertNull(collect($preview['labor'] ?? [])->firstWhere('key', 'paint_ceiling'));
+        $ins = collect($preview['labor'] ?? [])->firstWhere('key', 'ins_ceiling');
+        $this->assertIsArray($ins);
+        $this->assertStringContainsString('400', $ins['detail']);
+        $drop = collect($preview['labor'] ?? [])->firstWhere('key', 'ceil_drop');
+        $this->assertIsArray($drop);
     }
 
     /**

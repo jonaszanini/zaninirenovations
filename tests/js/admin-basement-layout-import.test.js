@@ -132,11 +132,16 @@ const leftoverDrywall = {
 const importedCeiling = layout.proposedQuantities({ area_sqft: 1500, ceiling_area_sqft: 1500 }, 8);
 assert.strictEqual(importedCeiling.ceiling_sf, 1500);
 assert.strictEqual(importedCeiling.drywall_ceiling_sf, 1500);
+const leftoverHangOnly = Object.assign({}, importedCeiling, {
+  drywall_ceiling_sf: 118,
+  import_label: 'Basement'
+});
 assert.strictEqual(
-  layout.wouldOverwrite(leftoverDrywall, importedCeiling),
-  true,
-  'import must replace a leftover drywall ceiling that does not match the layout'
+  layout.wouldOverwrite(leftoverHangOnly, importedCeiling),
+  false,
+  'import must not treat a saved hang field as a form overwrite; Ceiling area already matches'
 );
+assert.ok(layout.SKIP_FORM_KEYS.drywall_ceiling_sf);
 assert.strictEqual(
   layout.wouldOverwrite(leftoverDrywall, measuredCeilingZero),
   true,

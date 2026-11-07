@@ -65,6 +65,16 @@ class BasementRoomAreaImportMapper
     ];
 
     /**
+     * Proposed hang area is derived from Ceiling area on the form.
+     * Import never writes the legacy drywall_ceiling_sf field.
+     *
+     * @var list<string>
+     */
+    public const SKIP_FORM_KEYS = [
+        'drywall_ceiling_sf',
+    ];
+
+    /**
      * Quote configuration that import must never write.
      *
      * @var list<string>
