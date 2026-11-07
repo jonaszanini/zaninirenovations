@@ -3992,6 +3992,57 @@ a:hover .cp-expense-receipt-pdf {
   }
 }
 
+.cp-billing-totals {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 12px 0 4px;
+}
+.cp-billing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.cp-billing-actions--compact {
+  margin: 0;
+}
+.cp-billing-actions .admin-btn,
+.cp-billing-actions form {
+  flex: 0 0 auto;
+  width: max-content;
+  max-width: 100%;
+  white-space: nowrap;
+}
+.cp-contract-header .cp-billing-actions {
+  width: 100%;
+}
+.cp-billing-prepare__terms {
+  margin: 8px 0 0;
+  color: var(--admin-muted);
+  font-size: 13px;
+}
+.cp-billing-prepare__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
+.cp-billing-prepare .cp-contract-editor-toolbar {
+  margin-bottom: 12px;
+}
+@media (max-width: 640px) {
+  .cp-billing-totals {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cp-billing-prepare-table .admin-input[type="date"] {
+    min-width: 0;
+    width: 100%;
+  }
+}
+
 .cp-invoice-bill-to {
   margin-bottom: 1rem;
   padding: 12px 14px;

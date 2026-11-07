@@ -30,7 +30,7 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
             'total_amount' => 5422.65,
             'payment_plan' => 3,
             'installments' => [$paid, $unpaidA, $unpaidB],
-            'unpaid_invoice_count' => 2,
+            'unpaid_invoice_count' => 0,
         ]);
 
         $analysis = (new RecalculateRemainingInstallmentsService)->analyze($project);
@@ -83,6 +83,59 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
 
         $this->assertTrue($analysis['finance_committed']);
         $this->assertTrue($analysis['has_discrepancy']);
+        $this->assertTrue($analysis['blocked']);
+        $this->assertStringContainsString('prepared draft', $analysis['block_reason']);
+        $this->assertStringContainsString('does not delete', $analysis['block_reason']);
+    }
+
+    public function test_analyze_blocks_issued_sent_and_partially_paid_invoices(): void
+    {
+        $unpaid = $this->installment(250.00, 100, false, 282.50);
+
+        $sent = $this->mockProject([
+            'quot_sub' => 400.00,
+            'quot_grand' => 452.00,
+            'total_amount' => 250.00,
+            'payment_plan' => 1,
+            'installments' => [$unpaid],
+            'sent_invoice_count' => 1,
+        ]);
+        $sentAnalysis = (new RecalculateRemainingInstallmentsService)->analyze($sent);
+        $this->assertTrue($sentAnalysis['blocked']);
+        $this->assertSame(1, $sentAnalysis['issued_invoice_count']);
+        $this->assertStringContainsString('issued/sent', $sentAnalysis['block_reason']);
+
+        $partial = $this->mockProject([
+            'quot_sub' => 400.00,
+            'quot_grand' => 452.00,
+            'total_amount' => 250.00,
+            'payment_plan' => 1,
+            'installments' => [$unpaid],
+            'partial_invoice_count' => 1,
+        ]);
+        $partialAnalysis = (new RecalculateRemainingInstallmentsService)->analyze($partial);
+        $this->assertTrue($partialAnalysis['blocked']);
+        $this->assertSame(1, $partialAnalysis['partially_paid_invoice_count']);
+        $this->assertStringContainsString('partially paid', $partialAnalysis['block_reason']);
+        $this->assertStringContainsString('status is not Paid', $partialAnalysis['block_reason']);
+    }
+
+    public function test_preview_rejects_when_prepared_drafts_exist(): void
+    {
+        $paid = $this->installment(1500.00, 30, true, 1695.00);
+        $unpaid = $this->installment(1500.00, 70, false, 1695.00);
+        $project = $this->mockProject([
+            'quot_sub' => 6000.00,
+            'quot_grand' => 6780.00,
+            'total_amount' => 3000.00,
+            'payment_plan' => 2,
+            'installments' => [$paid, $unpaid],
+            'draft_invoice_count' => 1,
+        ]);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('prepared draft');
+        (new RecalculateRemainingInstallmentsService)->preview($project, 1, 'defaults');
     }
 
     public function test_analyze_blocks_when_new_total_is_below_paid(): void
@@ -118,7 +171,7 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
             'total_amount' => 5000.00,
             'payment_plan' => 3,
             'installments' => [$paid, $unpaidA, $unpaidB],
-            'unpaid_invoice_count' => 2,
+            'unpaid_invoice_count' => 0,
         ]);
 
         $preview = (new RecalculateRemainingInstallmentsService)->preview($project, 2, 'defaults');
@@ -152,7 +205,7 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
             'total_amount' => 4000.00,
             'payment_plan' => 3,
             'installments' => [$paid, $unpaidA, $unpaidB],
-            'unpaid_invoice_count' => 2,
+            'unpaid_invoice_count' => 0,
         ]);
 
         $preview = (new RecalculateRemainingInstallmentsService)->preview($project, 1, 'defaults');
@@ -175,7 +228,7 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
             'total_amount' => 2000.00,
             'payment_plan' => 2,
             'installments' => [$paid, $unpaid],
-            'unpaid_invoice_count' => 1,
+            'unpaid_invoice_count' => 0,
         ]);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -199,19 +252,56 @@ class RecalculateRemainingInstallmentsServiceTest extends TestCase
         $project->payment_plan = (int) $opts['payment_plan'];
         $project->total_amount = (float) $opts['total_amount'];
         $project->setRelation('installments', $installments);
-
-        $invoiceRelation = Mockery::mock(\Illuminate\Database\Eloquent\Relations\HasMany::class);
-        $invoiceRelation->shouldReceive('whereNotNull')->with('installment_number')->andReturnSelf();
-        $invoiceRelation->shouldReceive('whereNotIn')->with('status', [
-            ClientProjectInvoice::STATUS_PAID,
-            ClientProjectInvoice::STATUS_REFUNDED,
-        ])->andReturnSelf();
-        $unpaidInvoices = (int) ($opts['unpaid_invoice_count'] ?? 0);
-        $installmentInvoices = (int) ($opts['installment_invoice_count'] ?? $unpaidInvoices);
-        $invoiceRelation->shouldReceive('count')->andReturn($installmentInvoices, $unpaidInvoices);
-        $project->shouldReceive('invoices')->andReturn($invoiceRelation);
+        $project->setRelation('invoices', $this->mockInvoices($opts));
 
         return $project;
+    }
+
+    /**
+     * @param  array<string, mixed>  $opts
+     * @return Collection<int, ClientProjectInvoice>
+     */
+    private function mockInvoices(array $opts): Collection
+    {
+        $sent = (int) ($opts['sent_invoice_count'] ?? 0);
+        $draft = (int) ($opts['draft_invoice_count'] ?? 0);
+        $partial = (int) ($opts['partial_invoice_count'] ?? 0);
+        $paid = (int) ($opts['paid_invoice_count'] ?? 0);
+        if ($sent === 0 && $draft === 0 && $partial === 0 && $paid === 0) {
+            $unpaid = (int) ($opts['unpaid_invoice_count'] ?? 0);
+            $draft = $unpaid;
+        }
+
+        $items = [];
+        $n = 1;
+        for ($i = 0; $i < $draft; $i++) {
+            $items[] = $this->fakeInvoice(ClientProjectInvoice::STATUS_DRAFT, $n++);
+        }
+        for ($i = 0; $i < $sent; $i++) {
+            $items[] = $this->fakeInvoice(ClientProjectInvoice::STATUS_SENT, $n++);
+        }
+        for ($i = 0; $i < $partial; $i++) {
+            $items[] = $this->fakeInvoice(ClientProjectInvoice::STATUS_SENT, $n++, 50.00);
+        }
+        for ($i = 0; $i < $paid; $i++) {
+            $items[] = $this->fakeInvoice(ClientProjectInvoice::STATUS_PAID, $n++, 100.00);
+        }
+
+        return new Collection($items);
+    }
+
+    private function fakeInvoice(string $status, int $number, float $paidAmount = 0.0): ClientProjectInvoice
+    {
+        $invoice = new ClientProjectInvoice();
+        $invoice->id = $number;
+        $invoice->installment_number = $number;
+        $invoice->invoice_number = 'INV-TEST-'.str_pad((string) $number, 4, '0', STR_PAD_LEFT);
+        $invoice->status = $status;
+        $invoice->paid_amount = $paidAmount;
+        $invoice->paid_at = $paidAmount > 0 && $status === ClientProjectInvoice::STATUS_PAID ? now() : null;
+        $invoice->total = 282.50;
+
+        return $invoice;
     }
 
     private function installment(float $amount, float $pct, bool $paid, float $effectiveTotal): ClientProjectInstallment

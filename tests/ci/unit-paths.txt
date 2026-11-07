@@ -33,6 +33,7 @@ tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
 tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php
+tests/Unit/Services/RecalculateRemainingInstallmentsServiceTest.php
 tests/Unit/Services/RoomAreaCanvasDataTest.php
 tests/Unit/Services/RoomAreaClosingErrorTest.php
 tests/Unit/Services/RoomAreaFinishMathTest.php

@@ -452,6 +452,13 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::get('quotations/projects/search', [\App\Http\Controllers\Admin\ClientProjectQuotationController::class, 'searchProjectsForDuplicate'])
         ->name('quotations.projects.search');
 
+    // After an accepted quotation: review the payment plan and create DRAFT
+    // invoices (same ClientProjectInvoice rows as the Invoice tab).
+    Route::get('client-projects/{client_project}/billing/prepare', [\App\Http\Controllers\Admin\PrepareBillingController::class, 'show'])
+        ->name('client-projects.billing.prepare');
+    Route::post('client-projects/{client_project}/billing/prepare', [\App\Http\Controllers\Admin\PrepareBillingController::class, 'confirm'])
+        ->name('client-projects.billing.confirm');
+
     // Invoices (structured, PDF generation, email-to-client). Multiple allowed
     // per project — one per installment plus optional manual invoices.
     Route::post('client-projects/{client_project}/invoices', [\App\Http\Controllers\Admin\ClientProjectInvoiceController::class, 'create'])

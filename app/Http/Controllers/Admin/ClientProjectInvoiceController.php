@@ -15,6 +15,7 @@ use App\Services\Invoice\InvoiceCreationService;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\InvoiceTotalsCalculator;
 use App\Services\Invoice\MarkInvoicePaidService;
+use App\Services\Invoice\PrepareBillingService;
 use App\Services\Invoice\RefundInvoiceService;
 use App\Services\MoceanSmsService;
 use App\Support\SignedPublicLink;
@@ -78,7 +79,7 @@ class ClientProjectInvoiceController extends Controller
                 'min:1',
                 'max:4',
             ],
-            'mode' => ['nullable', 'in:installment,manual,hourly'],
+            'mode' => ['nullable', 'in:installment,manual,hourly,next'],
         ]);
 
         $mode = $data['mode'] ?? ($request->filled('installment_number') ? 'installment' : 'manual');
@@ -93,8 +94,31 @@ class ClientProjectInvoiceController extends Controller
         if ($mode === 'hourly' && ! $client_project->isHourly()) {
             return back()->with('error', '"Create invoice from hours" is only available for hourly-billed projects.');
         }
-        if ($mode === 'installment' && $client_project->isHourly()) {
+        if (in_array($mode, ['installment', 'next'], true) && $client_project->isHourly()) {
             return back()->with('error', 'Hourly projects do not use the installment invoice flow.');
+        }
+
+        if ($mode === 'next') {
+            if (! auth()->user()?->isAdmin()) {
+                abort(403);
+            }
+
+            try {
+                $invoice = app(PrepareBillingService::class)->openOrCreateNext($client_project);
+            } catch (ValidationException $e) {
+                $first = collect($e->errors())->flatten()->first() ?: 'Could not prepare the next installment invoice.';
+
+                return back()->with('error', $first)->withErrors($e->errors());
+            }
+
+            return redirect()
+                ->route('admin.client-projects.invoices.edit', [$client_project, $invoice])
+                ->with(
+                    'success',
+                    $invoice->wasRecentlyCreated
+                        ? 'Draft invoice created for the next installment. Review before sending — nothing was issued.'
+                        : 'Opening the existing invoice for this installment. Review before sending — nothing was issued.'
+                );
         }
 
         $installmentNumber = $mode === 'installment' ? (int) ($data['installment_number'] ?? 0) : null;

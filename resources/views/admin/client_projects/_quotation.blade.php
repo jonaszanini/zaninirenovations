@@ -52,6 +52,7 @@
       <i class="fa fa-plus"></i> Create quotation
     </a>
   </div>
+  @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
 </div>
 
 @if ($quotationRows->isEmpty())

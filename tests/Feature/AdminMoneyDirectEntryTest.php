@@ -685,6 +685,10 @@ require $public.\'/index.php\';
     protected function tearDown(): void
     {
         $this->stopLayoutServer();
+        // This class sets $connectionsToTransact = [] so the layout server
+        // can see rows. Factory invoices are therefore committed and would
+        // leak into later mysql-suite tests (e-transfer recency matching).
+        ClientProjectInvoice::query()->delete();
         parent::tearDown();
     }
 }

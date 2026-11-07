@@ -404,6 +404,14 @@ TXT;
     {
         $this->actingAsAdmin();
 
+        // Matcher ranks every open invoice. Suite-mates that disable
+        // RefreshDatabase transactions (Puppeteer layout servers) can leave
+        // committed drafts; a leftover client name can score ≥55% vs
+        // "Someone Else" and become a confident match. This case is recency
+        // only, so the open pool must be this invoice alone.
+        ClientProjectInvoice::query()->delete();
+        EtransferNotice::query()->delete();
+
         $project = ClientProject::factory()->create([
             'client_name' => 'Unrelated Person',
             'client_email' => 'unrelated@example.test',
@@ -423,6 +431,9 @@ TXT;
             'message' => 'thanks',
             'reference_number' => 'CATHRESH0001',
         ]);
+
+        $this->assertSame(1, ClientProjectInvoice::query()->count());
+        $this->assertSame(1, EtransferNotice::query()->count());
 
         $html = $this->get(route('admin.financials.etransfers'))
             ->assertOk()
