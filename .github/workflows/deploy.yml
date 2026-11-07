@@ -14,45 +14,72 @@ concurrency:
 
 jobs:
   require-tests:
-    if: github.event_name == 'workflow_dispatch'
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     permissions:
       actions: read
       contents: read
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
     steps:
-      - name: Require a successful Tests run for this SHA
+      - name: Checkout pin-deploy-sha helper
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            .github/scripts/pin-deploy-sha.sh
+            .github/scripts/require-tests-conclusion.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Pin the exact SHA and require a successful Tests run
+        id: pin
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ github.sha }}
+          EVENT_NAME: ${{ github.event_name }}
+          WORKFLOW_RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          DISPATCH_SHA: ${{ github.sha }}
           REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
-          echo "Looking for a successful Tests run on ${SHA}"
-          for i in $(seq 1 90); do
-            payload="$(gh run list --repo "$REPO" --workflow Tests --commit "$SHA" --json conclusion,status)"
+          MAIN_SHA="$(gh api "repos/${REPO}/commits/main" --jq .sha)"
+          export EVENT_NAME WORKFLOW_RUN_SHA DISPATCH_SHA MAIN_SHA
+          PINNED="$(bash .github/scripts/pin-deploy-sha.sh | awk -F= '/^sha=/{print $2; exit}')"
+          if [ -z "$PINNED" ]; then
+            echo "pin-deploy-sha.sh did not emit sha="
+            exit 1
+          fi
+          echo "sha=${PINNED}" >> "$GITHUB_OUTPUT"
+
+          echo "Looking for a successful Tests run on ${PINNED}"
+          attempts=90
+          if [ "$EVENT_NAME" = "workflow_run" ]; then
+            attempts=1
+          fi
+          for i in $(seq 1 "$attempts"); do
+            payload="$(gh run list --repo "$REPO" --workflow Tests --commit "$PINNED" --json conclusion,status)"
             conclusion="$(printf '%s' "$payload" | jq -r '[.[] | select(.status=="completed")] | .[0].conclusion // empty')"
             inflight="$(printf '%s' "$payload" | jq -r '[.[] | select(.status=="in_progress" or .status=="queued" or .status=="pending" or .status=="waiting" or .status=="requested")] | length')"
-            if [ "$conclusion" = "success" ]; then
-              echo "Tests succeeded for ${SHA}"
+            if [ "$conclusion" = "success" ] || [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ] || [ "$conclusion" = "timed_out" ]; then
+              TESTS_CONCLUSION="$conclusion" bash .github/scripts/require-tests-conclusion.sh
+              MAIN_SHA="$(gh api "repos/${REPO}/commits/main" --jq .sha)"
+              PINNED_SHA="$PINNED" MAIN_SHA="$MAIN_SHA" bash .github/scripts/pin-deploy-sha.sh >/dev/null
               exit 0
             fi
-            if [ "$conclusion" = "failure" ] || [ "$conclusion" = "cancelled" ] || [ "$conclusion" = "timed_out" ]; then
-              echo "Tests ${conclusion} for ${SHA}; refusing deploy"
-              exit 1
-            fi
-            echo "Waiting for Tests on ${SHA} (attempt ${i}, in-flight=${inflight})"
+            echo "Waiting for Tests on ${PINNED} (attempt ${i}, in-flight=${inflight})"
             sleep 20
           done
-          echo "Timed out waiting for Tests on ${SHA}. Run the Tests workflow first."
-          exit 1
+          echo "Timed out waiting for Tests on ${PINNED}. Run the Tests workflow first."
+          TESTS_CONCLUSION="" bash .github/scripts/require-tests-conclusion.sh
 
   deploy:
     needs: [require-tests]
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && needs.require-tests.result == 'success') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push')) }}
+    if: ${{ always() && needs.require-tests.result == 'success' && ((github.event_name == 'workflow_dispatch') || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' && github.event.workflow_run.event == 'push')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: PROD
+    permissions:
+      contents: read
 
     env:
       DEPLOY_ROOT: /home/u372714627/domains/zaninirenovations.ca/public_html
@@ -61,7 +88,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.require-tests.outputs.sha }}
+
+      - name: Confirm checkout SHA matches the green-tested pin
+        run: |
+          set -euo pipefail
+          GOT="$(git rev-parse HEAD)"
+          WANT="${{ needs.require-tests.outputs.sha }}"
+          echo "checked out ${GOT}; required ${WANT}"
+          test -n "$WANT"
+          test "$GOT" = "$WANT"
 
       - name: Configure SSH known hosts
         run: |
@@ -74,6 +110,21 @@ jobs:
         uses: webfactory/ssh-agent@v0.10.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Recheck pin is still current main before deploy side effects
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PINNED_SHA: ${{ needs.require-tests.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test -n "$PINNED_SHA"
+          HEAD="$(git rev-parse HEAD)"
+          echo "checked out ${HEAD}; pinned ${PINNED_SHA}"
+          test "$HEAD" = "$PINNED_SHA"
+          MAIN_SHA="$(gh api "repos/${REPO}/commits/main" --jq .sha)"
+          PINNED_SHA="$PINNED_SHA" MAIN_SHA="$MAIN_SHA" bash .github/scripts/pin-deploy-sha.sh
+          test "$(git rev-parse HEAD)" = "$MAIN_SHA"
 
       - name: Deploy to server
         env:

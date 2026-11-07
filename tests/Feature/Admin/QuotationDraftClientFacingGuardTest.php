@@ -9,6 +9,7 @@ use App\Models\LowDeckQuotation;
 use App\Models\StandardQuotation;
 use App\Models\TileQuotation;
 use App\Services\QuoteAcceptanceService;
+use App\Support\QuotationDraftFlash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\Feature\QuoteAcceptance\MakesAcceptableQuotations;
@@ -52,6 +53,10 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($cpqTotalBefore, $cpq->grandTotal(), 0.001, "{$type} draft must not change the project PDF total");
         $this->assertSame($snapshotBefore, $cpq->source_snapshot, "{$type} draft must not replace the client quotation snapshot");
         $this->assertEqualsWithDelta($cpqTotalBefore, $cpq->pdfGrandTotal(), 0.001, "{$type} draft must not change the public signed PDF total");
+        $this->assertTrue(
+            $cpq->fresh()->isSourceDraft(),
+            "{$type} client quotation must pause after the source is saved as a draft"
+        );
     }
 
     /**
@@ -61,15 +66,17 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
 
-        [$quote, , $payload, $updateRoute] = $this->publishLinkedQuote($type);
+        [$quote, $cpq, $payload, $updateRoute] = $this->publishLinkedQuote($type);
 
         $this->from(route('admin.quotations.'.$type.'.edit', $quote))
             ->put($updateRoute, $this->draftUpdatePayload($type, $quote, $payload))
             ->assertRedirect()
-            ->assertSessionHas(
-                'success',
-                $this->quoteTypeLabel($type).' quotation saved as a draft. The client\'s link is paused until you publish again.'
-            );
+            ->assertSessionHas('success');
+        $this->assertDraftUpdateFlash($type, $quote, (string) session('success'), true);
+        $this->assertTrue(
+            $cpq->fresh()->isSourceDraft(),
+            "{$type} client-facing quotation must be paused after Save as draft"
+        );
 
         $html = $this->get(route('admin.quotations.'.$type.'.edit', $quote->fresh()))
             ->assertOk()
@@ -79,11 +86,8 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
         $this->from(route('admin.quotations.'.$type.'.edit', $quote->fresh()))
             ->put($updateRoute, $this->draftUpdatePayload($type, $quote->fresh(), $payload))
             ->assertRedirect()
-            ->assertSessionHas(
-                'success',
-                $this->quoteTypeLabel($type).' quotation saved as a draft.'
-            );
-        $this->assertStringNotContainsString('paused', (string) session('success'));
+            ->assertSessionHas('success');
+        $this->assertDraftUpdateFlash($type, $quote, (string) session('success'), false);
     }
 
     /**
@@ -262,6 +266,35 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
             $html,
             'Total incl. HST must not appear on the revising page'
         );
+    }
+
+    private function assertDraftUpdateFlash(string $type, object $quote, string $message, bool $expectPaused): void
+    {
+        $label = $this->quoteTypeLabel($type);
+        $this->assertStringContainsString($label.' quotation', $message);
+        $this->assertStringContainsString('saved as a draft', $message);
+        if ($expectPaused) {
+            $this->assertStringContainsString(QuotationDraftFlash::CLIENT_LINK_PAUSED_SENTENCE, $message);
+        } else {
+            $this->assertStringNotContainsString('paused', $message);
+        }
+
+        if ($type === 'basement') {
+            $number = trim((string) $quote->fresh()->quote_number);
+            $this->assertNotSame('', $number);
+            $this->assertStringContainsString($number, $message);
+            if ($expectPaused) {
+                $this->assertStringNotContainsString('not on the project', $message);
+            }
+
+            return;
+        }
+
+        $expected = $label.' quotation saved as a draft.';
+        if ($expectPaused) {
+            $expected .= ' '.QuotationDraftFlash::CLIENT_LINK_PAUSED_SENTENCE;
+        }
+        $this->assertSame($expected, $message);
     }
 
     private function makeUnlinkedDraft(string $type): FenceQuotation|LowDeckQuotation|StandardQuotation
