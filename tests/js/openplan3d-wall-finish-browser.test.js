@@ -222,9 +222,16 @@ async function main() {
         const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
         if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
         mod.X.set(null);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
       },
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
+    await page.waitForFunction(() => {
+      const ids = window.OpenPlan3DZaniniTools.readSelectedWallIds
+        ? window.OpenPlan3DZaniniTools.readSelectedWallIds()
+        : [];
+      return !ids || ids.length === 0;
+    }, { timeout: 8000 });
     await page.evaluate(() => window.OpenPlan3DZaniniTools.renderFinishPanel());
     const hidden = await page.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
