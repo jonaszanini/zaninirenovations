@@ -174,14 +174,25 @@ async function main() {
       fs.copyFileSync(path.join(shotsDir, 'room-area-paint-ui-390.png'), '/opt/cursor/artifacts/room-area-paint-ui-390.png');
     } catch (e) { /* CI runners may not have /opt/cursor/artifacts */ }
 
-    await page.click('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
     await page.waitForFunction(() => {
       const plan = window.__openPlan3D.getProject();
       return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
         && plan.zanini.wallFinishes.pw0.paint === true);
     }, { timeout: 8000 });
 
-    await page.click('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
     await page.waitForFunction(() => {
       const plan = window.__openPlan3D.getProject();
       const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
