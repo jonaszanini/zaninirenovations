@@ -523,7 +523,7 @@
               'url' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
             ])
           </div>
-          <div id="pq-live-root">
+          <div id="pq-live-root" data-pq-preview-state="idle">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
         </div>
@@ -952,6 +952,16 @@
       var lastAdditionalMaterialsTaxIn = 0;
       var lastAdditionalLaborPreTax = 0;
       var lastPreviewCalc = null;
+      var previewSeq = 0;
+      var previewAbort = null;
+      function setPreviewState(state) {
+        if (root && root.setAttribute) {
+          root.setAttribute('data-pq-preview-state', state);
+        }
+      }
+      function isAbortError(err) {
+        return !!(err && (err.name === 'AbortError' || (String(err.message || '').toLowerCase().indexOf('abort') !== -1)));
+      }
       function schedule() {
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
@@ -981,6 +991,7 @@
       function render(c) {
         if (!c || !c.summary) return;
         lastPreviewCalc = c;
+        setPreviewState('ready');
         var s = c.summary;
         var m = c.materials;
         var f = c.fixed_costs;
@@ -1131,22 +1142,36 @@
       }
 
       function runPreview() {
+        var seq = ++previewSeq;
+        if (previewAbort && typeof previewAbort.abort === 'function') {
+          try { previewAbort.abort(); } catch (e) {}
+        }
+        previewAbort = null;
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
           renderMissingSummary(missing);
           lastPreviewCalc = null;
+          setPreviewState('missing');
           return;
         }
+        setPreviewState('loading');
         var fd = new FormData(form);
         fd.delete('_method');
         appendPreviewFormData(fd);
-        fetch(previewUrl, { method: 'POST', body: fd, headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+        previewAbort = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+        fetch(previewUrl, {
+          method: 'POST',
+          body: fd,
+          headers: { 'X-CSRF-TOKEN': tokenV, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+          signal: previewAbort ? previewAbort.signal : undefined,
+        })
           .then(function (r) {
             return r.json().then(function (data) {
               return { ok: r.ok, data: data };
             });
           })
           .then(function (result) {
+            if (seq !== previewSeq) return;
             if (!result.ok) {
               var errItems = flattenValidationErrors(result.data);
               if (!errItems.length && result.data && result.data.message) {
@@ -1154,18 +1179,23 @@
               }
               renderMissingSummary(errItems.length ? errItems : ['Could not calculate — check your inputs.']);
               lastPreviewCalc = null;
+              setPreviewState('missing');
               return;
             }
             if (!result.data || !result.data.summary) {
               renderMissingSummary(['Calculator did not return a summary.']);
               lastPreviewCalc = null;
+              setPreviewState('missing');
               return;
             }
             render(result.data);
           })
-          .catch(function () {
+          .catch(function (err) {
+            if (seq !== previewSeq) return;
+            if (isAbortError(err)) return;
             root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>';
             lastPreviewCalc = null;
+            setPreviewState('error');
           });
       }
       form.addEventListener('input', schedule);

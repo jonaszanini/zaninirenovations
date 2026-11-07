@@ -2,12 +2,21 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\ClientProject;
+use App\Models\ClientProjectQuotation;
+use App\Models\PavingMarbleType;
+use App\Models\PavingQuotation;
 use App\Models\User;
+use App\Services\PavingQuotationCalculator;
+use App\Support\QuotationSharedLabourRates;
 use Illuminate\Support\Facades\Hash;
 use Tests\IntegrationTestCase;
+use Tests\Support\ExtractsPdfText;
 
 class PavingMarbleBrowserTest extends IntegrationTestCase
 {
+    use ExtractsPdfText;
+
     /** @var list<string> */
     protected $connectionsToTransact = [];
 
@@ -25,6 +34,25 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
             'password' => Hash::make('password'),
             'role' => User::ROLE_ADMIN,
         ]);
+        $this->actingAs($user);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Paving marble browser project',
+            'client_name' => 'Ordinary Paving Browser',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+        $expected = $this->expectedPavingMoney();
+        $this->assertNotEquals(
+            $expected['offMoney'],
+            $expected['defaultMoney'],
+            '80 sf marble-off must differ from the create-page default area total'
+        );
+        $this->assertNotEquals(
+            $expected['offMoney'],
+            $expected['onMoney'],
+            'marble-on 50 sf must change the 80 sf marble-off total'
+        );
 
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/paving-marble-constraint-browser.js');
@@ -39,6 +67,13 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
             'PQ_MARBLE_BASE' => $base,
             'PQ_MARBLE_OUT' => $out,
             'PQ_MARBLE_SHOTS' => $shots,
+            'PQ_MARBLE_EXPECT' => json_encode([
+                'offMoney' => $expected['offMoney'],
+                'onMoney' => $expected['onMoney'],
+                'defaultMoney' => $expected['defaultMoney'],
+                'createPath' => route('admin.quotations.paving.create', ['project' => $project->id], false),
+                'customScope' => 'CUSTOM PAVING SCOPE COPY',
+            ]),
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -97,14 +132,127 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $this->assertFalse((bool) ($report['afterSaveMarbleChecked'] ?? true));
         $this->assertTrue((bool) ($report['afterSaveAreaDisabled'] ?? false));
 
-        foreach (['off-1280', 'off-390', 'on-1280', 'on-390'] as $key) {
+        $this->assertSettledMoney($report['offCreate1280'] ?? [], $expected['offMoney'], 'off create 1280');
+        $this->assertSettledMoney($report['offCreate390'] ?? [], $expected['offMoney'], 'off create 390');
+        $this->assertSettledMoney($report['onCreate1280'] ?? [], $expected['onMoney'], 'on create 1280');
+        $this->assertSettledMoney($report['onCreate390'] ?? [], $expected['onMoney'], 'on create 390');
+        $this->assertSettledMoney($report['afterSave1280'] ?? [], $expected['offMoney'], 'reopen 1280');
+        $this->assertSettledMoney($report['afterSave390'] ?? [], $expected['offMoney'], 'reopen 390');
+        $this->assertSame(
+            $expected['offMoney'],
+            (string) (($report['offAfterSettled'] ?? [])['footer'] ?? ''),
+            'turning marble off must restore the marble-off total'
+        );
+
+        $quote = PavingQuotation::query()->where('client_name', 'Ordinary Paving Browser')->first();
+        $this->assertNotNull($quote);
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertFalse((bool) (($quote->inputs ?? [])['marble_enabled'] ?? true));
+        $this->assertNull(($quote->calculation ?? [])['marble'] ?? null);
+        $this->assertEqualsWithDelta($expected['offTotal'], (float) $quote->final_quote_total, 0.01);
+        $this->assertStringContainsString('CUSTOM PAVING SCOPE COPY', (string) $quote->work_description);
+
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_PAVING)
+            ->where('source_id', $quote->id)
+            ->first();
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta($expected['offTotal'], $cpq->pdfGrandTotal(), 0.01);
+        $this->assertStringContainsString('CUSTOM PAVING SCOPE COPY', (string) $cpq->work_description);
+
+        $pdfPath = (string) (($report['pdf'] ?? [])['path'] ?? '');
+        $this->assertTrue((bool) (($report['pdf'] ?? [])['pdfMagic'] ?? false), 'browser PDF magic');
+        $this->assertGreaterThan(1000, (int) (($report['pdf'] ?? [])['bytes'] ?? 0));
+        $this->assertFileExists($pdfPath);
+        $pdfText = $this->extractPdfText($pdfPath);
+        $this->assertStringContainsString($expected['offMoney'], $pdfText);
+        $this->assertStringContainsString('CUSTOM PAVING SCOPE COPY', $pdfText);
+        $this->assertStringNotContainsString($expected['onMoney'], $pdfText);
+        $this->writeArtifact($pdfPath, 'paving-ordinary-no-marble.pdf');
+        $this->writeArtifactString('paving-ordinary-no-marble.txt', $pdfText);
+
+        foreach (['off-1280', 'off-390', 'on-1280', 'on-390', 'reopen-1280', 'reopen-390'] as $key) {
             $shot = (string) ($report['shots'][$key] ?? '');
             $this->assertFileExists($shot, $key.' screenshot missing');
-            $dest = '/opt/cursor/artifacts/'.basename($shot);
-            if (is_dir('/opt/cursor/artifacts') || @mkdir('/opt/cursor/artifacts', 0777, true)) {
-                @copy($shot, $dest);
-            }
+            $this->writeArtifact($shot, basename($shot));
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function assertSettledMoney(array $row, string $expectedMoney, string $label): void
+    {
+        $totals = is_array($row['totals'] ?? null) ? $row['totals'] : (is_array($row['settled'] ?? null) ? $row['settled'] : []);
+        $footer = (string) ($totals['footer'] ?? ($row['settled']['footer'] ?? ''));
+        $this->assertSame($expectedMoney, $footer, $label.' footer');
+        if (isset($totals['totalQuote']) && $totals['totalQuote'] !== '') {
+            $this->assertSame(
+                $this->moneyCents($expectedMoney),
+                $this->moneyCents((string) $totals['totalQuote']),
+                $label.' live Total quote'
+            );
+        }
+        if (isset($totals['footerCents'], $totals['totalCents'])) {
+            $this->assertSame((int) $totals['footerCents'], (int) $totals['totalCents'], $label.' footer cents vs summary');
+        }
+    }
+
+    /**
+     * @return array{defaultMoney: string, offMoney: string, onMoney: string, defaultTotal: float, offTotal: float, onTotal: float}
+     */
+    private function expectedPavingMoney(): array
+    {
+        $defaults = PavingQuotationCalculator::defaultInputs();
+        $defaults['owner_hourly_rate'] = QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+        $calculator = new PavingQuotationCalculator();
+        $defaultCalc = $calculator->calculate($defaults);
+        $offCalc = $calculator->calculate(array_merge($defaults, [
+            'total_area_sq_ft' => 80,
+            'marble_enabled' => false,
+        ]));
+        $marbleId = PavingMarbleType::query()->orderBy('sort_order')->value('id');
+        $this->assertNotNull($marbleId);
+        $onCalc = $calculator->calculate(array_merge($defaults, [
+            'total_area_sq_ft' => 80,
+            'marble_enabled' => true,
+            'marble_type_id' => $marbleId,
+            'marble_area_sq_ft' => 50,
+            'marble_depth_in' => 2,
+            'marble_include_geotextile' => true,
+        ]));
+
+        return [
+            'defaultMoney' => ClientProject::formatMoney((float) ($defaultCalc['summary']['final_quote_total'] ?? 0)),
+            'offMoney' => ClientProject::formatMoney((float) ($offCalc['summary']['final_quote_total'] ?? 0)),
+            'onMoney' => ClientProject::formatMoney((float) ($onCalc['summary']['final_quote_total'] ?? 0)),
+            'defaultTotal' => (float) ($defaultCalc['summary']['final_quote_total'] ?? 0),
+            'offTotal' => (float) ($offCalc['summary']['final_quote_total'] ?? 0),
+            'onTotal' => (float) ($onCalc['summary']['final_quote_total'] ?? 0),
+        ];
+    }
+
+    private function moneyCents(string $text): int
+    {
+        return (int) round(((float) preg_replace('/[^0-9.]/', '', $text)) * 100);
+    }
+
+    private function writeArtifact(string $source, string $name): void
+    {
+        $destDir = '/opt/cursor/artifacts';
+        if (! is_dir($destDir) && ! @mkdir($destDir, 0777, true)) {
+            return;
+        }
+        @copy($source, $destDir.'/'.$name);
+    }
+
+    private function writeArtifactString(string $name, string $contents): void
+    {
+        $destDir = '/opt/cursor/artifacts';
+        if (! is_dir($destDir) && ! @mkdir($destDir, 0777, true)) {
+            return;
+        }
+        @file_put_contents($destDir.'/'.$name, $contents);
     }
 
     /**

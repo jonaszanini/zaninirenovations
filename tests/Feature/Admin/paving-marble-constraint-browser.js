@@ -9,17 +9,25 @@ const password = process.env.PQ_MARBLE_PASSWORD;
 const base = process.env.PQ_MARBLE_BASE;
 const outPath = process.env.PQ_MARBLE_OUT;
 const shotsDir = process.env.PQ_MARBLE_SHOTS || path.join(process.cwd(), 'storage/app/pq-marble-shots');
+const expect = JSON.parse(process.env.PQ_MARBLE_EXPECT || '{}');
+const createPath = expect.createPath || '/admin/quotations/paving/create';
+const customScope = expect.customScope || 'CUSTOM PAVING SCOPE COPY';
 
 function launchOpts() {
   const opts = {
     headless: true,
-    protocolTimeout: 30000,
+    protocolTimeout: 60000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
     opts.executablePath = process.env.PUPPETEER_EXECUTABLE_PATH;
   }
   return opts;
+}
+
+function moneyCents(text) {
+  const n = parseFloat(String(text || '').replace(/[^0-9.]/g, ''));
+  return Number.isFinite(n) ? Math.round(n * 100) : null;
 }
 
 async function shot(page, name) {
@@ -47,6 +55,99 @@ async function overflow(page) {
       marbleRight: box ? box.right : 0,
     };
   });
+}
+
+async function readTotals(page) {
+  return page.evaluate(() => {
+    const footer = document.querySelector('[data-qh-footer-amount]');
+    const totalRow = document.querySelector('.pq-row--total strong');
+    const calcRow = document.querySelector('.pq-row--hl strong');
+    const missing = document.querySelector('.pq-preview-status');
+    const root = document.getElementById('pq-live-root');
+    const area = document.querySelector('.pq-stone-area-in');
+    const marbleArea = document.getElementById('pq-marble-area');
+    function cents(text) {
+      const n = parseFloat(String(text || '').replace(/[^0-9.]/g, ''));
+      return isFinite(n) ? Math.round(n * 100) : null;
+    }
+    const footerText = footer ? String(footer.textContent || '').trim() : '';
+    const totalText = totalRow ? String(totalRow.textContent || '').trim() : '';
+    return {
+      footer: footerText,
+      totalQuote: totalText,
+      calculated: calcRow ? String(calcRow.textContent || '').trim() : '',
+      footerCents: cents(footerText),
+      totalCents: cents(totalText),
+      missing: !!missing,
+      state: root ? String(root.getAttribute('data-pq-preview-state') || '') : '',
+      grand: typeof window.__quoteGrandTotal === 'number' ? window.__quoteGrandTotal : null,
+      stoneArea: area ? String(area.value || '') : '',
+      marbleArea: marbleArea ? String(marbleArea.value || '') : '',
+      innerWidth: window.innerWidth,
+    };
+  });
+}
+
+async function waitSettled(page, expectedMoney) {
+  const wantCents = expectedMoney != null && expectedMoney !== ''
+    ? moneyCents(expectedMoney)
+    : null;
+  await page.waitForFunction((want) => {
+    const missing = document.querySelector('.pq-preview-status');
+    if (missing) return false;
+    const root = document.getElementById('pq-live-root');
+    if (root && root.getAttribute('data-pq-preview-state') !== 'ready') return false;
+    const footer = document.querySelector('[data-qh-footer-amount]');
+    const totalRow = document.querySelector('.pq-row--total strong');
+    if (!footer || !totalRow) return false;
+    function cents(text) {
+      const n = parseFloat(String(text || '').replace(/[^0-9.]/g, ''));
+      return isFinite(n) ? Math.round(n * 100) : null;
+    }
+    const f = cents(footer.textContent);
+    const t = cents(totalRow.textContent);
+    if (f == null || t == null || f !== t || f <= 0) return false;
+    if (want != null && f !== want) return false;
+    return true;
+  }, { timeout: 25000 }, wantCents);
+  let last = null;
+  for (let i = 0; i < 8; i++) {
+    await new Promise((r) => setTimeout(r, 350));
+    const cur = await readTotals(page);
+    const stable = cur.footerCents === last
+      && cur.footerCents === cur.totalCents
+      && cur.state === 'ready'
+      && !cur.missing
+      && (wantCents == null || cur.footerCents === wantCents);
+    if (stable) return cur;
+    last = cur.footerCents;
+  }
+  const got = await readTotals(page);
+  if (wantCents != null && got.footerCents !== wantCents) {
+    throw new Error('footer did not settle at ' + expectedMoney + ', got ' + JSON.stringify(got));
+  }
+  if (got.footerCents !== got.totalCents) {
+    throw new Error('footer/summary mismatch ' + JSON.stringify(got));
+  }
+  return got;
+}
+
+async function captureWidth(page, width, name, expectedMoney) {
+  await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
+  await new Promise((r) => setTimeout(r, 200));
+  const settled = await waitSettled(page, expectedMoney);
+  await page.evaluate(() => {
+    const live = document.getElementById('pq-live-root');
+    if (live) live.scrollIntoView({ block: 'nearest' });
+  });
+  const overflowRow = await overflow(page);
+  const shotPath = await shot(page, name);
+  return {
+    settled,
+    overflow: overflowRow,
+    shot: shotPath,
+    totals: await readTotals(page),
+  };
 }
 
 async function tryPublish(page) {
@@ -95,12 +196,77 @@ async function marbleState(page) {
   });
 }
 
+async function fillBasics(page) {
+  await page.waitForSelector('#pq-client');
+  await page.click('#pq-client', { clickCount: 3 });
+  await page.type('#pq-client', 'Ordinary Paving Browser');
+  await page.evaluate((html) => {
+    const ta = document.getElementById('pq-work-description');
+    if (ta) ta.value = html;
+    if (window.tinymce && typeof window.tinymce.get === 'function') {
+      const ed = window.tinymce.get('pq-work-description');
+      if (ed && typeof ed.setContent === 'function') {
+        ed.setContent('<p>' + html + '</p>');
+      }
+    }
+  }, customScope);
+  await page.waitForSelector('.pq-stone-area-in');
+  await page.click('.pq-stone-area-in', { clickCount: 3 });
+  await page.type('.pq-stone-area-in', '80');
+  const commuteNo = await page.$('[data-cp-commute-include-no]');
+  if (commuteNo) await commuteNo.click();
+  const debrisNo = await page.$('[data-cp-debris-include-no]');
+  if (debrisNo) await debrisNo.click();
+  const pay = await page.$('input[name="payment_installments"][value="3"]');
+  if (pay) await pay.click();
+  const reply = await page.$('input[name="ask_reply_to_accept"][value="0"]');
+  if (reply) await reply.click();
+}
+
+async function fetchPdf(page) {
+  const href = await page.evaluate(() => {
+    const a = document.querySelector('a[data-qh-view-pdf][href]');
+    return a ? a.getAttribute('href') : '';
+  });
+  if (!href) {
+    return { status: 0, contentType: '', pdfMagic: false, bytes: 0, path: '' };
+  }
+  const url = href.indexOf('http') === 0 ? href : base + href;
+  const meta = await page.evaluate(async (pdfUrl) => {
+    const r = await fetch(pdfUrl, { credentials: 'same-origin' });
+    const buf = new Uint8Array(await r.arrayBuffer());
+    const magic = String.fromCharCode(buf[0] || 0, buf[1] || 0, buf[2] || 0, buf[3] || 0);
+    let binary = '';
+    const chunk = 0x8000;
+    for (let i = 0; i < buf.length; i += chunk) {
+      binary += String.fromCharCode.apply(null, buf.subarray(i, Math.min(i + chunk, buf.length)));
+    }
+    return {
+      status: r.status,
+      contentType: r.headers.get('content-type') || '',
+      pdfMagic: magic === '%PDF',
+      bytes: buf.length,
+      b64: btoa(binary),
+    };
+  }, url);
+  const dest = path.join(shotsDir, 'paving-ordinary-no-marble.pdf');
+  fs.writeFileSync(dest, Buffer.from(meta.b64, 'base64'));
+  return {
+    status: meta.status,
+    contentType: meta.contentType,
+    pdfMagic: meta.pdfMagic,
+    bytes: meta.bytes,
+    path: dest,
+    href,
+  };
+}
+
 (async () => {
   fs.mkdirSync(shotsDir, { recursive: true });
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
-  page.setDefaultNavigationTimeout(25000);
-  page.setDefaultTimeout(25000);
+  page.setDefaultNavigationTimeout(30000);
+  page.setDefaultTimeout(30000);
 
   await page.goto(base + '/admin/login', { waitUntil: 'domcontentloaded' });
   if (page.url().includes('/admin/login')) {
@@ -113,35 +279,21 @@ async function marbleState(page) {
     ]);
   }
 
-  await page.goto(base + '/admin/quotations/paving/create', { waitUntil: 'domcontentloaded' });
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await page.goto(base + createPath, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#pq-main-form');
   await page.waitForSelector('#pq-marble-area');
 
-  await page.type('#pq-client', 'Ordinary Paving Browser');
-  await page.waitForSelector('.pq-stone-area-in');
-  await page.click('.pq-stone-area-in', { clickCount: 3 });
-  await page.type('.pq-stone-area-in', '80');
-  await page.click('[data-cp-commute-include-no]');
-  await page.click('[data-cp-debris-include-no]');
-  await page.click('input[name="payment_installments"][value="3"]');
-  const reply = await page.$('input[name="ask_reply_to_accept"][value="0"]');
-  if (reply) {
-    await reply.click();
-  }
+  const report = { shots: {}, overflow: {}, expected: expect };
 
-  const report = { shots: {}, overflow: {} };
+  await fillBasics(page);
   report.off = await marbleState(page);
-
-  for (const width of [1280, 390]) {
-    await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
-    await page.evaluate(() => {
-      const el = document.getElementById('pq-marble-section');
-      if (el) el.scrollIntoView({ block: 'center' });
-    });
-    await new Promise((r) => setTimeout(r, 150));
-    report.overflow['off-' + width] = await overflow(page);
-    report.shots['off-' + width] = await shot(page, 'paving_ordinary_no_marble_' + width);
-  }
+  report.offCreate1280 = await captureWidth(page, 1280, 'paving_ordinary_no_marble_1280', expect.offMoney);
+  report.offCreate390 = await captureWidth(page, 390, 'paving_ordinary_no_marble_390', expect.offMoney);
+  report.shots['off-1280'] = report.offCreate1280.shot;
+  report.shots['off-390'] = report.offCreate390.shot;
+  report.overflow['off-1280'] = report.offCreate1280.overflow;
+  report.overflow['off-390'] = report.offCreate390.overflow;
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.click('#pq-marble-enabled');
@@ -158,30 +310,27 @@ async function marbleState(page) {
   await page.click('#pq-marble-area', { clickCount: 3 });
   await page.type('#pq-marble-area', '50');
   report.enabledValid = await marbleState(page);
-
-  for (const width of [1280, 390]) {
-    await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
-    await page.evaluate(() => {
-      const el = document.getElementById('pq-marble-section');
-      if (el) el.scrollIntoView({ block: 'center' });
-    });
-    await new Promise((r) => setTimeout(r, 150));
-    report.overflow['on-' + width] = await overflow(page);
-    report.shots['on-' + width] = await shot(page, 'paving_enabled_marble_' + width);
-  }
+  report.onCreate1280 = await captureWidth(page, 1280, 'paving_enabled_marble_1280', expect.onMoney);
+  report.onCreate390 = await captureWidth(page, 390, 'paving_enabled_marble_390', expect.onMoney);
+  report.shots['on-1280'] = report.onCreate1280.shot;
+  report.shots['on-390'] = report.onCreate390.shot;
+  report.overflow['on-1280'] = report.onCreate1280.overflow;
+  report.overflow['on-390'] = report.onCreate390.overflow;
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.click('#pq-marble-enabled');
   await new Promise((r) => setTimeout(r, 80));
   report.offAfterToggle = await marbleState(page);
+  report.offAfterSettled = await waitSettled(page, expect.offMoney);
   report.overflow['offAfter-390'] = await (async () => {
     await page.setViewport({ width: 390, height: 900, deviceScaleFactor: 1 });
-    await new Promise((r) => setTimeout(r, 120));
+    await waitSettled(page, expect.offMoney);
     const row = await overflow(page);
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     return row;
   })();
 
+  await waitSettled(page, expect.offMoney);
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
     page.click('#pq-btn-publish'),
@@ -190,6 +339,11 @@ async function marbleState(page) {
   report.afterSaveMarbleChecked = await page.$eval('#pq-marble-enabled', (el) => !!el.checked);
   report.afterSaveAreaDisabled = await page.$eval('#pq-marble-area', (el) => !!el.disabled);
   report.afterSaveIsDraft = await page.$eval('#pq-main-form', (el) => el.getAttribute('data-quotation-is-draft') || '');
+  report.afterSave1280 = await captureWidth(page, 1280, 'paving_published_reopen_1280', expect.offMoney);
+  report.afterSave390 = await captureWidth(page, 390, 'paving_published_reopen_390', expect.offMoney);
+  report.shots['reopen-1280'] = report.afterSave1280.shot;
+  report.shots['reopen-390'] = report.afterSave390.shot;
+  report.pdf = await fetchPdf(page);
 
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
   await browser.close();

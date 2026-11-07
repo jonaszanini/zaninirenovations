@@ -8,10 +8,12 @@ use App\Models\ClientProjectQuotation;
 use App\Services\BasementQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\ExtractsPdfText;
 
 class BasementDisabledTradeScopeTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use ExtractsPdfText;
 
     public function test_create_edit_reopen_and_project_pdf_omit_disabled_trade_details(): void
     {
@@ -122,6 +124,25 @@ class BasementDisabledTradeScopeTest extends IntegrationTestCase
         $this->assertStringContainsString('CLIENT ASKED FOR RECESSED NICHE', (string) $cpq->work_description);
         $this->assertStringContainsString('Not included:', (string) $cpq->work_description);
         $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.02);
+
+        $pdfResponse = $this->get(route('admin.client-projects.quotation.pdf', [$project, $cpq]));
+        $pdfResponse->assertOk();
+        $pdfBytes = $pdfResponse->getContent();
+        $this->assertStringStartsWith('%PDF', $pdfBytes);
+        $pdfPath = storage_path('app/basement-disabled-trade-scope.pdf');
+        file_put_contents($pdfPath, $pdfBytes);
+        $pdfText = $this->extractPdfText($pdfPath);
+        $money = \App\Models\ClientProject::formatMoney((float) $quote->final_quote_total);
+        $this->assertStringContainsString('CLIENT ASKED FOR RECESSED NICHE', $pdfText);
+        $this->assertStringContainsString('Not included', $pdfText);
+        $this->assertStringContainsString($money, $pdfText);
+        $this->assertStringNotContainsString('STALE PANEL UPGRADE', $pdfText);
+        $this->assertStringNotContainsString('STALE ROUGH-IN', $pdfText);
+        $destDir = '/opt/cursor/artifacts';
+        if (is_dir($destDir) || @mkdir($destDir, 0777, true)) {
+            @copy($pdfPath, $destDir.'/basement-disabled-trade-scope.pdf');
+            @file_put_contents($destDir.'/basement-disabled-trade-scope.txt', $pdfText);
+        }
     }
 
     public function test_enabled_electrical_and_plumbing_lines_appear_on_pdf_and_project(): void
