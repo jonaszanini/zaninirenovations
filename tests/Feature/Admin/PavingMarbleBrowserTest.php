@@ -68,6 +68,11 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $tooSmall = $report['enabledTooSmall'] ?? [];
         $this->assertFalse((bool) ($tooSmall['areaValid'] ?? true), 'enabled marble 0.05 must fail min 0.1');
 
+        $blockedZero = $report['blockedPublishZero'] ?? [];
+        $this->assertTrue((bool) ($blockedZero['urlUnchanged'] ?? false), 'publish must not navigate when enabled marble area is 0');
+        $blockedSmall = $report['blockedPublishTooSmall'] ?? [];
+        $this->assertTrue((bool) ($blockedSmall['urlUnchanged'] ?? false), 'publish must not navigate when enabled marble area is 0.05');
+
         $valid = $report['enabledValid'] ?? [];
         $this->assertTrue((bool) ($valid['areaValid'] ?? false), 'enabled marble 50 sq ft must pass');
         $this->assertTrue((bool) ($valid['formValid'] ?? false), 'enabled marble with type and area must be savable: '.json_encode($valid['firstInvalid'] ?? null));
@@ -77,7 +82,18 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $this->assertTrue((bool) ($offAfter['areaDisabled'] ?? false));
         $this->assertTrue((bool) ($offAfter['formValid'] ?? false), 'turning marble off again must unblock save: '.json_encode($offAfter['firstInvalid'] ?? null));
 
+        foreach (['off-1280', 'off-390', 'on-1280', 'on-390', 'offAfter-390'] as $key) {
+            $row = $report['overflow'][$key] ?? [];
+            $inner = (float) ($row['innerWidth'] ?? 0);
+            $scroll = (float) ($row['scrollWidth'] ?? 9999);
+            $right = (float) ($row['marbleRight'] ?? 9999);
+            $this->assertGreaterThan(0, $inner, $key.' overflow innerWidth');
+            $this->assertLessThanOrEqual($inner + 2, $scroll, $key.' horizontal overflow scrollWidth='.$scroll);
+            $this->assertLessThanOrEqual($inner + 2, $right, $key.' marble section overflows right='.$right);
+        }
+
         $this->assertStringContainsString('/admin/quotations/paving/', (string) ($report['afterSaveUrl'] ?? ''));
+        $this->assertSame('0', (string) ($report['afterSaveIsDraft'] ?? '1'), 'ordinary marble-off save must be publish, not draft');
         $this->assertFalse((bool) ($report['afterSaveMarbleChecked'] ?? true));
         $this->assertTrue((bool) ($report['afterSaveAreaDisabled'] ?? false));
 

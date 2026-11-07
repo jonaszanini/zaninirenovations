@@ -62,6 +62,83 @@ class PavingMarbleConstraintTest extends IntegrationTestCase
         $this->assertSame('', $area->getAttribute('min'));
     }
 
+    public function test_ordinary_paving_publishes_without_marble_and_survives_edit_reopen(): void
+    {
+        $this->actingAsAdmin();
+
+        $this->from(route('admin.quotations.paving.create'))
+            ->post(route('admin.quotations.paving.store'), $this->pavingPayload([
+                'save_intent' => 'publish',
+                'client_name' => 'Ordinary Paving Publish No Marble',
+            ]))
+            ->assertSessionDoesntHaveErrors(['marble_area_sq_ft', 'marble_type_id', 'marble_depth_in'])
+            ->assertRedirect();
+
+        $quote = PavingQuotation::query()->where('client_name', 'Ordinary Paving Publish No Marble')->first();
+        $this->assertNotNull($quote);
+        $this->assertFalse((bool) $quote->is_draft);
+        $inputs = is_array($quote->inputs) ? $quote->inputs : [];
+        $calc = is_array($quote->calculation) ? $quote->calculation : [];
+        $this->assertFalse((bool) ($inputs['marble_enabled'] ?? true));
+        $this->assertNull($calc['marble'] ?? null);
+        $publishedTotal = (float) $quote->final_quote_total;
+        $this->assertGreaterThan(0, $publishedTotal);
+
+        $edit = $this->get(route('admin.quotations.paving.edit', $quote))
+            ->assertOk()
+            ->getContent();
+        $area = $this->elementById($edit, 'pq-marble-area');
+        $this->assertTrue($area->hasAttribute('disabled'));
+        $this->assertFalse($this->elementById($edit, 'pq-marble-enabled')->hasAttribute('checked'));
+
+        $this->put(route('admin.quotations.paving.update', $quote), $this->pavingPayload([
+            'save_intent' => 'publish',
+            'client_name' => 'Ordinary Paving Publish No Marble',
+        ]))->assertSessionDoesntHaveErrors(['marble_area_sq_ft', 'marble_type_id'])
+            ->assertRedirect(route('admin.quotations.paving.edit', $quote));
+
+        $quote->refresh();
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertFalse((bool) (($quote->inputs ?? [])['marble_enabled'] ?? true));
+        $this->assertNull(($quote->calculation ?? [])['marble'] ?? null);
+        $this->assertEqualsWithDelta($publishedTotal, (float) $quote->final_quote_total, 0.02);
+    }
+
+    public function test_stale_marble_values_do_not_charge_or_block_when_marble_is_off(): void
+    {
+        $this->actingAsAdmin();
+        $marbleId = PavingMarbleType::query()->orderBy('sort_order')->value('id');
+        $this->assertNotNull($marbleId);
+
+        $baseline = $this->pavingPayload([
+            'save_intent' => 'publish',
+            'client_name' => 'Paving Baseline No Marble',
+        ]);
+        $this->post(route('admin.quotations.paving.store'), $baseline)->assertRedirect();
+        $plain = PavingQuotation::query()->where('client_name', 'Paving Baseline No Marble')->first();
+        $this->assertNotNull($plain);
+
+        $this->from(route('admin.quotations.paving.create'))
+            ->post(route('admin.quotations.paving.store'), $this->pavingPayload([
+                'save_intent' => 'publish',
+                'client_name' => 'Paving Stale Marble Off',
+                'marble_type_id' => $marbleId,
+                'marble_area_sq_ft' => 50,
+                'marble_depth_in' => 2,
+                'marble_include_geotextile' => '1',
+            ]))
+            ->assertSessionDoesntHaveErrors(['marble_area_sq_ft', 'marble_type_id', 'marble_depth_in'])
+            ->assertRedirect();
+
+        $quote = PavingQuotation::query()->where('client_name', 'Paving Stale Marble Off')->first();
+        $this->assertNotNull($quote);
+        $this->assertFalse((bool) $quote->is_draft);
+        $inputs = is_array($quote->inputs) ? $quote->inputs : [];
+        $this->assertFalse((bool) ($inputs['marble_enabled'] ?? true));
+        $this->assertNull(($quote->calculation ?? [])['marble'] ?? null);
+        $this->assertEqualsWithDelta((float) $plain->final_quote_total, (float) $quote->final_quote_total, 0.02);
+    }
+
     public function test_enabled_marble_rejects_area_below_minimum_and_accepts_valid_area(): void
     {
         $this->actingAsAdmin();

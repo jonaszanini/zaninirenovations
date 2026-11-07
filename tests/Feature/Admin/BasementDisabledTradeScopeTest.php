@@ -68,6 +68,18 @@ class BasementDisabledTradeScopeTest extends IntegrationTestCase
         $this->assertStringNotContainsString('STALE ROUGH-IN', $pdf);
         $this->assertStringContainsString('CLIENT ASKED FOR RECESSED NICHE', $pdf);
 
+        $copy = $quote->clientScopeCopy();
+        $storedAllowances = (string) (($quote->calculation['client_scope']['allowances'] ?? ''));
+        $this->assertStringContainsString('Electrical', $copy['not_included']);
+        $this->assertStringContainsString('Plumbing', $copy['not_included']);
+        $this->assertStringContainsString('Bathroom', $copy['not_included']);
+        $this->assertStringNotContainsString('Electrical work allowance', $copy['allowances']);
+        $this->assertStringNotContainsString('Plumbing work allowance', $copy['allowances']);
+        $this->assertStringNotContainsString('Electrical work allowance', $storedAllowances);
+        $this->assertStringNotContainsString('STALE PANEL UPGRADE', $copy['included'].$copy['not_included'].$copy['allowances'].$storedAllowances);
+        $this->assertStringNotContainsString('STALE ROUGH-IN', $copy['included'].$copy['not_included'].$copy['allowances'].$storedAllowances);
+        $this->assertStringNotContainsString('Bathroom: Full bath', $copy['included']);
+
         $edit = $this->get(route('admin.quotations.basement.edit', $quote))
             ->assertOk()
             ->getContent();
@@ -105,6 +117,10 @@ class BasementDisabledTradeScopeTest extends IntegrationTestCase
         $this->assertStringNotContainsString('STALE ROUGH-IN', $descriptions);
         $this->assertStringNotContainsString('Electrical work', $descriptions);
         $this->assertStringNotContainsString('Plumbing work', $descriptions);
+        $this->assertStringNotContainsString('STALE PANEL UPGRADE', (string) $cpq->work_description);
+        $this->assertStringNotContainsString('STALE ROUGH-IN', (string) $cpq->work_description);
+        $this->assertStringContainsString('CLIENT ASKED FOR RECESSED NICHE', (string) $cpq->work_description);
+        $this->assertStringContainsString('Not included:', (string) $cpq->work_description);
         $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.02);
     }
 

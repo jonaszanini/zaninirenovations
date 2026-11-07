@@ -36,6 +36,30 @@ async function shot(page, name) {
   return file;
 }
 
+async function overflow(page) {
+  return page.evaluate(() => {
+    const doc = document.documentElement;
+    const marble = document.getElementById('pq-marble-section');
+    const box = marble ? marble.getBoundingClientRect() : null;
+    return {
+      innerWidth: window.innerWidth,
+      scrollWidth: Math.max(doc.scrollWidth, document.body.scrollWidth),
+      marbleRight: box ? box.right : 0,
+    };
+  });
+}
+
+async function tryPublish(page) {
+  const before = page.url();
+  await page.click('#pq-btn-publish');
+  await new Promise((r) => setTimeout(r, 500));
+  return {
+    urlUnchanged: page.url() === before,
+    url: page.url(),
+    state: await marbleState(page),
+  };
+}
+
 async function marbleState(page) {
   return page.evaluate(() => {
     const form = document.getElementById('pq-main-form');
@@ -105,7 +129,7 @@ async function marbleState(page) {
     await reply.click();
   }
 
-  const report = { shots: {} };
+  const report = { shots: {}, overflow: {} };
   report.off = await marbleState(page);
 
   for (const width of [1280, 390]) {
@@ -115,17 +139,21 @@ async function marbleState(page) {
       if (el) el.scrollIntoView({ block: 'center' });
     });
     await new Promise((r) => setTimeout(r, 150));
+    report.overflow['off-' + width] = await overflow(page);
     report.shots['off-' + width] = await shot(page, 'paving_ordinary_no_marble_' + width);
   }
 
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.click('#pq-marble-enabled');
   await new Promise((r) => setTimeout(r, 80));
   report.enabledZero = await marbleState(page);
+  report.blockedPublishZero = await tryPublish(page);
 
   await page.select('#pq-marble-type', await page.$eval('#pq-marble-type option:not([value=""])', (opt) => opt.value));
   await page.click('#pq-marble-area', { clickCount: 3 });
   await page.type('#pq-marble-area', '0.05');
   report.enabledTooSmall = await marbleState(page);
+  report.blockedPublishTooSmall = await tryPublish(page);
 
   await page.click('#pq-marble-area', { clickCount: 3 });
   await page.type('#pq-marble-area', '50');
@@ -138,20 +166,30 @@ async function marbleState(page) {
       if (el) el.scrollIntoView({ block: 'center' });
     });
     await new Promise((r) => setTimeout(r, 150));
+    report.overflow['on-' + width] = await overflow(page);
     report.shots['on-' + width] = await shot(page, 'paving_enabled_marble_' + width);
   }
 
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.click('#pq-marble-enabled');
   await new Promise((r) => setTimeout(r, 80));
   report.offAfterToggle = await marbleState(page);
+  report.overflow['offAfter-390'] = await (async () => {
+    await page.setViewport({ width: 390, height: 900, deviceScaleFactor: 1 });
+    await new Promise((r) => setTimeout(r, 120));
+    const row = await overflow(page);
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    return row;
+  })();
 
   await Promise.all([
     page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-    page.click('#pq-btn-draft'),
+    page.click('#pq-btn-publish'),
   ]);
   report.afterSaveUrl = page.url();
   report.afterSaveMarbleChecked = await page.$eval('#pq-marble-enabled', (el) => !!el.checked);
   report.afterSaveAreaDisabled = await page.$eval('#pq-marble-area', (el) => !!el.disabled);
+  report.afterSaveIsDraft = await page.$eval('#pq-main-form', (el) => el.getAttribute('data-quotation-is-draft') || '');
 
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
   await browser.close();
