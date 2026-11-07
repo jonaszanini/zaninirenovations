@@ -126,6 +126,12 @@ class BasementDemoChoiceBrowserTest extends IntegrationTestCase
         $this->assertFalse((bool) ($draft['afterSave']['noChecked'] ?? true), 'reopen draft no still off');
         $this->assertTrue((bool) ($draft['hotkeyOnDraft'] ?? false), 'create Ctrl+S is bound to Save as draft');
         $this->assertFalse((bool) ($draft['hotkeyOnPublish'] ?? true), 'create must not hotkey-publish');
+        $ctrlKeys = is_array($draft['ctrlSKeys'] ?? null) ? $draft['ctrlSKeys'] : [];
+        $this->assertNotSame([], $ctrlKeys, 'draft path must dispatch an actual Ctrl+S keypress');
+        $this->assertTrue(
+            collect($ctrlKeys)->contains(fn ($row) => ! empty($row['ctrl']) && (($row['code'] ?? '') === 'KeyS' || strtolower((string) ($row['key'] ?? '')) === 's')),
+            'draft Ctrl+S keypress must include the S key with Ctrl: '.json_encode($ctrlKeys)
+        );
         $this->assertSame('1', (string) ($draft['draftMarker'] ?? ''), 'saved as draft');
         $this->assertMatchesRegularExpression('#/edit(?:/|$)#', (string) ($draft['editUrl'] ?? ''));
         $quote = BasementQuotation::query()->where('client_name', 'Demo Draft Blank Choice')->first();

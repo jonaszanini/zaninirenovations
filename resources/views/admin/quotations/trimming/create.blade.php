@@ -574,13 +574,15 @@
       @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'tm-main-form'])
       <div class="pq-summary-card">
         <div class="qh-priced-head">
-          <h4>Live breakdown</h4>
+          <h4 class="admin-label-with-tip">
+            Live breakdown
+            <x-admin.info-tip label="Live breakdown">HST 13% on labour and materials (Ontario).</x-admin.info-tip>
+          </h4>
         </div>
         <div id="tm-live-root">
           <p class="admin-form-help" id="tm-live-empty">Turn on a family and enter quantities.</p>
           <div id="tm-live-body" hidden></div>
         </div>
-        <p class="pq-hint cp-form-group-spaced">HST 13% on labour and materials (Ontario).</p>
       </div>
     </aside>
     @include('admin.partials.quotation_editor_footer', [

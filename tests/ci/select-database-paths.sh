@@ -17,6 +17,7 @@ else
   [[ "${CI_MYSQL_FILTER_BLOG:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-blog.txt")
   [[ "${CI_MYSQL_FILTER_SEO:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-seo.txt")
   [[ "${CI_MYSQL_FILTER_MILLWORK:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-millwork.txt")
+  [[ "${CI_MYSQL_FILTER_QUOTATION:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-quotation.txt")
   [[ "${CI_MYSQL_FILTER_ROUTES_SMOKE:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-routes-smoke.txt")
 fi
 

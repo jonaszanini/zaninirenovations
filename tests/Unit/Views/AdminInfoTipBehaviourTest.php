@@ -582,6 +582,28 @@ BLADE);
         $this->assertStringContainsString('label="Layout diagrams"', $low);
         $this->assertStringNotContainsString('admin-form-help cp-breakdown-intro', $low);
         $this->assertStringNotContainsString('Enter dimensions to generate the foundations, framing, and decking layouts.</p>', $low);
+
+        $paving = file_get_contents(resource_path('views/admin/quotations/paving/create.blade.php'));
+        $this->assertStringContainsString('label="Waste factor (%)"', $paving);
+        $this->assertStringContainsString('label="Labour rates"', $paving);
+        $this->assertStringNotContainsString('<p class="pq-hint">Extra stone quantity', $paving);
+        $this->assertStringNotContainsString('<p class="pq-hint">Required for a published quotation', $paving);
+        $this->assertStringNotContainsString('<p class="pq-hint">Whole days only', $paving);
+
+        $stairs = file_get_contents(resource_path('views/admin/quotations/stairs/create.blade.php'));
+        $this->assertStringContainsString('label="Stair configuration"', $stairs);
+        $this->assertStringContainsString('label="Materials price (pre-tax)"', $stairs);
+        $this->assertStringNotContainsString('<p class="pq-hint">Required for a published quotation', $stairs);
+        $this->assertStringNotContainsString('<p class="pq-hint" style="margin-top:0;" id="sq-seg-hint">', $stairs);
+        $this->assertDoesNotMatchRegularExpression(
+            '/segHint\.textContent\s*=\s*[\'"]Add one row per stair section/',
+            $stairs
+        );
+
+        $marbleDb = file_get_contents(resource_path('views/admin/quotations/paving/_database_marble_tab.blade.php'));
+        $this->assertStringContainsString('Special terms %', $marbleDb);
+        $this->assertStringContainsString('name="bulk_discount_pct"', $marbleDb);
+        $this->assertStringNotContainsString('Bulk discount', $marbleDb);
     }
 
     public function test_component_without_label_still_renders_more_info_fallback(): void

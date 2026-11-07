@@ -17,9 +17,11 @@ tests/Feature/Admin/StandardQuotationPurchaseListTest.php
 tests/Feature/Admin/MillworkQuotationRoundTripTest.php
 tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php
 tests/Feature/Admin/FenceExistingPostLabourCreditTest.php
+tests/Feature/Admin/StairsQuotationPagesTest.php
 tests/Feature/ExpenseAmountParsingTest.php
 tests/Unit/Services/FlooringQuotationCalculatorTest.php
 tests/Feature/Quotations/PdfFoldVersionLinkTest.php
+tests/Unit/Services/BasementQuotationCalculatorTest.php
 tests/Unit/Services/SharedWorkCatalogTest.php
 tests/Unit/Models/ClientProjectQuotationPdfFoldV1IdentityTest.php
 tests/Unit/Models/ClientProjectQuotationPdfFoldV2SqLinkedIdentityTest.php

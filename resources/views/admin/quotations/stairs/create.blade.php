@@ -238,11 +238,16 @@
           <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 1 — Basic information</h3>
             <div class="admin-form-group">
-              <label for="sq-client">Client name @if(!$isEdit || !($quotation->is_draft ?? false))<span class="cp-required">*</span>@endif</label>
+              <span class="admin-label-with-tip">
+                <label for="sq-client">Client name</label>
+                <span class="admin-label-with-tip__end">
+                  @if(!$isEdit || !($quotation->is_draft ?? false))<span class="cp-required">*</span>@endif
+                  <x-admin.info-tip label="Client name">Required for a published quotation; optional for drafts.</x-admin.info-tip>
+                </span>
+              </span>
               <input type="text" id="sq-client" name="client_name" class="admin-input sq-calc-in"
                      value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                      maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
-              <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
             <div class="admin-form-group">
               <label for="sq-total-steps">Total number of steps <span class="cp-required">*</span></label>
@@ -267,8 +272,11 @@
           </div>
 
           <div class="admin-card">
-            <h3 style="margin:0 0 14px;">Step 3 — Stair configuration</h3>
-            <p class="pq-hint" style="margin-top:0;" id="sq-seg-hint">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.</p>
+            <h3 class="admin-label-with-tip" style="margin:0 0 14px;">
+              Step 3 — Stair configuration
+              <x-admin.info-tip label="Stair configuration">Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes. Vinyl without nosing uses no-open-side rates only.</x-admin.info-tip>
+            </h3>
+            <p class="admin-form-help" id="sq-seg-hint" role="status"></p>
             <div id="sq-segments"></div>
             <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="sq-add-seg" style="margin-top:6px;">
               <i class="fa fa-plus"></i> Add section
@@ -318,7 +326,9 @@
                   </label>
                 @endforeach
               </div>
-              <p class="pq-hint" style="margin-top:8px;">Configure photos under <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>.</p>
+              <p class="admin-label-with-tip" style="margin-top:8px;">
+                <x-admin.info-tip label="Nosing option photos">Configure photos under <a href="{{ route('admin.quotations.stairs.price-configuration', $preservePid ? ['project' => $preservePid] : []) }}">Price configuration</a>.</x-admin.info-tip>
+              </p>
             </div>
             <p id="sq-nosing-included" class="pq-hint" style="margin-top:10px;display:none;">Nosing is included in the material rate for this option.</p>
           </div>
@@ -326,10 +336,12 @@
           <div class="admin-card">
             <h3 style="margin:0 0 14px;">Step 5 — Materials (optional)</h3>
             <div class="admin-form-group">
-              <label for="sq-material-price">Materials price (pre-tax)</label>
+              <span class="admin-label-with-tip">
+                <label for="sq-material-price">Materials price (pre-tax)</label>
+                <x-admin.info-tip label="Materials price (pre-tax)">Leave at 0.00 when quoting <strong>labour only</strong>. Enter an amount when you are also supplying materials — the client PDF will say “material and labour”.</x-admin.info-tip>
+              </span>
               <input type="text" id="sq-material-price" name="material_price" class="admin-input sq-calc-in cp-money-input" inputmode="decimal" autocomplete="off"
                      value="{{ old('material_price', number_format((float) ($inputs['material_price'] ?? 0), 2, '.', '')) }}" data-cp-money-entry="direct">
-              <p class="pq-hint">Leave at 0.00 when quoting <strong>labour only</strong>. Enter an amount when you are also supplying materials — the client PDF will say “material and labour”.</p>
             </div>
           </div>
 
@@ -377,12 +389,14 @@
         
         <div class="pq-summary-card">
           <div class="qh-priced-head">
-            <h4>Live summary</h4>
+            <h4 class="admin-label-with-tip">
+              Live summary
+              <x-admin.info-tip label="Live summary">Prices valid for quoting; HST 13% applied to subtotal (Ontario).</x-admin.info-tip>
+            </h4>
           </div>
           <div id="sq-live-root">
             <p class="admin-form-help">Adjust inputs to refresh totals…</p>
           </div>
-          <p class="pq-hint cp-form-group-spaced">Prices valid for quoting; HST 13% applied to subtotal (Ontario).</p>
         </div>
       </aside>
     </div>
@@ -421,7 +435,6 @@
       });
 
       var segHost = document.getElementById('sq-segments');
-      var segHint = document.getElementById('sq-seg-hint');
       var segIdx = 0;
 
       function selectedMaterialKey() {
@@ -491,11 +504,6 @@
 
       function syncSegmentRowsForMaterial() {
         var allowOpen = materialAllowsOpenSideVariants();
-        if (segHint) {
-          segHint.textContent = allowOpen
-            ? 'Add one row per stair section. Choose open sides and stair type for each section. The sum of quantities must match total steps for published quotes.'
-            : 'Add one row per stair section. Choose stair type for each section (Vinyl without nosing uses no-open-side rates only). The sum of quantities must match total steps for published quotes.';
-        }
         segHost.querySelectorAll('.sq-seg-row').forEach(function (row) {
           row.classList.toggle('sq-seg-row--no-open-variants', !allowOpen);
           var openSel = row.querySelector('.sq-seg-open');

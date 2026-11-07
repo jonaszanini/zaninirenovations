@@ -3,16 +3,20 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\BasementQuotation;
+use App\Models\ClientProject;
+use App\Models\ClientProjectQuotation;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Services\BasementQuotationCalculator;
 use App\Services\BasementRoomAreaImportMapper;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
+use Tests\Support\ExtractsPdfText;
 
 class BasementRoomAreaImportTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
+    use ExtractsPdfText;
 
     public function test_layout_search_fills_openings_and_baseboard_from_room_objects(): void
     {
@@ -527,5 +531,155 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             $proposed,
             $opt
         ));
+    }
+
+    public function test_paint_toggle_save_reload_import_persists_and_quote_pdf_matches(): void
+    {
+        $this->actingAsAdmin();
+
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Paint persist project',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $planOn = $this->paintPlan('Paint persist room', $cm, [
+            'w1' => ['drywall' => true, 'paint' => true],
+            'w2' => ['drywall' => true, 'paint' => true],
+            'w3' => ['drywall' => true, 'paint' => true],
+            'w4' => ['drywall' => true, 'paint' => true],
+        ]);
+
+        $store = $this->postJson(route('admin.utilities.room-area.rooms.store', $project), [
+            'name' => 'Paint persist room',
+            'plan' => $planOn,
+            'wall_height_ft' => 8.0,
+        ]);
+        $store->assertOk();
+        $this->assertTrue((bool) $store->json('ok'));
+        $roomId = (int) $store->json('room.id');
+        $revision = (int) $store->json('room.revision');
+        $this->assertGreaterThan(0, $roomId);
+
+        $optOn = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Paint persist room']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$roomId);
+        $this->assertIsArray($optOn);
+        $paintOn = (float) ($optOn['finish_paint_sqft'] ?? 0);
+        $this->assertGreaterThan(0, $paintOn);
+        $this->assertGreaterThan(0, (int) ($optOn['paint_walls_marked'] ?? 0));
+        $this->assertSame(0, (int) ($optOn['paint_walls_explicit_off'] ?? 1));
+
+        $planPartial = $this->paintPlan('Paint persist room', $cm, [
+            'w1' => ['drywall' => true, 'paint' => false],
+            'w2' => ['drywall' => true, 'paint' => true],
+            'w3' => ['drywall' => true, 'paint' => true],
+            'w4' => ['drywall' => true, 'paint' => true],
+        ]);
+        $this->putJson(route('admin.utilities.room-area.rooms.update', $roomId), [
+            'name' => 'Paint persist room',
+            'plan' => $planPartial,
+            'expected_revision' => $revision,
+            'wall_height_ft' => 8.0,
+        ])->assertOk()->assertJsonPath('ok', true);
+
+        $optReload = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Paint persist room']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$roomId);
+        $this->assertIsArray($optReload);
+        $this->assertSame(1, (int) ($optReload['paint_walls_explicit_off'] ?? 0));
+        $this->assertGreaterThan(0, (int) ($optReload['paint_walls_marked'] ?? 0));
+        $paintReload = (float) ($optReload['finish_paint_sqft'] ?? 0);
+        $this->assertGreaterThan(0, $paintReload);
+        $this->assertLessThan($paintOn, $paintReload);
+
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($optReload, 8);
+        $this->assertNotNull($proposed['paint_wall_sf']);
+        $this->assertEqualsWithDelta($paintReload, (float) $proposed['paint_wall_sf'], 0.05);
+
+        $enabled = array_merge(
+            ['overview'],
+            array_keys(BasementQuotationCalculator::tradeSections())
+        );
+        $payload = array_merge([
+            'save_intent' => 'draft',
+            'client_name' => 'Paint Persist Client',
+            'flooring_type' => 'lvp',
+            'ceiling_type' => 'drywall',
+            'finish_level' => 4,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'material_waste_percent' => 10,
+            'room_area_import_id' => 'room:'.$roomId,
+            'room_area_import_label' => 'Paint persist room',
+            'enabled_sections' => $enabled,
+            'payment_installments' => 3,
+            'include_demolition' => 0,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'insulate_walls' => 1,
+        ], array_filter($proposed, fn ($v) => $v !== null));
+
+        $this->post(route('admin.quotations.basement.store'), $payload)->assertRedirect();
+        $quote = BasementQuotation::query()->where('client_name', 'Paint Persist Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertTrue((bool) $quote->is_draft);
+        $payload['save_intent'] = 'publish';
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $quote->refresh();
+        $this->assertFalse((bool) $quote->is_draft);
+        $this->assertEqualsWithDelta($paintReload, (float) ($quote->inputs['paint_wall_sf'] ?? 0), 0.05);
+        $laborKeys = collect($quote->calculation['labor'] ?? [])->pluck('key')->all();
+        $this->assertContains('paint_walls', $laborKeys);
+
+        $clientProject = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+        $this->post(route('admin.quotations.basement.link', $quote), [
+            'client_project_id' => $clientProject->id,
+        ])->assertSessionHasNoErrors();
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->first();
+        $this->assertNotNull($cpq);
+        $this->assertEqualsWithDelta((float) $quote->final_quote_total, $cpq->pdfGrandTotal(), 0.02);
+        $pdf = $this->get(route('admin.client-projects.quotation.pdf', [$clientProject, $cpq]));
+        $pdf->assertOk();
+        $pdfPath = storage_path('app/paint-persist-'.$quote->id.'.pdf');
+        file_put_contents($pdfPath, $pdf->getContent());
+        $pdfText = $this->extractPdfText($pdfPath);
+        $this->assertStringContainsString(ClientProject::formatMoney((float) $quote->final_quote_total), $pdfText);
+        $this->assertStringContainsString('Paint walls', $pdfText);
+    }
+
+    /**
+     * @param  array<string, array{drywall?: bool, paint?: bool}>  $finishes
+     * @return array<string, mixed>
+     */
+    private function paintPlan(string $name, float $cm, array $finishes): array
+    {
+        return [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                    ['id' => 'w2', 'start' => ['x' => 20 * $cm, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                    ['id' => 'w3', 'start' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                ],
+                'rooms' => [[
+                    'id' => 'r1',
+                    'name' => $name,
+                    'walls' => ['w1', 'w2', 'w3', 'w4'],
+                ]],
+            ],
+            'zanini' => [
+                'wallFinishes' => $finishes,
+            ],
+        ];
     }
 }

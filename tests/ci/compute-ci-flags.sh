@@ -164,11 +164,6 @@ if [[ "$run_browser_admin" == true ]] || [[ "$run_browser_openplan3d" == true ]]
   run_browser=true
 fi
 
-run_mysql_node=false
-if [[ "$run_ra" == true ]] || [[ "$run_bl" == true ]]; then
-  run_mysql_node=true
-fi
-
 # MySQL supplemental filter outputs (for select-database-paths.sh) — true when domain touched or broad.
 filter_sp_out=false
 if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_SP:-false}"; then filter_sp_out=true; fi
@@ -180,8 +175,15 @@ filter_seo_out=false
 if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_SEO:-false}"; then filter_seo_out=true; fi
 filter_mf_out=false
 if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_MF:-false}"; then filter_mf_out=true; fi
+filter_quotation_out=false
+if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_BROWSER_QUOTATION:-false}"; then filter_quotation_out=true; fi
 filter_routes_out=false
 if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_ROUTES:-false}"; then filter_routes_out=true; fi
+
+run_mysql_node=false
+if [[ "$run_ra" == true ]] || [[ "$run_bl" == true ]] || [[ "$filter_quotation_out" == true ]]; then
+  run_mysql_node=true
+fi
 
 emit() {
   local key=$1
@@ -208,6 +210,7 @@ emit filter_room_area "$filter_ra_out"
 emit filter_blog "$filter_bl_out"
 emit filter_seo "$filter_seo_out"
 emit filter_millwork "$filter_mf_out"
+emit filter_quotation "$filter_quotation_out"
 emit filter_routes_smoke "$filter_routes_out"
 emit broad_run "$broad_run"
 emit browser_fail_open "$browser_fail_open"

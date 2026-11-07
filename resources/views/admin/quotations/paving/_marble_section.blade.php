@@ -8,12 +8,14 @@
 
 <div class="admin-form-group pq-marble-section" id="pq-marble-section">
   <div class="pq-marble-section__head">
-    <label class="admin-checkbox admin-checkbox--block">
-      <input type="checkbox" name="marble_enabled" value="1" class="admin-checkbox__input pq-calc-in" id="pq-marble-enabled" @checked($marbleEnabled)>
-      <span class="admin-checkbox__mark" aria-hidden="true"></span>
-      <span class="admin-checkbox__text">Include decorative marble bed</span>
-    </label>
-    <p class="pq-hint pq-hint--inline">Additive shallow bed — separate area and depth from paver stones. Includes bagged marble, shallow excavation, geotextile, spread labour.</p>
+    <span class="admin-label-with-tip">
+      <label class="admin-checkbox admin-checkbox--block">
+        <input type="checkbox" name="marble_enabled" value="1" class="admin-checkbox__input pq-calc-in" id="pq-marble-enabled" @checked($marbleEnabled)>
+        <span class="admin-checkbox__mark" aria-hidden="true"></span>
+        <span class="admin-checkbox__text">Include decorative marble bed</span>
+      </label>
+      <x-admin.info-tip label="Decorative marble bed">Additive shallow bed — separate area and depth from paver stones. Includes bagged marble, shallow excavation, geotextile, spread labour.</x-admin.info-tip>
+    </span>
   </div>
 
   <div class="pq-marble-section__fields" id="pq-marble-fields" @unless($marbleEnabled) hidden @endunless>

@@ -1,0 +1,3 @@
+tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
+tests/Feature/Admin/QuotationHelpTipBrowserTest.php
+tests/Feature/Admin/StairsQuotationPagesTest.php

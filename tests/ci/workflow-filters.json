@@ -27,7 +27,8 @@
     "tests/Feature/SharedPrices*.php",
     "tests/js/shared-prices*.test.js",
     "tests/Unit/Models/SharedWorkLabelTest.php",
-    "tests/Unit/Services/SharedWorkCatalogTest.php"
+    "tests/Unit/Services/SharedWorkCatalogTest.php",
+    "tests/Unit/Services/BasementQuotationCalculatorTest.php"
   ],
   "room_area_live": [
     "app/**/RoomArea*.php",

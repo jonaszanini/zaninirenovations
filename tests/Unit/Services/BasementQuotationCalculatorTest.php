@@ -3,7 +3,9 @@
 namespace Tests\Unit\Services;
 
 use App\Models\BasementSettings;
+use App\Models\SharedWork;
 use App\Services\BasementQuotationCalculator;
+use App\Services\SharedWorkCatalog;
 use Tests\TestCase;
 
 class BasementQuotationCalculatorTest extends TestCase
@@ -45,7 +47,7 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $labor = collect($calc['labor'])->firstWhere('key', 'trim_shoe');
         $this->assertNotNull($labor);
-        $this->assertEqualsWithDelta(round(40 / 30, 2), (float) $labor['hours'], 0.01);
+        $this->assertEqualsWithDelta($this->hoursForQty(40, 'shoe_lf_per_hr'), (float) $labor['hours'], 0.01);
 
         $mat = collect($calc['materials'])->firstWhere('key', 'shoe');
         $this->assertNotNull($mat);
@@ -1243,17 +1245,17 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertNotNull($tileLabor);
         $this->assertStringContainsString('Shower 64 sf', $tileLabor['detail']);
         $this->assertStringNotContainsString('Floor', $tileLabor['detail']);
-        $this->assertEqualsWithDelta(round(64 / 12, 2), $tileLabor['hours'], 0.01);
+        $this->assertEqualsWithDelta($this->hoursForQty(64, 'tile_sf_per_hr'), $tileLabor['hours'], 0.01);
 
         $vinylLabor = collect($calc['labor'])->firstWhere('key', 'bath_vinyl');
         $this->assertNotNull($vinylLabor);
         $this->assertSame('Bathroom vinyl flooring', $vinylLabor['label']);
         $this->assertStringContainsString('Floor 40 sf', $vinylLabor['detail']);
-        $this->assertEqualsWithDelta(round(40 / 25, 2), $vinylLabor['hours'], 0.01);
+        $this->assertEqualsWithDelta($this->hoursForQty(40, 'flooring_sf_per_hr'), $vinylLabor['hours'], 0.01);
 
         $underlayLabor = collect($calc['labor'])->firstWhere('key', 'bath_vinyl_underlay');
         $this->assertNotNull($underlayLabor);
-        $this->assertEqualsWithDelta(round(40 / 80, 2), $underlayLabor['hours'], 0.01);
+        $this->assertEqualsWithDelta($this->hoursForQty(40, 'underlayment_sf_per_hr'), $underlayLabor['hours'], 0.01);
 
         $tileMat = collect($calc['materials'])->firstWhere('key', 'bath_tile');
         $this->assertNotNull($tileMat);
@@ -1990,6 +1992,65 @@ class BasementQuotationCalculatorTest extends TestCase
         $this->assertDoesNotMatchRegularExpression('/\blicensed\b/i', $src);
         $this->assertStringContainsString('qualified electrician', $src);
         $this->assertStringContainsString('qualified plumber', $src);
+    }
+
+    public function test_catalog_linear_productivity_is_owner_hourly_over_flat_rate(): void
+    {
+        $shoe = new SharedWork([
+            'key' => 'shoe_install',
+            'unit' => 'lf',
+            'flat_rate' => 3.90,
+            'rate' => 30,
+        ]);
+        $shoeDef = SharedWorkCatalog::definition('shoe_install');
+        $this->assertIsArray($shoeDef);
+        $this->assertEqualsWithDelta(
+            85.0 / 3.90,
+            SharedWorkCatalog::productivityRateForWork($shoe, $shoeDef, 85.0),
+            0.0001
+        );
+
+        $tile = new SharedWork([
+            'key' => 'tile_install',
+            'unit' => 'sf',
+            'flat_rate' => 12.0,
+            'rate' => 12,
+        ]);
+        $tileDef = SharedWorkCatalog::definition('tile_install');
+        $this->assertIsArray($tileDef);
+        $this->assertEqualsWithDelta(
+            85.0 / 12.0,
+            SharedWorkCatalog::productivityRateForWork($tile, $tileDef, 85.0),
+            0.0001
+        );
+
+        $floor = new SharedWork([
+            'key' => 'flooring_install',
+            'unit' => 'sf',
+            'flat_rate' => 4.25,
+            'rate' => 25,
+        ]);
+        $floorDef = SharedWorkCatalog::definition('flooring_install');
+        $this->assertIsArray($floorDef);
+        $this->assertEqualsWithDelta(
+            85.0 / 4.25,
+            SharedWorkCatalog::productivityRateForWork($floor, $floorDef, 85.0),
+            0.0001
+        );
+    }
+
+    /**
+     * Hours must follow SharedWorkCatalog::overlayProductivity, not the
+     * hardcoded defaultProductivity lf/h / sf/h fallbacks. When the library
+     * is present, shoe/tile/vinyl are owner_hourly ÷ flat_rate.
+     */
+    private function hoursForQty(float $qty, string $prodKey): float
+    {
+        $prod = $this->settings()->resolvedProductivity();
+        $rate = (float) ($prod[$prodKey] ?? 0);
+        $this->assertGreaterThan(0, $rate, $prodKey.' productivity must be positive');
+
+        return round($qty / $rate, 2);
     }
 
     private function settings(?array $materials = null): BasementSettings
