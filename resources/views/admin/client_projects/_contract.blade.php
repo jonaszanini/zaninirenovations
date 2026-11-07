@@ -213,6 +213,9 @@
             </td>
           </tr>
         </table>
+        @if (\App\Support\ContractContractorFeeClause::shouldRenderOverlay($contract))
+          <p class="cp-contractor-fee-clause">{{ \App\Support\ContractContractorFeeClause::SENTENCE }}</p>
+        @endif
         <p class="cp-contract-entire">
           This contract represents the entire agreement between the parties and supersedes any prior negotiations or agreements. This contract may only be modified in writing and signed by both parties.
         </p>

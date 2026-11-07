@@ -1740,7 +1740,7 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $permit = collect($calc['materials'])->firstWhere('key', 'building_permit');
         $this->assertNotNull($permit);
-        $this->assertSame('Building permit', $permit['label']);
+        $this->assertSame('City building permit (optional extra charge)', $permit['label']);
         $this->assertEqualsWithDelta(250.0, $permit['amount'], 0.01);
         $this->assertEqualsWithDelta(250.0, $calc['summary']['permit_pre_hst'], 0.01);
         $this->assertEqualsWithDelta(

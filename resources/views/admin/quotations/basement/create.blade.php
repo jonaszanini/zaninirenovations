@@ -7,7 +7,7 @@
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
   $projectForReturn = ($isEdit && $quotation->project)
       ? $quotation->project
-      : ($linkProject ?? null);
+      : ($linkProject ?? ($isEdit ? $quotation->intendedProject : null));
   $preservePid = optional($linkProject)->id ?: (request()->filled('project') ? (int) request('project') : null);
   $qs = array_filter(['return' => $returnToProject ? 'project' : null, 'project' => $preservePid]);
   $formQuery = $qs !== [] ? '?'.http_build_query($qs) : '';
@@ -21,6 +21,10 @@
   }
   if (! $isEdit) {
       $inputs['owner_hourly_rate'] = \App\Support\QuotationSharedLabourRates::ownerHourlyForNewQuotation();
+      $inputs['contractor_fee_percent'] = BasementQuotationCalculator::DEFAULT_CONTRACTOR_FEE_PERCENT;
+      $inputs['flooring_waste_percent'] = BasementQuotationCalculator::flooringWasteDefault(
+          (string) ($inputs['flooring_type'] ?? 'lvp')
+      );
   }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
   $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
@@ -46,7 +50,7 @@
       'scope_preset' => $scopePreset,
       'enabled_sections' => old('enabled_sections', $inputs['enabled_sections'] ?? null),
   ]);
-  $enabledCount = max(1, count($enabledNow));
+  $enabledCount = max(1, count($enabledNow)) + 1; // + client scope step before Review
   $presetSections = [
       'full' => BasementQuotationCalculator::presetEnabledSections('full'),
       'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
@@ -85,14 +89,16 @@
     'typeLabel' => 'Basement',
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
-    'listUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.basement.index', $preservePid ? ['project' => $preservePid] : []),
+    'listUrl' => route('admin.quotations.basement.index'),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.basement.index'),
     'priceConfigUrl' => route('admin.quotations.basement.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'br-main-form',
     'saveId' => 'br-btn-publish',
     'draftId' => 'br-btn-draft',
     'draftHotkey' => true,
-    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
+    'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject ?? null) : null))->client_id,
   ])
   @php
     $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
@@ -126,7 +132,7 @@
     ] : null,
   ])
   <div class="br-project-context-slot">
-    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? $quotation->project : null)])
+    @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject) : null)])
   </div>
   @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
   @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
@@ -158,6 +164,9 @@
     @include('admin.partials.once_submit')
     @if ($isEdit) @method('PUT') @endif
     <input type="hidden" name="save_intent" id="br-save-intent" value="publish">
+    @if ($linkProject)
+      <input type="hidden" name="link_client_project_id" value="{{ $linkProject->id }}">
+    @endif
 
     <div class="br-shell">
       <nav class="br-progress" aria-label="Quotation sections">
@@ -172,6 +181,10 @@
             <span class="br-progress__label">{{ $label }}</span>
           </button>
         @endforeach
+        <button type="button" class="br-progress__item" data-br-goto="client_scope">
+          <span class="br-progress__num"><i class="fa fa-list" aria-hidden="true"></i></span>
+          <span class="br-progress__label">Client scope</span>
+        </button>
         <button type="button" class="br-progress__item" data-br-goto="review">
           <span class="br-progress__num"><i class="fa fa-list-alt" aria-hidden="true"></i></span>
           <span class="br-progress__label">Review &amp; totals</span>
@@ -190,9 +203,23 @@
                      value="{{ old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name) }}" required>
             </div>
           </div>
-          <details class="br-desc-acc" @if ($isEdit && filled($quotation->work_description)) open @endif>
-            <summary class="br-desc-acc__summary">Project description <span class="admin-form-help">(optional — client PDF)</span></summary>
-            <div class="admin-form-group quotation-work-desc">
+          @php
+            $descOpen = old('work_description') !== null
+                || $errors->has('work_description')
+                || ($isEdit && filled($quotation->work_description ?? ''));
+          @endphp
+          <details class="br-desc-acc" id="br-desc-acc" @if ($descOpen) open @endif>
+            <summary class="br-desc-acc__summary"
+                     aria-expanded="{{ $descOpen ? 'true' : 'false' }}"
+                     aria-controls="br-desc-panel">
+              <span class="br-desc-acc__title" id="br-desc-acc-title">Project description</span>
+              @include('admin.partials.info_tip', [
+                'tipText' => 'Optional — appears on the client PDF. Formatting (bold, lists, headings) is preserved.',
+                'tipLabel' => 'Project description',
+              ])
+              <span class="admin-chevron-down" aria-hidden="true"><i class="fa fa-chevron-down"></i></span>
+            </summary>
+            <div class="admin-form-group quotation-work-desc" id="br-desc-panel" role="region" aria-labelledby="br-desc-acc-title">
               <label for="br-work-description" class="visually-hidden">Project description</label>
               <textarea class="admin-input" id="br-work-description" name="work_description" rows="4"
                         placeholder="Optional scope summary for the client PDF.">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -214,7 +241,7 @@
             'enabledCount' => $enabledCount,
             'filledKeys' => $filledKeys,
             'layoutClientProjectId' => $isEdit
-                ? ($quotation->client_project_id ?? null)
+                ? ($quotation->client_project_id ?? $quotation->intended_client_project_id ?? optional($linkProject)->id)
                 : optional($linkProject)->id,
         ])
 
@@ -380,19 +407,21 @@
       </div>
     </aside>
 
-    <div class="br-sticky-spacer" aria-hidden="true"></div>
-
-    <div class="br-sticky-total" id="br-sticky-total" aria-label="Step and running total">
-      <div class="br-step-nav" id="br-step-nav">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-prev" disabled>← Back</button>
-        <span class="br-step-nav__status" id="br-step-status">1 of {{ $enabledCount }}</span>
-        <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" id="br-next">→ Next</button>
-      </div>
-      <div class="br-toolbar-grand" id="br-toolbar-grand" title="Live grand total (incl. HST)">
-        <span class="br-toolbar-grand__label">Grand total</span>
-        <strong class="br-toolbar-grand__amount" id="br-toolbar-grand-amount">{{ \App\Models\ClientProject::formatMoney($toolbarGrand) }}</strong>
-      </div>
-    </div>
+    @include('admin.partials.quotation_editor_footer', [
+      'formId' => 'br-main-form',
+      'footerId' => 'br-sticky-total',
+      'extraClass' => 'br-sticky-total',
+      'amountId' => 'br-toolbar-grand-amount',
+      'grandWrapId' => 'br-toolbar-grand',
+      'initialTotal' => $toolbarGrand,
+      'wizard' => [
+        'navId' => 'br-step-nav',
+        'prevId' => 'br-prev',
+        'nextId' => 'br-next',
+        'statusId' => 'br-step-status',
+        'count' => $enabledCount,
+      ],
+    ])
   </form>
 
   @if ($isEdit && $canSendEmail)

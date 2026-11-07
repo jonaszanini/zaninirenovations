@@ -226,6 +226,89 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringNotContainsString('Underlayment (LVP / laminate / carpet)', $html);
         $this->assertStringContainsString('Foam or cork under LVP or laminate.', $html);
         $this->assertStringNotContainsString('laminate, or carpet', $html);
+        $this->assertStringContainsString('id="br-hardwood-caution"', $html);
+        $this->assertMatchesRegularExpression(
+            '/id="br-hardwood-caution"[^>]*\bhidden\b/',
+            $html
+        );
+        $this->assertStringContainsString('Basement humidity caution for solid hardwood', $html);
+        $this->assertStringContainsString('slab moisture', $html);
+    }
+
+    public function test_hardwood_flooring_shows_basement_humidity_caution_with_info_icon(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['flooring_type'] = 'hardwood';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('value="hardwood"', $html);
+        $this->assertStringContainsString('id="br-hardwood-caution"', $html);
+        $this->assertStringContainsString('Basement humidity caution for solid hardwood', $html);
+        $this->assertTrue((bool) preg_match('/<p class="br-hardwood-caution"[^>]*>/', $html, $match));
+        $this->assertStringNotContainsString('hidden', $match[0]);
+        $this->assertStringContainsString('fa-info-circle', $html);
+        $this->assertStringContainsString('does not change the quoted product specification', $html);
+    }
+
+    public function test_engineered_wood_does_not_show_solid_hardwood_humidity_caution(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['flooring_type'] = 'engineered';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('value="engineered"', $html);
+        $this->assertMatchesRegularExpression(
+            '/id="br-hardwood-caution"[^>]*\bhidden\b/',
+            $html
+        );
+    }
+
+    public function test_persisted_custom_scope_is_marked_dirty_so_preview_cannot_wipe_it(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['client_scope_included'] = 'Custom included list from last save.';
+        $inputs['client_scope_not_included'] = 'Custom not included.';
+        $inputs['client_scope_assumptions'] = 'Custom assumptions.';
+        $inputs['client_scope_allowances'] = 'Custom allowances.';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('Custom included list from last save.', $html);
+        $this->assertStringContainsString('Custom not included.', $html);
+        $this->assertStringContainsString('Custom assumptions.', $html);
+        $this->assertStringContainsString('Custom allowances.', $html);
+        foreach (['client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'] as $name) {
+            $this->assertMatchesRegularExpression(
+                '/<textarea[^>]*name="'.preg_quote($name, '/').'"[^>]*data-br-scope-dirty="1"/s',
+                $html
+            );
+            $this->assertMatchesRegularExpression(
+                '/<textarea[^>]*name="'.preg_quote($name, '/').'"[^>]*data-br-scope-persisted="1"/s',
+                $html
+            );
+        }
+    }
+
+    public function test_empty_create_scope_fields_are_not_marked_dirty(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/<textarea[^>]*name="client_scope_included"[^>]*data-br-scope-dirty="1"/s',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/<textarea[^>]*name="client_scope_included"[^>]*data-br-scope-persisted="1"/s',
+            $html
+        );
     }
 
     public function test_work_area_mode_toggle_sits_beside_the_label(): void
@@ -291,6 +374,20 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="include_touchups"', $html);
         $this->assertStringContainsString('name="include_building_permit"', $html);
         $this->assertStringContainsString('name="building_permit_amount"', $html);
+        $this->assertStringContainsString('name="include_bcin_drawings"', $html);
+        $this->assertStringContainsString('name="bcin_drawings_amount"', $html);
+        $this->assertStringContainsString('City building permit — optional extra-charge service', $html);
+        $this->assertStringContainsString('BCIN drawings — optional extra-charge service', $html);
+        $this->assertStringContainsString('data-br-step="client_scope"', $html);
+        $this->assertStringContainsString('name="contractor_fee_percent"', $html);
+        $this->assertStringContainsString('name="client_scope_included"', $html);
+        $this->assertStringContainsString('name="flooring_waste_percent"', $html);
+        $this->assertStringNotContainsString('name="selected_value_tier"', $html);
+        $this->assertStringNotContainsString('value_package_notes', $html);
+        $this->assertStringNotContainsString('Invest —', $html);
+        $this->assertStringContainsString('municipal building-permit fee', $html);
+        $this->assertStringContainsString('BCIN qualified designer is not the same credential as a professional engineer', $html);
+        $this->assertStringContainsString('engineer signing when required', $html);
         $this->assertStringContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringNotContainsString('br-finishing-grid', $html);
 
@@ -374,7 +471,7 @@ class BasementQuotationWizardViewTest extends TestCase
             'isEdit' => false,
             'scopePreset' => $preset,
             'enabledNow' => $enabledNow,
-            'enabledCount' => count($enabledNow),
+            'enabledCount' => count($enabledNow) + 1,
             'filledKeys' => [],
         ];
     }

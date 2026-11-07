@@ -319,7 +319,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
     'listUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.paving.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.paving.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'pq-main-form',
     'saveId' => 'pq-btn-publish',
@@ -491,6 +493,10 @@
           @include('admin.quotations._commute_debris_row')
           @include('admin.quotations._additional_costs', ['quotation' => $quotation])
           @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+          @include('admin.partials.quotation_editor_footer', [
+            'formId' => 'pq-main-form',
+            'amountId' => 'pq-footer-grand-amount',
+          ])
         </form>
 
         @if ($isEdit && !$quotation->isLinked())

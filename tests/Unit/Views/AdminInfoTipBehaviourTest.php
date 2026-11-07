@@ -298,6 +298,7 @@ BLADE);
         $this->assertStringContainsString("btn.setAttribute('aria-label', aboutLabel(aria))", $js);
         $this->assertStringContainsString("label.admin-checkbox, .admin-checkbox-row > .admin-label-with-tip__end", $js);
         $this->assertStringContainsString('function parkTipInLabelRow', $js);
+        $this->assertStringContainsString("'.qh-sticky-footer'", $js);
         $this->assertStringContainsString("'.mw-totals-bar'", $js);
         $this->assertStringContainsString('setLabelText: setLabelText', $js);
         $basementJs = file_get_contents(public_path('js/admin-basement-quotation.js'));
@@ -504,7 +505,13 @@ BLADE);
         $this->assertStringContainsString('Use this if you updated accepted quotations', $financials);
         $this->assertStringContainsString('Choose how the client will pay.', $financials);
         $this->assertStringContainsString('Money returned from suppliers or credits.', $financials);
+        $this->assertStringContainsString('Draft invoices are not receivables.', $financials);
         $this->assertStringNotContainsString('class="cp-hint" title="', $financials);
+
+        $billingActions = file_get_contents(resource_path('views/admin/client_projects/_billing_actions.blade.php'));
+        $this->assertStringContainsString('Prepare billing', $billingActions);
+        $this->assertStringContainsString('Nothing is issued, emailed, or charged until you send from the invoice.', $billingActions);
+        $this->assertStringNotContainsString('<p class="admin-form-help">Review the accepted', $billingActions);
     }
 
     public function test_serpapi_off_copy_is_inline_on_fence_and_low_deck_config(): void

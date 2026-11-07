@@ -29,6 +29,7 @@
         Standalone quotations
         <x-admin.info-tip label="Standalone quotations">Calculators produce saved quotes that you can tie to a project when you're ready — either from here or via the project's Quotation tab.</x-admin.info-tip>
       </h3>
+      <p class="admin-form-help" style="margin:0;">Open a calculator tile to see its saved and draft list. This hub does not list quotations.</p>
     </div>
   @endif
 

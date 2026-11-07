@@ -25,6 +25,7 @@
     'top-right',
   ];
   var PRIORITY_AVOID_SEL = [
+    '.qh-sticky-footer',
     '.br-sticky-total',
     '.br-step-nav',
     '#br-next',

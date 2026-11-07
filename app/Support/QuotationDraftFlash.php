@@ -9,12 +9,14 @@ namespace App\Support;
  */
 class QuotationDraftFlash
 {
+    public const CLIENT_LINK_PAUSED_SENTENCE = 'The client\'s link is paused until you publish again.';
+
     public static function updated(string $typeLabel, object $quote, bool $linkedNow, bool $wasDraftBeforeSave): string
     {
         if ((bool) ($quote->is_draft ?? false)) {
             $message = $typeLabel.' quotation saved as a draft.';
             if (! $wasDraftBeforeSave && self::clientLinkPaused($quote)) {
-                $message .= ' The client\'s link is paused until you publish again.';
+                $message .= ' '.self::CLIENT_LINK_PAUSED_SENTENCE;
             }
 
             return $message;

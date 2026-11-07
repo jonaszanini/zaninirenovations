@@ -33,6 +33,7 @@ tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
 tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php
+tests/Unit/Services/RecalculateRemainingInstallmentsServiceTest.php
 tests/Unit/Services/RoomAreaCanvasDataTest.php
 tests/Unit/Services/RoomAreaClosingErrorTest.php
 tests/Unit/Services/RoomAreaFinishMathTest.php
@@ -79,6 +80,7 @@ tests/Unit/Views/HomeKitchenTileImageTest.php
 tests/Unit/Views/PublicCssLightOnlyTest.php
 tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
 tests/Unit/Views/PublicMobileNavDropdownTest.php
+tests/Unit/Views/QuotationEditorFooterMarkupTest.php
 tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 tests/Unit/Views/QuotationExpensePairLayoutTest.php
 tests/Unit/Views/QuotationPdfPageBreakTest.php

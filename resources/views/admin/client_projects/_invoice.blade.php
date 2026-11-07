@@ -361,6 +361,14 @@
       </div>
     </div>
 
+    @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
+
+    @if ($installments->isNotEmpty())
+      @include('admin.client_projects._billing_totals', [
+        'billingTotals' => app(\App\Services\Invoice\PrepareBillingService::class)->totals($project),
+      ])
+    @endif
+
     @if ($installments->isEmpty())
       @php
         $invoiceHasAcceptedQuot = $project->quotationSubtotalForFinancials() !== null;

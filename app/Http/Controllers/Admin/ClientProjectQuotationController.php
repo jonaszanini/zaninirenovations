@@ -496,7 +496,7 @@ class ClientProjectQuotationController extends Controller
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('quotation')
-                ->with('success', 'Quotation status updated.');
+                ->with('success', 'Quotation accepted. Use Prepare billing to review terms and create draft invoices — nothing is issued until you confirm.');
         }
 
         $quotation->status = $data['status'];

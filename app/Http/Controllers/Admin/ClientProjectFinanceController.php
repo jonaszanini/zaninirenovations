@@ -320,7 +320,8 @@ class ClientProjectFinanceController extends Controller
     }
 
     /**
-     * Apply recalculation of remaining installments and recreate unpaid draft invoices.
+     * Apply recalculation of remaining unpaid installment rows.
+     * Existing installment invoices are never deleted.
      */
     public function recalculateInstallments(
         Request $request,
@@ -351,8 +352,7 @@ class ClientProjectFinanceController extends Controller
         }
 
         $msg = sprintf(
-            'Remaining installments recalculated. Deleted %d unpaid invoice(s) and created %d draft invoice(s). Paid installments were left unchanged.',
-            (int) $result['deleted_invoices'],
+            'Remaining installments recalculated. Created %d draft invoice(s) for unpaid installments that did not already have an invoice. Existing invoices were not deleted. Paid installments were left unchanged.',
             (int) $result['created_invoices']
         );
 

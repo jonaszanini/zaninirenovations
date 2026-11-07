@@ -27,6 +27,22 @@
     to ensure the safety and longevity of your home.
   </p>
 
+  @php
+    $emailScope = $quotation->clientScopeForPdf();
+  @endphp
+  @if ($emailScope)
+    <p style="margin:20px 0 8px 0;font-weight:700;color:#024768;">Value</p>
+    <p style="margin:0 0 4px 0;"><strong>Included</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['included'] }}</p>
+    <p style="margin:0 0 4px 0;"><strong>Not included</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['not_included'] }}</p>
+    <p style="margin:20px 0 8px 0;font-weight:700;color:#024768;">Special terms</p>
+    <p style="margin:0 0 4px 0;"><strong>Assumptions</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['assumptions'] }}</p>
+    <p style="margin:0 0 4px 0;"><strong>Allowances</strong></p>
+    <p style="margin:0 0 10px 0;white-space:pre-line;">{{ $emailScope['allowances'] }}</p>
+  @endif
+
   <p>
     If you have any questions regarding it or would like to adjust any of the
     details, please feel free to reach out. I am happy to hop on a quick call or

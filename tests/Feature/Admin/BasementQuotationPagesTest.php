@@ -19,7 +19,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.index'))
             ->assertOk()
-            ->assertSee('Basement Renovation');
+            ->assertSee('Basement Renovation')
+            ->assertSee('This hub does not list quotations');
 
         $this->get(route('admin.quotations.basement.index'))
             ->assertOk()
@@ -27,7 +28,7 @@ class BasementQuotationPagesTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.basement.create'))
             ->assertOk()
-            ->assertSee('1 of 13')
+            ->assertSee('1 of 14')
             ->assertSee('Project Overview')
             ->assertSee('What are you quoting?')
             ->assertSee('Full basement')
@@ -50,11 +51,17 @@ class BasementQuotationPagesTest extends IntegrationTestCase
             ->assertSee('Import layout')
             ->assertSee('Search rooms', false)
             ->assertSee('Project description', false)
-            ->assertSee('optional — client PDF', false)
+            ->assertSee('Optional — appears on the client PDF', false)
             ->assertSee('4×8 (32 sq ft)', false)
             ->assertSee('4×12 (48 sq ft)', false)
             ->assertSee('Stud spacing')
-            ->assertSee('Building permit (extra charge)')
+            ->assertSee('City building permit — optional extra-charge service')
+            ->assertSee('BCIN drawings — optional extra-charge service')
+            ->assertSee('Client scope')
+            ->assertSee('Contractor fee')
+            ->assertDontSee('Invest —')
+            ->assertDontSee('name="selected_value_tier"', false)
+            ->assertDontSee('value_package_notes', false)
             ->assertSee('Commute expense')
             ->assertSee('Material waste')
             ->assertSee('id="br-step-status"', false)

@@ -1933,6 +1933,10 @@ html.admin-dark .fl-field-warning {
   color: #fbbf24;
 }
 
+html.admin-dark .br-hardwood-caution {
+  color: #fbbf24;
+}
+
 html.admin-dark .fl-material-summary {
   background: var(--admin-surface-hover);
   border-color: var(--admin-border);
@@ -2001,6 +2005,7 @@ html.admin-dark .br-toolbar-grand {
 html.admin-dark .br-toolbar-grand {
   border-top-color: var(--admin-border);
 }
+html.admin-dark .qh-sticky-footer,
 html.admin-dark .br-sticky-total {
   background: var(--admin-surface);
   border-color: var(--admin-border);
@@ -2024,6 +2029,18 @@ html.admin-dark .admin-input.is-invalid {
 }
 html.admin-dark .br-desc-acc__summary {
   color: var(--admin-heading);
+}
+html.admin-dark .br-desc-acc__summary:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-desc-acc[open] > .br-desc-acc__summary {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-desc-acc__summary:focus-visible {
+  outline-color: var(--admin-primary);
+  border-color: var(--admin-primary);
 }
 html.admin-dark .br-layout .fl-breakdown-section {
   color: var(--admin-muted);

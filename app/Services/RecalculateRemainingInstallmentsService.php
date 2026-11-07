@@ -13,9 +13,11 @@ use InvalidArgumentException;
  * Recalculate remaining (unpaid) installments when accepted quotation
  * totals change after some installments have already been paid.
  *
- * Paid installments and paid invoices are never modified. Unpaid
- * installment-linked invoices are deleted and recreated as drafts from
- * the new installment amounts.
+ * Paid installments and paid/refunded invoices are never modified.
+ * Issued/sent invoices, partially paid invoices (paid_amount recorded
+ * while status is not PAID), and prepared draft invoices are also
+ * preserved — Recalculate refuses to run when those records exist
+ * rather than deleting them or silently rewriting amounts.
  */
 class RecalculateRemainingInstallmentsService
 {
@@ -58,6 +60,9 @@ class RecalculateRemainingInstallmentsService
      *   max_remaining: int,
      *   unpaid_invoice_count: int,
      *   installment_invoice_count: int,
+     *   issued_invoice_count: int,
+     *   draft_invoice_count: int,
+     *   partially_paid_invoice_count: int,
      *   finance_committed: bool,
      * }
      */
@@ -82,6 +87,9 @@ class RecalculateRemainingInstallmentsService
             'max_remaining' => 4,
             'unpaid_invoice_count' => 0,
             'installment_invoice_count' => 0,
+            'issued_invoice_count' => 0,
+            'draft_invoice_count' => 0,
+            'partially_paid_invoice_count' => 0,
             'finance_committed' => false,
         ];
 
@@ -118,17 +126,10 @@ class RecalculateRemainingInstallmentsService
         $unpaidCount = $unpaid->count();
         $maxRemaining = max(0, 4 - $paidCount);
 
-        $installmentInvoiceCount = $project->invoices()
-            ->whereNotNull('installment_number')
-            ->count();
-
-        $unpaidInvoiceCount = $project->invoices()
-            ->whereNotNull('installment_number')
-            ->whereNotIn('status', [
-                ClientProjectInvoice::STATUS_PAID,
-                ClientProjectInvoice::STATUS_REFUNDED,
-            ])
-            ->count();
+        $invoiceStats = $this->installmentInvoiceStats($project);
+        $installmentInvoiceCount = $invoiceStats['total'];
+        $unpaidInvoiceCount = $invoiceStats['unpaid'];
+        $blockingInvoices = $invoiceStats['blocking'];
 
         // Only treat quotation vs plan mismatch as a "project total has changed"
         // situation once finance is committed — installment invoices generated
@@ -153,6 +154,9 @@ class RecalculateRemainingInstallmentsService
         } elseif ($maxRemaining < 1 && $remainingPreTax > 0.01) {
             $blocked = true;
             $blockReason = 'All four installments are already paid, but a remaining balance still exists. Contact support to resolve this manually.';
+        } elseif ($blockingInvoices->isNotEmpty()) {
+            $blocked = true;
+            $blockReason = $this->invoicesBlockReason($blockingInvoices);
         }
 
         return [
@@ -174,6 +178,9 @@ class RecalculateRemainingInstallmentsService
             'max_remaining' => $maxRemaining,
             'unpaid_invoice_count' => $unpaidInvoiceCount,
             'installment_invoice_count' => $installmentInvoiceCount,
+            'issued_invoice_count' => $invoiceStats['issued'],
+            'draft_invoice_count' => $invoiceStats['draft'],
+            'partially_paid_invoice_count' => $invoiceStats['partial'],
             'finance_committed' => $financeCommitted,
         ];
     }
@@ -219,13 +226,15 @@ class RecalculateRemainingInstallmentsService
             'new_plan' => $analysis['paid_count'] + $remainingCount,
             'split_mode' => $splitMode,
             'rows' => $rows,
-            'unpaid_invoices_to_delete' => $analysis['unpaid_invoice_count'],
+            'unpaid_invoices_to_delete' => 0,
             'drafts_to_create' => $remainingCount,
         ];
     }
 
     /**
-     * Apply the recalculation: update plan, delete unpaid invoices, create new drafts.
+     * Apply the recalculation: update remaining unpaid plan rows. Existing
+     * installment invoices are never deleted. New drafts are created only
+     * for unpaid installments that do not already have an invoice.
      *
      * @return array{preview: array<string, mixed>, deleted_invoices: int, created_invoices: int}
      */
@@ -236,28 +245,20 @@ class RecalculateRemainingInstallmentsService
         $deleted = 0;
         $created = 0;
 
-        DB::transaction(function () use ($project, $preview, &$deleted, &$created) {
+        DB::transaction(function () use ($project, $preview, &$created) {
+            $locked = $this->installmentInvoices($project, true);
+            $blocking = $this->invoicesThatBlockRecalc($locked);
+            if ($blocking->isNotEmpty()) {
+                throw new InvalidArgumentException($this->invoicesBlockReason($blocking));
+            }
+
             $analysis = $preview['analysis'];
             $rows = $preview['rows'];
             $newPlan = (int) $preview['new_plan'];
             $newPreTax = (float) $analysis['quotation_pre_tax'];
 
-            // 1) Delete unpaid installment-linked invoices (draft or sent).
-            // Paid and refunded invoices stay on the row.
-            $unpaidInvoices = $project->invoices()
-                ->whereNotNull('installment_number')
-                ->whereNotIn('status', [
-                    ClientProjectInvoice::STATUS_PAID,
-                    ClientProjectInvoice::STATUS_REFUNDED,
-                ])
-                ->get();
-
-            foreach ($unpaidInvoices as $invoice) {
-                $invoice->delete();
-                $deleted++;
-            }
-
-            // 2) Rebuild installment rows — preserve paid rows by id order.
+            // Rebuild installment rows — preserve paid rows by id order.
+            // Existing invoices (paid/refunded) stay on the project.
             $existing = $project->installments()->orderBy('sort_order')->get()->values();
             $paidExisting = $existing->where('is_paid', true)->values();
             $unpaidExisting = $existing->where('is_paid', false)->values();
@@ -309,25 +310,26 @@ class RecalculateRemainingInstallmentsService
             $project->payment_plan = max(1, $newPlan);
             $project->save();
 
-            // 3) Create draft invoices for each unpaid installment.
+            // Create draft invoices only for unpaid installments that have none.
             $project->refresh();
             $freshInstallments = $project->installments()->orderBy('sort_order')->get()->values();
             foreach ($freshInstallments as $idx => $inst) {
                 if ($inst->is_paid) {
                     continue;
                 }
-                $this->createDraftInstallmentInvoice($project, $inst, $idx + 1);
-                $created++;
+                $invoice = $this->createDraftInstallmentInvoice($project, $inst, $idx + 1);
+                if ($invoice) {
+                    $created++;
+                }
             }
         });
 
         $note = sprintf(
-            'Recalculated remaining installments: quotation total %s (was plan %s). Paid kept: %s. Remaining split across %d installment(s). Deleted %d unpaid invoice(s); created %d draft invoice(s).',
+            'Recalculated remaining installments: quotation total %s (was plan %s). Paid kept: %s. Remaining split across %d installment(s). Existing invoices were not deleted; created %d draft invoice(s) for unpaid installments that did not already have one.',
             ClientProject::formatMoney((float) $preview['analysis']['quotation_grand']),
             ClientProject::formatMoney((float) $preview['analysis']['plan_grand']),
             ClientProject::formatMoney((float) $preview['analysis']['paid_grand']),
             (int) $preview['remaining_count'],
-            $deleted,
             $created
         );
         $this->statusService()->recordEvent($project->fresh(), $note);
@@ -471,11 +473,131 @@ class RecalculateRemainingInstallmentsService
         return self::REMAINING_DEFAULTS[$remainingCount] ?? array_fill(0, $remainingCount, 1.0);
     }
 
+    /**
+     * @return array{
+     *   total: int,
+     *   unpaid: int,
+     *   issued: int,
+     *   draft: int,
+     *   partial: int,
+     *   blocking: \Illuminate\Support\Collection<int, ClientProjectInvoice>
+     * }
+     */
+    private function installmentInvoiceStats(ClientProject $project): array
+    {
+        $invoices = $this->installmentInvoices($project, false);
+        $blocking = $this->invoicesThatBlockRecalc($invoices);
+
+        return [
+            'total' => $invoices->count(),
+            'unpaid' => $invoices->filter(function (ClientProjectInvoice $inv) {
+                return ! $inv->isPaid() && ! $inv->isRefunded();
+            })->count(),
+            'issued' => $invoices->filter(fn (ClientProjectInvoice $inv) => $inv->isSent())->count(),
+            'draft' => $invoices->filter(fn (ClientProjectInvoice $inv) => $inv->isDraft())->count(),
+            'partial' => $invoices->filter(fn (ClientProjectInvoice $inv) => $this->isPartiallyPaidRecord($inv))->count(),
+            'blocking' => $blocking,
+        ];
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, ClientProjectInvoice>
+     */
+    private function installmentInvoices(ClientProject $project, bool $lock): \Illuminate\Support\Collection
+    {
+        if (! $lock && $project->relationLoaded('invoices')) {
+            return $project->invoices
+                ->filter(fn ($inv) => $inv instanceof ClientProjectInvoice && $inv->installment_number !== null)
+                ->values();
+        }
+
+        $query = $project->invoices()->whereNotNull('installment_number');
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        return $query->get()->values();
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, ClientProjectInvoice>  $invoices
+     * @return \Illuminate\Support\Collection<int, ClientProjectInvoice>
+     */
+    private function invoicesThatBlockRecalc($invoices)
+    {
+        return $invoices->filter(function (ClientProjectInvoice $inv) {
+            if ($inv->isPaid() || $inv->isRefunded()) {
+                return false;
+            }
+
+            return $inv->isDraft()
+                || $inv->isSent()
+                || $this->invoiceHasRecordedPayment($inv);
+        })->values();
+    }
+
+    private function isPartiallyPaidRecord(ClientProjectInvoice $invoice): bool
+    {
+        if ($invoice->isPaid() || $invoice->isRefunded()) {
+            return false;
+        }
+
+        return $this->invoiceHasRecordedPayment($invoice);
+    }
+
+    private function invoiceHasRecordedPayment(ClientProjectInvoice $invoice): bool
+    {
+        if (round((float) ($invoice->paid_amount ?? 0), 2) > 0.009) {
+            return true;
+        }
+
+        return $invoice->paid_at !== null;
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, ClientProjectInvoice>  $invoices
+     */
+    private function invoicesBlockReason($invoices): string
+    {
+        $drafts = [];
+        $issued = [];
+        $partial = [];
+        foreach ($invoices as $inv) {
+            $label = $inv->invoice_number ?: ('invoice #'.(int) $inv->id);
+            if ($this->isPartiallyPaidRecord($inv)) {
+                $partial[] = $label;
+            }
+            if ($inv->isDraft()) {
+                $drafts[] = $label;
+            } elseif ($inv->isSent()) {
+                $issued[] = $label;
+            }
+        }
+
+        $bits = [];
+        if ($issued !== []) {
+            $bits[] = 'issued/sent '.implode(', ', $issued);
+        }
+        if ($partial !== []) {
+            $bits[] = 'partially paid (status is not Paid) '.implode(', ', $partial);
+        }
+        if ($drafts !== []) {
+            $bits[] = 'prepared draft '.implode(', ', $drafts);
+        }
+        $detail = $bits !== [] ? ' Found: '.implode('; ', $bits).'.' : '';
+
+        return 'Cannot recalculate remaining installments while this project has issued, sent, partially paid, or prepared draft installment invoices. Those records, IDs, and balances must be preserved — Recalculate does not delete, void, credit, or rewrite them. Review Financials / Invoices. Recalculate is only available when remaining unpaid installments do not yet have invoices.'.$detail;
+    }
+
     private function createDraftInstallmentInvoice(
         ClientProject $project,
         ClientProjectInstallment $installment,
         int $installmentNumber
-    ): ClientProjectInvoice {
+    ): ?ClientProjectInvoice {
+        if ($project->invoices()->where('installment_number', $installmentNumber)->exists()) {
+            return null;
+        }
+
         $plan = (int) $project->payment_plan ?: 1;
         $description = ClientProjectInvoice::installmentDescriptionFor($plan, $installmentNumber)
             ?: (string) $installment->label;

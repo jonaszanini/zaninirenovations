@@ -59,6 +59,7 @@ class BasementQuotationController extends Controller
     public function store(Request $request)
     {
         $intent = QuotationSaveIntent::fromRequest($request);
+        $intendedId = $this->validatedIntendedProjectId($request, null);
         $calc = $this->validatedCalculation($request, $intent, null);
 
         if ($replay = $this->rejectReplaySubmit($request)) {
@@ -68,21 +69,18 @@ class BasementQuotationController extends Controller
         $quote = BasementQuotation::create(array_merge($calc, [
             'quote_number' => BasementQuotation::generateNumber(),
             'version' => 1,
+            'intended_client_project_id' => $intendedId,
         ]));
         $this->rememberSubmitSucceeded($request);
 
         $warnings = [];
-        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
-        $newlyLinked = $this->autoLinkIfRequested($quote->fresh(), $request, $warnings);
-        $linkedNow = $newlyLinked && $hubProjectRequested;
+        $quote = $quote->fresh();
+        $newlyLinked = $this->autoLinkIfRequested($quote, $request, $warnings);
+        $quote = $quote->fresh();
 
         $resp = redirect()
-            ->route('admin.quotations.basement.edit', $quote->fresh())
-            ->with('success', $intent === 'draft'
-                ? ($linkedNow ? 'Basement quotation saved as draft and linked.' : 'Basement quotation saved as draft.')
-                : ($linkedNow
-                    ? 'Basement quotation '.$quote->quote_number.' saved and linked to this project.'
-                    : 'Basement quotation '.$quote->quote_number.' saved.'));
+            ->route('admin.quotations.basement.edit', $quote)
+            ->with('success', $this->saveSuccessMessage($intent, $quote, $newlyLinked, false, true));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -96,10 +94,12 @@ class BasementQuotationController extends Controller
     {
         $wasDraft = (bool) $basement_quotation->is_draft;
         $intent = QuotationSaveIntent::fromRequest($request);
+        $intendedId = $this->validatedIntendedProjectId($request, $basement_quotation);
         $calc = $this->validatedCalculation($request, $intent, $basement_quotation);
 
         $basement_quotation->fill(array_merge($calc, [
             'version' => $basement_quotation->version + 1,
+            'intended_client_project_id' => $intendedId ?? $basement_quotation->intended_client_project_id,
         ]))->save();
 
         $warnings = [];
@@ -112,13 +112,12 @@ class BasementQuotationController extends Controller
             }
         }
 
-        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
         $newlyLinked = $this->autoLinkIfRequested($basement_quotation->fresh(), $request, $warnings);
-        $linkedNow = $newlyLinked && $hubProjectRequested;
+        $quote = $basement_quotation->fresh();
 
         $resp = redirect()
-            ->route('admin.quotations.basement.edit', $basement_quotation)
-            ->with('success', QuotationDraftFlash::updated('Basement', $basement_quotation, $linkedNow, $wasDraft));
+            ->route('admin.quotations.basement.edit', $quote)
+            ->with('success', $this->saveSuccessMessage($intent, $quote, $newlyLinked, $wasDraft, false));
 
         return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
     }
@@ -304,10 +303,7 @@ class BasementQuotationController extends Controller
             ->orderByDesc('id')
             ->get(['id', 'name', 'client_name', 'status']);
 
-        $linkProject = $this->quotationLinkCandidateProject($request);
-        if ($linkProject && ! $this->quotationProjectAllowsNewLink($linkProject)) {
-            $linkProject = null;
-        }
+        $linkProject = $this->resolveFormLinkProject($quotation, $request);
 
         $linkedCpq = null;
         if ($quotation) {
@@ -324,6 +320,10 @@ class BasementQuotationController extends Controller
         $previewInputs = BasementQuotationCalculator::defaultInputs();
         if (! $quotation) {
             $previewInputs['owner_hourly_rate'] = SharedWorkCatalog::ownerHourlyRate();
+            $previewInputs['contractor_fee_percent'] = BasementQuotationCalculator::DEFAULT_CONTRACTOR_FEE_PERCENT;
+            $previewInputs['flooring_waste_percent'] = BasementQuotationCalculator::flooringWasteDefault(
+                (string) ($previewInputs['flooring_type'] ?? 'lvp')
+            );
         }
         $previewInputs['helper_hourly_rate'] = (float) $settings->helper_hourly_rate;
         if ($quotation && is_array($quotation->inputs)) {
@@ -413,6 +413,7 @@ class BasementQuotationController extends Controller
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
             'building_permit_amount',
+            'bcin_drawings_amount',
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
@@ -443,9 +444,10 @@ class BasementQuotationController extends Controller
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups', 'include_shoe',
             'include_building_permit',
+            'include_bcin_drawings',
             'client_provides_all', 'include_helper',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -533,6 +535,9 @@ class BasementQuotationController extends Controller
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
         $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
         $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
+
+        $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
+        $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');
         unset($draft);
 
         return $out;
@@ -592,6 +597,31 @@ class BasementQuotationController extends Controller
     }
 
     /**
+     * Persist an explicit percent when posted or already stored. Omitting the
+     * key keeps calculator legacy behaviour (fee 0, flooring uses global waste).
+     *
+     * @param  array<string, mixed>  $out
+     * @param  array<string, mixed>|null  $storedInputs
+     * @return array<string, mixed>
+     */
+    private function mergeExplicitPercent(array $out, Request $request, ?array $storedInputs, string $key): array
+    {
+        $raw = $request->input($key);
+        if ($raw !== null && $raw !== '' && is_numeric(str_replace([',', '$', ' '], '', (string) $raw))) {
+            $out[$key] = BasementQuotationCalculator::clampPercent((float) str_replace([',', '$', ' '], '', (string) $raw));
+
+            return $out;
+        }
+        if (is_array($storedInputs) && BasementQuotationCalculator::hasExplicitNumeric($storedInputs, $key)) {
+            $out[$key] = BasementQuotationCalculator::clampPercent((float) $storedInputs[$key]);
+        } else {
+            unset($out[$key]);
+        }
+
+        return $out;
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
     private function extraMaterialsFromRequest(Request $request): array
@@ -624,13 +654,110 @@ class BasementQuotationController extends Controller
         return $out;
     }
 
+    protected function saveSuccessMessage(string $intent, BasementQuotation $quote, bool $linkedNow, bool $wasDraft, bool $fromStore): string
+    {
+        $number = trim((string) $quote->quote_number);
+        $hasIntendedProject = $quote->intended_client_project_id || $quote->client_project_id;
+        $version = (int) ($quote->version ?? 0);
+
+        if ($intent === 'draft' || $quote->is_draft) {
+            $message = 'Basement quotation '.$number.' saved as a draft.';
+            if (! $wasDraft && $quote->isLinked()) {
+                return $message.' '.QuotationDraftFlash::CLIENT_LINK_PAUSED_SENTENCE;
+            }
+            if (! $quote->isLinked() && $hasIntendedProject) {
+                return $message.' It is not on the project until you click Save quotation. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
+            }
+
+            return $message;
+        }
+
+        if ($linkedNow) {
+            return $wasDraft
+                ? 'Basement quotation '.$number.' published and linked to this project.'
+                : 'Basement quotation '.$number.' saved and linked to this project.';
+        }
+
+        if ($quote->isLinked()) {
+            return $fromStore
+                ? 'Basement quotation '.$number.' saved and linked to this project.'
+                : 'Basement quotation '.$number.' updated (v'.$version.') and linked to this project.';
+        }
+
+        if ($hasIntendedProject) {
+            return $fromStore
+                ? 'Basement quotation '.$number.' saved, but it did not attach to the project. Find it under Basement Renovation quotations.'
+                : 'Basement quotation '.$number.' updated (v'.$version.'), but it did not attach to the project. Find it under Basement Renovation quotations.';
+        }
+
+        return $fromStore
+            ? 'Basement quotation '.$number.' saved.'
+            : 'Basement quotation '.$number.' updated (v'.$version.').';
+    }
+
+    /**
+     * Posted or query project id, falling back to the draft's stored intent.
+     * Rejects a different project than the one already remembered for this quote.
+     */
+    protected function validatedIntendedProjectId(Request $request, ?BasementQuotation $existing): ?int
+    {
+        $raw = $request->input('link_client_project_id', $request->query('project'));
+        if ($raw !== null && $raw !== '') {
+            validator(
+                ['link_client_project_id' => $raw],
+                ['link_client_project_id' => ['integer', 'exists:client_projects,id']],
+                ['link_client_project_id.exists' => 'The selected project is invalid.']
+            )->validate();
+        }
+
+        $posted = $this->quotationLinkProjectRawId($request);
+        $stored = $existing && $existing->intended_client_project_id
+            ? (int) $existing->intended_client_project_id
+            : null;
+        $linked = $existing && $existing->client_project_id
+            ? (int) $existing->client_project_id
+            : null;
+
+        if ($posted) {
+            $locked = $linked ?: $stored;
+            if ($locked && $posted !== $locked) {
+                throw ValidationException::withMessages([
+                    'link_client_project_id' => 'This quotation is already intended for another project.',
+                ]);
+            }
+
+            return $posted;
+        }
+
+        return $linked ?: $stored;
+    }
+
+    protected function resolveFormLinkProject(?BasementQuotation $quotation, Request $request): ?ClientProject
+    {
+        if ($quotation) {
+            $quotation->loadMissing(['project', 'intendedProject']);
+            if ($quotation->project) {
+                return $quotation->project;
+            }
+        }
+
+        $fromRequest = $this->quotationLinkCandidateProject($request);
+        $intended = $quotation?->intendedProject;
+        if ($fromRequest && $intended && (int) $fromRequest->id !== (int) $intended->id) {
+            return $intended;
+        }
+
+        return $fromRequest ?? $intended;
+    }
+
     protected function autoLinkIfRequested(BasementQuotation $quote, Request $request, array &$warnings): bool
     {
         if ($quote->isLinked() || $quote->is_draft) {
             return false;
         }
 
-        $project = $this->quotationLinkCandidateProject($request);
+        $quote->loadMissing('intendedProject');
+        $project = $this->quotationLinkCandidateProject($request) ?? $quote->intendedProject;
         if (! $project || ! $this->quotationProjectAllowsNewLink($project)) {
             if ($project) {
                 $warnings[] = 'This project cannot accept linked quotations anymore. Save your work and link manually.';
@@ -687,8 +814,17 @@ class BasementQuotationController extends Controller
         $permitAmt = $quote->permitPreTaxAmountForProjectQuotation();
         if ($permitAmt > 0) {
             $items[] = [
-                'description' => 'Building permit (optional, extra charge)',
+                'description' => 'City building permit (optional extra-charge service)',
                 'amount' => $permitAmt,
+                'apply_hst' => true,
+            ];
+        }
+
+        $bcinAmt = $quote->bcinPreTaxAmountForProjectQuotation();
+        if ($bcinAmt > 0) {
+            $items[] = [
+                'description' => 'BCIN drawings (optional extra-charge service)',
+                'amount' => $bcinAmt,
                 'apply_hst' => true,
             ];
         }
@@ -699,6 +835,17 @@ class BasementQuotationController extends Controller
         }
         foreach (AdditionalCostsService::visibleProjectLineItems($inputs['plumbing_lines'] ?? [], 'Plumbing work') as $line) {
             $items[] = $line;
+        }
+
+        $feeAmt = $quote->contractorFeePreTaxAmountForProjectQuotation();
+        if ($feeAmt > 0) {
+            $items[] = [
+                'description' => \App\Services\BasementClientScope::contractorFeeLabel(
+                    $quote->contractorFeePercentForProjectQuotation()
+                ),
+                'amount' => $feeAmt,
+                'apply_hst' => true,
+            ];
         }
 
         $this->appendCommuteProjectLine($items, $quote);
@@ -758,6 +905,7 @@ class BasementQuotationController extends Controller
 
         $quote->update(array_merge([
             'client_project_id' => $project->id,
+            'intended_client_project_id' => $project->id,
             'linked_at' => now(),
         ], $this->quotationLinkClientNameAttributes($project)));
     }

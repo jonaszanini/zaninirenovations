@@ -49,6 +49,10 @@
   }
 
   $quotationTabUrl = route('admin.client-projects.show', $project).'#quotation';
+  $installmentInvoices = $project->invoices->whereNotNull('installment_number')->keyBy('installment_number');
+  $billingTotals = ! $isHourly && $installments->isNotEmpty()
+      ? app(\App\Services\Invoice\PrepareBillingService::class)->totals($project)
+      : null;
 @endphp
 
 @if ($isHourly)
@@ -103,7 +107,15 @@
 @else
   {{-- PAYMENT PLAN FORM ----------------------------------------------------- --}}
   <div class="admin-card">
-    <h3>Payment plan</h3>
+    <h3 class="cp-form-help-flush">
+      Payment plan
+      <x-admin.info-tip label="Payment plan">Contracted and approved totals, installment split, invoices and outstanding balance. Draft invoices are not receivables.</x-admin.info-tip>
+    </h3>
+
+    @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
+    @if ($billingTotals)
+      @include('admin.client_projects._billing_totals', ['billingTotals' => $billingTotals])
+    @endif
 
     @if ($needsAcceptedQuotation)
       <div class="cp-contract-warning cp-recalc-banner" role="status">
@@ -151,7 +163,7 @@
       </div>
     @endif
 
-    @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || ($recalcAnalysis['blocked'] && ! empty($recalcAnalysis['finance_committed']))))
+    @if ($recalcAnalysis && $recalcAnalysis['has_discrepancy'])
       <div class="cp-contract-warning cp-recalc-banner" role="status">
         <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
         <div class="cp-recalc-banner__body">
@@ -170,9 +182,7 @@
             <p class="admin-form-help" style="margin:6px 0 0;">
               Paid so far: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['paid_grand']) }}.
               Remaining to allocate: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['remaining_grand']) }}.
-              @if ($recalcAnalysis['unpaid_invoice_count'] > 0)
-                {{ $recalcAnalysis['unpaid_invoice_count'] }} unpaid installment invoice(s) will be replaced with new drafts.
-              @endif
+              Existing installment invoices are not deleted or rewritten.
             </p>
             <button type="button"
                     class="admin-btn admin-btn--primary admin-btn--sm cp-recalc-open"
@@ -185,6 +195,13 @@
         </div>
       </div>
     @elseif ($planIsLocked && $hasQuot)
+      @if ($recalcAnalysis && ! empty($recalcAnalysis['blocked']))
+        <div class="cp-recalc-actions" style="margin-bottom:12px;">
+          <p class="admin-form-help" style="margin:0;">
+            Recalculate remaining installments is unavailable: {{ $recalcAnalysis['block_reason'] }}
+          </p>
+        </div>
+      @else
       <div class="cp-recalc-actions" style="margin-bottom:12px;">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-recalc-open>
           <i class="fa fa-refresh" aria-hidden="true"></i>
@@ -192,6 +209,7 @@
         </button>
         <x-admin.info-tip label="Recalculate Remaining Installments">Use this if you updated accepted quotations and need to refresh unpaid installments.</x-admin.info-tip>
       </div>
+      @endif
     @endif
 
     <form action="{{ route('admin.client-projects.installments.save', $project) }}"
@@ -316,12 +334,16 @@
             <th>%</th>
             <th class="cp-col-amount">Amount <span class="admin-form-help cp-incl-hst">(incl. 13% HST)</span></th>
             <th>Status</th>
+            <th>Invoice</th>
             <th>Paid on</th>
             <th></th>
           </tr>
         </thead>
         <tbody>
           @foreach ($installments as $idx => $inst)
+            @php
+              $finInvoice = $installmentInvoices->get($idx + 1);
+            @endphp
             <tr class="{{ $inst->is_paid ? 'cp-row-paid' : '' }}">
               <td>{{ $idx + 1 }}</td>
               <td>{{ $inst->label }}</td>
@@ -332,6 +354,14 @@
                   <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid</span>
                 @else
                   <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Unpaid</span>
+                @endif
+              </td>
+              <td>
+                @if ($finInvoice)
+                  <a href="{{ route('admin.client-projects.invoices.edit', [$project, $finInvoice]) }}">{{ $finInvoice->invoice_number }}</a>
+                  <span class="admin-form-help">{{ \App\Models\ClientProjectInvoice::statusLabel($finInvoice->status) }}</span>
+                @else
+                  <span class="admin-form-help">—</span>
                 @endif
               </td>
               <td>{{ \App\Models\ClientProject::formatDate($inst->paid_on) }}</td>
@@ -359,7 +389,7 @@
           <tr class="cp-totals-row">
             <td colspan="3"><strong>Total paid</strong></td>
             <td class="cp-col-amount"><strong>{{ \App\Models\ClientProject::formatMoney($totalPaidWithHst) }}</strong></td>
-            <td colspan="3">{{ number_format($project->percentPaid(), 1) }}% of total amount</td>
+            <td colspan="4">{{ number_format($project->percentPaid(), 1) }}% of total amount</td>
           </tr>
         </tbody>
       </table>

@@ -93,7 +93,7 @@
   }, true);
 
   document.addEventListener('click', function (e) {
-    var saveBtn = e.target.closest && e.target.closest('.qh-actions__save, [id$="-btn-publish"], [id$="-btn-save"]');
+    var saveBtn = e.target.closest && e.target.closest('.qh-actions__save, [data-qh-footer-save], [id$="-btn-publish"], [id$="-btn-save"]');
     var draftBtn = e.target.closest && e.target.closest('.qh-actions__draft, [id$="-btn-draft"]');
     var form = (saveBtn || draftBtn)
       ? ((saveBtn || draftBtn).form

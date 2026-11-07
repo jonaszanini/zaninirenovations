@@ -76,6 +76,11 @@
         if (idx < 0) idx = 0;
         setWizardStep(idx, true);
       }
+      if (window.AdminQuoteDraftValidation && typeof window.AdminQuoteDraftValidation.reportInvalid === 'function') {
+        window.AdminQuoteDraftValidation.reportInvalid(form);
+      } else if (invalid && typeof invalid.reportValidity === 'function') {
+        invalid.reportValidity();
+      }
       return;
     }
 
@@ -194,7 +199,7 @@
       next.push(k);
     });
     sectionKeys = next;
-    wizardKeys = next.concat(['review']);
+    wizardKeys = next.concat(['client_scope', 'review']);
   }
 
   function setNamedCheck(name, on) {
@@ -526,14 +531,20 @@
       });
     });
     var tradeCount = Math.max(1, sectionKeys.length);
+    var withScope = tradeCount + 1;
     var n = 0;
     sectionKeys.forEach(function (k) {
       n += 1;
       var el = sectionEl(k);
       if (!el) return;
       var num = el.querySelector('.br-acc__num');
-      if (num) num.textContent = n + ' of ' + tradeCount;
+      if (num) num.textContent = n + ' of ' + withScope;
     });
+    var scopeEl = sectionEl('client_scope');
+    if (scopeEl) {
+      var scopeNum = scopeEl.querySelector('.br-acc__num');
+      if (scopeNum) scopeNum.textContent = withScope + ' of ' + withScope;
+    }
     var areaLabel = document.getElementById('br-area-label');
     if (areaLabel) {
       var labels = {
@@ -836,7 +847,9 @@
     if (status) {
       status.textContent = key === 'review'
         ? 'Review'
-        : ((currentIndex + 1) + ' of ' + sectionKeys.length);
+        : (key === 'client_scope'
+          ? 'Client scope'
+          : ((currentIndex + 1) + ' of ' + sectionKeys.length));
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
@@ -982,18 +995,30 @@
     var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
     var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
     var permitPre = Number(summary.permit_pre_hst || 0);
+    var bcinPre = Number(summary.bcin_pre_hst || 0);
+    var feePre = Number(summary.contractor_fee_pre_hst || 0);
     var extraHst = lastAdditionalLaborHst + lastAdditionalMaterialsHst;
-    var subtotal = laborPre + matPre + permitPre;
+    var subtotal = laborPre + matPre + permitPre + bcinPre + feePre;
     var hst = Number(summary.hst != null ? summary.hst : subtotal * 0.13) + extraHst;
     var html = '';
     html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
     html += '<div class="pq-row"><span>Materials</span><span>' + fmt(matPre) + '</span></div>';
     if (permitPre > 0) {
-      html += '<div class="pq-row"><span>Permit</span><span>' + fmt(permitPre) + '</span></div>';
+      html += '<div class="pq-row"><span>City permit (extra)</span><span>' + fmt(permitPre) + '</span></div>';
+    }
+    if (bcinPre > 0) {
+      html += '<div class="pq-row"><span>BCIN drawings (extra)</span><span>' + fmt(bcinPre) + '</span></div>';
+    }
+    if (feePre > 0) {
+      html += '<div class="pq-row"><span>' + escapeHtml(summary.contractor_fee_label || 'Contractor fee') + '</span><span>' + fmt(feePre) + '</span></div>';
     }
     var wastePct = Number(summary.material_waste_percent);
     if (isFinite(wastePct) && wastePct > 0) {
       html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
+    }
+    var floorWastePct = Number(summary.flooring_waste_percent);
+    if (isFinite(floorWastePct) && floorWastePct >= 0 && document.getElementById('br-fl-waste')) {
+      html += '<div class="pq-row"><span class="admin-form-help">Flooring waste</span><span class="admin-form-help">' + floorWastePct + '%</span></div>';
     }
     html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
     html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
@@ -1008,6 +1033,7 @@
     html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
+    updateClientScopeFromPreview(data);
   }
 
   function updateDrywallNetHint(scope) {
@@ -1032,6 +1058,29 @@
     parts.push(sheet + ' sheets (' + formatLayoutQty(sheetSf) + ' sq ft each)');
     hint.hidden = false;
     hint.textContent = parts.join(' · ') + '.';
+  }
+
+  function clientScopeFieldLocked(el) {
+    return el.getAttribute('data-br-scope-dirty') === '1'
+      || el.getAttribute('data-br-scope-persisted') === '1';
+  }
+
+  function hydratePersistedClientScope() {
+    form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
+      if (el.getAttribute('data-br-scope-persisted') === '1') {
+        el.setAttribute('data-br-scope-dirty', '1');
+      }
+    });
+  }
+
+  function updateClientScopeFromPreview(data) {
+    var generated = data && data.client_scope && data.client_scope.generated;
+    if (!generated) return;
+    form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
+      if (clientScopeFieldLocked(el)) return;
+      var key = el.getAttribute('data-br-scope-field');
+      if (generated[key] != null) el.value = generated[key];
+    });
   }
 
   function tradeBreakdownHtml(label, trade) {
@@ -1122,10 +1171,65 @@
     wrap.hidden = !((vanity && vanity.checked) || (pedestal && pedestal.checked));
   }
 
+  function resizeProjectDescriptionEditor() {
+    if (typeof tinymce === 'undefined' || !tinymce.get) return;
+    var ed = tinymce.get('br-work-description');
+    if (!ed) return;
+    requestAnimationFrame(function () {
+      try {
+        if (typeof ed.dispatch === 'function') ed.dispatch('ResizeEditor');
+        else if (typeof ed.fire === 'function') ed.fire('ResizeEditor');
+      } catch (err) {}
+    });
+  }
+
+  function initProjectDescriptionDisclosure() {
+    var acc = document.getElementById('br-desc-acc');
+    if (!acc) return;
+    var summary = acc.querySelector('.br-desc-acc__summary');
+    function sync() {
+      if (summary) summary.setAttribute('aria-expanded', acc.open ? 'true' : 'false');
+      if (acc.open) resizeProjectDescriptionEditor();
+    }
+    acc.addEventListener('toggle', sync);
+    sync();
+  }
+
   form.querySelectorAll('.br-preview').forEach(bindPreview);
+  form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
+    var markDirty = function () { el.setAttribute('data-br-scope-dirty', '1'); };
+    el.addEventListener('input', markDirty);
+    el.addEventListener('change', markDirty);
+  });
+  var floorTypeEl = document.getElementById('br-fl-type');
+  var floorWasteEl = document.getElementById('br-fl-waste');
+  function syncHardwoodCaution() {
+    var caution = document.getElementById('br-hardwood-caution');
+    if (!caution || !floorTypeEl) return;
+    caution.hidden = floorTypeEl.value !== 'hardwood';
+  }
+  if (floorTypeEl && floorWasteEl) {
+    floorWasteEl.addEventListener('input', function () {
+      floorWasteEl.setAttribute('data-br-floor-waste-dirty', '1');
+    });
+    floorTypeEl.addEventListener('change', function () {
+      if (floorWasteEl.getAttribute('data-br-floor-waste-dirty') === '1') return;
+      var opt = floorTypeEl.options[floorTypeEl.selectedIndex];
+      var waste = opt ? opt.getAttribute('data-br-floor-waste') : '';
+      if (waste !== '' && waste != null) {
+        floorWasteEl.value = waste;
+        schedulePreview();
+      }
+    });
+  }
+  if (floorTypeEl) {
+    floorTypeEl.addEventListener('change', syncHardwoodCaution);
+    syncHardwoodCaution();
+  }
   initTileAreas();
   initExclusiveChecks();
   syncBathSinkQty();
+  initProjectDescriptionDisclosure();
 
   var dwWallEl = document.getElementById('br-dw-wall');
   var layoutImportVal = document.getElementById('br-layout-import-value');
@@ -1263,6 +1367,7 @@
   }
   syncUnifiedCeilingArea();
 
+  hydratePersistedClientScope();
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);
   }

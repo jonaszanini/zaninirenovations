@@ -64,7 +64,7 @@
   function bottomReserve() {
     var reserve = PAD;
     if (!document.querySelectorAll) return reserve;
-    ['.br-sticky-total', '.br-sticky-bar', '.admin-sticky-footer', '.mw-totals-bar'].forEach(function (sel) {
+    ['.qh-sticky-footer', '.br-sticky-total', '.br-sticky-bar', '.admin-sticky-footer', '.mw-totals-bar'].forEach(function (sel) {
       document.querySelectorAll(sel).forEach(function (el) {
         if (!el.getBoundingClientRect) return;
         var r = el.getBoundingClientRect();
