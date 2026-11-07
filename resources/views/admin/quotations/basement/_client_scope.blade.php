@@ -5,10 +5,6 @@
       $feeDefault = 0;
   }
   $feeValue = old('contractor_fee_percent', $inputs['contractor_fee_percent'] ?? $feeDefault);
-  $pkgNotes = old('value_package_notes', $inputs['value_package_notes'] ?? []);
-  if (! is_array($pkgNotes)) {
-      $pkgNotes = [];
-  }
   $scopeFieldLocked = function (string $name) use ($inputs): bool {
       return old($name) !== null || filled($inputs[$name] ?? null);
   };
@@ -27,7 +23,7 @@
         <span class="admin-label-with-tip">
           <label for="br-contractor-fee">Contractor fee (%)</label>
           @include('admin.partials.info_tip', [
-            'tipText' => 'Default 10%. Applies only to materials and subcontracted services (electrical, plumbing, BCIN drawings). Does not apply to Jonas hourly labour or the city permit disbursement. Shown as its own line before HST. The same percentage applies to written change orders.',
+            'tipText' => 'Default 10%. Applies to materials and subcontracted services: electrical, plumbing, BCIN drawings, and professional engineer signing or stamping when that is required. A BCIN qualified designer is not the same credential as a professional engineer. Does not apply to Jonas hourly labour or the municipal building-permit fee. Shown as its own line before HST. The same percentage applies to written change orders.',
             'tipLabel' => 'Contractor fee (%)',
           ])
         </span>
@@ -62,7 +58,7 @@
           <span class="admin-label-with-tip">
             <label for="br-scope-assumptions">Assumptions</label>
             @include('admin.partials.info_tip', [
-              'tipText' => 'Includes the contractor-fee sentence (materials and subcontracted services, including change orders) and fully insured wording only.',
+              'tipText' => 'Includes the contractor-fee sentence (materials and subcontracted services, including BCIN drawings and engineer signing when required; not Zanini labour or the municipal permit fee; same fee on change orders) and fully insured wording only.',
               'tipLabel' => 'Assumptions',
             ])
           </span>
@@ -80,31 +76,6 @@
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-allowances" name="client_scope_allowances" rows="6"
                     data-br-scope-field="allowances"@if($scopeFieldLocked('client_scope_allowances')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_allowances', $inputs['client_scope_allowances'] ?? $scopeCopy['allowances']) }}</textarea>
         </div>
-      </div>
-
-      <div class="br-value-packages" id="br-value-packages">
-        <p class="br-value-packages__title">
-          <span class="admin-label-with-tip">
-            <span>Invest — Base / Standard / Upgrade</span>
-            @include('admin.partials.info_tip', [
-              'tipText' => 'Three investment options on the PDF, email, and accept page. Standard is this quotation as configured. Base uses vinyl plank (LVP). Upgrade uses hardwood. The client picks one at acceptance; that total becomes the contract. Totals stay CAD$ and include HST.',
-              'tipLabel' => 'Invest — Base / Standard / Upgrade',
-            ])
-          </span>
-        </p>
-        <div class="br-value-packages__grid">
-          @foreach (\App\Services\BasementClientScope::VALUE_TIERS as $tier => $tierLabel)
-            <div class="br-value-package" data-br-value-tier="{{ $tier }}">
-              <p class="br-value-package__label">{{ $tierLabel }}</p>
-              <p class="br-value-package__total" data-br-value-total>—</p>
-              <p class="br-value-package__floor" data-br-value-floor></p>
-              <label class="visually-hidden" for="br-pkg-note-{{ $tier }}">{{ $tierLabel }} note</label>
-              <textarea class="admin-input br-preview" id="br-pkg-note-{{ $tier }}" name="value_package_notes[{{ $tier }}]" rows="2"
-                        placeholder="Short note for this option">{{ $pkgNotes[$tier] ?? '' }}</textarea>
-            </div>
-          @endforeach
-        </div>
-        <input type="hidden" name="selected_value_tier" id="br-selected-tier" value="{{ old('selected_value_tier', $inputs['selected_value_tier'] ?? 'standard') }}">
       </div>
     </div>
   </div>

@@ -46,7 +46,7 @@ Payments must be issued according to the milestones detailed below. Payments are
 Alterations and Variations
 Any deviation, addition, or deletion from the scope of work detailed in Section 1 will only be executed upon written agreement between the Client and the Contractor. Change orders will clearly specify the cost adjustment, in CAD$, and any associated timeline revisions.
 Contractor Fee
-When the quotation states a contractor fee percentage, that fee applies to materials and subcontracted services on the original work and on every written change order. It does not apply to Zanini hourly labour. The percentage is the figure shown on the quotation (default 10 percent unless a different rate was quoted).
+When the quotation states a contractor fee percentage, that fee applies to materials and subcontracted services on the original work and on every written change order. Subcontracted services include electrical, plumbing, BCIN drawings, and professional engineer signing or stamping when that is required. A BCIN qualified designer is not the same credential as a professional engineer; do not describe every BCIN designer as an engineer. The fee does not apply to Zanini hourly labour or the municipal building-permit fee. The percentage is the figure shown on the quotation (default 10 percent unless a different rate was quoted).
 Site Access and Utilities
 The Client shall provide the Contractor with clear access to the work zone during standard working hours. The Client agrees to provide access to electricity and water supply at no cost to the Contractor for the duration of the build.
 Hidden Conditions

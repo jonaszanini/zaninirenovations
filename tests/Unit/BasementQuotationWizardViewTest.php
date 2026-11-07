@@ -382,6 +382,12 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="contractor_fee_percent"', $html);
         $this->assertStringContainsString('name="client_scope_included"', $html);
         $this->assertStringContainsString('name="flooring_waste_percent"', $html);
+        $this->assertStringNotContainsString('name="selected_value_tier"', $html);
+        $this->assertStringNotContainsString('value_package_notes', $html);
+        $this->assertStringNotContainsString('Invest —', $html);
+        $this->assertStringContainsString('municipal building-permit fee', $html);
+        $this->assertStringContainsString('BCIN qualified designer is not the same credential as a professional engineer', $html);
+        $this->assertStringContainsString('engineer signing when required', $html);
         $this->assertStringContainsString('data-cp-money-entry="direct"', $html);
         $this->assertStringNotContainsString('br-finishing-grid', $html);
 

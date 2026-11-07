@@ -33,18 +33,11 @@ class PublicQuoteAcceptanceController extends Controller
         ClientProjectQuotation $quotation,
         QuoteAcceptanceService $acceptance,
     ): View|RedirectResponse|Response {
-        $packages = $quotation->valuePackagesForPdf();
-        $tier = $request->input('value_tier');
-        if ($packages !== [] && ! in_array((string) $tier, ['base', 'standard', 'upgrade'], true)) {
-            return $this->page($request, $quotation, 'choose_tier');
-        }
-
         $status = $acceptance->accept(
             $quotation,
             ClientProjectQuotation::ACCEPTED_VIA_LINK,
             $request->ip(),
             null,
-            is_string($tier) ? $tier : null,
         );
 
         $quotation->refresh()->load('project');
@@ -77,8 +70,6 @@ class PublicQuoteAcceptanceController extends Controller
             'project' => $project,
             'status' => $status,
             'formAction' => $request->fullUrl(),
-            'valuePackages' => $quotation->valuePackagesForPdf(),
-            'acceptedTier' => $quotation->acceptedValueTier(),
         ]);
     }
 

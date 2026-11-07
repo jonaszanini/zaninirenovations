@@ -432,27 +432,6 @@ class BasementQuotation extends Model
         ];
     }
 
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    public function valuePackages(): array
-    {
-        $calc = is_array($this->calculation) ? $this->calculation : [];
-        $packages = $calc['value_packages'] ?? null;
-        if (is_array($packages) && $packages !== []) {
-            return $packages;
-        }
-
-        return [];
-    }
-
-    public function selectedValueTier(): string
-    {
-        $inputs = is_array($this->inputs) ? $this->inputs : [];
-
-        return \App\Services\BasementClientScope::normalizeTier($inputs['selected_value_tier'] ?? 'standard');
-    }
-
     public static function generateNumber(): string
     {
         $year = (int) date('Y');

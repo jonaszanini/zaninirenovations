@@ -3,47 +3,19 @@
 namespace App\Services;
 
 /**
- * Client-facing basement scope copy and Base / Standard / Upgrade packages.
+ * Client-facing basement scope copy for the single configured quotation.
  *
  * Default Included / Not included / Assumptions / Allowances text is derived
  * from wizard toggles and optional extras so unchecked services are never promised.
  */
 class BasementClientScope
 {
-    public const VALUE_TIERS = [
-        'base' => 'Base',
-        'standard' => 'Standard',
-        'upgrade' => 'Upgrade',
-    ];
-
     public const COPY_KEYS = [
         'included' => 'client_scope_included',
         'not_included' => 'client_scope_not_included',
         'assumptions' => 'client_scope_assumptions',
         'allowances' => 'client_scope_allowances',
     ];
-
-    public static function normalizeTier(mixed $tier): string
-    {
-        $value = strtolower(trim((string) $tier));
-
-        return array_key_exists($value, self::VALUE_TIERS) ? $value : 'standard';
-    }
-
-    public static function flooringTypeForTier(string $tier, string $current): string
-    {
-        $current = strtolower(trim($current));
-        if ($current === '' || $current === 'none') {
-            return 'none';
-        }
-        $tier = self::normalizeTier($tier);
-
-        return match ($tier) {
-            'base' => 'lvp',
-            'upgrade' => 'hardwood',
-            default => $current,
-        };
-    }
 
     public static function contractorFeeLabel(float $percent): string
     {
@@ -61,7 +33,7 @@ class BasementClientScope
     {
         $pct = self::formatPercent($percent);
 
-        return 'A contractor fee of '.$pct.'% applies to materials and subcontracted services, not Zanini hourly labour. The same fee also applies to written change orders.';
+        return 'A contractor fee of '.$pct.'% applies to materials and subcontracted services, including BCIN drawings and professional engineer signing when that signing is required. It does not apply to Zanini hourly labour or the municipal building-permit fee. The same fee also applies to written change orders.';
     }
 
     /**
@@ -106,12 +78,12 @@ class BasementClientScope
         $permitOn = ! empty($inputs['include_building_permit']);
         $bcinOn = ! empty($inputs['include_bcin_drawings']);
         if ($permitOn) {
-            $included[] = 'City building permit as an optional extra-charge service (priced separately).';
+            $included[] = 'City building permit as an optional extra-charge municipal fee (priced separately; pass-through, no contractor fee).';
         } else {
-            $notIncluded[] = 'City building permit — optional extra-charge service, not included by default.';
+            $notIncluded[] = 'City building permit — optional extra-charge municipal fee, not included by default.';
         }
         if ($bcinOn) {
-            $included[] = 'BCIN drawings as an optional extra-charge service (priced separately).';
+            $included[] = 'BCIN drawings as an optional extra-charge service (priced separately). A BCIN qualified designer is not the same credential as a professional engineer; engineer signing or stamping is included only when required.';
         } else {
             $notIncluded[] = 'BCIN drawings — optional extra-charge service, not included by default.';
         }
@@ -144,10 +116,10 @@ class BasementClientScope
         $permitAmt = $permitOn ? round(max(0, (float) ($inputs['building_permit_amount'] ?? 0)), 2) : 0.0;
         $bcinAmt = $bcinOn ? round(max(0, (float) ($inputs['bcin_drawings_amount'] ?? 0)), 2) : 0.0;
         if ($permitAmt > 0) {
-            $allowances[] = 'City building permit extra-charge CAD$'.number_format($permitAmt, 2, '.', ',').' before HST.';
+            $allowances[] = 'City building permit extra-charge CAD$'.number_format($permitAmt, 2, '.', ',').' before HST (municipal fee; no contractor fee).';
         }
         if ($bcinAmt > 0) {
-            $allowances[] = 'BCIN drawings extra-charge CAD$'.number_format($bcinAmt, 2, '.', ',').' before HST.';
+            $allowances[] = 'BCIN drawings extra-charge CAD$'.number_format($bcinAmt, 2, '.', ',').' before HST (subcontracted professional service, including engineer signing when required).';
         }
         if ($allowances === []) {
             $allowances[] = 'No separate cash allowances beyond the priced lines on this quotation.';
@@ -178,86 +150,6 @@ class BasementClientScope
         }
 
         return $out;
-    }
-
-    /**
-     * @param  array<string, mixed>  $originalInputs
-     * @param  array<string, mixed>  $standardResult
-     * @return array<string, array<string, mixed>>
-     */
-    public static function buildValuePackages(
-        BasementQuotationCalculator $calculator,
-        array $originalInputs,
-        array $standardResult,
-        ?\App\Models\BasementSettings $settings = null,
-    ): array {
-        $currentType = strtolower(trim((string) ($standardResult['scope']['flooring_type'] ?? $originalInputs['flooring_type'] ?? 'lvp')));
-        if ($currentType === '') {
-            $currentType = 'lvp';
-        }
-        $notes = is_array($originalInputs['value_package_notes'] ?? null)
-            ? $originalInputs['value_package_notes']
-            : [];
-        $packages = [];
-        foreach (array_keys(self::VALUE_TIERS) as $tier) {
-            $type = self::flooringTypeForTier($tier, $currentType);
-            if ($tier === 'standard' || $type === $currentType) {
-                $packages[$tier] = self::packageFromResult($tier, $type, $standardResult, $notes);
-                continue;
-            }
-            $pkgInputs = $originalInputs;
-            $pkgInputs['flooring_type'] = $type;
-            $pkgInputs['flooring_waste_percent'] = BasementQuotationCalculator::flooringWasteDefault($type);
-            $pkgResult = $calculator->calculate($pkgInputs, $settings, false);
-            $packages[$tier] = self::packageFromResult($tier, $type, $pkgResult, $notes);
-        }
-
-        return $packages;
-    }
-
-    /**
-     * @param  array<string, mixed>  $result
-     * @param  array<string, mixed>  $notes
-     * @return array<string, mixed>
-     */
-    public static function packageFromResult(string $tier, string $flooringType, array $result, array $notes = []): array
-    {
-        $summary = is_array($result['summary'] ?? null) ? $result['summary'] : [];
-        $label = self::VALUE_TIERS[$tier] ?? ucfirst($tier);
-        $floorLabel = BasementQuotationCalculator::FLOORING_TYPES[$flooringType] ?? ($flooringType === 'none' ? 'No flooring' : $flooringType);
-        $storedNote = trim((string) ($notes[$tier] ?? ''));
-        $defaultNote = match ($tier) {
-            'base' => $flooringType === 'none' ? 'Same scope; no finish flooring.' : 'Vinyl plank (LVP) finish flooring.',
-            'upgrade' => $flooringType === 'none' ? 'Same scope; no finish flooring.' : 'Hardwood finish flooring.',
-            default => $flooringType === 'none' ? 'As specified; no finish flooring.' : 'As specified: '.$floorLabel.'.',
-        };
-
-        return [
-            'tier' => $tier,
-            'label' => $label,
-            'flooring_type' => $flooringType,
-            'flooring_label' => $floorLabel,
-            'note' => $storedNote !== '' ? $storedNote : $defaultNote,
-            'labor_pre_hst' => round((float) ($summary['labor_pre_hst'] ?? 0), 2),
-            'materials_pre_hst' => round((float) ($summary['materials_pre_hst'] ?? 0), 2),
-            'contractor_fee_percent' => round((float) ($summary['contractor_fee_percent'] ?? 0), 2),
-            'contractor_fee_pre_hst' => round((float) ($summary['contractor_fee_pre_hst'] ?? 0), 2),
-            'subtotal_pre_hst' => round((float) ($summary['subtotal_pre_hst'] ?? 0), 2),
-            'hst' => round((float) ($summary['hst'] ?? 0), 2),
-            'trade_lines_tax_in' => round((float) ($summary['trade_lines_tax_in'] ?? 0), 2),
-            'grand_total' => round((float) ($summary['grand_total'] ?? 0), 2),
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $packages
-     */
-    public static function package(array $packages, mixed $tier): ?array
-    {
-        $key = self::normalizeTier($tier);
-        $row = $packages[$key] ?? null;
-
-        return is_array($row) ? $row : null;
     }
 
     /**

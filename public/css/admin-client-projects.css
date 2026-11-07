@@ -9205,52 +9205,14 @@ html.admin-dark .br-hardwood-caution {
   font-size: 14px;
   line-height: 1.4;
 }
-.br-value-packages__title {
-  margin: 4px 0 0;
-  font-weight: 700;
-  color: #024768;
-}
-.br-value-packages__grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-}
-.br-value-package {
-  border: 1px solid #d8dee4;
-  border-radius: 8px;
-  padding: 10px;
-  min-width: 0;
-}
-.br-value-package__label {
-  margin: 0 0 4px;
-  font-weight: 700;
-  color: #024768;
-}
-.br-value-package__total {
-  margin: 0 0 2px;
-  font-size: 1.05rem;
-  font-weight: 700;
-}
-.br-value-package__floor {
-  margin: 0 0 8px;
-  font-size: 13px;
-  color: #5a6570;
-}
 @media (min-width: 720px) {
   .br-client-scope__grid {
     grid-template-columns: 1fr 1fr;
   }
-  .br-value-packages__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 @media (max-width: 390px) {
-  .br-client-scope__grid,
-  .br-value-packages__grid {
+  .br-client-scope__grid {
     grid-template-columns: 1fr;
-  }
-  .br-value-package {
-    padding: 8px;
   }
   .br-client-scope__grid textarea {
     min-height: 6.5rem;

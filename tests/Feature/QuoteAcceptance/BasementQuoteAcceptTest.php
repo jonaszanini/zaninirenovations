@@ -9,50 +9,65 @@ use App\Services\BasementQuotationCalculator;
 use Illuminate\Support\Facades\URL;
 use Tests\IntegrationTestCase;
 
-class BasementValueTierAcceptTest extends IntegrationTestCase
+class BasementQuoteAcceptTest extends IntegrationTestCase
 {
-    public function test_accept_page_requires_value_tier_and_persists_upgrade(): void
+    public function test_signed_accept_uses_the_configured_quote_without_a_tier_choice(): void
     {
         [$project, $quotation, $basement] = $this->makeBasementLinkedQuotation();
         $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+        $configuredTotal = (float) $basement->final_quote_total;
+        $configuredFloor = $basement->inputs['flooring_type'];
 
         $this->get($url)
             ->assertOk()
-            ->assertSee('Invest', false)
-            ->assertSee('Base', false)
-            ->assertSee('Standard', false)
-            ->assertSee('Upgrade', false)
-            ->assertSee('name="value_tier"', false)
-            ->assertSee('CAD$', false);
+            ->assertSee('Accept this quote', false)
+            ->assertSee('Total incl. HST', false)
+            ->assertDontSee('name="value_tier"', false)
+            ->assertDontSee('Please choose Base, Standard, or Upgrade', false)
+            ->assertDontSee('Invest', false);
 
-        $this->post($url)
-            ->assertOk()
-            ->assertSee('Please choose Base, Standard, or Upgrade', false);
-        $this->assertFalse($quotation->fresh()->isAccepted());
-
-        $upgradeTotal = (float) $basement->valuePackages()['upgrade']['grand_total'];
-        $this->post($url, ['value_tier' => 'upgrade'])
-            ->assertRedirect();
+        $this->post($url)->assertRedirect();
 
         $quotation->refresh();
         $basement->refresh();
         $this->assertTrue($quotation->isAccepted());
-        $this->assertSame('upgrade', $quotation->accepted_value_tier);
-        $this->assertSame('hardwood', $basement->inputs['flooring_type']);
-        $this->assertEqualsWithDelta($upgradeTotal, (float) $basement->final_quote_total, 0.05);
-        $this->assertEqualsWithDelta($upgradeTotal, $quotation->grandTotal(), 1.0);
+        $this->assertSame($configuredFloor, $basement->inputs['flooring_type']);
+        $this->assertEqualsWithDelta($configuredTotal, (float) $basement->final_quote_total, 0.05);
+        $this->assertEqualsWithDelta($configuredTotal, $quotation->grandTotal(), 1.0);
+        $this->assertArrayNotHasKey('accepted_value_tier', $quotation->getAttributes());
 
         $acceptedAt = $quotation->accepted_at;
-        $this->post($url, ['value_tier' => 'base'])
+        $this->post($url)
             ->assertOk()
             ->assertSee('Already accepted', false);
         $quotation->refresh();
         $this->assertEquals($acceptedAt?->timestamp, $quotation->fresh()->accepted_at?->timestamp);
-        $this->assertSame('upgrade', $quotation->accepted_value_tier);
-        $this->assertSame('hardwood', $basement->fresh()->inputs['flooring_type']);
+        $this->assertSame($configuredFloor, $basement->fresh()->inputs['flooring_type']);
+        $this->assertEqualsWithDelta($configuredTotal, (float) $basement->fresh()->final_quote_total, 0.05);
     }
 
-    public function test_email_template_includes_invest_columns_for_basement(): void
+    public function test_api_accepts_basement_quote_without_value_tier(): void
+    {
+        config(['quote_accept.api_token' => 'test-quote-accept-token']);
+        [$project, $quotation, $basement] = $this->makeBasementLinkedQuotation();
+        $configuredTotal = (float) $basement->final_quote_total;
+
+        $this->postJson('/api/quotations/accept', [
+            'project_number' => $project->referenceCode(),
+            'quote_number' => $quotation->displayQuoteNumber(),
+            'value_tier' => 'upgrade',
+        ], ['Authorization' => 'Bearer test-quote-accept-token'])
+            ->assertOk()
+            ->assertExactJson(['status' => 'accepted']);
+
+        $quotation->refresh();
+        $basement->refresh();
+        $this->assertTrue($quotation->isAccepted());
+        $this->assertSame('engineered', $basement->inputs['flooring_type']);
+        $this->assertEqualsWithDelta($configuredTotal, (float) $basement->final_quote_total, 0.05);
+    }
+
+    public function test_email_template_includes_scope_not_package_columns(): void
     {
         [$project, $quotation] = $this->makeBasementLinkedQuotation();
         $html = view('emails.client_projects.client_quotation', [
@@ -61,13 +76,12 @@ class BasementValueTierAcceptTest extends IntegrationTestCase
             'acceptUrl' => 'https://example.test/accept',
         ])->render();
 
-        $this->assertStringContainsString('Invest', $html);
-        $this->assertStringContainsString('Base', $html);
-        $this->assertStringContainsString('Standard', $html);
-        $this->assertStringContainsString('Upgrade', $html);
-        $this->assertStringContainsString('CAD$', $html);
         $this->assertStringContainsString('Value', $html);
         $this->assertStringContainsString('Special terms', $html);
+        $this->assertStringContainsString('Flooring as specified.', $html);
+        $this->assertStringContainsString('Accept this quote', $html);
+        $this->assertStringNotContainsString('Invest', $html);
+        $this->assertStringNotContainsString('Choose Base, Standard, or Upgrade', $html);
         $this->assertDoesNotMatchRegularExpression('/\blicensed\b|\bWSIB\b/i', $html);
     }
 
@@ -107,7 +121,7 @@ class BasementValueTierAcceptTest extends IntegrationTestCase
             'owner_hourly_rate' => 80,
             'client_scope_included' => 'Flooring as specified.',
             'client_scope_not_included' => 'Carpet flooring.',
-            'client_scope_assumptions' => 'A contractor fee of 10% applies to materials and subcontracted services, not Zanini hourly labour. The same fee also applies to written change orders.',
+            'client_scope_assumptions' => 'A contractor fee of 10% applies to materials and subcontracted services, including BCIN drawings and professional engineer signing when that signing is required. It does not apply to Zanini hourly labour or the municipal building-permit fee. The same fee also applies to written change orders.',
             'client_scope_allowances' => 'No separate cash allowances.',
         ];
         $calc = (new BasementQuotationCalculator)->calculate($inputs);

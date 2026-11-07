@@ -35,6 +35,8 @@ class ContractContractorFeeClauseTest extends TestCase
         $this->assertStringContainsString('<p class="contractor-fee-clause">', $html);
         $this->assertSame(1, substr_count($html, ContractContractorFeeClause::SENTENCE));
         $this->assertStringContainsString('written change orders', $html);
+        $this->assertStringContainsString('municipal building-permit fee', $html);
+        $this->assertStringContainsString('professional engineer signing when required', $html);
         $this->assertStringContainsString('Basement renovation scope.', $html);
     }
 

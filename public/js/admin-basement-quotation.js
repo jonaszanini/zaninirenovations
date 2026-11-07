@@ -1025,7 +1025,6 @@
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
     updateClientScopeFromPreview(data);
-    updateValuePackagesFromPreview(data.value_packages || {});
   }
 
   function updateDrywallNetHint(scope) {
@@ -1072,22 +1071,6 @@
       if (clientScopeFieldLocked(el)) return;
       var key = el.getAttribute('data-br-scope-field');
       if (generated[key] != null) el.value = generated[key];
-    });
-  }
-
-  function updateValuePackagesFromPreview(packages) {
-    ['base', 'standard', 'upgrade'].forEach(function (tier) {
-      var card = form.querySelector('[data-br-value-tier="' + tier + '"]');
-      if (!card) return;
-      var pkg = packages && packages[tier] ? packages[tier] : null;
-      var totalEl = card.querySelector('[data-br-value-total]');
-      var floorEl = card.querySelector('[data-br-value-floor]');
-      if (totalEl) totalEl.textContent = pkg ? fmt(pkg.grand_total || 0) : '—';
-      if (floorEl) floorEl.textContent = pkg ? (pkg.flooring_label || '') : '';
-      var note = card.querySelector('textarea[name="value_package_notes[' + tier + ']"]');
-      if (note && pkg && note.getAttribute('data-br-note-dirty') !== '1' && !String(note.value || '').trim()) {
-        note.value = pkg.note || '';
-      }
     });
   }
 
@@ -1208,9 +1191,6 @@
     var markDirty = function () { el.setAttribute('data-br-scope-dirty', '1'); };
     el.addEventListener('input', markDirty);
     el.addEventListener('change', markDirty);
-  });
-  form.querySelectorAll('textarea[name^="value_package_notes"]').forEach(function (el) {
-    el.addEventListener('input', function () { el.setAttribute('data-br-note-dirty', '1'); });
   });
   var floorTypeEl = document.getElementById('br-fl-type');
   var floorWasteEl = document.getElementById('br-fl-waste');

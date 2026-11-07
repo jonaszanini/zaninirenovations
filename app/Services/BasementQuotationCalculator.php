@@ -704,8 +704,6 @@ class BasementQuotationCalculator
             'client_scope_not_included' => '',
             'client_scope_assumptions' => '',
             'client_scope_allowances' => '',
-            'selected_value_tier' => 'standard',
-            'value_package_notes' => [],
             'client_provides_all' => false,
             'client_provides_sections' => [],
             'client_provides_bath_items' => [],
@@ -757,7 +755,7 @@ class BasementQuotationCalculator
      * @param  array<string, mixed>  $inputs
      * @return array<string, mixed>
      */
-    public function calculate(array $inputs, ?BasementSettings $settings = null, bool $includePackages = true): array
+    public function calculate(array $inputs, ?BasementSettings $settings = null): array
     {
         $settings = $settings ?? BasementSettings::current();
         $prod = $settings->resolvedProductivity();
@@ -791,7 +789,7 @@ class BasementQuotationCalculator
         $partitionLf = max(0, (float) $inputs['partition_lf']);
         $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
         if ($area <= 0 && $partitionLf <= 0) {
-            return $this->emptyCalculation($originalInputs, $inputs, $settings, $height, $feePercent, $includePackages);
+            return $this->emptyCalculation($originalInputs, $inputs, $settings, $height, $feePercent);
         }
         $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
         $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
@@ -1490,7 +1488,7 @@ class BasementQuotationCalculator
             ],
         ];
 
-        return $this->finalizeClientFacing($result, $originalInputs, $settings, $includePackages);
+        return $this->finalizeClientFacing($result, $originalInputs);
     }
 
     /**
@@ -1764,7 +1762,6 @@ class BasementQuotationCalculator
         BasementSettings $settings,
         float $height,
         float $feePercent,
-        bool $includePackages,
     ): array {
         $ownerRate = max(0, (float) ($inputs['owner_hourly_rate'] ?? $settings->owner_hourly_rate));
         $helperRate = max(0, (float) ($inputs['helper_hourly_rate'] ?? $settings->helper_hourly_rate));
@@ -1835,7 +1832,7 @@ class BasementQuotationCalculator
             ],
         ];
 
-        return $this->finalizeClientFacing($result, $originalInputs, $settings, $includePackages);
+        return $this->finalizeClientFacing($result, $originalInputs);
     }
 
     /**
@@ -1846,13 +1843,8 @@ class BasementQuotationCalculator
     private function finalizeClientFacing(
         array $result,
         array $originalInputs,
-        ?BasementSettings $settings,
-        bool $includePackages,
     ): array {
         $result['client_scope'] = BasementClientScope::resolveCopy($originalInputs, $result);
-        $result['value_packages'] = $includePackages
-            ? BasementClientScope::buildValuePackages($this, $originalInputs, $result, $settings)
-            : [];
 
         return $result;
     }
@@ -1903,8 +1895,9 @@ class BasementQuotationCalculator
     }
 
     /**
-     * Fee applies to materials and subcontracted extras (trades + BCIN), never
-     * to Jonas hourly labour or the municipal permit disbursement.
+     * Fee applies to materials and subcontracted extras (trades + BCIN drawings,
+     * including professional engineer signing when required). Never to Jonas
+     * hourly labour or the municipal building-permit fee.
      *
      * @return array{percent: float, base: float, amount: float}
      */

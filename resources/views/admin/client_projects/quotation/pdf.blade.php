@@ -336,51 +336,6 @@
     .quote-client-scope-block li {
       margin: 0 0 2pt;
     }
-    .quote-invest {
-      margin: 0 0 14pt;
-      page-break-inside: avoid;
-    }
-    .quote-invest-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    .quote-invest-table th,
-    .quote-invest-table td {
-      border: 1pt solid #d8dee4;
-      padding: 6pt 7pt;
-      vertical-align: top;
-      width: 33.33%;
-    }
-    .quote-invest-table th {
-      background: #024768;
-      color: #ffffff;
-      font-size: 10pt;
-      font-weight: 700;
-      text-align: center;
-    }
-    .quote-invest-table th.is-selected {
-      background: #0369a1;
-    }
-    .quote-invest-amount {
-      margin: 0 0 4pt;
-      font-size: 12pt;
-      font-weight: 700;
-      color: #024768;
-      text-align: center;
-    }
-    .quote-invest-note {
-      margin: 0;
-      font-size: 8.5pt;
-      line-height: 1.3;
-      color: #374151;
-    }
-    .quote-invest-pick {
-      margin: 4pt 0 0;
-      font-size: 8pt;
-      font-weight: 700;
-      color: #024768;
-      text-align: center;
-    }
 
     /* Table wrapper: DomPDF ignores page-break-inside on divs. */
     .quote-material-selection-wrap {

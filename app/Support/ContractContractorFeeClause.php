@@ -9,7 +9,7 @@ namespace App\Support;
  */
 class ContractContractorFeeClause
 {
-    public const SENTENCE = 'A contractor fee applies to materials and subcontracted services, not Zanini hourly labour. The same fee also applies to written change orders.';
+    public const SENTENCE = 'A contractor fee applies to materials and subcontracted services, including BCIN drawings and professional engineer signing when required. It does not apply to Zanini hourly labour or the municipal building-permit fee. The same fee also applies to written change orders.';
 
     public static function isPresent(string $content): bool
     {

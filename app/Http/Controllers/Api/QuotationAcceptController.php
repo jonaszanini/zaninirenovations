@@ -15,7 +15,6 @@ class QuotationAcceptController extends Controller
             'project_number' => ['required', 'string', 'max:40'],
             'quote_number' => ['required', 'string', 'max:60'],
             'source_note' => ['nullable', 'string', 'max:255'],
-            'value_tier' => ['nullable', 'string', 'in:base,standard,upgrade'],
         ]);
 
         $result = $acceptance->acceptByNumbers(
@@ -24,7 +23,6 @@ class QuotationAcceptController extends Controller
             \App\Models\ClientProjectQuotation::ACCEPTED_VIA_API,
             $request->ip(),
             isset($data['source_note']) ? (string) $data['source_note'] : null,
-            isset($data['value_tier']) ? (string) $data['value_tier'] : null,
         );
 
         $status = $result['status'];

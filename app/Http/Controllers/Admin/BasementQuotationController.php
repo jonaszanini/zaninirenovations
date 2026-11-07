@@ -446,7 +446,7 @@ class BasementQuotationController extends Controller
             'include_bcin_drawings',
             'client_provides_all', 'include_helper',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances', 'selected_value_tier'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -534,15 +534,6 @@ class BasementQuotationController extends Controller
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
         $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
         $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
-        $out['selected_value_tier'] = \App\Services\BasementClientScope::normalizeTier($out['selected_value_tier'] ?? 'standard');
-
-        $notesRaw = $request->input('value_package_notes', []);
-        $out['value_package_notes'] = [];
-        if (is_array($notesRaw)) {
-            foreach (array_keys(\App\Services\BasementClientScope::VALUE_TIERS) as $tier) {
-                $out['value_package_notes'][$tier] = trim((string) ($notesRaw[$tier] ?? ''));
-            }
-        }
 
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');

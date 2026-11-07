@@ -194,11 +194,11 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
         $this->assertStringContainsString('Carpet flooring.', $copy['not_included']);
         $this->assertStringContainsString('contractor fee of 10%', strtolower($copy['assumptions']));
         $this->assertStringContainsString('change orders', strtolower($copy['assumptions']));
+        $this->assertStringContainsString('municipal building-permit fee', strtolower($copy['assumptions']));
+        $this->assertStringContainsString('engineer signing when that signing is required', strtolower($copy['assumptions']));
         $this->assertDoesNotMatchRegularExpression('/\blicensed\b/i', $copy['included'].$copy['not_included'].$copy['assumptions']);
         $this->assertStringContainsString('fully insured', strtolower($copy['assumptions']));
-        $this->assertArrayHasKey('base', $calc['value_packages']);
-        $this->assertArrayHasKey('standard', $calc['value_packages']);
-        $this->assertArrayHasKey('upgrade', $calc['value_packages']);
+        $this->assertArrayNotHasKey('value_packages', $calc);
     }
 
     public function test_checked_extras_appear_in_included_copy_and_priced_lines(): void
@@ -215,30 +215,54 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
         $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'bcin_drawings'));
         $this->assertSame('Custom included list', $calc['client_scope']['included']);
         $this->assertStringContainsString('BCIN drawings as an optional extra-charge service', $calc['client_scope']['generated']['included']);
-        $this->assertStringContainsString('City building permit as an optional extra-charge service', $calc['client_scope']['generated']['included']);
+        $this->assertStringContainsString('City building permit as an optional extra-charge municipal fee', $calc['client_scope']['generated']['included']);
+        $this->assertStringContainsString('BCIN qualified designer is not the same credential as a professional engineer', $calc['client_scope']['generated']['included']);
+        $this->assertStringContainsString('engineer signing or stamping is included only when required', $calc['client_scope']['generated']['included']);
+        $this->assertDoesNotMatchRegularExpression(
+            '/every BCIN (designer|professional) is an engineer/i',
+            $calc['client_scope']['generated']['included']
+        );
     }
 
-    public function test_value_packages_use_lvp_and_hardwood_and_standard_matches_quote(): void
+    public function test_city_permit_is_outside_fee_base_and_bcin_signing_service_is_inside(): void
     {
-        $calc = (new BasementQuotationCalculator)->calculate($this->flooringQuote([
-            'flooring_type' => 'engineered',
-            'flooring_waste_percent' => 8,
+        $withoutExtras = (new BasementQuotationCalculator)->calculate($this->flooringQuote([
+            'flooring_type' => 'lvp',
             'contractor_fee_percent' => 10,
         ]), $this->settings());
+        $withPermitOnly = (new BasementQuotationCalculator)->calculate($this->flooringQuote([
+            'flooring_type' => 'lvp',
+            'contractor_fee_percent' => 10,
+            'include_building_permit' => true,
+            'building_permit_amount' => 200,
+        ]), $this->settings());
+        $withBcinOnly = (new BasementQuotationCalculator)->calculate($this->flooringQuote([
+            'flooring_type' => 'lvp',
+            'contractor_fee_percent' => 10,
+            'include_bcin_drawings' => true,
+            'bcin_drawings_amount' => 400,
+        ]), $this->settings());
 
-        $packages = $calc['value_packages'];
-        $this->assertSame('lvp', $packages['base']['flooring_type']);
-        $this->assertSame('engineered', $packages['standard']['flooring_type']);
-        $this->assertSame('hardwood', $packages['upgrade']['flooring_type']);
         $this->assertEqualsWithDelta(
-            (float) $calc['summary']['grand_total'],
-            (float) $packages['standard']['grand_total'],
+            (float) $withoutExtras['summary']['contractor_fee_base_pre_hst'],
+            (float) $withPermitOnly['summary']['contractor_fee_base_pre_hst'],
             0.01
         );
-        $this->assertNotEquals($packages['base']['grand_total'], $packages['upgrade']['grand_total']);
+        $this->assertEqualsWithDelta(
+            (float) $withoutExtras['summary']['contractor_fee_pre_hst'],
+            (float) $withPermitOnly['summary']['contractor_fee_pre_hst'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(200.0, (float) $withPermitOnly['summary']['permit_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $withoutExtras['summary']['contractor_fee_base_pre_hst'] + 400.0,
+            (float) $withBcinOnly['summary']['contractor_fee_base_pre_hst'],
+            0.01
+        );
+        $this->assertEqualsWithDelta(40.0, round((float) $withBcinOnly['summary']['contractor_fee_pre_hst'] - (float) $withoutExtras['summary']['contractor_fee_pre_hst'], 2), 0.01);
     }
 
-    public function test_pdf_and_email_render_scope_and_three_columns(): void
+    public function test_pdf_renders_scope_without_package_columns(): void
     {
         $calc = (new BasementQuotationCalculator)->calculate($this->flooringQuote([
             'flooring_type' => 'lvp',
@@ -275,11 +299,8 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
 
         $this->assertStringContainsString('Value', $html);
         $this->assertStringContainsString('Special terms', $html);
-        $this->assertStringContainsString('Invest', $html);
-        $this->assertStringContainsString('Base', $html);
-        $this->assertStringContainsString('Standard', $html);
-        $this->assertStringContainsString('Upgrade', $html);
-        $this->assertStringContainsString('CAD$', $html);
+        $this->assertStringNotContainsString('Invest', $html);
+        $this->assertStringNotContainsString('quote-invest', $html);
         $this->assertStringContainsString('Framing and drywall as specified.', $html);
         $this->assertStringContainsString('Carpet flooring.', $html);
     }
@@ -290,6 +311,9 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
         $this->assertStringContainsString('Contractor Fee', $instruction);
         $this->assertStringContainsString('written change order', $instruction);
         $this->assertStringContainsString('does not apply to Zanini hourly labour', $instruction);
+        $this->assertStringContainsString('municipal building-permit fee', $instruction);
+        $this->assertStringContainsString('professional engineer signing', $instruction);
+        $this->assertStringContainsString('not the same credential as a professional engineer', $instruction);
     }
 
     /**

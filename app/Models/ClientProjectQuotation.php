@@ -100,7 +100,6 @@ class ClientProjectQuotation extends Model
         'accepted_via',
         'accepted_ip',
         'accepted_source_note',
-        'accepted_value_tier',
         'ask_reply_to_accept',
     ];
 
@@ -413,50 +412,6 @@ class ClientProjectQuotation extends Model
         }
 
         return $has ? $copy : null;
-    }
-
-    /**
-     * @return array<string, array<string, mixed>>
-     */
-    public function valuePackagesForPdf(): array
-    {
-        $basement = $this->basementSource();
-        if ($basement === null) {
-            return [];
-        }
-        $packages = $basement->valuePackages();
-        foreach (['base', 'standard', 'upgrade'] as $tier) {
-            if (! isset($packages[$tier]) || ! is_array($packages[$tier])) {
-                return [];
-            }
-        }
-
-        return $packages;
-    }
-
-    public function selectedValueTier(): string
-    {
-        $basement = $this->basementSource();
-        if ($basement === null) {
-            return 'standard';
-        }
-
-        return $basement->selectedValueTier();
-    }
-
-    public function acceptedValueTier(): ?string
-    {
-        $tier = strtolower(trim((string) ($this->accepted_value_tier ?? '')));
-        if ($tier === '') {
-            return null;
-        }
-
-        return \App\Services\BasementClientScope::normalizeTier($tier);
-    }
-
-    public function requiresValueTierChoice(): bool
-    {
-        return $this->valuePackagesForPdf() !== [];
     }
 
     /**
