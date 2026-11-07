@@ -6,8 +6,10 @@ use App\Mail\ClientProjectInvoiceClient;
 use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectQuotation;
+use App\Models\User;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\PrepareBillingService;
+use App\Services\RecalculateRemainingInstallmentsService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
@@ -371,6 +373,290 @@ class PrepareBillingTest extends IntegrationTestCase
         $this->assertSame(0, $b->invoices()->count());
         $invoice = $a->invoices()->first();
         $this->get(route('admin.client-projects.invoices.edit', [$b, $invoice]))->assertNotFound();
+    }
+
+    public function test_staff_cannot_access_prepare_billing_write_surface(): void
+    {
+        $staff = User::factory()->create(['role' => User::ROLE_STAFF]);
+        $this->actingAs($staff);
+        $project = $this->acceptedProjectWithPlan();
+
+        $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertDontSee('Prepare billing', false)
+            ->assertDontSee('data-cp-prepare-billing', false)
+            ->assertDontSee('data-cp-next-installment', false);
+
+        $this->get(route('admin.client-projects.billing.prepare', $project))->assertForbidden();
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
+        ])->assertForbidden();
+        $this->assertSame(0, $project->invoices()->count());
+
+        $this->post(route('admin.client-projects.invoices.create', $project), ['mode' => 'next'])
+            ->assertForbidden();
+        $this->assertSame(0, $project->invoices()->count());
+    }
+
+    public function test_confirm_button_follows_server_can_confirm(): void
+    {
+        $this->actingAsAdmin();
+        $ready = $this->acceptedProjectWithPlan();
+        $readyHtml = $this->get(route('admin.client-projects.billing.prepare', $ready))->assertOk()->getContent();
+        $this->assertStringContainsString('data-cp-confirm-billing', $readyHtml);
+        $this->assertDoesNotMatchRegularExpression(
+            '/data-cp-confirm-billing[^>]*\bdisabled\b/',
+            $readyHtml
+        );
+
+        $conflicted = $this->acceptedProjectWithPlan();
+        $quotation = $conflicted->quotations()->first();
+        $quotation->payment_percentages = [10, 90];
+        $quotation->save();
+
+        $conflictHtml = $this->get(route('admin.client-projects.billing.prepare', $conflicted->fresh()->load([
+            'installments',
+            'invoices',
+            'quotations',
+        ])))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/data-cp-confirm-billing[^>]*\bdisabled\b/',
+            $conflictHtml
+        );
+
+        $preview = app(PrepareBillingService::class)->preview($conflicted->fresh()->load([
+            'installments',
+            'invoices',
+            'quotations',
+        ]));
+        $this->assertFalse($preview['can_confirm']);
+        $this->assertNotEmpty($preview['conflicts']);
+    }
+
+    public function test_partial_payment_through_prepare_and_recalc_preserves_records(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan();
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
+        ])->assertRedirect();
+
+        $first = $project->invoices()->where('installment_number', 1)->firstOrFail();
+        $second = $project->invoices()->where('installment_number', 2)->firstOrFail();
+        $ids = [$first->id, $second->id];
+        $draftNumber = $second->invoice_number;
+        $sentNumber = $first->invoice_number;
+        $sentTotal = (float) $first->total;
+        $sentHst = (float) $first->hst;
+        $sentSubtotal = (float) $first->subtotal;
+
+        $first->status = ClientProjectInvoice::STATUS_SENT;
+        $first->sent_at = now();
+        $first->paid_amount = 100.00;
+        $first->paid_at = now();
+        $first->save();
+        $this->assertFalse($first->fresh()->isPaid());
+        $this->assertTrue($first->fresh()->isSent());
+        $this->assertEqualsWithDelta(100.00, (float) $first->fresh()->paid_amount, 0.01);
+
+        $prepare = $this->get(route('admin.client-projects.billing.prepare', $project->fresh()->load([
+            'installments',
+            'invoices',
+            'quotations',
+        ])));
+        $prepare->assertOk()
+            ->assertSee('Sent', false)
+            ->assertSee($sentNumber, false)
+            ->assertSee($draftNumber, false);
+
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
+        ])->assertRedirect();
+
+        $this->assertEquals($ids, $project->invoices()->orderBy('id')->pluck('id')->all());
+        $this->assertTrue($first->fresh()->isSent());
+        $this->assertFalse($first->fresh()->isPaid());
+        $this->assertEqualsWithDelta(100.00, (float) $first->fresh()->paid_amount, 0.01);
+        $this->assertEqualsWithDelta($sentTotal, (float) $first->fresh()->total, 0.01);
+        $this->assertEqualsWithDelta($sentHst, (float) $first->fresh()->hst, 0.01);
+        $this->assertEqualsWithDelta($sentSubtotal, (float) $first->fresh()->subtotal, 0.01);
+        $this->assertTrue($second->fresh()->isDraft());
+        $this->assertSame($draftNumber, $second->fresh()->invoice_number);
+
+        $this->raiseAcceptedQuoteTotal($project, 2000);
+        $this->assertRecalcBlockedPreservingInvoices($project, $ids, 'partially paid');
+
+        $this->assertEqualsWithDelta(
+            $sentTotal,
+            $this->projectCollectibleSentSum($project),
+            0.01
+        );
+        $this->assertCount(2, $project->fresh()->invoices);
+    }
+
+    public function test_recalc_is_blocked_for_issued_unpaid_and_prepared_drafts_after_quote_raise(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan();
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
+        ])->assertRedirect();
+
+        $draftIds = $project->invoices()->orderBy('id')->pluck('id')->all();
+        $this->raiseAcceptedQuoteTotal($project, 2000);
+        $this->assertRecalcBlockedPreservingInvoices($project, $draftIds, 'prepared draft');
+
+        $firstInstallment = $project->installments()->orderBy('sort_order')->firstOrFail();
+        $firstInstallment->is_paid = true;
+        $firstInstallment->paid_on = '2026-11-01';
+        $firstInstallment->save();
+        $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertSee('Cannot recalculate remaining installments', false)
+            ->assertSee('prepared draft', false)
+            ->assertDontSee('will be replaced with new drafts', false)
+            ->assertDontSee('data-cp-recalc-open', false);
+
+        $first = $project->invoices()->where('installment_number', 1)->firstOrFail();
+        $first->status = ClientProjectInvoice::STATUS_SENT;
+        $first->sent_at = now();
+        $first->save();
+        $issuedIds = $project->invoices()->orderBy('id')->pluck('id')->all();
+        $sentTotal = (float) $first->fresh()->total;
+
+        $this->assertRecalcBlockedPreservingInvoices($project, $issuedIds, 'issued/sent');
+        $this->assertEqualsWithDelta($sentTotal, $this->projectCollectibleSentSum($project), 0.01);
+
+        $legacy = ClientProjectInvoice::factory()->sent()->create([
+            'client_project_id' => $project->id,
+            'installment_number' => null,
+            'invoice_number' => 'INV-LEGACY-MANUAL-1',
+            'subtotal' => 50,
+            'hst' => 6.50,
+            'total' => 56.50,
+        ]);
+        $this->assertRecalcBlockedPreservingInvoices(
+            $project,
+            array_merge($issuedIds, [$legacy->id]),
+            'issued/sent'
+        );
+        $this->assertSame('INV-LEGACY-MANUAL-1', $legacy->fresh()->invoice_number);
+        $this->assertTrue($legacy->fresh()->isSent());
+    }
+
+    public function test_recalc_still_applies_when_paid_installment_has_no_unpaid_invoices(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan();
+        $first = $project->installments()->orderBy('sort_order')->firstOrFail();
+        $first->is_paid = true;
+        $first->paid_on = '2026-11-01';
+        $first->save();
+
+        $this->raiseAcceptedQuoteTotal($project, 2000);
+
+        $this->post(route('admin.client-projects.installments.recalculate', $project), [
+            'remaining_count' => 1,
+            'split_mode' => 'defaults',
+        ])->assertRedirect()
+            ->assertSessionHas('success');
+
+        $this->assertSame(0, $project->invoices()->whereIn('status', [
+            ClientProjectInvoice::STATUS_SENT,
+            ClientProjectInvoice::STATUS_PAID,
+        ])->count());
+        $created = $project->fresh()->invoices()->where('status', ClientProjectInvoice::STATUS_DRAFT)->get();
+        $this->assertGreaterThanOrEqual(1, $created->count());
+        $this->assertEqualsWithDelta(0.0, $this->projectCollectibleSentSum($project), 0.001);
+    }
+
+    public function test_staff_recalc_post_is_server_blocked_when_invoices_exist(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan();
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
+        ])->assertRedirect();
+        $ids = $project->invoices()->orderBy('id')->pluck('id')->all();
+        $this->raiseAcceptedQuoteTotal($project, 2000);
+
+        $staff = User::factory()->create(['role' => User::ROLE_STAFF]);
+        $this->actingAs($staff);
+        $this->from(route('admin.client-projects.show', $project))
+            ->post(route('admin.client-projects.installments.recalculate', $project), [
+                'remaining_count' => 2,
+                'split_mode' => 'defaults',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertEquals($ids, $project->invoices()->orderBy('id')->pluck('id')->all());
+        $this->assertSame(2, $project->invoices()->where('status', ClientProjectInvoice::STATUS_DRAFT)->count());
+    }
+
+    /**
+     * @param  list<int>  $expectedIds
+     */
+    private function assertRecalcBlockedPreservingInvoices(
+        ClientProject $project,
+        array $expectedIds,
+        string $reasonNeedle
+    ): void {
+        $project = $project->fresh()->load(['installments', 'invoices', 'quotations']);
+        $before = $project->invoices()->orderBy('id')->get(['id', 'status', 'invoice_number', 'total', 'hst', 'subtotal', 'paid_amount']);
+
+        $preview = $this->postJson(route('admin.client-projects.installments.recalculate-preview', $project), [
+            'remaining_count' => 2,
+            'split_mode' => 'defaults',
+        ]);
+        $preview->assertStatus(422);
+        $this->assertStringContainsString($reasonNeedle, (string) $preview->json('error'));
+
+        $this->from(route('admin.client-projects.show', $project))
+            ->post(route('admin.client-projects.installments.recalculate', $project), [
+                'remaining_count' => 2,
+                'split_mode' => 'defaults',
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('error', function ($message) use ($reasonNeedle) {
+                return is_string($message) && str_contains($message, $reasonNeedle);
+            });
+
+        $threw = false;
+        try {
+            app(RecalculateRemainingInstallmentsService::class)->apply($project->fresh(), 2, 'defaults');
+        } catch (\InvalidArgumentException $e) {
+            $threw = true;
+            $this->assertStringContainsString($reasonNeedle, $e->getMessage());
+        }
+        $this->assertTrue($threw, 'Recalc apply() must refuse rather than rewrite invoices.');
+
+        $this->assertEquals(
+            $expectedIds,
+            $project->invoices()->orderBy('id')->pluck('id')->all()
+        );
+        $after = $project->invoices()->orderBy('id')->get(['id', 'status', 'invoice_number', 'total', 'hst', 'subtotal', 'paid_amount']);
+        $this->assertEquals($before->toArray(), $after->toArray());
+    }
+
+    private function raiseAcceptedQuoteTotal(ClientProject $project, float $amount): void
+    {
+        $quotation = $project->quotations()->firstOrFail();
+        $quotation->items = [[
+            'description' => 'Labour and materials',
+            'amount' => $amount,
+            'apply_hst' => true,
+        ]];
+        $quotation->save();
+    }
+
+    private function projectCollectibleSentSum(ClientProject $project): float
+    {
+        return (float) ClientProjectInvoice::query()
+            ->where('client_project_id', $project->id)
+            ->collectible()
+            ->where('status', ClientProjectInvoice::STATUS_SENT)
+            ->sum('total');
     }
 
     /**

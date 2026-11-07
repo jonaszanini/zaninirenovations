@@ -1575,8 +1575,8 @@
       var html = '';
       html += '<p class="admin-form-help" style="margin-top:0;">';
       html += 'New plan: <strong>' + (data.new_plan || 0) + '</strong> installment(s). ';
-      html += 'Will delete <strong>' + (data.unpaid_invoices_to_delete || 0) + '</strong> unpaid invoice(s) ';
-      html += 'and create <strong>' + (data.drafts_to_create || 0) + '</strong> draft(s).';
+      html += 'Existing invoices are kept. New drafts are created only for remaining unpaid installments that do not already have an invoice';
+      html += ' (<strong>' + (data.drafts_to_create || 0) + '</strong> draft(s)).';
       html += '</p>';
       html += '<table><thead><tr>';
       html += '<th>#</th><th>Label</th><th class="num">%</th><th class="num">Amount (incl. HST)</th><th>Status</th>';
@@ -1604,7 +1604,7 @@
         if (!lastPreview) return;
         var remaining = countSelect ? parseInt(countSelect.value, 10) : 1;
         var msg = 'Recalculate remaining installments?\n\n'
-          + 'This will delete unpaid installment invoices and create new drafts.\n'
+          + 'Existing invoices (issued, sent, drafts, and payments) are not deleted or rewritten.\n'
           + 'Paid installments will not be changed.';
 
         var doSubmit = function () {

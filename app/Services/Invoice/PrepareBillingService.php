@@ -58,7 +58,7 @@ class PrepareBillingService
             'allowed' => $blockers === [],
             'blockers' => $blockers,
             'conflicts' => $conflicts,
-            'can_confirm' => $blockers === [] && $conflicts === [] && $rows !== [] && ! $needsDue,
+            'can_confirm' => $blockers === [] && $conflicts === [] && $rows !== [],
             'needs_due_dates' => $needsDue,
             'rows' => $rows,
             'totals' => $totals,

@@ -163,7 +163,7 @@
       </div>
     @endif
 
-    @if ($recalcAnalysis && ($recalcAnalysis['has_discrepancy'] || ($recalcAnalysis['blocked'] && ! empty($recalcAnalysis['finance_committed']))))
+    @if ($recalcAnalysis && $recalcAnalysis['has_discrepancy'])
       <div class="cp-contract-warning cp-recalc-banner" role="status">
         <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
         <div class="cp-recalc-banner__body">
@@ -182,9 +182,7 @@
             <p class="admin-form-help" style="margin:6px 0 0;">
               Paid so far: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['paid_grand']) }}.
               Remaining to allocate: {{ \App\Models\ClientProject::formatMoney($recalcAnalysis['remaining_grand']) }}.
-              @if ($recalcAnalysis['unpaid_invoice_count'] > 0)
-                {{ $recalcAnalysis['unpaid_invoice_count'] }} unpaid installment invoice(s) will be replaced with new drafts.
-              @endif
+              Existing installment invoices are not deleted or rewritten.
             </p>
             <button type="button"
                     class="admin-btn admin-btn--primary admin-btn--sm cp-recalc-open"
@@ -197,6 +195,13 @@
         </div>
       </div>
     @elseif ($planIsLocked && $hasQuot)
+      @if ($recalcAnalysis && ! empty($recalcAnalysis['blocked']))
+        <div class="cp-recalc-actions" style="margin-bottom:12px;">
+          <p class="admin-form-help" style="margin:0;">
+            Recalculate remaining installments is unavailable: {{ $recalcAnalysis['block_reason'] }}
+          </p>
+        </div>
+      @else
       <div class="cp-recalc-actions" style="margin-bottom:12px;">
         <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-recalc-open>
           <i class="fa fa-refresh" aria-hidden="true"></i>
@@ -204,6 +209,7 @@
         </button>
         <x-admin.info-tip label="Recalculate Remaining Installments">Use this if you updated accepted quotations and need to refresh unpaid installments.</x-admin.info-tip>
       </div>
+      @endif
     @endif
 
     <form action="{{ route('admin.client-projects.installments.save', $project) }}"

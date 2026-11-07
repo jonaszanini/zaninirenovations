@@ -14,7 +14,7 @@
     $conflicts = $preview['conflicts'] ?? [];
     $quoteTerms = $preview['quote_terms'] ?? null;
     $needsDue = ! empty($preview['needs_due_dates']);
-    $canConfirm = ! empty($preview['can_confirm']) || ($preview['allowed'] && empty($conflicts) && $rows !== []);
+    $canConfirm = ! empty($preview['can_confirm']);
   @endphp
 
   <div class="cp-billing-prepare">
@@ -153,7 +153,7 @@
           <button type="submit"
                   class="admin-btn admin-btn--primary"
                   data-cp-confirm-billing
-                  @disabled(! empty($conflicts))>
+                  @disabled(! $canConfirm)>
             Confirm draft invoices
           </button>
         </div>

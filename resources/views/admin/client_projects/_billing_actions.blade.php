@@ -1,7 +1,8 @@
 {{-- Admin-only billing shortcuts. Expects $project. --}}
 @php
   $billingCompact = $billingCompact ?? false;
-  $canPrepareBilling = ! $project->isHourly()
+  $canPrepareBilling = auth()->user()?->isAdmin()
+      && ! $project->isHourly()
       && $project->isAccepted()
       && ! $project->excludesInvoicesFromReceivables();
   $hasInstallmentPlan = $project->installments->isNotEmpty();

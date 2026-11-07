@@ -17,6 +17,7 @@ class PrepareBillingController extends Controller
 {
     public function show(ClientProject $client_project, PrepareBillingService $billing)
     {
+        $this->authorizeAdmin();
         $client_project->load(['installments', 'invoices', 'quotations']);
         $preview = $billing->preview($client_project);
 
@@ -28,6 +29,7 @@ class PrepareBillingController extends Controller
 
     public function confirm(Request $request, ClientProject $client_project, PrepareBillingService $billing)
     {
+        $this->authorizeAdmin();
         $dueOn = $request->input('due_on', []);
         if (! is_array($dueOn)) {
             $dueOn = [];
@@ -53,5 +55,16 @@ class PrepareBillingController extends Controller
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
             ->with('success', $message);
+    }
+
+    /**
+     * Canonical admin gate used by user administration. This review/write
+     * surface is admin-only; staff keep existing invoice send/mark-paid routes.
+     */
+    private function authorizeAdmin(): void
+    {
+        if (! auth()->user()?->isAdmin()) {
+            abort(403);
+        }
     }
 }

@@ -99,6 +99,10 @@ class ClientProjectInvoiceController extends Controller
         }
 
         if ($mode === 'next') {
+            if (! auth()->user()?->isAdmin()) {
+                abort(403);
+            }
+
             try {
                 $invoice = app(PrepareBillingService::class)->openOrCreateNext($client_project);
             } catch (ValidationException $e) {
