@@ -74,6 +74,12 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
             'flooring_type' => 'Luxury vinyl plank (LVP)',
             'ceiling_type' => 'Drywall (taped & sanded)',
             'include_bathroom' => true,
+            'electrical_lines' => [
+                ['description' => 'STALE PANEL UPGRADE', 'amount' => 1800, 'hst_included' => true],
+            ],
+            'plumbing_lines' => [
+                ['description' => 'STALE ROUGH-IN', 'amount' => 900, 'hst_included' => true],
+            ],
         ];
 
         $text = $builder->build('basement', $payload);
@@ -104,6 +110,8 @@ class QuotationWorkDescriptionContextBuilderTest extends TestCase
         $this->assertStringNotContainsString('Flooring: Luxury vinyl plank', $text);
         $this->assertStringNotContainsString('Ceiling: Drywall', $text);
         $this->assertStringNotContainsString('Bathroom: yes', $text);
+        $this->assertStringNotContainsString('STALE PANEL UPGRADE', $text);
+        $this->assertStringNotContainsString('STALE ROUGH-IN', $text);
 
         // Included items ARE present:
         $this->assertStringContainsString('Demolition:', $text);

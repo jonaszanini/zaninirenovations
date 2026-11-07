@@ -68,4 +68,89 @@ class BasementQuotationScopePdfTest extends TestCase
             }
         }
     }
+
+    public function test_disabled_electrical_plumbing_and_bathroom_do_not_leak_stale_scope(): void
+    {
+        $quote = new BasementQuotation([
+            'inputs' => [
+                'area_sqft' => 454,
+                'ceiling_height_ft' => 8,
+                'room_count' => 2,
+                'scope_preset' => 'custom',
+                'enabled_sections' => ['overview', 'demolition', 'drywall'],
+                'include_bathroom' => true,
+                'bath_type' => 'full',
+                'electrical_lines' => [
+                    ['description' => 'STALE PANEL UPGRADE', 'amount' => 1800, 'hst_included' => true],
+                ],
+                'plumbing_lines' => [
+                    ['description' => 'STALE ROUGH-IN', 'amount' => 900, 'hst_included' => true],
+                ],
+            ],
+            'calculation' => [
+                'scope' => ['area_sqft' => 454, 'ceiling_height_ft' => 8],
+                'labor' => [
+                    ['section' => 'demolition', 'label' => 'Tear out flooring', 'hours' => 2],
+                    ['section' => 'electrical', 'label' => 'STALE ROUGH-IN OUTLETS', 'hours' => 3],
+                    ['section' => 'plumbing', 'label' => 'STALE STACK RELOCATE', 'hours' => 2],
+                    ['section' => 'bathroom', 'label' => 'STALE VANITY INSTALL', 'hours' => 4],
+                    ['section' => 'drywall', 'label' => 'Hang drywall', 'hours' => 5],
+                ],
+            ],
+            'work_description' => '<p>CLIENT ASKED FOR RECESSED NICHE</p>',
+        ]);
+
+        $html = $quote->scopeDescriptionForPdf();
+
+        $this->assertStringContainsString('Not included: ', $html);
+        $this->assertStringContainsString('Electrical', $html);
+        $this->assertStringContainsString('Plumbing', $html);
+        $this->assertStringContainsString('Bathroom', $html);
+        $this->assertStringNotContainsString('Bathroom: Full bath', $html);
+        $this->assertStringNotContainsString('STALE PANEL UPGRADE', $html);
+        $this->assertStringNotContainsString('STALE ROUGH-IN', $html);
+        $this->assertStringNotContainsString('STALE ROUGH-IN OUTLETS', $html);
+        $this->assertStringNotContainsString('STALE STACK RELOCATE', $html);
+        $this->assertStringNotContainsString('STALE VANITY INSTALL', $html);
+        $this->assertStringContainsString('Tear out flooring', $html);
+        $this->assertStringContainsString('Hang drywall', $html);
+        $this->assertStringContainsString('CLIENT ASKED FOR RECESSED NICHE', $html);
+        $this->assertSame([], $quote->enabledTradeProjectLineItems());
+    }
+
+    public function test_enabled_electrical_and_plumbing_keep_priced_line_details(): void
+    {
+        $quote = new BasementQuotation([
+            'inputs' => [
+                'area_sqft' => 400,
+                'ceiling_height_ft' => 8,
+                'scope_preset' => 'custom',
+                'enabled_sections' => ['overview', 'electrical', 'plumbing'],
+                'electrical_lines' => [
+                    ['description' => 'Panel upgrade', 'amount' => 1800, 'hst_included' => true],
+                ],
+                'plumbing_lines' => [
+                    ['description' => 'Rough-in stack', 'amount' => 900, 'hst_included' => true],
+                ],
+            ],
+            'calculation' => [
+                'scope' => ['area_sqft' => 400, 'ceiling_height_ft' => 8],
+                'labor' => [],
+            ],
+            'work_description' => null,
+        ]);
+
+        $html = $quote->scopeDescriptionForPdf();
+        $this->assertStringContainsString('Panel upgrade', $html);
+        $this->assertStringContainsString('Rough-in stack', $html);
+        $this->assertStringContainsString('>'.e('Electrical').'<', $html);
+        $this->assertStringContainsString('>'.e('Plumbing').'<', $html);
+        preg_match('/Not included: ([^<]+)/', $html, $notIncluded);
+        $this->assertStringNotContainsString('Electrical', $notIncluded[1] ?? '');
+        $this->assertStringNotContainsString('Plumbing', $notIncluded[1] ?? '');
+
+        $lines = collect($quote->enabledTradeProjectLineItems())->pluck('description')->all();
+        $this->assertNotEmpty(preg_grep('/Panel upgrade/', $lines));
+        $this->assertNotEmpty(preg_grep('/Rough-in stack/', $lines));
+    }
 }

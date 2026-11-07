@@ -218,6 +218,7 @@
     .pq-marble-section { margin-top: 16px; padding-top: 14px; border-top: 1px dashed #e2e8f0; }
     .pq-marble-section__head { margin-bottom: 12px; }
     .pq-marble-section__fields { display: flex; flex-direction: column; gap: 12px; }
+    .pq-marble-section__fields[hidden] { display: none; }
     .pq-marble-preview { margin: 0; font-size: 15px; font-weight: 600; color: #024768; padding-top: 6px; }
     .pq-marble-preview-wrap .admin-form-group-label { margin-bottom: 0; }
     .pq-area-block { grid-column: 1 / -1; }
@@ -854,8 +855,26 @@
 
         function syncMarbleRequired(on) {
           [typeSel, areaIn, depthIn].forEach(function (el) {
-            if (el) el.required = !!on;
+            if (!el) return;
+            el.required = !!on;
+            el.disabled = !on;
           });
+          if (areaIn) {
+            if (on) {
+              areaIn.min = '0.1';
+            } else {
+              areaIn.removeAttribute('min');
+            }
+          }
+          if (depthIn) {
+            if (on) {
+              depthIn.min = '0.5';
+              depthIn.max = '12';
+            } else {
+              depthIn.removeAttribute('min');
+              depthIn.removeAttribute('max');
+            }
+          }
         }
 
         function updateMarbleBagPreview() {
