@@ -2005,6 +2005,7 @@ html.admin-dark .br-toolbar-grand {
 html.admin-dark .br-toolbar-grand {
   border-top-color: var(--admin-border);
 }
+html.admin-dark .qh-sticky-footer,
 html.admin-dark .br-sticky-total {
   background: var(--admin-surface);
   border-color: var(--admin-border);

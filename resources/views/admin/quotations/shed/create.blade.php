@@ -51,7 +51,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
     'listUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.shed.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.shed.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'sh-main-form',
     'saveId' => 'sh-btn-publish',
@@ -272,6 +274,10 @@
         </div>
       </div>
     </aside>
+    @include('admin.partials.quotation_editor_footer', [
+      'formId' => 'sh-main-form',
+      'amountId' => 'sh-footer-grand-amount',
+    ])
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())

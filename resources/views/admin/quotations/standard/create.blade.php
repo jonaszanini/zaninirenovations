@@ -141,7 +141,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
     'listUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.standard.index', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'sq-standard-form',
     'saveId' => 'sq-btn-save',
     'saveHotkey' => true,
@@ -155,8 +157,6 @@
     'purchaseListTitle' => 'Print material list',
     'showHubLink' => ! $projectForReturn,
     'hubUrl' => route('admin.quotations.index', $preservePid ? ['project' => $preservePid] : []),
-    'grandTotalId' => 'sq-toolbar-grand',
-    'grandTotalValue' => $toolbarGrand,
     'email' => $isEdit ? [
       'can' => $canSendEmail,
       'action' => $sendProject && $linkedCpq
@@ -448,11 +448,12 @@
       </div>
     </div>
 
-    <div class="sq-form-actions">
-      <button type="submit" class="admin-btn admin-btn--primary">
-        <i class="fa fa-save"></i> Save
-      </button>
-    </div>
+    @include('admin.partials.quotation_editor_footer', [
+      'formId' => 'sq-standard-form',
+      'amountId' => 'sq-toolbar-grand-amount',
+      'grandWrapId' => 'sq-toolbar-grand',
+      'initialTotal' => $toolbarGrand,
+    ])
   </form>
 
   @if ($isEdit && !$quotation->project)

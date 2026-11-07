@@ -1554,7 +1554,7 @@ window.MillworkDimensionParser = (function () {
     if (totalsBar) {
       totalsBar.addEventListener('click', function (e) {
         if (!totalsBarMobile()) return;
-        if (e.target && e.target.closest && e.target.closest('#mw-bar-expand')) return;
+        if (e.target && e.target.closest && e.target.closest('#mw-bar-expand, [data-qh-footer-save]')) return;
         setTotalsBarOpen(!totalsBar.classList.contains('is-open'));
       });
     }

@@ -60,7 +60,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : optional($linkProject)->client_name),
     'listUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.trimming.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.trimming.price-configuration', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'tm-main-form',
     'saveId' => 'tm-btn-publish',
@@ -581,6 +583,10 @@
         <p class="pq-hint cp-form-group-spaced">HST 13% on labour and materials (Ontario).</p>
       </div>
     </aside>
+    @include('admin.partials.quotation_editor_footer', [
+      'formId' => 'tm-main-form',
+      'amountId' => 'tm-footer-grand-amount',
+    ])
   </form>
 
   @if ($isEdit && ! $quotation->isLinked())

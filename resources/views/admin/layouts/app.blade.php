@@ -486,6 +486,9 @@
   <script src="{{ asset('js/admin-purchase-list-choice.js') }}?v={{ @filemtime(public_path('js/admin-purchase-list-choice.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-quotation-leave-save.js') }}?v={{ @filemtime(public_path('js/admin-quotation-leave-save.js')) ?: time() }}"></script>
   @endif
+  @if (request()->routeIs('admin.quotations.*') && ! request()->routeIs('admin.quotations.painting.*'))
+  <script src="{{ asset('js/admin-quotation-editor-footer.js') }}?v={{ @filemtime(public_path('js/admin-quotation-editor-footer.js')) ?: time() }}"></script>
+  @endif
 
   {{-- Shared save toast + Ctrl/Cmd+S (admin only) --}}
   @php

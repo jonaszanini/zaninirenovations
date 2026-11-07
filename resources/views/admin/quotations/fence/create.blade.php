@@ -477,7 +477,9 @@
     'project' => $projectForReturn,
     'clientName' => old('client_name', $isEdit ? ($quotation->client_name ?? '') : ($linkProject?->client_name ?? '')),
     'listUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
-    'cancelUrl' => route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
+    'cancelUrl' => $projectForReturn
+      ? route('admin.client-projects.show', $projectForReturn).'#quotation'
+      : route('admin.quotations.fence.index', $preservePid ? ['project' => $preservePid] : []),
     'priceConfigUrl' => route('admin.quotations.fence.config', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'fq-form',
     'saveId' => 'fq-btn-save',
@@ -707,6 +709,10 @@
 
         @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'fq-form'])
         @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'fq-form'])
+        @include('admin.partials.quotation_editor_footer', [
+          'formId' => 'fq-form',
+          'amountId' => 'fq-footer-grand-amount',
+        ])
       </form>
 
       {{-- Project settings: link existing OR create new (edit, not linked) --}}
