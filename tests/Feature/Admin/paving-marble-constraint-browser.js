@@ -57,6 +57,27 @@ async function overflow(page) {
   });
 }
 
+async function layoutProbe(page) {
+  return page.evaluate(() => {
+    const sidebar = document.getElementById('admin-sidebar');
+    const main = document.querySelector('.admin-main');
+    const app = document.querySelector('.admin-app');
+    const sb = sidebar ? sidebar.getBoundingClientRect() : null;
+    const mn = main ? main.getBoundingClientRect() : null;
+    const style = sidebar ? window.getComputedStyle(sidebar) : null;
+    const overlaying = !!(sb && mn && sb.width > 40 && sb.right > mn.left + 8 && sb.left < mn.right - 8);
+    return {
+      innerWidth: window.innerWidth,
+      navOpen: !!(app && app.classList.contains('admin-nav-open')),
+      sidebarTransform: style ? String(style.transform || '') : '',
+      sidebarLeft: sb ? sb.left : null,
+      sidebarRight: sb ? sb.right : null,
+      mainLeft: mn ? mn.left : null,
+      overlaying,
+    };
+  });
+}
+
 async function readTotals(page) {
   return page.evaluate(() => {
     const footer = document.querySelector('[data-qh-footer-amount]');
@@ -356,8 +377,23 @@ async function fetchPdf(page) {
   report.afterSaveIsDraft = await page.$eval('#pq-main-form', (el) => el.getAttribute('data-quotation-is-draft') || '');
   report.afterSave1280 = await captureWidth(page, 1280, 'paving_published_reopen_1280', expect.offMoney);
   report.afterSave390 = await captureWidth(page, 390, 'paving_published_reopen_390', expect.offMoney);
+  report.afterSave390.mode = 'resize';
+  report.afterSave390.layout = await layoutProbe(page);
   report.shots['reopen-1280'] = report.afterSave1280.shot;
   report.shots['reopen-390'] = report.afterSave390.shot;
+
+  const fresh = await browser.newPage();
+  fresh.setDefaultNavigationTimeout(30000);
+  fresh.setDefaultTimeout(30000);
+  await fresh.setViewport({ width: 390, height: 900, deviceScaleFactor: 1 });
+  await fresh.goto(page.url(), { waitUntil: 'domcontentloaded' });
+  await fresh.waitForSelector('#pq-main-form');
+  report.fresh390 = await captureWidth(fresh, 390, 'paving_ordinary_fresh_390', expect.offMoney);
+  report.fresh390.mode = 'fresh-load';
+  report.fresh390.layout = await layoutProbe(fresh);
+  report.shots['fresh-390'] = report.fresh390.shot;
+  await fresh.close();
+
   report.pdf = await fetchPdf(page);
 
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));

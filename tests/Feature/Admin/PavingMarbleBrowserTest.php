@@ -145,7 +145,13 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $this->assertSettledMoney($report['onCreate1280'] ?? [], $expected['onMoney'], 'on create 1280');
         $this->assertSettledMoney($report['onCreate390'] ?? [], $expected['onMoney'], 'on create 390');
         $this->assertSettledMoney($report['afterSave1280'] ?? [], $expected['offMoney'], 'reopen 1280');
-        $this->assertSettledMoney($report['afterSave390'] ?? [], $expected['offMoney'], 'reopen 390');
+        $this->assertSettledMoney($report['afterSave390'] ?? [], $expected['offMoney'], 'reopen 390 resize');
+        $this->assertSame('resize', (string) (($report['afterSave390'] ?? [])['mode'] ?? ''), 'reopen 390 is a resized viewport');
+        $this->assertSettledMoney($report['fresh390'] ?? [], $expected['offMoney'], 'fresh-load 390');
+        $this->assertSame('fresh-load', (string) (($report['fresh390'] ?? [])['mode'] ?? ''), 'fresh 390 must be a new page load, not a resize');
+        $this->assertSame(390, (int) (($report['fresh390']['layout'] ?? [])['innerWidth'] ?? 0));
+        $this->assertFalse((bool) (($report['fresh390']['layout'] ?? [])['navOpen'] ?? true), 'fresh 390 must not open the admin drawer');
+        $this->assertFalse((bool) (($report['fresh390']['layout'] ?? [])['overlaying'] ?? true), 'fresh 390 sidebar must not overlay main content');
         $this->assertSame(
             $expected['offMoney'],
             (string) (($report['offAfterSettled'] ?? [])['footer'] ?? ''),
@@ -179,7 +185,7 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $this->writeArtifact($pdfPath, 'paving-ordinary-no-marble.pdf');
         $this->writeArtifactString('paving-ordinary-no-marble.txt', $pdfText);
 
-        foreach (['off-1280', 'off-390', 'on-1280', 'on-390', 'reopen-1280', 'reopen-390'] as $key) {
+        foreach (['off-1280', 'off-390', 'on-1280', 'on-390', 'reopen-1280', 'reopen-390', 'fresh-390'] as $key) {
             $shot = (string) ($report['shots'][$key] ?? '');
             $this->assertFileExists($shot, $key.' screenshot missing');
             $this->writeArtifact($shot, basename($shot));
