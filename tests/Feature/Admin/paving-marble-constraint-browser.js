@@ -79,8 +79,12 @@ async function readTotals(page) {
       footerCents: cents(footerText),
       totalCents: cents(totalText),
       missing: !!missing,
+      pending: !!(root && root.getAttribute('data-pq-preview-state') === 'loading')
+        || !!(footer && footer.getAttribute('data-qh-footer-pending') === '1'),
+      unavailable: !!(footer && footer.getAttribute('data-qh-footer-unavailable') === '1'),
       state: root ? String(root.getAttribute('data-pq-preview-state') || '') : '',
       grand: typeof window.__quoteGrandTotal === 'number' ? window.__quoteGrandTotal : null,
+      grandUnavailable: !!window.__quoteGrandTotalUnavailable,
       stoneArea: area ? String(area.value || '') : '',
       marbleArea: marbleArea ? String(marbleArea.value || '') : '',
       innerWidth: window.innerWidth,
@@ -100,6 +104,8 @@ async function waitSettled(page, expectedMoney) {
     const footer = document.querySelector('[data-qh-footer-amount]');
     const totalRow = document.querySelector('.pq-row--total strong');
     if (!footer || !totalRow) return false;
+    if (footer.getAttribute('data-qh-footer-unavailable') === '1') return false;
+    if (typeof window.__quoteGrandTotal !== 'number') return false;
     function cents(text) {
       const n = parseFloat(String(text || '').replace(/[^0-9.]/g, ''));
       return isFinite(n) ? Math.round(n * 100) : null;
@@ -297,8 +303,17 @@ async function fetchPdf(page) {
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await page.click('#pq-marble-enabled');
-  await new Promise((r) => setTimeout(r, 80));
+  await page.waitForFunction(() => {
+    const root = document.getElementById('pq-live-root');
+    const footer = document.querySelector('[data-qh-footer-amount]');
+    return root
+      && root.getAttribute('data-pq-preview-state') === 'missing'
+      && footer
+      && footer.getAttribute('data-qh-footer-unavailable') === '1'
+      && typeof window.__quoteGrandTotal !== 'number';
+  }, { timeout: 15000 });
   report.enabledZero = await marbleState(page);
+  report.enabledZeroTotals = await readTotals(page);
   report.blockedPublishZero = await tryPublish(page);
 
   await page.select('#pq-marble-type', await page.$eval('#pq-marble-type option:not([value=""])', (opt) => opt.value));

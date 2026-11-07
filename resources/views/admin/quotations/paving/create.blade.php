@@ -297,6 +297,10 @@
     }
     .pq-total-area-line { margin: 0; font-weight: 600; }
     .pq-preview-status { margin: 0; }
+    .pq-preview-status--pending {
+      font-size: 13px;
+      color: #475569;
+    }
     .pq-preview-status__title {
       margin: 0 0 8px;
       font-size: 13px;
@@ -962,6 +966,15 @@
       function isAbortError(err) {
         return !!(err && (err.name === 'AbortError' || (String(err.message || '').toLowerCase().indexOf('abort') !== -1)));
       }
+      function markTotalUnavailable(pending) {
+        lastPreviewCalc = null;
+        try { delete window.__quoteGrandTotal; } catch (e) { window.__quoteGrandTotal = undefined; }
+        window.__quoteGrandTotalUnavailable = true;
+        window.__quoteGrandTotalPending = !!pending;
+        document.dispatchEvent(new CustomEvent('quote:grand-total', {
+          detail: pending ? { unavailable: true, pending: true } : { unavailable: true },
+        }));
+      }
       function schedule() {
         clearTimeout(t);
         t = setTimeout(runPreview, 220);
@@ -991,6 +1004,8 @@
       function render(c) {
         if (!c || !c.summary) return;
         lastPreviewCalc = c;
+        window.__quoteGrandTotalUnavailable = false;
+        window.__quoteGrandTotalPending = false;
         setPreviewState('ready');
         var s = c.summary;
         var m = c.materials;
@@ -1149,11 +1164,13 @@
         previewAbort = null;
         var missing = collectMissingPreviewInputs();
         if (missing.length) {
+          markTotalUnavailable();
           renderMissingSummary(missing);
-          lastPreviewCalc = null;
           setPreviewState('missing');
           return;
         }
+        markTotalUnavailable(true);
+        root.innerHTML = '<p class="pq-preview-status pq-preview-status--pending" data-pq-preview-pending>Updating totals…</p>';
         setPreviewState('loading');
         var fd = new FormData(form);
         fd.delete('_method');
@@ -1177,14 +1194,14 @@
               if (!errItems.length && result.data && result.data.message) {
                 errItems.push(result.data.message);
               }
+              markTotalUnavailable();
               renderMissingSummary(errItems.length ? errItems : ['Could not calculate — check your inputs.']);
-              lastPreviewCalc = null;
               setPreviewState('missing');
               return;
             }
             if (!result.data || !result.data.summary) {
+              markTotalUnavailable();
               renderMissingSummary(['Calculator did not return a summary.']);
-              lastPreviewCalc = null;
               setPreviewState('missing');
               return;
             }
@@ -1193,8 +1210,8 @@
           .catch(function (err) {
             if (seq !== previewSeq) return;
             if (isAbortError(err)) return;
-            root.innerHTML = '<p class="admin-form-help">Could not refresh preview.</p>';
-            lastPreviewCalc = null;
+            markTotalUnavailable();
+            root.innerHTML = '<p class="pq-preview-status pq-preview-status--pending">Could not refresh preview.</p>';
             setPreviewState('error');
           });
       }

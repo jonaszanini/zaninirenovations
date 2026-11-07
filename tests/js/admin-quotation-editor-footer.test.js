@@ -15,7 +15,13 @@ function makeEnv(opts) {
   const css = {};
   const docListeners = {};
   const footerListeners = {};
-  const amount = { textContent: opts.initialAmount || 'CA$0.00' };
+  const amount = {
+    textContent: opts.initialAmount || 'CA$0.00',
+    attrs: {},
+    setAttribute(name, value) { this.attrs[name] = String(value); },
+    removeAttribute(name) { delete this.attrs[name]; },
+    getAttribute(name) { return Object.prototype.hasOwnProperty.call(this.attrs, name) ? this.attrs[name] : null; },
+  };
   const headerSave = {
     clicked: 0,
     click() { this.clicked += 1; },
@@ -76,6 +82,29 @@ function makeEnv(opts) {
   env.docListeners['quote:grand-total'][0]({ detail: { total: 'nope' } });
   env.docListeners['quote:grand-total'][0]({});
   assert.strictEqual(env.amount.textContent, 'CA$2,100.00', 'ignores invalid or empty event totals');
+})();
+
+(function unavailableClearsLastGoodWithoutInventingZero() {
+  const env = makeEnv({ hasFooter: true, grand: 4468.34, initialAmount: 'CA$4,468.34' });
+  footer.bind(env.win);
+  assert.strictEqual(env.amount.textContent, 'CA$4,468.34');
+  env.docListeners['quote:grand-total'][0]({ detail: { unavailable: true, pending: true } });
+  assert.strictEqual(env.amount.textContent, '…', 'loading must not keep the last settled amount');
+  assert.notStrictEqual(env.amount.textContent, 'CA$0.00', 'loading must not invent $0 as a quote');
+  env.docListeners['quote:grand-total'][0]({ detail: { unavailable: true } });
+  assert.strictEqual(env.amount.textContent, '—', 'missing/error mark the total unavailable');
+  assert.notStrictEqual(env.amount.textContent, 'CA$4,468.34');
+  assert.notStrictEqual(env.amount.textContent, 'CA$0.00', 'unavailable must not invent $0 as a quote');
+  env.docListeners['quote:grand-total'][0]({ detail: { total: 0 } });
+  assert.strictEqual(env.amount.textContent, 'CA$0.00', 'an explicit 0 remains a valid quote total');
+})();
+
+(function bindHonorsUnavailableFlagSetBeforeBind() {
+  const env = makeEnv({ hasFooter: true, initialAmount: 'CA$0.00' });
+  env.win.__quoteGrandTotalUnavailable = true;
+  env.win.__quoteGrandTotalPending = true;
+  footer.bind(env.win);
+  assert.strictEqual(env.amount.textContent, '…', 'bind after a pending unavailable event must not keep the HTML $0 seed');
 })();
 
 (function saveClickProxiesHeaderSave() {

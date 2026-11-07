@@ -93,7 +93,15 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         $this->assertTrue((bool) ($off['formValid'] ?? false), 'ordinary paving without marble must be savable: '.json_encode($off['firstInvalid'] ?? null));
 
         $enabledZero = $report['enabledZero'] ?? [];
+        $zeroTotals = $report['enabledZeroTotals'] ?? [];
         $this->assertTrue((bool) ($enabledZero['marbleChecked'] ?? false));
+        $this->assertSame('missing', (string) ($zeroTotals['state'] ?? ''), 'invalid marble must leave preview missing');
+        $this->assertTrue((bool) ($zeroTotals['unavailable'] ?? false), 'sticky total must be marked unavailable');
+        $this->assertNull($zeroTotals['grand'] ?? null, 'invalid marble must not keep a numeric grand total');
+        $this->assertNotSame($expected['offMoney'], (string) ($zeroTotals['footer'] ?? ''), 'must not keep the last settled sticky total');
+        $this->assertNotSame('CA$0.00', (string) ($zeroTotals['footer'] ?? ''), 'must not invent $0 as a valid quote');
+        $this->assertSame('—', (string) ($zeroTotals['footer'] ?? ''), 'sticky total must show unavailable, not money');
+        $this->assertSame('', (string) ($zeroTotals['totalQuote'] ?? 'x'), 'live Total quote row must not keep the last amount');
         $this->assertFalse((bool) ($enabledZero['fieldsHidden'] ?? true));
         $this->assertNotSame('none', (string) ($enabledZero['fieldsDisplay'] ?? 'none'));
         $this->assertFalse((bool) ($enabledZero['areaDisabled'] ?? true));
@@ -178,13 +186,114 @@ class PavingMarbleBrowserTest extends IntegrationTestCase
         }
     }
 
+    public function test_stale_preview_response_cannot_replace_newest_or_missing_totals(): void
+    {
+        $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed');
+
+        $user = User::factory()->create([
+            'email' => 'pq-preview-race@zanini.ca',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_ADMIN,
+        ]);
+        $this->actingAs($user);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Paving preview race project',
+            'client_name' => 'Paving Preview Race',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+        $expected = $this->expectedPavingMoney();
+        $poisonTotal = 99999.99;
+        $poisonMoney = ClientProject::formatMoney($poisonTotal);
+        $this->assertNotEquals($expected['offMoney'], $poisonMoney);
+
+        $base = $this->startServer();
+        $script = base_path('tests/Feature/Admin/paving-preview-stale-intercept-browser.js');
+        $out = storage_path('app/pq-preview-race-browser.json');
+        $shots = storage_path('app/pq-preview-race-shots');
+        @unlink($out);
+
+        $output = [];
+        $code = $this->runNode($script, [
+            'PQ_RACE_EMAIL' => $user->email,
+            'PQ_RACE_PASSWORD' => 'password',
+            'PQ_RACE_BASE' => $base,
+            'PQ_RACE_OUT' => $out,
+            'PQ_RACE_SHOTS' => $shots,
+            'PQ_RACE_EXPECT' => json_encode([
+                'offMoney' => $expected['offMoney'],
+                'onMoney' => $expected['onMoney'],
+                'poisonMoney' => $poisonMoney,
+                'poisonTotal' => $poisonTotal,
+                'createPath' => route('admin.quotations.paving.create', ['project' => $project->id], false),
+            ]),
+            'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
+        ], $output);
+        $this->stopServer();
+
+        $raw = (string) @file_get_contents($out);
+        $this->assertSame(0, $code, "Paving preview race puppeteer failed:\n".implode("\n", $output)."\n".$raw);
+        $report = json_decode($raw, true);
+        $this->assertIsArray($report);
+
+        $this->assertSettledMoney($report['settledOff'] ?? [], $expected['offMoney'], 'baseline 80 sf');
+        $this->assertUnavailableTotals($report['loadingAfterFirstHold'] ?? [], ['loading'], 'held first preview');
+        $this->assertNotSame($poisonMoney, (string) (($report['afterPoisonOlder'] ?? [])['footer'] ?? ''));
+        $this->assertNotSame($this->moneyCents($poisonMoney), (int) (($report['afterPoisonOlder'] ?? [])['footerCents'] ?? -1));
+        $this->assertNotEquals($poisonTotal, ($report['afterPoisonOlder'] ?? [])['grand'] ?? null);
+        $this->assertNotSame($expected['offMoney'], (string) (($report['afterPoisonOlder'] ?? [])['footer'] ?? ''), 'loading must not keep the previous ready amount after a stale poison');
+        $this->assertSettledMoney($report['afterNewestReady'] ?? [], $expected['offMoney'], 'newest after out-of-order poison 1280');
+        $this->assertSettledMoney($report['afterNewestReady390'] ?? [], $expected['offMoney'], 'newest after out-of-order poison 390');
+
+        $this->assertUnavailableTotals($report['validToMissing'] ?? [], ['missing'], 'valid→missing 1280');
+        $this->assertUnavailableTotals($report['afterAbortedPoison'] ?? [], ['missing'], 'aborted poison must not restore a total');
+        $this->assertNotSame($poisonMoney, (string) (($report['afterAbortedPoison'] ?? [])['footer'] ?? ''));
+        $this->assertNotSame($expected['offMoney'], (string) (($report['afterAbortedPoison'] ?? [])['footer'] ?? ''));
+        $this->assertUnavailableTotals($report['validToMissing390'] ?? [], ['missing'], 'valid→missing 390');
+
+        $this->assertUnavailableTotals($report['afterError'] ?? [], ['error', 'missing'], 'error preview');
+        $this->assertSettledMoney($report['afterErrorRecovered'] ?? [], $expected['onMoney'], 'recover after error 1280');
+        $this->assertSettledMoney($report['afterErrorRecovered390'] ?? [], $expected['onMoney'], 'recover after error 390');
+
+        foreach ([
+            'ready-after-stale-1280',
+            'ready-after-stale-390',
+            'unavailable-1280',
+            'unavailable-390',
+            'recovered-1280',
+            'recovered-390',
+        ] as $key) {
+            $shot = (string) ($report['shots'][$key] ?? '');
+            $this->assertFileExists($shot, $key.' screenshot missing');
+            $this->writeArtifact($shot, basename($shot));
+        }
+        $this->writeArtifactString('pq-preview-race-browser.json', $raw);
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     * @param  list<string>  $states
+     */
+    private function assertUnavailableTotals(array $row, array $states, string $label): void
+    {
+        $this->assertContains((string) ($row['state'] ?? ''), $states, $label.' state');
+        $this->assertTrue((bool) ($row['unavailable'] ?? false), $label.' sticky must be marked unavailable');
+        $this->assertTrue((bool) ($row['grandUnavailable'] ?? false), $label.' window flag');
+        $this->assertNull($row['grand'] ?? null, $label.' must not keep a numeric grand total');
+        $footer = (string) ($row['footer'] ?? '');
+        $this->assertNotSame('CA$0.00', $footer, $label.' must not invent $0');
+        $this->assertDoesNotMatchRegularExpression('/CA\$/', $footer, $label.' must not show a money amount');
+        $this->assertSame('', (string) ($row['totalQuote'] ?? 'x'), $label.' live Total quote must be absent');
+    }
+
     /**
      * @param  array<string, mixed>  $row
      */
     private function assertSettledMoney(array $row, string $expectedMoney, string $label): void
     {
-        $totals = is_array($row['totals'] ?? null) ? $row['totals'] : (is_array($row['settled'] ?? null) ? $row['settled'] : []);
-        $footer = (string) ($totals['footer'] ?? ($row['settled']['footer'] ?? ''));
+        $totals = is_array($row['totals'] ?? null) ? $row['totals'] : (is_array($row['settled'] ?? null) ? $row['settled'] : $row);
+        $footer = (string) ($totals['footer'] ?? '');
         $this->assertSame($expectedMoney, $footer, $label.' footer');
         if (isset($totals['totalQuote']) && $totals['totalQuote'] !== '') {
             $this->assertSame(
@@ -380,7 +489,10 @@ require $public.\'/index.php\';
     protected function tearDown(): void
     {
         $this->stopServer();
-        User::query()->where('email', 'pq-marble-browser@zanini.ca')->delete();
+        User::query()->whereIn('email', [
+            'pq-marble-browser@zanini.ca',
+            'pq-preview-race@zanini.ca',
+        ])->delete();
         parent::tearDown();
     }
 }

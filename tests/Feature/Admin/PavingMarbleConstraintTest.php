@@ -12,6 +12,33 @@ class PavingMarbleConstraintTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
+    public function test_preview_script_clears_totals_when_unavailable_instead_of_keeping_last_or_zero(): void
+    {
+        $blade = (string) file_get_contents(resource_path('views/admin/quotations/paving/create.blade.php'));
+        $this->assertStringContainsString('function markTotalUnavailable', $blade);
+        $this->assertStringContainsString('unavailable: true', $blade);
+        $this->assertStringContainsString("delete window.__quoteGrandTotal", $blade);
+        $this->assertStringContainsString("data-pq-preview-pending", $blade);
+        $this->assertStringContainsString('Updating totals…', $blade);
+        $this->assertDoesNotMatchRegularExpression(
+            '/markTotalUnavailable[\s\S]{0,400}__quoteGrandTotal\s*=\s*0/',
+            $blade,
+            'unavailable must not invent 0 as a valid quote total'
+        );
+        $this->assertMatchesRegularExpression(
+            '/if\s*\(\s*missing\.length\s*\)\s*\{[\s\S]*?markTotalUnavailable\(\)[\s\S]*?setPreviewState\(\s*[\'"]missing[\'"]\s*\)/',
+            $blade
+        );
+        $this->assertMatchesRegularExpression(
+            '/markTotalUnavailable\(\s*true\s*\)[\s\S]*?setPreviewState\(\s*[\'"]loading[\'"]\s*\)/',
+            $blade
+        );
+        $this->assertMatchesRegularExpression(
+            '/isAbortError\(err\)\)\s*return[\s\S]*?markTotalUnavailable\(\)[\s\S]*?setPreviewState\(\s*[\'"]error[\'"]\s*\)/',
+            $blade
+        );
+    }
+
     public function test_create_form_does_not_constrain_disabled_marble_area(): void
     {
         $this->actingAsAdmin();
