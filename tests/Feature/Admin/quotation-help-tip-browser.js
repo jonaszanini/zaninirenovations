@@ -21,6 +21,11 @@ const pages = [
     href: '/admin/quotations/stairs/create',
     tipLabel: 'About Stair configuration',
   },
+  {
+    key: 'trimming',
+    href: '/admin/quotations/trimming/create',
+    tipLabel: 'About Live breakdown',
+  },
 ];
 
 function launchOpts() {
@@ -58,6 +63,13 @@ async function tipState(page, ariaLabel) {
     const footer = document.querySelector('[data-qh-footer]');
     const amount = footer && footer.querySelector('[data-qh-footer-amount]');
     const hints = [...document.querySelectorAll('p.pq-hint')].map((el) => (el.textContent || '').replace(/\s+/g, ' ').trim()).filter(Boolean);
+    const liveEmpty = document.querySelector('#tm-live-empty');
+    const segHint = document.querySelector('#sq-seg-hint');
+    const visible = (el) => {
+      if (!el) return false;
+      const style = window.getComputedStyle(el);
+      return style.display !== 'none' && style.visibility !== 'hidden' && !el.hasAttribute('hidden');
+    };
     return {
       hasTip: !!btn,
       expanded: !!(btn && btn.getAttribute('aria-expanded') === 'true'),
@@ -66,6 +78,10 @@ async function tipState(page, ariaLabel) {
       hasFooter: !!footer,
       footerPinned: !!(footer && Math.abs(footer.getBoundingClientRect().bottom - window.innerHeight) <= 2),
       leftoverHints: hints,
+      liveEmptyText: liveEmpty ? String(liveEmpty.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      liveEmptyVisible: visible(liveEmpty),
+      segHintText: segHint ? String(segHint.textContent || '').replace(/\s+/g, ' ').trim() : '',
+      segHintVisible: visible(segHint),
     };
   }, ariaLabel);
 }
@@ -109,6 +125,39 @@ async function tipState(page, ariaLabel) {
       }, {}, spec.tipLabel);
       const closed = await tipState(page, spec.tipLabel);
       closed.shot = await shot(page, spec.key + '-help-closed-' + width + '.png');
+      let keyboard = null;
+      if (width === 1280) {
+        await page.focus(closedSel);
+        await page.keyboard.press('Enter');
+        await page.waitForFunction((label) => {
+          const btn = document.querySelector('button.admin-info-tip[aria-label="' + label + '"]');
+          return btn && btn.getAttribute('aria-expanded') === 'true';
+        }, {}, spec.tipLabel);
+        const afterEnter = await tipState(page, spec.tipLabel);
+        await page.keyboard.press('Escape');
+        await page.waitForFunction((label) => {
+          const btn = document.querySelector('button.admin-info-tip[aria-label="' + label + '"]');
+          return btn && btn.getAttribute('aria-expanded') === 'false';
+        }, {}, spec.tipLabel);
+        const afterEsc = await tipState(page, spec.tipLabel);
+        await page.focus(closedSel);
+        await page.keyboard.press('Space');
+        await page.waitForFunction((label) => {
+          const btn = document.querySelector('button.admin-info-tip[aria-label="' + label + '"]');
+          return btn && btn.getAttribute('aria-expanded') === 'true';
+        }, {}, spec.tipLabel);
+        const afterSpace = await tipState(page, spec.tipLabel);
+        await page.keyboard.press('Escape');
+        await page.waitForFunction((label) => {
+          const btn = document.querySelector('button.admin-info-tip[aria-label="' + label + '"]');
+          return btn && btn.getAttribute('aria-expanded') === 'false';
+        }, {}, spec.tipLabel);
+        keyboard = {
+          enterOpens: !!(afterEnter.expanded && afterEnter.openClass),
+          escapeCloses: !afterEsc.expanded && !afterEsc.openClass,
+          spaceOpens: !!(afterSpace.expanded && afterSpace.openClass),
+        };
+      }
       await page.$eval(closedSel, (el) => el.click());
       await page.waitForFunction((label) => {
         const btn = document.querySelector('button.admin-info-tip[aria-label="' + label + '"]');
@@ -118,7 +167,7 @@ async function tipState(page, ariaLabel) {
       const opened = await tipState(page, spec.tipLabel);
       opened.shot = await shot(page, spec.key + '-help-open-' + width + '.png');
       await page.$eval(closedSel, (el) => el.click());
-      report[spec.key][String(width)] = { closed, opened };
+      report[spec.key][String(width)] = { closed, opened, keyboard };
     }
   }
 

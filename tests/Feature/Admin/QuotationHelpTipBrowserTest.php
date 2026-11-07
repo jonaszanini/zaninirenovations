@@ -49,7 +49,7 @@ class QuotationHelpTipBrowserTest extends IntegrationTestCase
         $report = json_decode($raw, true);
         $this->assertIsArray($report);
 
-        foreach (['paving', 'stairs'] as $type) {
+        foreach (['paving', 'stairs', 'trimming'] as $type) {
             foreach (['1280', '390'] as $width) {
                 $row = $report[$type][$width] ?? [];
                 $closed = is_array($row['closed'] ?? null) ? $row['closed'] : [];
@@ -71,6 +71,23 @@ class QuotationHelpTipBrowserTest extends IntegrationTestCase
                 foreach (array_merge($closed['leftoverHints'] ?? [], $opened['leftoverHints'] ?? []) as $hint) {
                     $this->assertStringNotContainsString('Extra stone quantity', (string) $hint);
                     $this->assertStringNotContainsString('Required for a published quotation', (string) $hint);
+                }
+                if ($type === 'trimming') {
+                    $this->assertStringContainsString('Turn on a family', (string) ($closed['liveEmptyText'] ?? ''));
+                    $this->assertTrue((bool) ($closed['liveEmptyVisible'] ?? false), "{$type} @{$width} live empty status hidden when tip closed");
+                    $this->assertTrue((bool) ($opened['liveEmptyVisible'] ?? false), "{$type} @{$width} live empty status hidden when tip open");
+                }
+                if ($type === 'stairs') {
+                    $this->assertTrue((bool) ($closed['segHintVisible'] ?? false), "{$type} @{$width} step status hidden when tip closed");
+                    $this->assertTrue((bool) ($opened['segHintVisible'] ?? false), "{$type} @{$width} step status hidden when tip open");
+                    $this->assertStringNotContainsString('Add one row', (string) ($closed['segHintText'] ?? ''));
+                    $this->assertStringNotContainsString('Add one row', (string) ($opened['segHintText'] ?? ''));
+                }
+                if ($width === '1280') {
+                    $keyboard = is_array($row['keyboard'] ?? null) ? $row['keyboard'] : [];
+                    $this->assertTrue((bool) ($keyboard['enterOpens'] ?? false), "{$type} Enter did not open tip");
+                    $this->assertTrue((bool) ($keyboard['escapeCloses'] ?? false), "{$type} Escape did not close tip");
+                    $this->assertTrue((bool) ($keyboard['spaceOpens'] ?? false), "{$type} Space did not open tip");
                 }
             }
         }

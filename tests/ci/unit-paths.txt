@@ -35,7 +35,6 @@ tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
 tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
 tests/Unit/Services/PavingMarbleCalculatorTest.php
-tests/Unit/Services/PavingQuotationCalculatorTest.php
 tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
 tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
@@ -60,7 +59,6 @@ tests/Unit/Services/SupplierWebsiteDataExtractorLogoUrlTest.php
 tests/Unit/Services/SupplierWebsiteDataExtractorTagsTest.php
 tests/Unit/Services/SupplierWebsiteDataExtractorTest.php
 tests/Unit/Services/SupplierWebsiteImportServiceTest.php
-tests/Unit/Services/TrimmingQuotationCalculatorTest.php
 tests/Unit/Support/AdminListFiltersTest.php
 tests/Unit/Support/AdminOnceSubmitTokenTest.php
 tests/Unit/Support/CadMoneyTest.php

@@ -4,9 +4,9 @@ namespace Tests\Unit\Services;
 
 use App\Models\TrimmingSettings;
 use App\Services\TrimmingQuotationCalculator;
-use Tests\TestCase;
+use Tests\IntegrationTestCase;
 
-class TrimmingQuotationCalculatorTest extends TestCase
+class TrimmingQuotationCalculatorTest extends IntegrationTestCase
 {
     public function test_empty_scope_has_zero_totals(): void
     {
@@ -49,18 +49,8 @@ class TrimmingQuotationCalculatorTest extends TestCase
 
     public function test_shoe_uses_shared_library_productivity_when_present(): void
     {
-        try {
-            if (! \Illuminate\Support\Facades\Schema::hasTable('shared_works')) {
-                $this->markTestSkipped('Shared price library is not migrated.');
-            }
-        } catch (\Throwable $e) {
-            $this->markTestSkipped('Database unavailable for shared price library.');
-        }
-
         $work = \App\Models\SharedWork::query()->where('key', 'shoe_install')->first();
-        if (! $work) {
-            $this->markTestSkipped('shoe_install is not seeded.');
-        }
+        $this->assertNotNull($work, 'shoe_install must be seeded');
         $originalRate = (float) $work->rate;
         $originalFlat = $work->flat_rate;
         $work->flat_rate = 2.125;

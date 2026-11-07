@@ -165,7 +165,16 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertContains('tests/Unit/Services/FlooringQuotationCalculatorTest.php', $core);
         $this->assertContains('tests/Unit/Services/SharedWorkCatalogTest.php', $core);
         $this->assertContains('tests/Unit/Services/BasementQuotationCalculatorTest.php', $unit);
-        $this->assertContains('tests/Unit/Services/BasementQuotationCalculatorTest.php', $core);
+        $this->assertNotContains('tests/Unit/Services/BasementQuotationCalculatorTest.php', $core);
+        $this->assertContains('tests/Unit/Services/BasementQuotationProductivityOverlayTest.php', $core);
+        $this->assertNotContains('tests/Unit/Services/BasementQuotationProductivityOverlayTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/PavingQuotationCalculatorTest.php', $core);
+        $this->assertNotContains('tests/Unit/Services/PavingQuotationCalculatorTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/TrimmingQuotationCalculatorTest.php', $core);
+        $this->assertNotContains('tests/Unit/Services/TrimmingQuotationCalculatorTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/LowDeckQuotationCalculatorTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/PavingMarbleCalculatorTest.php', $unit);
+        $this->assertContains('tests/Unit/Services/ShedQuotationCalculatorTest.php', $unit);
         $this->assertNotContains('tests/Unit/Services/FlooringQuotationCalculatorTest.php', $unit);
         $this->assertNotContains('tests/Unit/Services/SharedWorkCatalogTest.php', $unit);
         $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DSaveTest.php', $extended);
@@ -211,6 +220,10 @@ class DeployDependsOnTestsTest extends TestCase
             $core,
             'Help-tip puppeteer belongs on the quotation filter (mysql node) so unrelated PRs do not run it without Chrome'
         );
+        $sharedFilter = $this->pathsFile('tests/ci/database-filter-shared-prices.txt');
+        $this->assertContains('tests/Unit/Services/BasementQuotationProductivityOverlayTest.php', $sharedFilter);
+        $this->assertContains('tests/Unit/Services/TrimmingQuotationCalculatorTest.php', $sharedFilter);
+        $this->assertNotContains('tests/Unit/Services/BasementQuotationCalculatorTest.php', $sharedFilter);
     }
 
     public function test_matcher_fail_closed_script_passes(): void

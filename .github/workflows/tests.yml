@@ -107,7 +107,10 @@ jobs:
               - 'tests/js/shared-prices*.test.js'
               - 'tests/Unit/Models/SharedWorkLabelTest.php'
               - 'tests/Unit/Services/SharedWorkCatalogTest.php'
-              - 'tests/Unit/Services/BasementQuotationCalculatorTest.php'
+              - 'tests/Unit/Services/BasementQuotationProductivityOverlayTest.php'
+              - 'app/Services/BasementQuotationCalculator.php'
+              - 'app/Services/TrimmingQuotationCalculator.php'
+              - 'tests/Unit/Services/TrimmingQuotationCalculatorTest.php'
             room_area_live:
               - 'app/**/RoomArea*.php'
               - 'app/Services/OpenPlan3DMeasurementBridge.php'

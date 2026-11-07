@@ -65,8 +65,8 @@
                   <input class="admin-input" type="number" name="bulk_min_bags" value="{{ $mt->bulk_min_bags }}" step="1" min="1" placeholder="—" aria-label="Bulk minimum bags">
                 </div>
                 <div class="pq-db-field-group">
-                  <span class="pq-db-field-label">Special terms %</span>
-                  <input class="admin-input" type="number" name="bulk_discount_pct" value="{{ $mt->bulk_discount_pct }}" step="0.01" min="0" max="100" placeholder="—" aria-label="Special terms percent">
+                  <span class="pq-db-field-label">Supplier bulk savings (%)</span>
+                  <input class="admin-input" type="number" name="bulk_discount_pct" value="{{ $mt->bulk_discount_pct }}" step="0.01" min="0" max="100" placeholder="—" aria-label="Supplier bulk savings percent">
                 </div>
               </div>
 
@@ -159,9 +159,9 @@
                  value="{{ old('add_marble') === '1' ? old('bulk_min_bags') : '' }}">
         </div>
         <div class="pq-db-field-group">
-          <span class="pq-db-field-label">Special terms %</span>
+          <span class="pq-db-field-label">Supplier bulk savings (%)</span>
           <input type="number" name="bulk_discount_pct" step="0.01" min="0" max="100" class="admin-input" placeholder="10"
-                 value="{{ old('add_marble') === '1' ? old('bulk_discount_pct') : '' }}" aria-label="Special terms percent">
+                 value="{{ old('add_marble') === '1' ? old('bulk_discount_pct') : '' }}" aria-label="Supplier bulk savings percent">
         </div>
       </div>
 

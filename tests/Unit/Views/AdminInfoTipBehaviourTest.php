@@ -601,9 +601,12 @@ BLADE);
         );
 
         $marbleDb = file_get_contents(resource_path('views/admin/quotations/paving/_database_marble_tab.blade.php'));
-        $this->assertStringContainsString('Special terms %', $marbleDb);
+        $this->assertStringContainsString('Supplier bulk savings (%)', $marbleDb);
         $this->assertStringContainsString('name="bulk_discount_pct"', $marbleDb);
         $this->assertStringNotContainsString('Bulk discount', $marbleDb);
+        $this->assertStringNotContainsString('Special terms %', $marbleDb);
+        $clientScope = file_get_contents(resource_path('views/admin/client_projects/_quotation_client_scope_pdf.blade.php'));
+        $this->assertStringContainsString('Special terms', $clientScope);
     }
 
     public function test_component_without_label_still_renders_more_info_fallback(): void
