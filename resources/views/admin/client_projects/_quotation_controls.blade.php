@@ -47,5 +47,8 @@
     @if ($quotation->acceptedSummary())
       <p class="cp-quote-accepted-meta">{{ $quotation->acceptedSummary() }}</p>
     @endif
+    @if ($quotation->isAccepted())
+      @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
+    @endif
   </div>
 @endunless
