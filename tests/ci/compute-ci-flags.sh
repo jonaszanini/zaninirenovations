@@ -180,8 +180,9 @@ if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${F
 filter_routes_out=false
 if [[ "$run_all_heavy" == true ]] || [[ "$admin_shell" == true ]] || truthy "${FILTER_ROUTES:-false}"; then filter_routes_out=true; fi
 
+# database-core always includes AdminMoneyDirectEntryTest, which needs Puppeteer.
 run_mysql_node=false
-if [[ "$run_ra" == true ]] || [[ "$run_bl" == true ]] || [[ "$filter_quotation_out" == true ]]; then
+if [[ "$run_database" == true ]] || [[ "$run_ra" == true ]] || [[ "$run_bl" == true ]] || [[ "$filter_quotation_out" == true ]]; then
   run_mysql_node=true
 fi
 
