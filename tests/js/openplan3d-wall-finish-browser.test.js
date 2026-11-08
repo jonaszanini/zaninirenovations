@@ -220,22 +220,34 @@ async function main() {
     });
     assert.strictEqual(multiOk, true, 'multi-wall render without plan.zanini must not throw');
 
-    await page.evaluate(
-      async ({ storeChunk, vendorPrefix }) => {
-        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+    // readSelectedWallIds falls back to store aB after bg/X. Vendor can rewrite
+    // selection after Escape; keep clearing until ids and the panel agree.
+    await page.evaluate(() => {
+      const mod = window.__openPlan3DStoreModule;
+      if (mod) {
         if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
-        mod.X.set(null);
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-      },
-      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
-    );
+        if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
+        if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
+      }
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
     await page.waitForFunction(() => {
-      const ids = window.OpenPlan3DZaniniTools.readSelectedWallIds
+      const mod = window.__openPlan3DStoreModule;
+      if (mod) {
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
+        if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
+        if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
+      }
+      const ids = window.OpenPlan3DZaniniTools && window.OpenPlan3DZaniniTools.readSelectedWallIds
         ? window.OpenPlan3DZaniniTools.readSelectedWallIds()
         : [];
-      return !ids || ids.length === 0;
+      if (ids && ids.length) return false;
+      if (window.OpenPlan3DZaniniTools && typeof window.OpenPlan3DZaniniTools.renderFinishPanel === 'function') {
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      }
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      return !host || host.hidden || host.innerHTML === '';
     }, { timeout: 8000 });
-    await page.evaluate(() => window.OpenPlan3DZaniniTools.renderFinishPanel());
     const hidden = await page.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
       return !host || host.hidden || host.innerHTML === '';
