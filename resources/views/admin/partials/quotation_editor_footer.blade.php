@@ -10,6 +10,14 @@
   $qhFooterId = $footerId ?? 'qh-sticky-footer';
   $qhAmountId = $amountId ?? 'qh-footer-grand-amount';
   $qhInitial = (float) ($initialTotal ?? 0);
+  if ($qhInitial == 0.0 && isset($quotation) && is_object($quotation)) {
+      foreach (['final_quote_total', 'grand_total'] as $qhTotalField) {
+          if (isset($quotation->{$qhTotalField}) && $quotation->{$qhTotalField} !== null) {
+              $qhInitial = (float) $quotation->{$qhTotalField};
+              break;
+          }
+      }
+  }
   $qhExtraClass = trim((string) ($extraClass ?? ''));
   $qhWizard = $wizard ?? null;
   $qhExtra = $extra ?? null;
