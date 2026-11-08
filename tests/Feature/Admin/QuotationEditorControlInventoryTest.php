@@ -42,7 +42,7 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
         $html = $this->get(route($route))
             ->assertOk()
             ->assertSee('data-qh-header', false)
-            ->assertSee('Save quotation', false)
+            ->assertSee($type === 'painting' ? 'Save quotation' : 'Publish', false)
             ->assertSee('data-qh-cancel', false)
             ->getContent();
 

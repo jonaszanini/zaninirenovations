@@ -202,7 +202,7 @@ class PavingQuotationController extends Controller
         $this->prepareQuotationForProjectLink($paving_quotation, $project);
 
         if ($paving_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+            return back()->with('error', 'Publish the quotation (not Save as draft) before linking.');
         }
         if ((float) $paving_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');

@@ -483,7 +483,7 @@
     'priceConfigUrl' => route('admin.quotations.fence.config', $preservePid ? ['project' => $preservePid] : []),
     'formId' => 'fq-form',
     'saveId' => 'fq-btn-save',
-    'saveLabel' => $isEdit ? 'Save quotation' : 'Save quotation',
+    'saveLabel' => 'Publish',
     'saveHotkey' => true,
     'draftId' => 'fq-btn-draft',
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,

@@ -71,7 +71,7 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             "Unlinked {$type} must link Quotations to the hub or type list"
         );
 
-        $this->assertActionOrder($html, $hasDraft);
+        $this->assertActionOrder($html, $hasDraft, $type === 'painting' ? 'Save quotation' : 'Publish');
         $this->assertHeaderAndStepBarOrder($html, $type);
         $this->assertMatchesRegularExpression(
             '/<(button)[^>]*class="[^"]*qh-actions__cancel[^"]*"[^>]*data-qh-cancel=/',
@@ -126,7 +126,7 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             ->assertDontSee('Back to project')
             ->getContent();
 
-        $this->assertActionOrder($html, $hasDraft);
+        $this->assertActionOrder($html, $hasDraft, $type === 'painting' ? 'Save quotation' : 'Publish');
         $this->assertHeaderAndStepBarOrder($html, $type);
         $this->assertStringContainsString('id="'.$hotkeyId.'"', $html);
     }
@@ -276,7 +276,7 @@ const pages = [
           const actionTop = actions ? actions.getBoundingClientRect().top : 0;
           const wizardTop = wizard ? wizard.getBoundingClientRect().top : 0;
           const saveStyle = save ? getComputedStyle(save) : null;
-          const actionTops = buttons.filter((b) => ['Save quotation', 'Save as draft', 'Cancel'].includes(b.label)).map((b) => b.top);
+          const actionTops = buttons.filter((b) => ['Publish', 'Save quotation', 'Save as draft', 'Cancel'].includes(b.label)).map((b) => b.top);
           return {
             hasHeader: !!header,
             hasCrumb: !!crumb,
@@ -457,7 +457,7 @@ JS
         return $pos;
     }
 
-    private function assertActionOrder(string $html, bool $hasDraft): void
+    private function assertActionOrder(string $html, bool $hasDraft, string $saveLabel = 'Save quotation'): void
     {
         $this->assertMatchesRegularExpression('/<div class="qh-actions"[^>]*>/s', $html);
         preg_match('/<div class="qh-actions"[^>]*>(.*?)<\/div>/s', $html, $match);
@@ -468,15 +468,15 @@ JS
         $cancel = strpos($row, 'qh-actions__cancel');
         $this->assertNotFalse($save);
         $this->assertNotFalse($cancel);
-        $this->assertLessThan($cancel, $save, 'Save quotation must come before Cancel');
+        $this->assertLessThan($cancel, $save, $saveLabel.' must come before Cancel');
         if ($hasDraft) {
             $this->assertNotFalse($draft);
-            $this->assertLessThan($draft, $save, 'Save quotation must come before Save as draft');
+            $this->assertLessThan($draft, $save, $saveLabel.' must come before Save as draft');
             $this->assertLessThan($cancel, $draft, 'Save as draft must come before Cancel');
         } else {
             $this->assertFalse($draft);
         }
-        $this->assertStringContainsString('Save quotation', $row);
+        $this->assertStringContainsString($saveLabel, $row);
         $this->assertMatchesRegularExpression('/>\s*Cancel\s*</', $row);
     }
 

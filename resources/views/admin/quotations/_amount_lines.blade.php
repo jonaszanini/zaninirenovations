@@ -15,7 +15,7 @@
       border-radius: 8px;
     }
     .q-ac-row--with-category {
-      grid-template-columns: minmax(0, 1.5fr) minmax(7rem, 0.45fr) minmax(10.5rem, 0.7fr) auto auto;
+      grid-template-columns: minmax(0, 1.5fr) minmax(8.5rem, 0.5fr) minmax(10.5rem, 0.7fr) auto auto;
     }
     .q-ac-row__category select.admin-input {
       min-width: 10.5rem;
@@ -24,14 +24,45 @@
     [data-ac-card] {
       container-type: inline-size;
     }
+    /* Premise: the whole shared row (Amount, Type, Tax, Remove) must fit
+       the card's container width at the active breakpoint. Measured on
+       paving create: 1280 two-column card ≈431px, 1024 single-column ≈624px.
+       After Description wraps (@container 720px) a 4-col Amount|Type|Tax|Remove
+       needs ≈513px min-content (8.5rem + 10.5rem + Tax-included toggle + 44px
+       remove + 3 gaps). 624px fits; 431px cannot, so Tax collapsed to ~17px
+       and "Tax included" overlapped Remove (Xax included). Do not raise
+       another column min here — wrap Tax+Remove onto the next row. */
     @container (max-width: 720px) {
       .q-ac-row,
       .q-ac-row--with-category {
-        grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 0.8fr) auto auto;
+        grid-template-columns: minmax(8.5rem, 1fr) minmax(10.5rem, 0.9fr) auto auto;
         align-items: end;
       }
       .q-ac-row__desc {
         grid-column: 1 / -1;
+      }
+    }
+    @container (max-width: 560px) {
+      .q-ac-row--with-category {
+        grid-template-columns: minmax(8.5rem, 1fr) minmax(0, 1fr);
+        grid-template-areas:
+          "desc desc"
+          "amount category"
+          "taxrow taxrow";
+      }
+      .q-ac-row--with-category .q-ac-row__desc { grid-area: desc; }
+      .q-ac-row--with-category .q-ac-row__amount { grid-area: amount; }
+      .q-ac-row--with-category .q-ac-row__category { grid-area: category; }
+      .q-ac-row--with-category .q-ac-row__hst,
+      .q-ac-row--with-category .q-ac-row__actions {
+        grid-area: taxrow;
+      }
+      .q-ac-row--with-category .q-ac-row__hst {
+        padding-right: 52px;
+      }
+      .q-ac-row--with-category .q-ac-row__actions {
+        justify-self: end;
+        align-self: end;
       }
     }
     .q-ac-row .admin-form-group { margin-bottom: 0; min-width: 0; }
@@ -290,8 +321,7 @@
             <select id="{{ $idPrefix }}-cat-{{ $idx }}"
                     name="{{ $field }}[{{ $idx }}][category]"
                     class="admin-input {{ $inputClass }}"
-                    data-ac-category
-                    aria-label="Materials or labour">
+                    data-ac-category>
               <option value="materials" @selected(($row['category'] ?? 'materials') === 'materials')>Materials</option>
               <option value="labour" @selected(($row['category'] ?? 'materials') === 'labour')>Labour</option>
             </select>

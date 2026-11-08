@@ -102,6 +102,7 @@
     'saveId' => 'br-btn-publish',
     'draftId' => 'br-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject ?? null) : null))->client_id,
   ])
   @php

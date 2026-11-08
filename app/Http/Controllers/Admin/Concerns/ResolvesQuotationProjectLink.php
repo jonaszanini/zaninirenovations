@@ -55,7 +55,7 @@ trait ResolvesQuotationProjectLink
 
         $message = $action === 'create-project'
             ? 'Publish the quotation before creating a project.'
-            : 'Publish the quotation (click Save quotation, not Save as draft) before linking.';
+            : 'Publish the quotation (not Save as draft) before linking.';
 
         return back()->with('error', $message);
     }

@@ -33,6 +33,7 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
         $shots = storage_path('app/qh-footer-shots');
         @unlink($out);
 
+        $sha = trim((string) shell_exec('git -C '.escapeshellarg(base_path()).' rev-parse HEAD'));
         $output = [];
         $code = $this->runNode($script, [
             'QH_FOOTER_EMAIL' => $user->email,
@@ -40,6 +41,7 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
             'QH_FOOTER_BASE' => $base,
             'QH_FOOTER_OUT' => $out,
             'QH_FOOTER_SHOTS' => $shots,
+            'QH_FOOTER_SHA' => $sha,
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -48,22 +50,110 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
         $this->assertSame(0, $code, "Footer puppeteer failed:\n".implode("\n", $output)."\n".$raw);
         $report = json_decode($raw, true);
         $this->assertIsArray($report);
+        $this->assertSame($sha, (string) ($report['sha'] ?? ''), 'browser report SHA must match committed HEAD');
+        $provenance = json_decode((string) @file_get_contents($shots.'/PROVENANCE.json'), true);
+        $this->assertIsArray($provenance);
+        $this->assertSame($sha, (string) ($provenance['sha'] ?? ''));
 
-        foreach (['basement', 'millwork', 'standard', 'fence'] as $type) {
-            foreach (['1280', '390'] as $width) {
+        foreach (['basement', 'millwork', 'standard', 'fence', 'paving'] as $type) {
+            $widths = $type === 'paving' ? ['1280', '1024', '390'] : ['1280', '390'];
+            foreach ($widths as $width) {
                 $row = $report[$type][$width] ?? [];
                 $this->assertTrue((bool) ($row['hasFooter'] ?? false), "{$type} @{$width} missing footer");
                 $this->assertSame(1, (int) ($row['footerCount'] ?? 0), "{$type} @{$width} stacked footers");
-                $this->assertTrue((bool) ($row['hasSave'] ?? false), "{$type} @{$width} missing footer Save");
+                $this->assertTrue((bool) ($row['hasSave'] ?? false), "{$type} @{$width} missing footer Publish");
                 $this->assertTrue((bool) ($row['hasAmount'] ?? false), "{$type} @{$width} missing footer amount");
-                $this->assertTrue((bool) ($row['hasHeaderSave'] ?? false), "{$type} @{$width} missing header Save");
+                $this->assertTrue((bool) ($row['hasHeaderSave'] ?? false), "{$type} @{$width} missing header Publish");
+                $this->assertTrue((bool) ($row['hasHeaderDraft'] ?? false), "{$type} @{$width} missing Save as draft");
                 $this->assertTrue((bool) ($row['footerJs'] ?? false), "{$type} @{$width} missing footer JS");
                 $this->assertTrue((bool) ($row['pinned'] ?? false), "{$type} @{$width} footer is not viewport-fixed");
-                $this->assertTrue((bool) ($row['saveInView'] ?? false), "{$type} @{$width} Save not in view");
+                $this->assertTrue((bool) ($row['saveInView'] ?? false), "{$type} @{$width} Publish not in view");
                 $this->assertTrue((bool) ($row['amountInView'] ?? false), "{$type} @{$width} amount not in view");
-                $this->assertSame('CA$1,234.56', (string) ($row['liveAfter'] ?? ''), "{$type} @{$width} did not mirror quote:grand-total");
-                $this->assertSame(1, (int) ($row['headerClicks'] ?? 0), "{$type} @{$width} footer Save did not click header Save");
+                $this->assertSame(
+                    'CA$1,234.56',
+                    (string) ($row['liveAfter'] ?? ''),
+                    "{$type} @{$width} fixture quote:grand-total must update the footer (wiring only, not screenshot evidence)"
+                );
+                $this->assertNotSame(
+                    'CA$1,234.56',
+                    (string) ($row['screenshotFooter'] ?? ''),
+                    "{$type} @{$width} screenshot footer must be the live calculator total, not the injected CA$1,234.56"
+                );
+                $this->assertFalse((bool) ($row['injectedTotalUsedForScreenshot'] ?? true));
+                $this->assertSame(
+                    (string) ($row['screenshotFooter'] ?? ''),
+                    (string) ($row['liveBefore'] ?? ''),
+                    "{$type} @{$width} liveBefore at inject time must still be the pre-inject calculator total"
+                );
+                $this->assertSame(1, (int) ($row['headerClicks'] ?? 0), "{$type} @{$width} footer Publish did not proxy to header Publish");
+                $this->assertSame(1, (int) ($row['draftClicks'] ?? 0), "{$type} @{$width} Save as draft must fire its own control");
+                $this->assertSame(0, (int) ($row['nativeFooterSubmit'] ?? 0), "{$type} @{$width} footer must not native-submit beside the header proxy");
+                $this->assertSame('publish', (string) ($row['headerSaveIntent'] ?? ''), "{$type} @{$width} header Publish intent");
+                $this->assertSame('draft', (string) ($row['headerDraftIntent'] ?? ''), "{$type} @{$width} header draft intent");
+                $this->assertSame('publish', (string) ($row['footerSaveIntent'] ?? ''), "{$type} @{$width} footer Publish intent");
+                $this->assertSame('Publish', (string) ($row['footerVisible'] ?? ''), "{$type} @{$width} footer visible");
+                $this->assertSame('Publish', (string) ($row['footerAccName'] ?? ''), "{$type} @{$width} footer accessible name");
+                $this->assertSame('Publish', (string) ($row['footerAria'] ?? ''), "{$type} @{$width} footer aria-label");
+                $this->assertSame('Publish', (string) ($row['footerLabel'] ?? ''), "{$type} @{$width} footer label");
+                $this->assertSame('Publish', (string) ($row['headerSaveVisible'] ?? ''), "{$type} @{$width} header visible");
+                $this->assertSame('Publish', (string) ($row['headerSaveAccName'] ?? ''), "{$type} @{$width} header accessible name");
+                $this->assertSame('Save as draft', (string) ($row['headerDraftVisible'] ?? ''), "{$type} @{$width} draft visible");
+                $this->assertSame('Save as draft', (string) ($row['headerDraftAccName'] ?? ''), "{$type} @{$width} draft accessible name");
+                $this->assertNotSame(
+                    (string) ($row['headerSaveAccName'] ?? ''),
+                    (string) ($row['headerDraftAccName'] ?? ''),
+                    "{$type} @{$width} Publish and Save as draft must stay distinct"
+                );
                 $this->assertFileExists((string) ($row['shot'] ?? ''));
+                $this->assertStringContainsString('-full.png', (string) ($row['shot'] ?? ''));
+                $this->assertFileExists((string) ($row['viewportShot'] ?? ''));
+                $this->assertStringContainsString('-viewport.png', (string) ($row['viewportShot'] ?? ''));
+                if ($type === 'basement') {
+                    $this->assertSame('1 of 14', (string) ($row['stepStatus'] ?? ''), "basement @{$width} footer must match section 1 of 14 after JS");
+                    $this->assertSame('1 of 14', (string) ($row['overviewNum'] ?? ''), "basement @{$width} overview num");
+                    $this->assertSame('14 of 14', (string) ($row['scopeNum'] ?? ''), "basement @{$width} client-scope num");
+                    $this->assertNotSame('1 of 13', (string) ($row['stepStatus'] ?? ''));
+                    $after = $row['afterNext'] ?? [];
+                    $this->assertSame('2 of 14', (string) ($after['stepStatus'] ?? ''), "basement @{$width} Next must advance 1 of 14 → 2 of 14");
+                    $this->assertSame('demolition', (string) ($after['activeStep'] ?? ''));
+                    $this->assertSame('→ Next', (string) ($after['nextLabel'] ?? ''));
+                    $this->assertSame('→ Next', (string) ($after['nextAccName'] ?? ''));
+                }
+                if ($type === 'paving') {
+                    $this->assertFileExists((string) ($row['costsShot'] ?? ''), "paving @{$width} Additional costs viewport shot");
+                    $this->assertNotSame('', (string) ($row['liveSummaryTotal'] ?? ''), "paving @{$width} live Total quote");
+                    $this->assertSame(
+                        (string) ($row['liveSummaryTotal'] ?? ''),
+                        (string) ($row['screenshotFooter'] ?? ''),
+                        "paving @{$width} sticky footer must match live Total quote on the screenshot (not the injected fixture)"
+                    );
+                    $layout = $row['acLayout'] ?? [];
+                    $this->assertTrue((bool) ($layout['hasCard'] ?? false), "paving @{$width} Additional costs card");
+                    $this->assertGreaterThanOrEqual(2, (int) ($layout['rowCount'] ?? 0), "paving @{$width} SSR + JS-added rows");
+                    $this->assertTrue((bool) ($layout['premiseFits'] ?? false), "paving @{$width} Additional costs row must fit the container");
+                    $sources = [];
+                    foreach ($layout['rows'] ?? [] as $acRow) {
+                        $source = (string) ($acRow['source'] ?? '');
+                        $sources[] = $source;
+                        $this->assertSame('Amount', (string) ($acRow['amountLabel'] ?? ''), "paving @{$width} {$source} Amount label");
+                        $this->assertSame('Type', (string) ($acRow['typeLabel'] ?? ''), "paving @{$width} {$source} Type label");
+                        $this->assertFalse(
+                            (bool) ($acRow['paintedOverlap'] ?? true),
+                            "paving @{$width} {$source} painted Amount/Type/Tax/Remove overlap: ".json_encode($acRow['pairs'] ?? [])
+                        );
+                        foreach ($acRow['pairs'] ?? [] as $pair) {
+                            $this->assertFalse(
+                                (bool) ($pair['overlap'] ?? true),
+                                "paving @{$width} {$source} {$pair['a']} vs {$pair['b']}"
+                            );
+                        }
+                        $remove = $acRow['removeSize'] ?? [];
+                        $this->assertGreaterThanOrEqual(44, (float) ($remove['w'] ?? 0), "paving @{$width} {$source} Remove width");
+                        $this->assertGreaterThanOrEqual(44, (float) ($remove['h'] ?? 0), "paving @{$width} {$source} Remove height");
+                    }
+                    $this->assertContains('ssr', $sources);
+                    $this->assertContains('js', $sources);
+                }
             }
         }
 
@@ -72,6 +162,11 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
             $this->assertFalse((bool) ($row['hasFooter'] ?? true), "Painting @{$width} must not get the sticky footer");
             $this->assertFalse((bool) ($row['footerJs'] ?? true), "Painting @{$width} must not load footer JS");
             $this->assertTrue((bool) ($row['hasHeaderSave'] ?? false), "Painting @{$width} keeps header Save");
+            $this->assertSame('Save quotation', (string) ($row['headerSaveVisible'] ?? ''), "Painting @{$width} visible Save quotation");
+            $this->assertSame('Save quotation', (string) ($row['headerSaveAccName'] ?? ''), "Painting @{$width} accessible Save quotation");
+            $this->assertSame('Save as draft', (string) ($row['headerDraftVisible'] ?? ''));
+            $this->assertFileExists((string) ($row['shot'] ?? ''));
+            $this->assertFileExists((string) ($row['viewportShot'] ?? ''));
         }
     }
 

@@ -218,6 +218,21 @@ class DeployDependsOnTestsTest extends TestCase
             $quotationFilter,
             'Paving view / info-tip wrapper PRs must run PavingMarbleBrowserTest, not only main extended.txt'
         );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFooterBrowserTest.php',
+            $quotationFilter,
+            'Footer / header partial PRs must run QuotationEditorFooterBrowserTest on the quotation filter'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFooterTest.php',
+            $quotationFilter,
+            'Footer / header partial PRs must run QuotationEditorFooterTest on the quotation filter'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorControlInventoryTest.php',
+            $quotationFilter,
+            'Publish / Save as draft label PRs must run QuotationEditorControlInventoryTest on the quotation filter'
+        );
         exec(
             'CI_MYSQL_SUITE=pr CI_MYSQL_FILTER_QUOTATION=true bash '
             .escapeshellarg(base_path('tests/ci/select-database-paths.sh')),
@@ -229,6 +244,16 @@ class DeployDependsOnTestsTest extends TestCase
             'tests/Feature/Admin/PavingMarbleBrowserTest.php',
             $selected,
             'quotation-filter PRs must actually select PavingMarbleBrowserTest in the mysql path list'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFooterBrowserTest.php',
+            $selected,
+            'quotation-filter PRs must actually select QuotationEditorFooterBrowserTest'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorControlInventoryTest.php',
+            $selected,
+            'quotation-filter PRs must actually select QuotationEditorControlInventoryTest'
         );
         $core = $this->pathsFile('tests/ci/database-core.txt');
         $this->assertContains('tests/Feature/Admin/StairsQuotationPagesTest.php', $core);

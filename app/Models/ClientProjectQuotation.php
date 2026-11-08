@@ -534,7 +534,7 @@ class ClientProjectQuotation extends Model
         return $class::query()->find($this->source_id);
     }
 
-    public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it (Save quotation) before sharing it with the client.';
+    public const SOURCE_DRAFT_SHARE_MESSAGE = 'This quotation is still a draft. Publish it before sharing it with the client.';
 
     public const SOURCE_REVISING_MESSAGE = 'We\'re updating this quote and will send you the new version shortly.';
 

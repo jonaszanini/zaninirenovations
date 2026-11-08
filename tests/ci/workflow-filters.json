@@ -109,6 +109,7 @@
     "app/Models/ClientProjectQuotation.php",
     "app/Support/Quotations/**",
     "resources/views/admin/quotations/**",
+    "resources/views/admin/partials/quotation_editor_*.blade.php",
     "resources/views/components/admin/info-tip.blade.php",
     "public/js/*quotation*",
     "public/js/admin-hotkey-save.js",

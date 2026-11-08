@@ -13,7 +13,7 @@
   <h4 style="margin:0;">
     <span class="admin-label-with-tip">
       Link to project
-      <x-admin.info-tip label="Link to project">Save the quotation first (use Save quotation, not draft) with a total greater than zero. Then this page will show options to link an existing project or create a new one.@if (! empty($linkProject)) You opened this from {{ $linkProject->name }} — a published save will attach automatically when possible.@endif</x-admin.info-tip>
+      <x-admin.info-tip label="Link to project">Save the quotation first (publish it, not Save as draft) with a total greater than zero. Then this page will show options to link an existing project or create a new one.@if (! empty($linkProject)) You opened this from {{ $linkProject->name }} — a published save will attach automatically when possible.@endif</x-admin.info-tip>
     </span>
   </h4>
 </div>

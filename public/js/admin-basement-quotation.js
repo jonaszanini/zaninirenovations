@@ -981,11 +981,13 @@
     });
     var status = document.getElementById('br-step-status');
     if (status) {
+      // Accordion nums use trades + client scope (not Review). Keep the
+      // footer counter on that same denominator so "1 of 14" does not
+      // flip to "1 of 13" after hydrate.
+      var numberedTotal = Math.max(1, sectionKeys.length + 1);
       status.textContent = key === 'review'
         ? 'Review'
-        : (key === 'client_scope'
-          ? 'Client scope'
-          : ((currentIndex + 1) + ' of ' + sectionKeys.length));
+        : ((currentIndex + 1) + ' of ' + numberedTotal);
     }
     var prev = document.getElementById('br-prev');
     var next = document.getElementById('br-next');
@@ -994,7 +996,7 @@
       prev.textContent = '← Back';
     }
     if (next) {
-      next.textContent = key === 'review' ? 'Save' : '→ Next';
+      next.textContent = key === 'review' ? 'Publish' : '→ Next';
       next.disabled = false;
     }
     if (scroll) {

@@ -30,7 +30,12 @@ class QuotationEditorFooterMarkupTest extends TestCase
         $this->assertStringContainsString('data-qh-footer-save', $partial);
         $this->assertStringContainsString('qh-sticky-footer', $partial);
         $this->assertStringContainsString('ClientProject::formatMoney', $partial);
-        $this->assertStringContainsString('Save quotation', $partial);
+        $this->assertStringContainsString('qh-sticky-footer__save-label">Publish', $partial);
+        $this->assertStringContainsString('aria-label="Publish"', $partial);
+        $this->assertStringNotContainsString('Save quotation', $partial);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-short', $partial);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-full', $partial);
+        $this->assertStringContainsString('data-qh-save-intent="publish"', $partial);
         $this->assertStringContainsString('type="submit"', $partial);
         $this->assertStringNotContainsString('1.13', $partial);
     }
@@ -64,6 +69,9 @@ class QuotationEditorFooterMarkupTest extends TestCase
             if ($type === 'millwork') {
                 $this->assertStringContainsString('data-qh-footer', $blade);
                 $this->assertStringContainsString('data-qh-footer-save', $blade);
+                $this->assertStringContainsString('qh-sticky-footer__save-label">Publish', $blade);
+                $this->assertStringContainsString('aria-label="Publish"', $blade);
+                $this->assertStringContainsString('data-qh-save-intent="publish"', $blade);
                 $this->assertStringContainsString('qh-sticky-footer', $blade);
                 $this->assertStringContainsString('id="mw-totals-bar"', $blade);
             } else {
@@ -71,6 +79,7 @@ class QuotationEditorFooterMarkupTest extends TestCase
             }
             if ($type !== 'painting') {
                 $this->assertStringContainsString('projectForReturn', $blade);
+                $this->assertStringContainsString("'saveLabel' => 'Publish'", $blade, $type.' header must opt in to Publish');
             }
         }
 
@@ -78,9 +87,36 @@ class QuotationEditorFooterMarkupTest extends TestCase
         $this->assertStringNotContainsString('quotation_editor_footer', $painting);
         $this->assertStringNotContainsString('data-qh-footer', $painting);
         $this->assertStringNotContainsString('qh-sticky-footer', $painting);
+        $this->assertStringNotContainsString("'saveLabel' => 'Publish'", $painting);
         $this->assertStringContainsString("route('admin.quotations.painting.index'", $painting);
 
         $standard = file_get_contents(resource_path('views/admin/quotations/standard/create.blade.php'));
         $this->assertStringNotContainsString('sq-form-actions', $standard);
+    }
+
+    public function test_additional_cost_amount_column_keeps_a_label_sized_min(): void
+    {
+        $blade = file_get_contents(resource_path('views/admin/quotations/_amount_lines.blade.php'));
+        $this->assertNotFalse($blade);
+        $this->assertMatchesRegularExpression(
+            '/\.q-ac-row--with-category\s*\{[^}]*minmax\(8\.5rem/',
+            $blade
+        );
+        $this->assertMatchesRegularExpression(
+            '/@container \(max-width: 720px\)[\s\S]{0,280}minmax\(8\.5rem/',
+            $blade
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/@container \(max-width: 720px\)[\s\S]{0,220}minmax\(0,\s*1fr\)\s+minmax\(10\.5rem/',
+            $blade
+        );
+        $this->assertMatchesRegularExpression(
+            '/@container \(max-width: 560px\)[\s\S]{0,420}taxrow taxrow/',
+            $blade
+        );
+        $this->assertStringContainsString('needs ≈513px min-content', $blade);
+        $this->assertStringNotContainsString('aria-label="Materials or labour"', $blade);
+        $js = file_get_contents(public_path('js/admin-additional-costs.js'));
+        $this->assertStringNotContainsString('aria-label="Materials or labour"', $js);
     }
 }

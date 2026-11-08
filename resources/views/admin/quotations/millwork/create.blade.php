@@ -61,6 +61,7 @@
     'saveId' => 'mw-btn-publish',
     'draftId' => 'mw-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
     'wizard' => [
       'navId' => 'mw-step-nav',
       'prevId' => 'mw-prev',
@@ -358,10 +359,10 @@
               class="admin-btn admin-btn--primary admin-btn--sm qh-sticky-footer__save"
               form="mw-main-form"
               data-qh-footer-save
-              aria-label="Save quotation">
+              data-qh-save-intent="publish"
+              aria-label="Publish">
         <i class="fa fa-save" aria-hidden="true"></i>
-        <span class="qh-sticky-footer__save-full">Save quotation</span>
-        <span class="qh-sticky-footer__save-short">Save</span>
+        <span class="qh-sticky-footer__save-label">Publish</span>
       </button>
     </div>
   </form>
