@@ -12,14 +12,15 @@ use Tests\Support\ExtractsPdfText;
 use Tests\Support\PublishesLinkedQuotations;
 
 /**
- * Browser publish / edit / reopen / PDF at 1280 and 390 for every
- * non-painting type. HTTP lifecycle covers persist independently;
- * this file is the actual UI: footer Publish, JS-rendered fields,
- * linked client PDF route, nonzero fixtures.
+ * Browser lifecycle at 1280 and 390 for every non-painting type.
  *
- * Shed drafts from ?project= so publish auto-links (no test-only link POST).
- * Other types are created through the real store+project publish path, then
- * edited in the browser. Painting is out of scope.
+ * Shed: real project-context draft → header Publish (auto-link via ?project=).
+ * Other 10: server-created and linked through store+project, then browser
+ * edit/reopen/PDF. Does not claim UI-from-blank creation for those 10.
+ *
+ * Workflows (click/type/select on visible enabled controls) run at both
+ * widths. Viewport shots are evidence; 390 is not declared PASS from
+ * screenshots alone. Painting is out of scope.
  */
 class QuotationLifecycleBrowserTest extends IntegrationTestCase
 {
@@ -46,7 +47,7 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         ]);
         $this->actingAs($user);
 
-        [$cases, $quotes, $t1] = $this->seedBrowserCases();
+        [$cases, $quotes] = $this->seedBrowserCases();
 
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/quotation-lifecycle-browser.js');
@@ -75,116 +76,171 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         $this->assertSame($sha, (string) ($report['sha'] ?? ''), 'browser report SHA must match committed HEAD');
         $this->assertArrayNotHasKey('error', $report);
 
-        $this->assertTrue((bool) ($report['types']['shed']['publishedFromDraft'] ?? false), 'shed header Publish must leave the draft');
-
         foreach ($cases as $spec) {
             $type = $spec['type'];
-            $quote = $quotes[$type];
+            $width = (string) $spec['viewport'];
+            $key = $type.'@'.$width;
+            $quote = $quotes[$key];
             $quote->refresh();
-            $row = $report['types'][$type] ?? [];
-            $this->assertIsArray($row, $type.' missing from browser report');
-            foreach (['1280', '390'] as $width) {
-                $shot = $row['widths'][$width] ?? [];
-                $this->assertFileExists((string) ($shot['shot'] ?? ''), $type.' '.$width.' full shot');
-                $this->assertFileExists((string) ($shot['viewportShot'] ?? ''), $type.' '.$width.' viewport shot');
-                $this->assertFileExists((string) ($shot['reopenShot'] ?? ''), $type.' '.$width.' reopen shot');
-                $this->assertSame('Publish', (string) ($shot['headerPublish'] ?? ''), $type.' '.$width.' header Publish');
-                $this->assertSame('Save as draft', (string) ($shot['headerDraft'] ?? ''), $type.' '.$width.' Save as draft');
-            }
+            $expected = $this->lifecycleFixtureExpected($type);
+            $row = $report['types'][$key] ?? [];
+            $this->assertIsArray($row, $key.' missing from browser report — workflow must run at this viewport, not reuse 1280 shots');
+            $shot = $row['widths'][$width] ?? [];
+            $this->assertFileExists((string) ($shot['viewportShot'] ?? ''), $key.' viewport shot');
+            $this->assertFileExists((string) ($shot['fullShot'] ?? ''), $key.' full-page supplementary shot');
+            $this->assertFileExists((string) ($shot['reopenViewportShot'] ?? ''), $key.' reopen viewport shot');
+            $this->assertFileExists((string) ($shot['reopenFullShot'] ?? ''), $key.' reopen full-page supplementary shot');
+            $this->assertSame('Publish', (string) ($shot['headerPublish'] ?? ''), $key.' header Publish');
+            $this->assertSame('Save as draft', (string) ($shot['headerDraft'] ?? ''), $key.' Save as draft');
             $this->assertNotSame(
-                (string) (($row['widths']['1280']['headerPublish'] ?? '')),
-                (string) (($row['widths']['1280']['headerDraft'] ?? '')),
-                $type.' Publish and Save as draft must stay distinct'
+                (string) ($shot['headerPublish'] ?? ''),
+                (string) ($shot['headerDraft'] ?? ''),
+                $key.' Publish and Save as draft must stay distinct'
             );
 
-            $this->assertFalse((bool) $quote->is_draft, $type.' must be published after the browser save');
-            $t2 = $this->quoteCalculatorTotal($type, $quote);
-            $this->assertGreaterThan(0, $t2, $type.' stored total after browser edit must stay nonzero');
-            if (array_key_exists($type, $t1)) {
-                $this->assertNotEquals(
-                    round($t1[$type], 2),
-                    round($t2, 2),
-                    $type.' browser qty/finish edit must persist a new total (T1='.$t1[$type].' T2='.$t2.')'
-                );
+            $this->assertTrue((bool) ($row['savedViaFooter'] ?? false), $key.' must save via footer Publish click');
+            if ($type === 'shed') {
+                $this->assertTrue((bool) ($row['publishedFromDraft'] ?? false), $key.' shed header Publish must leave the draft');
+                $this->assertSame('project-draft-publish', (string) ($row['seed'] ?? ''));
+            } else {
+                $this->assertSame('server-created-linked-then-browser-edit', (string) ($row['seed'] ?? ''));
             }
+
+            $this->assertFalse((bool) $quote->is_draft, $key.' must be published after the browser save');
             $this->assertEquals(
-                (float) $spec['newValue'],
-                (float) ($row['reopen']['fieldValue'] ?? 0),
-                $type.' reopen field persisted'
+                $expected['browserEditQty'],
+                $this->storedLifecycleQty($type, $quote),
+                $key.' stored qty must match the fixture edit qty'
             );
+            $this->assertEquals(
+                $expected['browserEditQty'],
+                (float) ($row['reopen']['fieldValue'] ?? 0),
+                $key.' reopen field persisted via UI type'
+            );
+            $stored = $this->storedQuoteTotal($quote);
+            $this->assertEqualsWithDelta(
+                $expected['browserEditTotal'],
+                $stored,
+                0.02,
+                $key.' stored total must match independent fixture expected '.$expected['browserEditTotal']
+            );
+            $money = ClientProject::formatMoney($expected['browserEditTotal']);
             $this->assertSame(
-                ClientProject::formatMoney($t2),
-                $this->normalizeMoney((string) ($row['reopen']['footerAmount'] ?? '')),
-                $type.' reopen footer must match stored total'
+                $this->normalizeMoney($money),
+                $this->normalizeMoney((string) ($row['reopen']['footerAmount'] ?? $shot['reopenFooterAmount'] ?? '')),
+                $key.' reopen footer must show the independent expected total'
             );
 
             $pdfHref = (string) ($row['reopen']['pdfHref'] ?? $row['pdfUrl'] ?? '');
             $this->assertMatchesRegularExpression(
                 '#/admin/client-projects/\d+/quotations/\d+/pdf#',
                 $pdfHref,
-                $type.' View PDF must be the linked client-project quotation route, not a disabled stand-in. href='.$pdfHref
+                $key.' View PDF must be the linked client-project quotation route. href='.$pdfHref
             );
-            $this->assertGreaterThan(100, (int) ($row['pdfBytes'] ?? 0), $type.' View PDF returned bytes');
-            $this->assertSame(200, (int) ($row['pdfStatus'] ?? 0), $type.' View PDF HTTP 200');
-            $this->assertPdfFor($type, $quote, $t2);
+            $this->assertGreaterThan(100, (int) ($row['pdfBytes'] ?? 0), $key.' View PDF returned bytes');
+            $this->assertSame(200, (int) ($row['pdfStatus'] ?? 0), $key.' View PDF HTTP 200');
+            $this->assertPdfFor($type, $quote, $expected['browserEditTotal'], $expected['scopeWord'], $width);
         }
     }
 
     /**
-     * @return array{0: list<array<string, mixed>>, 1: array<string, object>, 2: array<string, float>}
+     * @return array{0: list<array<string, mixed>>, 1: array<string, object>}
      */
     private function seedBrowserCases(): array
     {
         $quotes = [];
-        $t1 = [];
         $cases = [];
-
-        [$shed, $shedProject] = $this->storeDraft('shed');
-        $quotes['shed'] = $shed;
-        $cases[] = [
-            'type' => 'shed',
-            'editHref' => '/admin/quotations/shed/'.$shed->id.'/edit?project='.$shedProject->id,
-            'expectDraft' => true,
-            'fieldSelector' => '#sh-length',
-            'newValue' => '8',
-        ];
-
         $linked = [
-            'flooring' => ['#fl-sqft', '80'],
-            'trimming' => ['#tm-floor-lf', '40'],
-            'standard' => ['#sq-w0-labour-fixed-amount', '500'],
-            'basement' => ['#br-area', '400'],
-            'millwork' => ['input[name="pieces[0][sets][0][qty]"]', '3'],
-            'tile' => ['#tl-total-area', '20'],
-            'fence' => ['#fq-side-0', '48'],
-            'paving' => ['input[name="stone_entries[0][area_sq_ft]"]', '40'],
-            'stairs' => ['#sq-total-steps', '8'],
-            'low-deck' => ['#ld-length', '10'],
-        ];
-        foreach ($linked as $type => [$selector, $newValue]) {
-            [$quote, $cpq] = $this->publishLinkedQuote($type);
-            $this->assertGreaterThan(0, $this->quoteCalculatorTotal($type, $quote), $type.' linked fixture must be nonzero');
-            $this->assertNotNull($cpq, $type.' must be linked through store+project, not a later test-only POST');
-            $quotes[$type] = $quote;
-            $t1[$type] = $this->quoteCalculatorTotal($type, $quote);
-            $projectId = (int) ($quote->client_project_id ?: $cpq->client_project_id);
-            $case = [
-                'type' => $type,
-                'editHref' => '/admin/quotations/'.$type.'/'.$quote->id.'/edit?project='.$projectId,
-                'expectDraft' => false,
-                'fieldSelector' => $selector,
-                'newValue' => $newValue,
-            ];
-            if ($type === 'stairs') {
-                $case['fields'] = [
+            'flooring' => [
+                'fields' => [['selector' => '#fl-sqft', 'value' => '80']],
+                'revealClicks' => [],
+            ],
+            'trimming' => [
+                'fields' => [['selector' => '#tm-floor-lf', 'value' => '40']],
+                'revealClicks' => [],
+            ],
+            'standard' => [
+                'fields' => [['selector' => '#sq-w0-labour-fixed-amount', 'value' => '500']],
+                'revealClicks' => [],
+            ],
+            'basement' => [
+                'fields' => [['selector' => '#br-area', 'value' => '400']],
+                'revealClicks' => ['[data-br-goto="overview"]'],
+                'openDetails' => 'details[data-br-step="overview"]',
+            ],
+            'millwork' => [
+                'fields' => [['selector' => 'input[name="pieces[0][sets][0][qty]"]', 'value' => '3']],
+                'revealClicks' => ['[data-mw-goto="pieces"]'],
+                'openDetails' => 'details[data-br-step="pieces"]',
+            ],
+            'tile' => [
+                'fields' => [['selector' => '#tl-total-area', 'value' => '20']],
+                'revealClicks' => [],
+            ],
+            'fence' => [
+                'fields' => [['selector' => '#fq-side-0', 'value' => '48']],
+                'revealClicks' => [],
+            ],
+            'paving' => [
+                'fields' => [['selector' => 'input[name="stone_entries[0][area_sq_ft]"]', 'value' => '40']],
+                'revealClicks' => [],
+            ],
+            'stairs' => [
+                'fields' => [
+                    ['selector' => '#sq-total-steps', 'value' => '8'],
                     ['selector' => 'input[name="segments[0][qty]"]', 'value' => '8'],
                     ['selector' => '#sq-material-price', 'value' => '40'],
+                ],
+                'revealClicks' => [],
+            ],
+            'low-deck' => [
+                'fields' => [['selector' => '#ld-length', 'value' => '10']],
+                'revealClicks' => [],
+            ],
+        ];
+
+        foreach ([1280, 390] as $viewport) {
+            [$shed, $shedProject] = $this->storeDraft('shed');
+            $key = 'shed@'.$viewport;
+            $quotes[$key] = $shed;
+            $cases[] = [
+                'type' => 'shed',
+                'viewport' => $viewport,
+                'seed' => 'project-draft-publish',
+                'editHref' => '/admin/quotations/shed/'.$shed->id.'/edit?project='.$shedProject->id,
+                'expectDraft' => true,
+                'revealClicks' => ['[data-sh-goto="size"]'],
+                'openDetails' => 'details[data-br-step="size"]',
+                'fields' => [['selector' => '#sh-length', 'value' => '8']],
+            ];
+
+            foreach ($linked as $type => $cfg) {
+                [$quote, $cpq] = $this->publishLinkedQuote($type);
+                $expected = $this->lifecycleFixtureExpected($type);
+                $this->assertEqualsWithDelta(
+                    $expected['publishTotal'],
+                    $this->storedQuoteTotal($quote),
+                    0.02,
+                    $type.'@'.$viewport.' server-created fixture must match independent publish total'
+                );
+                $this->assertNotNull($cpq, $type.' must be linked through store+project, not a later test-only POST');
+                $caseKey = $type.'@'.$viewport;
+                $quotes[$caseKey] = $quote;
+                $projectId = (int) ($quote->client_project_id ?: $cpq->client_project_id);
+                $cases[] = [
+                    'type' => $type,
+                    'viewport' => $viewport,
+                    'seed' => 'server-created-linked-then-browser-edit',
+                    'editHref' => '/admin/quotations/'.$type.'/'.$quote->id.'/edit?project='.$projectId,
+                    'expectDraft' => false,
+                    'revealClicks' => $cfg['revealClicks'],
+                    'openDetails' => $cfg['openDetails'] ?? null,
+                    'fields' => $cfg['fields'],
                 ];
             }
-            $cases[] = $case;
         }
 
-        return [$cases, $quotes, $t1];
+        return [$cases, $quotes];
     }
 
     /**
@@ -211,7 +267,7 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         return [$quote, $project];
     }
 
-    private function assertPdfFor(string $type, object $quote, float $total): void
+    private function assertPdfFor(string $type, object $quote, float $expectedTotal, string $scopeWord, string $width): void
     {
         $cpq = ClientProjectQuotation::query()
             ->where('source_type', $this->quoteSourceType($type))
@@ -219,19 +275,20 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
             ->first();
         $this->assertNotNull(
             $cpq,
-            $type.' must already have a linked client quotation from project context (no test-only link POST)'
+            $type.'@'.$width.' must already have a linked client quotation from project context (no test-only link POST)'
         );
-        $this->assertEqualsWithDelta($total, $cpq->pdfGrandTotal(), 0.02, $type.' PDF total vs stored');
+        $this->assertEqualsWithDelta($expectedTotal, $cpq->pdfGrandTotal(), 0.02, $type.'@'.$width.' PDF total vs independent expected');
 
         $project = $cpq->project;
         $this->assertNotNull($project, $type.' CPQ project relation');
         $pdf = $this->get(route('admin.client-projects.quotation.pdf', [$project, $cpq]));
         $pdf->assertOk();
-        $pdfPath = storage_path('app/quote-lifecycle-browser-'.$type.'.pdf');
+        $pdfPath = storage_path('app/quote-lifecycle-browser-'.$type.'-'.$width.'.pdf');
         file_put_contents($pdfPath, $pdf->getContent());
         $text = $this->extractPdfText($pdfPath);
-        $this->assertStringContainsString(ClientProject::formatMoney($total), $text);
+        $this->assertStringContainsString(ClientProject::formatMoney($expectedTotal), $text);
         $this->assertStringContainsString((string) $quote->client_name, $text);
+        $this->assertStringContainsStringIgnoringCase($scopeWord, $text, $type.'@'.$width.' PDF must include fixture scope "'.$scopeWord.'"');
     }
 
     private function normalizeMoney(string $value): string

@@ -85,11 +85,17 @@ class QuotationPublishEditReopenPdfTest extends IntegrationTestCase
 
         $quote->refresh();
         $this->assertFalse((bool) $quote->is_draft, $type.' must publish from draft');
-        $t1 = $this->quoteCalculatorTotal($type, $quote);
-        $this->assertGreaterThan(0, $t1, $type.' published total must be nonzero');
+        $expected = $this->lifecycleFixtureExpected($type);
+        $this->assertEquals($expected['publishQty'], $this->storedLifecycleQty($type, $quote), $type.' published qty');
+        $this->assertEqualsWithDelta(
+            $expected['publishTotal'],
+            $this->storedQuoteTotal($quote),
+            0.02,
+            $type.' published total must match independent fixture expected '.$expected['publishTotal']
+        );
 
         [$quote, $cpq] = $this->ensureLinked($type, $quote, $project);
-        $money1 = ClientProject::formatMoney($t1);
+        $money1 = ClientProject::formatMoney($expected['publishTotal']);
 
         $publishedHtml = $this->get(route('admin.quotations.'.$type.'.edit', $quote))
             ->assertOk()
@@ -111,10 +117,10 @@ class QuotationPublishEditReopenPdfTest extends IntegrationTestCase
         $quote->refresh();
         $this->assertFalse((bool) $quote->is_draft, $type.' same-payload must stay published');
         $this->assertEqualsWithDelta(
-            $t1,
-            $this->quoteCalculatorTotal($type, $quote),
+            $expected['publishTotal'],
+            $this->storedQuoteTotal($quote),
             0.02,
-            $type.' same-payload publish must preserve stored total'
+            $type.' same-payload publish must preserve the independent publish total'
         );
 
         $mutated = array_merge($publish, $this->typeFields($type, true));
@@ -124,16 +130,16 @@ class QuotationPublishEditReopenPdfTest extends IntegrationTestCase
             ->assertRedirect();
 
         $quote->refresh();
-        $t2 = $this->quoteCalculatorTotal($type, $quote);
-        $this->assertGreaterThan(0, $t2, $type.' mutated total must be nonzero');
-        $this->assertNotEquals(
-            round($t1, 2),
-            round($t2, 2),
-            $type.' qty/finish edit must change the stored total (T1='.$t1.' T2='.$t2.')'
+        $this->assertEquals($expected['httpEditQty'], $this->storedLifecycleQty($type, $quote), $type.' edited qty');
+        $this->assertEqualsWithDelta(
+            $expected['httpEditTotal'],
+            $this->storedQuoteTotal($quote),
+            0.02,
+            $type.' edited total must match independent fixture expected '.$expected['httpEditTotal']
         );
         $this->assertFalse((bool) $quote->is_draft, $type.' qty edit must stay published');
 
-        $money2 = ClientProject::formatMoney($t2);
+        $money2 = ClientProject::formatMoney($expected['httpEditTotal']);
         $reopenHtml = $this->get(route('admin.quotations.'.$type.'.edit', $quote))
             ->assertOk()
             ->getContent();
@@ -145,10 +151,10 @@ class QuotationPublishEditReopenPdfTest extends IntegrationTestCase
 
         $cpq->refresh();
         $this->assertEqualsWithDelta(
-            $t2,
+            $expected['httpEditTotal'],
             $cpq->pdfGrandTotal(),
             0.02,
-            $type.' client PDF total must follow the published source total, not a stale snapshot'
+            $type.' client PDF total must match the independent expected total, not a stale snapshot'
         );
 
         $items = $cpq->pdfLineItems();
@@ -164,8 +170,9 @@ class QuotationPublishEditReopenPdfTest extends IntegrationTestCase
         $pdfPath = storage_path('app/quote-lifecycle-'.$type.'-'.$quote->id.'.pdf');
         file_put_contents($pdfPath, $pdf->getContent());
         $pdfText = $this->extractPdfText($pdfPath);
-        $this->assertStringContainsString($money2, $pdfText, $type.' PDF must show stored total '.$money2);
+        $this->assertStringContainsString($money2, $pdfText, $type.' PDF must show independent expected total '.$money2);
         $this->assertStringContainsString($project->client_name, $pdfText, $type.' PDF must show client name');
+        $this->assertStringContainsStringIgnoringCase($expected['scopeWord'], $pdfText, $type.' PDF must include fixture scope "'.$expected['scopeWord'].'"');
         $this->assertPdfContainsScope($pdfText, $scopeBlob, $type);
     }
 
