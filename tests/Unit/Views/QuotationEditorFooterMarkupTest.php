@@ -31,6 +31,9 @@ class QuotationEditorFooterMarkupTest extends TestCase
         $this->assertStringContainsString('qh-sticky-footer', $partial);
         $this->assertStringContainsString('ClientProject::formatMoney', $partial);
         $this->assertStringContainsString('Save quotation', $partial);
+        $this->assertStringContainsString('qh-sticky-footer__save-short">Publish', $partial);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-short">Save<', $partial);
+        $this->assertStringContainsString('data-qh-save-intent="publish"', $partial);
         $this->assertStringContainsString('type="submit"', $partial);
         $this->assertStringNotContainsString('1.13', $partial);
     }
@@ -64,6 +67,8 @@ class QuotationEditorFooterMarkupTest extends TestCase
             if ($type === 'millwork') {
                 $this->assertStringContainsString('data-qh-footer', $blade);
                 $this->assertStringContainsString('data-qh-footer-save', $blade);
+                $this->assertStringContainsString('qh-sticky-footer__save-short">Publish', $blade);
+                $this->assertStringContainsString('data-qh-save-intent="publish"', $blade);
                 $this->assertStringContainsString('qh-sticky-footer', $blade);
                 $this->assertStringContainsString('id="mw-totals-bar"', $blade);
             } else {

@@ -66,6 +66,11 @@ class QuotationEditorFooterTest extends IntegrationTestCase
         preg_match_all('/data-qh-footer(?!-)/', $html, $footerMarks);
         $this->assertCount(1, $footerMarks[0], $type.' must not stack footers');
         $this->assertSame(1, substr_count($html, 'data-qh-footer-save'), $type.' one footer Save');
+        $this->assertStringContainsString('qh-sticky-footer__save-short">Publish', $html);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-short">Save<', $html);
+        $this->assertStringContainsString('data-qh-save-intent="publish"', $html);
+        $this->assertGreaterThanOrEqual(1, substr_count($html, 'data-qh-save-intent="draft"'), $type.' draft intent');
+        $this->assertStringContainsString('Save as draft', $html);
         $this->assertStringContainsString('data-qh-footer-amount', $html);
         $this->assertStringContainsString('admin-quotation-editor-footer.js', $html);
         $this->assertStringContainsString('qh-sticky-footer', $html);
@@ -87,6 +92,16 @@ class QuotationEditorFooterTest extends IntegrationTestCase
         if ($type === 'basement') {
             $this->assertStringContainsString('id="br-sticky-total"', $html);
             $this->assertStringContainsString('id="br-next"', $html);
+            $this->assertStringContainsString('id="br-step-status"', $html);
+            $this->assertMatchesRegularExpression(
+                '/id="br-step-status"[^>]*>1 of 14</',
+                $html
+            );
+            $this->assertMatchesRegularExpression(
+                '/data-br-step="overview"[\s\S]{0,400}1 of 14/',
+                $html
+            );
+            $this->assertStringNotContainsString('1 of 13', $html);
         }
         if ($type === 'millwork') {
             $this->assertStringContainsString('id="mw-totals-bar"', $html);

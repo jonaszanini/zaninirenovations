@@ -276,6 +276,33 @@ const cases = [
     },
   },
   {
+    name: 'quotation editor footer partial',
+    paths: ['resources/views/admin/partials/quotation_editor_footer.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
+    name: 'quotation editor header partial',
+    paths: ['resources/views/admin/partials/quotation_editor_header.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
+    name: 'basement quotation wizard js',
+    paths: ['public/js/admin-basement-quotation.js'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
     name: 'admin dialog shared with quotation fixtures',
     paths: ['public/js/admin-dialog.js'],
     expect: {

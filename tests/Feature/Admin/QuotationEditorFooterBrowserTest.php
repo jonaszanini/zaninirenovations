@@ -57,13 +57,41 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
                 $this->assertTrue((bool) ($row['hasSave'] ?? false), "{$type} @{$width} missing footer Save");
                 $this->assertTrue((bool) ($row['hasAmount'] ?? false), "{$type} @{$width} missing footer amount");
                 $this->assertTrue((bool) ($row['hasHeaderSave'] ?? false), "{$type} @{$width} missing header Save");
+                $this->assertTrue((bool) ($row['hasHeaderDraft'] ?? false), "{$type} @{$width} missing Save as draft");
                 $this->assertTrue((bool) ($row['footerJs'] ?? false), "{$type} @{$width} missing footer JS");
                 $this->assertTrue((bool) ($row['pinned'] ?? false), "{$type} @{$width} footer is not viewport-fixed");
                 $this->assertTrue((bool) ($row['saveInView'] ?? false), "{$type} @{$width} Save not in view");
                 $this->assertTrue((bool) ($row['amountInView'] ?? false), "{$type} @{$width} amount not in view");
                 $this->assertSame('CA$1,234.56', (string) ($row['liveAfter'] ?? ''), "{$type} @{$width} did not mirror quote:grand-total");
-                $this->assertSame(1, (int) ($row['headerClicks'] ?? 0), "{$type} @{$width} footer Save did not click header Save");
+                $this->assertSame(1, (int) ($row['headerClicks'] ?? 0), "{$type} @{$width} footer Save did not click header Save quotation");
+                $this->assertSame(1, (int) ($row['draftClicks'] ?? 0), "{$type} @{$width} Save as draft must fire its own control");
+                $this->assertSame('publish', (string) ($row['headerSaveIntent'] ?? ''), "{$type} @{$width} header Save intent");
+                $this->assertSame('draft', (string) ($row['headerDraftIntent'] ?? ''), "{$type} @{$width} header draft intent");
+                $this->assertSame('publish', (string) ($row['footerSaveIntent'] ?? ''), "{$type} @{$width} footer Save intent");
+                $this->assertSame('Save quotation', (string) ($row['footerAria'] ?? ''), "{$type} @{$width} footer aria");
+                $this->assertSame('Save quotation', (string) ($row['footerFull'] ?? ''), "{$type} @{$width} footer full label");
+                $this->assertSame('Publish', (string) ($row['footerShort'] ?? ''), "{$type} @{$width} footer short must be Publish, not Save");
+                $this->assertStringContainsString('Save quotation', (string) ($row['headerSaveLabel'] ?? ''));
+                $this->assertSame('Save as draft', (string) ($row['headerDraftLabel'] ?? ''), "{$type} @{$width} draft label");
+                if ((int) $width === 390) {
+                    $this->assertTrue((bool) ($row['footerShortVisible'] ?? false), "{$type} @{$width} compact footer must show Publish");
+                    $this->assertFalse((bool) ($row['footerFullVisible'] ?? true), "{$type} @{$width} must not show a second Save quotation in the footer");
+                } else {
+                    $this->assertTrue((bool) ($row['footerFullVisible'] ?? false), "{$type} @{$width} desktop footer shows Save quotation");
+                    $this->assertFalse((bool) ($row['footerShortVisible'] ?? true), "{$type} @{$width} desktop footer must not use the compact Publish label");
+                }
                 $this->assertFileExists((string) ($row['shot'] ?? ''));
+                $this->assertStringContainsString('-full.png', (string) ($row['shot'] ?? ''));
+                if ($type === 'basement') {
+                    $this->assertSame('1 of 14', (string) ($row['stepStatus'] ?? ''), "basement @{$width} footer must match section 1 of 14 after JS");
+                    $this->assertSame('1 of 14', (string) ($row['overviewNum'] ?? ''), "basement @{$width} overview num");
+                    $this->assertSame('14 of 14', (string) ($row['scopeNum'] ?? ''), "basement @{$width} client-scope num");
+                    $this->assertNotSame('1 of 13', (string) ($row['stepStatus'] ?? ''));
+                    $after = $row['afterNext'] ?? [];
+                    $this->assertSame('2 of 14', (string) ($after['stepStatus'] ?? ''), "basement @{$width} Next must advance 1 of 14 → 2 of 14");
+                    $this->assertSame('demolition', (string) ($after['activeStep'] ?? ''));
+                    $this->assertSame('→ Next', (string) ($after['nextLabel'] ?? ''));
+                }
             }
         }
 

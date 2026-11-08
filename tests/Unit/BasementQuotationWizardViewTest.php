@@ -33,6 +33,33 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="bulkhead_lf"', $html);
     }
 
+    public function test_full_preset_section_nums_match_footer_denominator_including_client_scope(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $tradeCount = count($enabledNow);
+        $withScope = $tradeCount + 1;
+
+        $this->assertSame(13, $tradeCount, 'full basement still has 13 trade steps');
+        $this->assertSame(14, $withScope, 'client scope is the 14th numbered step');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('1 of 14', $html);
+        $this->assertStringContainsString('13 of 14', $html);
+        $this->assertStringContainsString('14 of 14', $html);
+        $this->assertStringContainsString('data-br-step="client_scope"', $html);
+        $this->assertStringNotContainsString(' of 13', $html);
+        $this->assertMatchesRegularExpression(
+            '/data-br-step="overview"[\s\S]{0,400}1 of 14/',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-br-step="client_scope"[\s\S]{0,400}14 of 14/',
+            $html
+        );
+    }
+
     public function test_full_basement_wizard_keeps_framing_on_its_own_step(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

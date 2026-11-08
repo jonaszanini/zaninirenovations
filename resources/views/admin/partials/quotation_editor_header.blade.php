@@ -93,7 +93,8 @@
             class="admin-btn admin-btn--primary admin-btn--sm qh-actions__save"
             @if ($qhSaveId) id="{{ $qhSaveId }}" @endif
             @if ($qhFormAttr) form="{{ $qhFormAttr }}" @endif
-            @if ($qhSaveHotkey) data-hotkey-save @endif>
+            @if ($qhSaveHotkey) data-hotkey-save @endif
+            data-qh-save-intent="publish">
       <i class="fa fa-save" aria-hidden="true"></i> {{ $qhSaveLabel }}
     </button>
     @if ($qhShowDraft)
@@ -101,7 +102,8 @@
               class="admin-btn admin-btn--ghost admin-btn--sm qh-actions__draft"
               @if ($qhDraftId) id="{{ $qhDraftId }}" @endif
               @if ($qhFormAttr) form="{{ $qhFormAttr }}" @endif
-              @if ($qhDraftHotkey) data-hotkey-save @endif>
+              @if ($qhDraftHotkey) data-hotkey-save @endif
+              data-qh-save-intent="draft">
         Save as draft
       </button>
     @endif

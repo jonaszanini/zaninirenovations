@@ -18,6 +18,9 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('qh-actions__save', $partial);
         $this->assertStringContainsString('qh-actions__draft', $partial);
         $this->assertStringContainsString('qh-actions__cancel', $partial);
+        $this->assertStringContainsString('data-qh-save-intent="publish"', $partial);
+        $this->assertStringContainsString('data-qh-save-intent="draft"', $partial);
+        $this->assertStringContainsString('Save as draft', $partial);
         $this->assertStringContainsString('← Back', $partial);
         $this->assertStringContainsString('→ Next', $partial);
 
@@ -49,6 +52,10 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $mw);
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $sh);
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $br);
+        $this->assertStringContainsString('sectionKeys.length + 1', $br);
+        $this->assertStringContainsString("key === 'review' ? 'Save quotation'", $br);
+        $this->assertStringNotContainsString("key === 'review' ? 'Save'", $br);
+        $this->assertStringNotContainsString("' of ' + sectionKeys.length", $br);
         $this->assertStringContainsString('[data-qh-cancel]', $leave);
         $this->assertStringContainsString('Discard changes?', $leave);
         $this->assertDoesNotMatchRegularExpression(

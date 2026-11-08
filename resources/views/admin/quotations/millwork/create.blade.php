@@ -358,10 +358,11 @@
               class="admin-btn admin-btn--primary admin-btn--sm qh-sticky-footer__save"
               form="mw-main-form"
               data-qh-footer-save
+              data-qh-save-intent="publish"
               aria-label="Save quotation">
         <i class="fa fa-save" aria-hidden="true"></i>
         <span class="qh-sticky-footer__save-full">Save quotation</span>
-        <span class="qh-sticky-footer__save-short">Save</span>
+        <span class="qh-sticky-footer__save-short">Publish</span>
       </button>
     </div>
   </form>

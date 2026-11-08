@@ -29,6 +29,8 @@ class BasementQuotationPagesTest extends IntegrationTestCase
         $this->get(route('admin.quotations.basement.create'))
             ->assertOk()
             ->assertSee('1 of 14')
+            ->assertSee('14 of 14')
+            ->assertDontSee('1 of 13')
             ->assertSee('Project Overview')
             ->assertSee('What are you quoting?')
             ->assertSee('Full basement')
