@@ -930,12 +930,14 @@
     var host = ensureFinishHost();
     if (!host) return;
     if (!wallIds.length && state.selectedBulkheadId) {
+      host.removeAttribute('data-finish-walls');
       renderBulkheadFinishPanelNow(host);
       return;
     }
     if (!wallIds.length) {
       host.innerHTML = '';
       host.hidden = true;
+      host.removeAttribute('data-finish-walls');
       return;
     }
     host.hidden = false;
@@ -963,7 +965,6 @@
     var heading = wallIds.length > 1
       ? ('Wall finishes (' + wallIds.length + ' walls)')
       : ('Wall finishes · ' + primary);
-    host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">' + heading + '</div>';
     var finishKeys = ['drywall', 'paint', 'insulation', 'studs', 'baseboard'];
     var finishLabels = {
       drywall: 'Drywall',
@@ -972,7 +973,7 @@
       studs: 'Studs',
       baseboard: 'Baseboard'
     };
-    finishKeys.forEach(function (key) {
+    function finishBoxState(key) {
       var defaultVal = key === 'paint' ? false : defaults[key];
       var hasKey = Object.prototype.hasOwnProperty.call(flags, key);
       var checked = hasKey ? !!flags[key] : defaultVal;
@@ -993,12 +994,50 @@
           indeterminate = key === 'paint';
         }
       }
+      return { checked: checked, indeterminate: indeterminate };
+    }
+    function onFinishChange(ev) {
+      var input = ev && ev.target;
+      if (!input || !input.getAttribute) return;
+      var key = input.getAttribute('data-finish-key');
+      var val = input.checked;
+      writePlan(function (plan) {
+        plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
+        wallIds.forEach(function (wallId) {
+          plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
+          plan.zanini.wallFinishes[wallId][key] = val;
+          if (key === 'baseboard' && wallIsBoundary(wallId)) {
+            plan.zanini.wallFinishes[wallId].baseboardSides = 1;
+          }
+        });
+      });
+    }
+    var wallsKey = wallIds.join('\n');
+    if (host.getAttribute('data-finish-walls') === wallsKey && host.querySelector('input[data-finish-key="paint"]')) {
+      finishKeys.forEach(function (key) {
+        var existing = host.querySelector('input[data-finish-key="' + key + '"]');
+        if (!existing || !existing.isConnected) return;
+        var st = finishBoxState(key);
+        existing.indeterminate = !!st.indeterminate;
+        existing.checked = !!st.checked;
+      });
+      return;
+    }
+    host.setAttribute('data-finish-walls', wallsKey);
+    host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">' + heading + '</div>';
+    finishKeys.forEach(function (key) {
+      var st = finishBoxState(key);
       var row = document.createElement('label');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
-      row.innerHTML = '<input type="checkbox" data-finish-key="' + key + '" ' + (checked ? 'checked' : '') + '> ' + (finishLabels[key] || key);
+      var inputEl = document.createElement('input');
+      inputEl.type = 'checkbox';
+      inputEl.setAttribute('data-finish-key', key);
+      if (st.checked) inputEl.checked = true;
+      inputEl.addEventListener('change', onFinishChange);
+      row.appendChild(inputEl);
+      row.appendChild(document.createTextNode(' ' + (finishLabels[key] || key)));
       host.appendChild(row);
-      var inputEl = row.querySelector('input');
-      if (inputEl && indeterminate) inputEl.indeterminate = true;
+      if (st.indeterminate) inputEl.indeterminate = true;
     });
     if (sidesEligible.length === 0 && wallIds.length > 0) {
       var perimeterNote = document.createElement('p');
@@ -1034,22 +1073,6 @@
         }
       }
     }
-    host.querySelectorAll('input[data-finish-key]').forEach(function (input) {
-      input.addEventListener('change', function () {
-        var key = input.getAttribute('data-finish-key');
-        var val = input.checked;
-        writePlan(function (plan) {
-          plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
-          wallIds.forEach(function (wallId) {
-            plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
-            plan.zanini.wallFinishes[wallId][key] = val;
-            if (key === 'baseboard' && wallIsBoundary(wallId)) {
-              plan.zanini.wallFinishes[wallId].baseboardSides = 1;
-            }
-          });
-        });
-      });
-    });
     var sidesSelect = host.querySelector('[data-finish-sides]');
     if (sidesSelect) {
       sidesSelect.addEventListener('change', function () {

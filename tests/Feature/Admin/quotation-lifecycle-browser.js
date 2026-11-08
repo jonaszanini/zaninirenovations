@@ -205,6 +205,28 @@ async function revealThenType(page, spec, field) {
   await typeAccessible(page, field.selector, field.value, spec.type + ' ' + field.selector);
 }
 
+function isQuotePreviewPost(req) {
+  if (req.method() !== 'POST') return false;
+  try {
+    return /\/quotations\/[^/]+\/preview(?:\?|$)/.test(new URL(req.url()).pathname);
+  } catch (err) {
+    return false;
+  }
+}
+
+function attachPreviewNet(page) {
+  const net = { inflight: 0 };
+  page.on('request', (req) => {
+    if (isQuotePreviewPost(req)) net.inflight += 1;
+  });
+  const done = (req) => {
+    if (isQuotePreviewPost(req)) net.inflight = Math.max(0, net.inflight - 1);
+  };
+  page.on('requestfinished', done);
+  page.on('requestfailed', done);
+  return net;
+}
+
 async function readFooterSnap(page) {
   return page.evaluate(() => {
     const a = document.querySelector('[data-qh-footer-amount]');
@@ -217,42 +239,67 @@ async function readFooterSnap(page) {
       || a.getAttribute('aria-busy') === 'true'
     ));
     const money = /CA\$[\d,]+\.\d{2}/.test(t);
-    const previewOk = !root || root.getAttribute('data-pq-preview-state') === 'ready';
+    const st = root ? String(root.getAttribute('data-pq-preview-state') || '') : '';
+    const previewOk = !root || st === 'ready';
     const livePending = !!window.__quoteGrandTotalPending || !!window.__quoteGrandTotalUnavailable;
     return {
       ok: !!(a && !pending && money && previewOk && !livePending),
       text,
       pending: a ? a.getAttribute('data-qh-footer-pending') : null,
-      preview: root ? root.getAttribute('data-pq-preview-state') : null,
+      preview: root ? st : null,
     };
   });
 }
 
-async function waitFooterSettled(page) {
-  const hasPreview = !!(await page.$('#pq-live-root'));
-  const holdMs = hasPreview ? 700 : 300;
-  const deadline = Date.now() + 25000;
-  let stableSince = 0;
-  let last = '';
-  while (Date.now() < deadline) {
-    const snap = await readFooterSnap(page);
-    if (snap.ok && snap.text && snap.text === last) {
-      if (!stableSince) stableSince = Date.now();
-      if (Date.now() - stableSince >= holdMs) return;
-    } else {
-      stableSince = 0;
-      last = snap.ok ? snap.text : '';
-    }
-    await new Promise((r) => setTimeout(r, 80));
-  }
-  throw new Error('footer did not settle to CA$ money: ' + JSON.stringify(await readFooterSnap(page)));
+async function waitOneRenderCycle(page) {
+  await page.evaluate(() => new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve));
+  }));
 }
 
-async function gotoEdit(page, href) {
+async function waitFooterSettled(page, net) {
+  const deadline = Date.now() + 25000;
+  while (Date.now() < deadline) {
+    try {
+      await page.waitForFunction(() => {
+        const a = document.querySelector('[data-qh-footer-amount]');
+        if (!a) return false;
+        const root = document.getElementById('pq-live-root');
+        if (root) {
+          const st = root.getAttribute('data-pq-preview-state') || '';
+          if (st === 'idle' || st === 'loading') return false;
+          if (st !== 'ready') return false;
+        }
+        if (a.getAttribute('data-qh-footer-pending') === '1') return false;
+        if (a.getAttribute('data-qh-footer-unavailable') === '1') return false;
+        if (a.getAttribute('aria-busy') === 'true') return false;
+        if (window.__quoteGrandTotalPending) return false;
+        if (window.__quoteGrandTotalUnavailable) return false;
+        const t = (a.textContent || '').replace(/\s+/g, '');
+        return /CA\$[\d,]+\.\d{2}/.test(t);
+      }, { timeout: Math.max(250, deadline - Date.now()) });
+    } catch (err) {
+      break;
+    }
+    if (net && net.inflight > 0) {
+      await new Promise((r) => setTimeout(r, 40));
+      continue;
+    }
+    await waitOneRenderCycle(page);
+    const snap = await readFooterSnap(page);
+    if (snap.ok && !(net && net.inflight > 0)) return;
+  }
+  throw new Error('latest preview did not settle: ' + JSON.stringify({
+    ...(await readFooterSnap(page)),
+    inflight: net ? net.inflight : null,
+  }));
+}
+
+async function gotoEdit(page, href, net) {
   await page.goto(base + href, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-qh-header]');
   await page.waitForSelector('[data-qh-footer-amount]');
-  await waitFooterSettled(page);
+  await waitFooterSettled(page, net);
 }
 
 async function clickAndWait(page, selector, label) {
@@ -282,6 +329,7 @@ async function shotPair(page, spec, kind) {
   const page = await browser.newPage();
   page.setDefaultNavigationTimeout(45000);
   page.setDefaultTimeout(30000);
+  const previewNet = attachPreviewNet(page);
   await login(page);
 
   const report = { sha, types: {} };
@@ -298,7 +346,7 @@ async function shotPair(page, spec, kind) {
       widths: {},
     };
     await page.setViewport(viewportFor(width));
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, previewNet);
 
     const before = await page.evaluate(inspectSaveControls);
     row.draftOrPublished = spec.expectDraft ? 'draft' : 'published';
@@ -318,7 +366,7 @@ async function shotPair(page, spec, kind) {
       }
       await clickAndWait(page, '[data-qh-header] [data-qh-save-intent="publish"]', spec.type + ' header Publish');
       row.publishedFromDraft = true;
-      await gotoEdit(page, spec.editHref);
+      await gotoEdit(page, spec.editHref, previewNet);
     }
 
     for (const field of fields) {
@@ -330,7 +378,7 @@ async function shotPair(page, spec, kind) {
       row.savedViaFooter = true;
     }
 
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, previewNet);
     if (primary && Array.isArray(spec.revealClicks)) {
       for (const sel of spec.revealClicks) {
         const handle = await page.$(sel);
@@ -347,7 +395,7 @@ async function shotPair(page, spec, kind) {
         await fieldHandle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
       }
     }
-    await waitFooterSettled(page);
+    await waitFooterSettled(page, previewNet);
     const after = await page.evaluate(inspectSaveControls);
     if (primary) {
       after.fieldValue = await page.$eval(primary, (el) => String(el.value || ''));
