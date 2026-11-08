@@ -927,11 +927,14 @@
           preview.textContent = bags + ' bag' + (bags === 1 ? '' : 's');
         }
 
-        function syncMarbleVisibility() {
+        function applyMarbleVisibility() {
           var on = enabled.checked;
           fields.hidden = !on;
           syncMarbleRequired(on);
           updateMarbleBagPreview();
+        }
+        function syncMarbleVisibility() {
+          applyMarbleVisibility();
           schedule();
         }
 
@@ -939,7 +942,9 @@
         [typeSel, areaIn, depthIn].forEach(function (el) {
           if (el) el.addEventListener('input', updateMarbleBagPreview);
         });
-        syncMarbleVisibility();
+        // Init must not schedule(): that queued runPreview 220ms later and
+        // replaced the SSR/initial CA$ footer with … after the first ready paint.
+        applyMarbleVisibility();
       })();
 
       function syncBaseDepthDisplay() {

@@ -278,6 +278,14 @@ trait PublishesLinkedQuotations
 
     protected function quoteCalculatorTotal(string $type, object $quote): float
     {
+        return $this->storedQuoteTotal($quote);
+    }
+
+    /**
+     * Persisted grand total column only — not a calculator call.
+     */
+    protected function storedQuoteTotal(object $quote): float
+    {
         foreach (['final_quote_total', 'grand_total'] as $field) {
             if (isset($quote->{$field}) && $quote->{$field} !== null) {
                 return (float) $quote->{$field};
@@ -285,6 +293,157 @@ trait PublishesLinkedQuotations
         }
 
         return 0.0;
+    }
+
+    /**
+     * Independent expected qty + grand total for typeFields() fixtures.
+     * Standard labour is labour_fixed_amount × 13% HST. Other totals are
+     * pinned literals for this fixture (not derived from the calculator).
+     *
+     * @return array{
+     *   publishQty: float,
+     *   publishTotal: float,
+     *   httpEditQty: float,
+     *   httpEditTotal: float,
+     *   browserEditQty: float,
+     *   browserEditTotal: float,
+     *   scopeWord: string
+     * }
+     */
+    protected function lifecycleFixtureExpected(string $type): array
+    {
+        $hst = 1.13;
+
+        return match ($type) {
+            'standard' => [
+                'publishQty' => 100.0,
+                'publishTotal' => round(100 * $hst, 2),
+                'httpEditQty' => 500.0,
+                'httpEditTotal' => round(500 * $hst, 2),
+                'browserEditQty' => 500.0,
+                'browserEditTotal' => round(500 * $hst, 2),
+                'scopeWord' => 'Labour',
+            ],
+            'basement' => [
+                'publishQty' => 850.0,
+                'publishTotal' => 31322.35,
+                'httpEditQty' => 400.0,
+                'httpEditTotal' => 17862.36,
+                'browserEditQty' => 400.0,
+                'browserEditTotal' => 17862.36,
+                'scopeWord' => 'basement',
+            ],
+            'millwork' => [
+                'publishQty' => 1.0,
+                'publishTotal' => 109.05,
+                'httpEditQty' => 3.0,
+                'httpEditTotal' => 192.67,
+                'browserEditQty' => 3.0,
+                'browserEditTotal' => 192.67,
+                'scopeWord' => 'shelf',
+            ],
+            'flooring' => [
+                'publishQty' => 200.0,
+                'publishTotal' => 960.50,
+                'httpEditQty' => 80.0,
+                'httpEditTotal' => 384.20,
+                'browserEditQty' => 80.0,
+                'browserEditTotal' => 384.20,
+                'scopeWord' => 'floor',
+            ],
+            'trimming' => [
+                'publishQty' => 80.0,
+                'publishTotal' => 700.49,
+                'httpEditQty' => 40.0,
+                'httpEditTotal' => 403.98,
+                'browserEditQty' => 40.0,
+                'browserEditTotal' => 403.98,
+                'scopeWord' => 'baseboard',
+            ],
+            'shed' => [
+                'publishQty' => 10.0,
+                'publishTotal' => 8545.18,
+                'httpEditQty' => 8.0,
+                'httpEditTotal' => 7725.15,
+                'browserEditQty' => 8.0,
+                'browserEditTotal' => 7725.15,
+                'scopeWord' => 'shed',
+            ],
+            'tile' => [
+                'publishQty' => 80.0,
+                'publishTotal' => 1193.28,
+                'httpEditQty' => 20.0,
+                'httpEditTotal' => 994.40,
+                'browserEditQty' => 20.0,
+                'browserEditTotal' => 298.32,
+                'scopeWord' => 'tile',
+            ],
+            'fence' => [
+                'publishQty' => 24.0,
+                'publishTotal' => 1491.60,
+                'httpEditQty' => 48.0,
+                'httpEditTotal' => 2983.20,
+                'browserEditQty' => 48.0,
+                'browserEditTotal' => 2983.20,
+                'scopeWord' => 'fence',
+            ],
+            'paving' => [
+                'publishQty' => 80.0,
+                'publishTotal' => 4179.03,
+                'httpEditQty' => 40.0,
+                'httpEditTotal' => 2938.89,
+                'browserEditQty' => 40.0,
+                'browserEditTotal' => 2938.89,
+                'scopeWord' => 'Paving',
+            ],
+            'stairs' => [
+                'publishQty' => 12.0,
+                'publishTotal' => 90.40,
+                'httpEditQty' => 8.0,
+                'httpEditTotal' => 45.20,
+                'browserEditQty' => 8.0,
+                'browserEditTotal' => 45.20,
+                'scopeWord' => 'stair',
+            ],
+            'low-deck' => [
+                'publishQty' => 16.0,
+                'publishTotal' => 2237.40,
+                'httpEditQty' => 10.0,
+                'httpEditTotal' => 971.80,
+                'browserEditQty' => 10.0,
+                'browserEditTotal' => 1423.80,
+                'scopeWord' => 'deck',
+            ],
+            default => [
+                'publishQty' => 0.0,
+                'publishTotal' => 0.0,
+                'httpEditQty' => 0.0,
+                'httpEditTotal' => 0.0,
+                'browserEditQty' => 0.0,
+                'browserEditTotal' => 0.0,
+                'scopeWord' => 'quote',
+            ],
+        };
+    }
+
+    protected function storedLifecycleQty(string $type, object $quote): float
+    {
+        $inputs = is_array($quote->inputs ?? null) ? $quote->inputs : [];
+
+        return (float) match ($type) {
+            'standard' => data_get($quote->works, '0.labour_fixed_amount', $quote->labour_fixed_amount),
+            'basement' => $inputs['area_sqft'] ?? 0,
+            'millwork' => data_get($inputs, 'pieces.0.sets.0.qty', 0),
+            'flooring' => $inputs['square_footage'] ?? 0,
+            'trimming' => $inputs['floor_lf'] ?? 0,
+            'shed' => $inputs['length_ft'] ?? 0,
+            'tile' => $inputs['total_area_sqft'] ?? 0,
+            'fence' => data_get($quote->sides, '0.length_ft', 0),
+            'paving' => data_get($inputs, 'stone_entries.0.area_sq_ft', 0),
+            'stairs' => $inputs['total_steps'] ?? 0,
+            'low-deck' => $quote->length_ft ?? 0,
+            default => 0,
+        };
     }
 
     /**

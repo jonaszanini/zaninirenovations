@@ -183,21 +183,43 @@ async function main() {
       },
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
-    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
-    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
-    await page.waitForFunction(() => {
-      const plan = window.__openPlan3D.getProject();
-      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
-        && plan.zanini.wallFinishes.pw0.paint === true);
-    }, { timeout: 8000 });
+    const paintSel = '#openplan3d-zanini-finish-host input[data-finish-key="paint"]';
 
-    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
-    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
-    await page.waitForFunction(() => {
-      const plan = window.__openPlan3D.getProject();
-      const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
-      return !!(flags && Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
-    }, { timeout: 8000 });
+    async function waitOneRenderCycle() {
+      await page.evaluate(() => new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+    }
+
+    async function waitPaintSynced(wantOn) {
+      await page.waitForFunction((want, sel) => {
+        const input = document.querySelector(sel);
+        if (!input || !input.isConnected || input.disabled || input.hidden) return false;
+        const style = window.getComputedStyle(input);
+        if (style.display === 'none' || style.visibility === 'hidden' || style.pointerEvents === 'none') return false;
+        const flags = window.__openPlan3D.getProject().zanini
+          && window.__openPlan3D.getProject().zanini.wallFinishes
+          && window.__openPlan3D.getProject().zanini.wallFinishes.pw0;
+        if (!flags) return false;
+        const planOn = want
+          ? flags.paint === true
+          : (Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
+        if (!planOn) return false;
+        if (input.indeterminate) return false;
+        return !!input.checked === want;
+      }, { timeout: 8000 }, wantOn, paintSel);
+    }
+
+    await page.waitForSelector(paintSel, { timeout: 8000, visible: true });
+    await page.click(paintSel);
+    await waitPaintSynced(true);
+    await waitOneRenderCycle();
+    await waitPaintSynced(true);
+
+    await page.click(paintSel);
+    await waitPaintSynced(false);
+    await waitOneRenderCycle();
+    await waitPaintSynced(false);
 
     await page.evaluate(() => {
       const mod = window.__openPlan3DStoreModule;

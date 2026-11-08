@@ -354,7 +354,7 @@
       <span class="mw-totals-bar__detail" id="mw-bar-markup-wrap" hidden><em>Markup</em> <strong id="mw-bar-markup">CA$0.00</strong></span>
       <span class="mw-totals-bar__core"><em>Subtotal</em> <strong id="mw-bar-sub">CA$0.00</strong></span>
       <span class="mw-totals-bar__detail"><em>HST 13%</em> <strong id="mw-bar-hst">CA$0.00</strong></span>
-      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total" data-qh-footer-amount>CA$0.00</strong></span>
+      <span class="mw-totals-bar__core mw-totals-bar__total"><em>Total</em> <strong id="mw-bar-total" data-qh-footer-amount>{{ $isEdit ? \App\Models\ClientProject::formatMoney((float) ($quotation->final_quote_total ?? 0)) : 'CA$0.00' }}</strong></span>
       <button type="submit"
               class="admin-btn admin-btn--primary admin-btn--sm qh-sticky-footer__save"
               form="mw-main-form"

@@ -164,4 +164,42 @@ class QuotationEditorFooterTest extends IntegrationTestCase
         $this->assertSame(1, substr_count($html, 'data-qh-footer-save'));
         $this->assertStringContainsString('CA$', $html);
     }
+
+    public function test_footer_keeps_explicit_zero_and_seeds_omitted_from_stored_total(): void
+    {
+        $stored = (object) ['grand_total' => 1234.56];
+
+        $explicitZero = view('admin.partials.quotation_editor_footer', [
+            'formId' => 'qh-footer-seed-form',
+            'quotation' => $stored,
+            'initialTotal' => 0,
+        ])->render();
+        $this->assertMatchesRegularExpression(
+            '/data-qh-footer-amount[^>]*>\s*CA\$0\.00/',
+            $explicitZero,
+            'explicit initialTotal 0 must not be replaced by a stored nonzero total'
+        );
+        $this->assertStringNotContainsString('CA$1,234.56', $explicitZero);
+
+        $omitted = view('admin.partials.quotation_editor_footer', [
+            'formId' => 'qh-footer-seed-form',
+            'quotation' => $stored,
+        ])->render();
+        $this->assertMatchesRegularExpression(
+            '/data-qh-footer-amount[^>]*>\s*CA\$1,234\.56/',
+            $omitted,
+            'omitted initialTotal must seed the stored total'
+        );
+
+        $storedZero = (object) ['grand_total' => 0];
+        $omittedZero = view('admin.partials.quotation_editor_footer', [
+            'formId' => 'qh-footer-seed-form',
+            'quotation' => $storedZero,
+        ])->render();
+        $this->assertMatchesRegularExpression(
+            '/data-qh-footer-amount[^>]*>\s*CA\$0\.00/',
+            $omittedZero,
+            'stored total 0 must SSR as CA$0.00 when initialTotal is omitted'
+        );
+    }
 }
