@@ -205,10 +205,22 @@ async function revealThenType(page, spec, field) {
   await typeAccessible(page, field.selector, field.value, spec.type + ' ' + field.selector);
 }
 
+async function waitFooterSettled(page) {
+  await page.waitForFunction(() => {
+    const a = document.querySelector('[data-qh-footer-amount]');
+    if (!a) return false;
+    if (a.getAttribute('data-qh-footer-pending') === '1') return false;
+    if (a.getAttribute('aria-busy') === 'true') return false;
+    const t = (a.textContent || '').replace(/\s+/g, '');
+    return /CA\$[\d,]+\.\d{2}/.test(t);
+  }, { timeout: 20000 });
+}
+
 async function gotoEdit(page, href) {
   await page.goto(base + href, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-qh-header]');
   await page.waitForSelector('[data-qh-footer-amount]');
+  await waitFooterSettled(page);
 }
 
 async function clickAndWait(page, selector, label) {

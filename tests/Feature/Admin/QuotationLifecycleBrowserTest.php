@@ -286,7 +286,11 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         $pdfPath = storage_path('app/quote-lifecycle-browser-'.$type.'-'.$width.'.pdf');
         file_put_contents($pdfPath, $pdf->getContent());
         $text = $this->extractPdfText($pdfPath);
-        $this->assertStringContainsString(ClientProject::formatMoney($expectedTotal), $text);
+        $money = ClientProject::formatMoney($expectedTotal);
+        $this->assertTrue(
+            str_contains($text, $money) || str_contains($this->pdfPlainText($text), $this->pdfPlainText($money)),
+            $type.'@'.$width.' PDF text must include independent expected total '.$money
+        );
         $this->assertStringContainsString((string) $quote->client_name, $text);
         $this->assertStringContainsStringIgnoringCase($scopeWord, $text, $type.'@'.$width.' PDF must include fixture scope "'.$scopeWord.'"');
     }

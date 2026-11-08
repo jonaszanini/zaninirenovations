@@ -24,9 +24,12 @@ trait ExtractsPdfText
             }
         }
 
-        if (preg_match_all('/stream\r?\n([\s\S]*?)\r?\nendstream/', $bin, $matches)) {
-            foreach ($matches[1] as $raw) {
-                $payload = ltrim($raw, "\r\n");
+        // Use /Length so Flate payloads that happen to contain "endstream" bytes
+        // are not truncated (that drop is how first-page CA$ totals go missing).
+        if (preg_match_all('/\/Length\s+(\d+)\s*>>\s*stream\r?\n/', $bin, $matches, PREG_OFFSET_CAPTURE)) {
+            foreach ($matches[0] as $i => $full) {
+                $length = (int) $matches[1][$i][0];
+                $payload = substr($bin, $full[1] + strlen($full[0]), $length);
                 $inflated = @gzuncompress($payload);
                 if ($inflated === false) {
                     $inflated = @gzinflate($payload);
@@ -42,6 +45,16 @@ trait ExtractsPdfText
         }
 
         return implode("\n", $chunks);
+    }
+
+    /**
+     * Strip NULs and whitespace so DomPDF glyph splits still match CA$1,234.56.
+     */
+    protected function pdfPlainText(string $text): string
+    {
+        $text = str_replace("\0", '', $text);
+
+        return preg_replace('/\s+/u', '', $text) ?? $text;
     }
 
     protected function decodePdfStringLiterals(string $stream): string
