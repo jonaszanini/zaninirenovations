@@ -240,6 +240,42 @@ const cases = [
     },
   },
   {
+    name: 'paving marble section view',
+    paths: ['resources/views/admin/quotations/paving/_marble_section.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
+    name: 'info tip js help wrapper',
+    paths: ['public/js/admin-info-tip.js'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
+    name: 'info tip blade help wrapper',
+    paths: ['resources/views/components/admin/info-tip.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
+    name: 'admin css hanging-indent help wrapper',
+    paths: ['public/css/admin.css'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
     name: 'admin dialog shared with quotation fixtures',
     paths: ['public/js/admin-dialog.js'],
     expect: {

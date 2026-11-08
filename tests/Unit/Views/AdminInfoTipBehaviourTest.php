@@ -341,6 +341,14 @@ BLADE);
             $css
         );
         $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s+>\s+label\.admin-checkbox[\s\S]{0,200}position:\s*relative/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s+\.admin-checkbox__input[\s\S]{0,240}width:\s*24px/',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
             '/\.admin-form-group\s+label\.admin-checkbox__tail[\s\S]{0,500}text-transform:\s*inherit/',
             $css
         );

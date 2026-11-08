@@ -109,10 +109,13 @@
     "app/Models/ClientProjectQuotation.php",
     "app/Support/Quotations/**",
     "resources/views/admin/quotations/**",
+    "resources/views/components/admin/info-tip.blade.php",
     "public/js/*quotation*",
     "public/js/admin-hotkey-save.js",
     "public/js/admin-toast.js",
     "public/js/admin-dialog.js",
+    "public/js/admin-info-tip.js",
+    "public/css/admin.css",
     "tests/js/quotation-**",
     "tests/js/fixtures/quotation-redraft-hotkey-lock.html"
   ],

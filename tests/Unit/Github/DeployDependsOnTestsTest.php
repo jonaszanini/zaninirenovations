@@ -213,6 +213,23 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertContains('tests/Feature/Admin/QuotationHelpTipBrowserTest.php', $quotationFilter);
         $this->assertContains('tests/Feature/Admin/StairsQuotationPagesTest.php', $quotationFilter);
         $this->assertContains('tests/Feature/Admin/BasementDemoChoiceBrowserTest.php', $quotationFilter);
+        $this->assertContains(
+            'tests/Feature/Admin/PavingMarbleBrowserTest.php',
+            $quotationFilter,
+            'Paving view / info-tip wrapper PRs must run PavingMarbleBrowserTest, not only main extended.txt'
+        );
+        exec(
+            'CI_MYSQL_SUITE=pr CI_MYSQL_FILTER_QUOTATION=true bash '
+            .escapeshellarg(base_path('tests/ci/select-database-paths.sh')),
+            $selected,
+            $selectCode
+        );
+        $this->assertSame(0, $selectCode, 'select-database-paths.sh failed for quotation filter');
+        $this->assertContains(
+            'tests/Feature/Admin/PavingMarbleBrowserTest.php',
+            $selected,
+            'quotation-filter PRs must actually select PavingMarbleBrowserTest in the mysql path list'
+        );
         $core = $this->pathsFile('tests/ci/database-core.txt');
         $this->assertContains('tests/Feature/Admin/StairsQuotationPagesTest.php', $core);
         $this->assertNotContains(

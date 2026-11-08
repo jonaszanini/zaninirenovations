@@ -1750,6 +1750,7 @@ a.admin-client-link:focus-visible {
 .admin-label-with-tip:has(> label.admin-checkbox) > label.admin-checkbox--block,
 .admin-checkbox-row > label.admin-checkbox {
   display: inline;
+  position: relative;
   align-items: unset;
   margin-bottom: 0;
   text-indent: 0;
@@ -1760,6 +1761,23 @@ a.admin-client-link:focus-visible {
   letter-spacing: inherit;
   text-transform: inherit;
   color: inherit;
+}
+/* Hanging-indent rows make the label `display:inline`, so the clipped 1×1
+   native input leaves the mark. Keep the input on the 24px mark so a real
+   click (and page.click('#id')) hits the control once; the sibling ⓘ stays
+   outside the label and must not toggle. */
+.admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__input,
+.admin-checkbox-row > label.admin-checkbox > .admin-checkbox__input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  clip: auto;
+  overflow: visible;
+  opacity: 0;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  cursor: pointer;
 }
 .admin-label-with-tip:has(> label.admin-checkbox) .admin-checkbox__mark {
   display: inline-block;
