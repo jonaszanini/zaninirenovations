@@ -32,7 +32,9 @@
     sidebarObserverPaused: false,
     raf: null,
     canvasObserver: null,
-    wallHooked: false
+    wallHooked: false,
+    writingPlan: false,
+    selectionRestoreGen: 0
   };
 
   function uid(prefix) {
@@ -271,6 +273,10 @@
     state.selectedWallIds = ids.slice();
   }
 
+  function invalidatePendingSelectionRestore() {
+    state.selectionRestoreGen += 1;
+  }
+
   function writePlan(mutator) {
     var api = getApi();
     if (!api || typeof api.getProject !== 'function' || typeof api.setProject !== 'function') return null;
@@ -284,12 +290,31 @@
     if (!plan.zanini || typeof plan.zanini !== 'object') {
       plan.zanini = { version: 1, zones: [], bulkheads: [], wallFinishes: {} };
     }
+    // setProject can wipe vendor wall selection. Restore the snapshot so the
+    // finish panel stays on the wall that was just edited — but only if the
+    // user/test has not selected or cleared walls since this write.
     var savedSelection = captureWallSelection();
-    mutator(plan);
-    api.setProject(plan);
-    postPlanChanged(plan);
+    var restoreGen = ++state.selectionRestoreGen;
+    state.writingPlan = true;
+    try {
+      mutator(plan);
+      api.setProject(plan);
+      postPlanChanged(plan);
+      if (savedSelection.length) restoreWallSelection(savedSelection);
+    } finally {
+      state.writingPlan = false;
+    }
     requestAnimationFrame(function () {
-      restoreWallSelection(savedSelection);
+      if (restoreGen !== state.selectionRestoreGen) return;
+      var now = captureWallSelection();
+      if (!now.length && savedSelection.length) {
+        state.writingPlan = true;
+        try {
+          restoreWallSelection(savedSelection);
+        } finally {
+          state.writingPlan = false;
+        }
+      }
       renderFinishPanel();
     });
     return plan;
@@ -1080,6 +1105,7 @@
     if (!mod) return;
     state.wallHooked = true;
     function onSelectionChange() {
+      if (!state.writingPlan) invalidatePendingSelectionRestore();
       renderFinishPanel();
     }
     if (mod.bg && typeof mod.bg.subscribe === 'function') mod.bg.subscribe(onSelectionChange);
@@ -1175,6 +1201,7 @@
     setInterval(scheduleOverlay, 500);
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') {
+        invalidatePendingSelectionRestore();
         setMode(null);
         state.selectedBulkheadId = null;
         scheduleOverlay();
@@ -1216,6 +1243,8 @@
     wallsEligibleForBaseboardSidesControl: wallsEligibleForBaseboardSidesControl,
     readBaseboardSidesForWall: readBaseboardSidesForWall,
     readSelectedWallIds: readSelectedWallIds,
+    writePlan: writePlan,
+    invalidatePendingSelectionRestore: invalidatePendingSelectionRestore,
     isEditor3DViewActive: isEditor3DViewActive,
     mergeZones: mergeZones,
     toggleZoneExclude: toggleZoneExclude,

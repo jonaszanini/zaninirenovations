@@ -199,6 +199,53 @@ async function main() {
       return !!(flags && Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
     }, { timeout: 8000 });
 
+    await page.evaluate(() => {
+      const mod = window.__openPlan3DStoreModule;
+      if (mod) {
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
+        if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
+        if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
+      }
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    });
+    await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
+    const afterToggleClear = await page.evaluate(() => {
+      const ids = window.OpenPlan3DZaniniTools.readSelectedWallIds();
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      const flags = window.__openPlan3D.getProject().zanini.wallFinishes.pw0;
+      return {
+        ids,
+        hidden: !host || host.hidden || host.innerHTML === '',
+        paintFalse: !!(flags && flags.paint === false),
+      };
+    });
+    assert.deepStrictEqual(afterToggleClear.ids, []);
+    assert.strictEqual(afterToggleClear.hidden, true, 'panel hides after deselect following a finish toggle');
+    assert.strictEqual(afterToggleClear.paintFalse, true, 'paint=false persists while deselected');
+
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    const persisted = await page.evaluate(() => {
+      const input = document.querySelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]');
+      const flags = window.__openPlan3D.getProject().zanini.wallFinishes.pw0;
+      return {
+        visible: !!(input && !document.getElementById('openplan3d-zanini-finish-host').hidden),
+        checked: !!(input && input.checked),
+        paintFalse: !!(flags && flags.paint === false),
+      };
+    });
+    assert.strictEqual(persisted.visible, true, 'finish panel reopens after deselect with paint persisted');
+    assert.strictEqual(persisted.paintFalse, true, 'reopened wall keeps paint=false');
+    assert.strictEqual(persisted.checked, false, 'reopened Paint checkbox stays unchecked');
+
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(false));
     await page.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
@@ -220,39 +267,85 @@ async function main() {
     });
     assert.strictEqual(multiOk, true, 'multi-wall render without plan.zanini must not throw');
 
-    // readSelectedWallIds falls back to store aB after bg/X. Vendor can rewrite
-    // selection after Escape; keep clearing until ids and the panel agree.
-    await page.evaluate(() => {
-      const mod = window.__openPlan3DStoreModule;
-      if (mod) {
-        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
-        if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
-        if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
-      }
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-    });
-    await page.waitForFunction(() => {
-      const mod = window.__openPlan3DStoreModule;
-      if (mod) {
-        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
-        if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
-        if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
-      }
-      const ids = window.OpenPlan3DZaniniTools && window.OpenPlan3DZaniniTools.readSelectedWallIds
-        ? window.OpenPlan3DZaniniTools.readSelectedWallIds()
-        : [];
-      if (ids && ids.length) return false;
-      if (window.OpenPlan3DZaniniTools && typeof window.OpenPlan3DZaniniTools.renderFinishPanel === 'function') {
+    async function readSettled() {
+      return page.evaluate(() => {
+        const ids = window.OpenPlan3DZaniniTools.readSelectedWallIds
+          ? window.OpenPlan3DZaniniTools.readSelectedWallIds()
+          : [];
+        const host = document.getElementById('openplan3d-zanini-finish-host');
+        const hidden = !host || host.hidden || host.innerHTML === '';
+        return { ids, hidden };
+      });
+    }
+
+    async function pumpFrame() {
+      await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => resolve())));
+    }
+
+    async function clearWallSelectionOnce() {
+      await page.evaluate(() => {
+        const mod = window.__openPlan3DStoreModule;
+        if (mod) {
+          if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set());
+          if (mod.X && typeof mod.X.set === 'function') mod.X.set(null);
+          if (mod.aB && typeof mod.aB.set === 'function') mod.aB.set(null);
+        }
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      });
+    }
+
+    async function assertHiddenAndEmpty(label) {
+      const settled = await readSettled();
+      assert.deepStrictEqual(settled.ids, [], label + ': ids');
+      assert.strictEqual(settled.hidden, true, label);
+    }
+
+    // Premise: Escape/clear is one selection change. writePlan must not restore a
+    // snapshot from an earlier finish toggle on a later animation frame.
+    await clearWallSelectionOnce();
+    await pumpFrame();
+    await assertHiddenAndEmpty('finish panel hides when no wall selected');
+    await page.evaluate(() => window.OpenPlan3DZaniniTools.renderFinishPanel());
+    await pumpFrame();
+    await assertHiddenAndEmpty('finish panel stays hidden after a later render/event cycle');
+
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
         window.OpenPlan3DZaniniTools.renderFinishPanel();
-      }
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 8000 });
+    const reopened = await page.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
-      return !host || host.hidden || host.innerHTML === '';
-    }, { timeout: 8000 });
-    const hidden = await page.evaluate(() => {
-      const host = document.getElementById('openplan3d-zanini-finish-host');
-      return !host || host.hidden || host.innerHTML === '';
+      return !!(host && !host.hidden && host.querySelector('input[data-finish-key="paint"]'));
     });
-    assert.strictEqual(hidden, true, 'finish panel hides when no wall selected');
+    assert.strictEqual(reopened, true, 'finish panel reopens when a wall is selected again');
+
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-finish-selected-1280.png') });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-finish-selected-390.png') });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+
+    await clearWallSelectionOnce();
+    await pumpFrame();
+    await assertHiddenAndEmpty('reopened panel hides again after a later deselect');
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-finish-cleared-1280.png') });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await page.screenshot({ path: path.join(shotsDir, 'room-area-finish-cleared-390.png') });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    try {
+      fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
+      ['room-area-finish-selected-1280.png', 'room-area-finish-selected-390.png',
+        'room-area-finish-cleared-1280.png', 'room-area-finish-cleared-390.png'].forEach((name) => {
+        fs.copyFileSync(path.join(shotsDir, name), path.join('/opt/cursor/artifacts', name));
+      });
+    } catch (e) { /* CI runners may not have /opt/cursor/artifacts */ }
 
     console.log('openplan3d-wall-finish-browser: ok');
   } finally {

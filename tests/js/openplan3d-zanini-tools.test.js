@@ -210,4 +210,69 @@ assert.strictEqual(
   1
 );
 
+function makeStore(initial) {
+  var value = initial;
+  return {
+    subscribe: function (fn) { fn(value); return function () {}; },
+    set: function (next) { value = next; }
+  };
+}
+var rafQueue = [];
+global.requestAnimationFrame = function (fn) { rafQueue.push(fn); return rafQueue.length; };
+window.__openPlan3DStoreModule = {
+  bg: makeStore(new Set(['pw0'])),
+  X: makeStore('pw0'),
+  aB: makeStore('pw0')
+};
+var finishPlan = {
+  activeFloorId: 'f1',
+  floors: [{
+    id: 'f1',
+    walls: [
+      { id: 'pw0', start: { x: 0, y: 0 }, end: { x: 120, y: 0 } },
+      { id: 'pw1', start: { x: 120, y: 0 }, end: { x: 120, y: 120 } }
+    ],
+    rooms: [{ id: 'r1', walls: ['pw0', 'pw1'] }]
+  }],
+  zanini: { version: 1, zones: [], bulkheads: [], wallFinishes: {} }
+};
+window.__openPlan3D = {
+  getProject: function () { return finishPlan; },
+  setProject: function (p) {
+    finishPlan = p;
+    window.__openPlan3DStoreModule.bg.set(new Set());
+    window.__openPlan3DStoreModule.X.set(null);
+    window.__openPlan3DStoreModule.aB.set(null);
+  }
+};
+
+rafQueue.length = 0;
+tools.writePlan(function (plan) {
+  plan.zanini.wallFinishes.pw0 = { paint: true };
+});
+assert.deepStrictEqual(tools.readSelectedWallIds(), ['pw0'], 'writePlan restores selection after setProject wipe');
+assert.strictEqual(finishPlan.zanini.wallFinishes.pw0.paint, true);
+
+window.__openPlan3DStoreModule.bg.set(new Set());
+window.__openPlan3DStoreModule.X.set(null);
+window.__openPlan3DStoreModule.aB.set(null);
+tools.invalidatePendingSelectionRestore();
+rafQueue.splice(0).forEach(function (fn) { fn(); });
+assert.deepStrictEqual(
+  tools.readSelectedWallIds(),
+  [],
+  'writePlan rAF must not restore a snapshot after a later deselect'
+);
+
+rafQueue.length = 0;
+window.__openPlan3DStoreModule.bg.set(new Set(['pw0']));
+window.__openPlan3DStoreModule.X.set('pw0');
+window.__openPlan3DStoreModule.aB.set('pw0');
+tools.writePlan(function (plan) {
+  plan.zanini.wallFinishes.pw0 = { paint: false };
+});
+assert.deepStrictEqual(tools.readSelectedWallIds(), ['pw0'], 'sync restore keeps the edited wall selected');
+rafQueue.splice(0).forEach(function (fn) { fn(); });
+assert.deepStrictEqual(tools.readSelectedWallIds(), ['pw0'], 'rAF restore is a no-op when selection already survived');
+
 console.log('openplan3d-zanini-tools: ok');
