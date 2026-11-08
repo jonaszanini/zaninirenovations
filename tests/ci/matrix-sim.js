@@ -190,6 +190,14 @@ const cases = [
     },
   },
   {
+    name: 'openplan3d zanini tools',
+    paths: ['public/js/openplan3d-zanini-tools.js'],
+    expect: {
+      run_browser_openplan3d: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
     name: 'quotation redraft fixture',
     paths: ['tests/js/fixtures/quotation-redraft-hotkey-lock.html'],
     expect: {
