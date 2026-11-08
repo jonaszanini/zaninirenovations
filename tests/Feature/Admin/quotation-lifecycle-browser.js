@@ -205,28 +205,6 @@ async function revealThenType(page, spec, field) {
   await typeAccessible(page, field.selector, field.value, spec.type + ' ' + field.selector);
 }
 
-function isQuotePreviewPost(req) {
-  if (req.method() !== 'POST') return false;
-  try {
-    return /\/quotations\/[^/]+\/preview(?:\?|$)/.test(new URL(req.url()).pathname);
-  } catch (err) {
-    return false;
-  }
-}
-
-function attachPreviewNet(page) {
-  const net = { inflight: 0 };
-  page.on('request', (req) => {
-    if (isQuotePreviewPost(req)) net.inflight += 1;
-  });
-  const done = (req) => {
-    if (isQuotePreviewPost(req)) net.inflight = Math.max(0, net.inflight - 1);
-  };
-  page.on('requestfinished', done);
-  page.on('requestfailed', done);
-  return net;
-}
-
 async function readFooterSnap(page) {
   return page.evaluate(() => {
     const a = document.querySelector('[data-qh-footer-amount]');
@@ -257,7 +235,7 @@ async function waitOneRenderCycle(page) {
   }));
 }
 
-async function waitFooterSettled(page, net) {
+async function waitFooterSettled(page) {
   const deadline = Date.now() + 25000;
   while (Date.now() < deadline) {
     try {
@@ -281,25 +259,18 @@ async function waitFooterSettled(page, net) {
     } catch (err) {
       break;
     }
-    if (net && net.inflight > 0) {
-      await new Promise((r) => setTimeout(r, 40));
-      continue;
-    }
     await waitOneRenderCycle(page);
     const snap = await readFooterSnap(page);
-    if (snap.ok && !(net && net.inflight > 0)) return;
+    if (snap.ok) return;
   }
-  throw new Error('latest preview did not settle: ' + JSON.stringify({
-    ...(await readFooterSnap(page)),
-    inflight: net ? net.inflight : null,
-  }));
+  throw new Error('latest preview did not settle: ' + JSON.stringify(await readFooterSnap(page)));
 }
 
-async function gotoEdit(page, href, net) {
+async function gotoEdit(page, href) {
   await page.goto(base + href, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-qh-header]');
   await page.waitForSelector('[data-qh-footer-amount]');
-  await waitFooterSettled(page, net);
+  await waitFooterSettled(page);
 }
 
 async function clickAndWait(page, selector, label) {
@@ -329,7 +300,6 @@ async function shotPair(page, spec, kind) {
   const page = await browser.newPage();
   page.setDefaultNavigationTimeout(45000);
   page.setDefaultTimeout(30000);
-  const previewNet = attachPreviewNet(page);
   await login(page);
 
   const report = { sha, types: {} };
@@ -346,7 +316,7 @@ async function shotPair(page, spec, kind) {
       widths: {},
     };
     await page.setViewport(viewportFor(width));
-    await gotoEdit(page, spec.editHref, previewNet);
+    await gotoEdit(page, spec.editHref);
 
     const before = await page.evaluate(inspectSaveControls);
     row.draftOrPublished = spec.expectDraft ? 'draft' : 'published';
@@ -366,7 +336,7 @@ async function shotPair(page, spec, kind) {
       }
       await clickAndWait(page, '[data-qh-header] [data-qh-save-intent="publish"]', spec.type + ' header Publish');
       row.publishedFromDraft = true;
-      await gotoEdit(page, spec.editHref, previewNet);
+      await gotoEdit(page, spec.editHref);
     }
 
     for (const field of fields) {
@@ -378,7 +348,7 @@ async function shotPair(page, spec, kind) {
       row.savedViaFooter = true;
     }
 
-    await gotoEdit(page, spec.editHref, previewNet);
+    await gotoEdit(page, spec.editHref);
     if (primary && Array.isArray(spec.revealClicks)) {
       for (const sel of spec.revealClicks) {
         const handle = await page.$(sel);
@@ -395,7 +365,7 @@ async function shotPair(page, spec, kind) {
         await fieldHandle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
       }
     }
-    await waitFooterSettled(page, previewNet);
+    await waitFooterSettled(page);
     const after = await page.evaluate(inspectSaveControls);
     if (primary) {
       after.fieldValue = await page.$eval(primary, (el) => String(el.value || ''));
