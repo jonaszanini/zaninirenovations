@@ -205,15 +205,47 @@ async function revealThenType(page, spec, field) {
   await typeAccessible(page, field.selector, field.value, spec.type + ' ' + field.selector);
 }
 
-async function waitFooterSettled(page) {
-  await page.waitForFunction(() => {
+async function readFooterSnap(page) {
+  return page.evaluate(() => {
     const a = document.querySelector('[data-qh-footer-amount]');
-    if (!a) return false;
-    if (a.getAttribute('data-qh-footer-pending') === '1') return false;
-    if (a.getAttribute('aria-busy') === 'true') return false;
-    const t = (a.textContent || '').replace(/\s+/g, '');
-    return /CA\$[\d,]+\.\d{2}/.test(t);
-  }, { timeout: 20000 });
+    const root = document.getElementById('pq-live-root');
+    const text = a ? String(a.textContent || '').trim() : '';
+    const t = text.replace(/\s+/g, '');
+    const pending = !!(a && (
+      a.getAttribute('data-qh-footer-pending') === '1'
+      || a.getAttribute('data-qh-footer-unavailable') === '1'
+      || a.getAttribute('aria-busy') === 'true'
+    ));
+    const money = /CA\$[\d,]+\.\d{2}/.test(t);
+    const previewOk = !root || root.getAttribute('data-pq-preview-state') === 'ready';
+    const livePending = !!window.__quoteGrandTotalPending || !!window.__quoteGrandTotalUnavailable;
+    return {
+      ok: !!(a && !pending && money && previewOk && !livePending),
+      text,
+      pending: a ? a.getAttribute('data-qh-footer-pending') : null,
+      preview: root ? root.getAttribute('data-pq-preview-state') : null,
+    };
+  });
+}
+
+async function waitFooterSettled(page) {
+  const hasPreview = !!(await page.$('#pq-live-root'));
+  const holdMs = hasPreview ? 700 : 300;
+  const deadline = Date.now() + 25000;
+  let stableSince = 0;
+  let last = '';
+  while (Date.now() < deadline) {
+    const snap = await readFooterSnap(page);
+    if (snap.ok && snap.text && snap.text === last) {
+      if (!stableSince) stableSince = Date.now();
+      if (Date.now() - stableSince >= holdMs) return;
+    } else {
+      stableSince = 0;
+      last = snap.ok ? snap.text : '';
+    }
+    await new Promise((r) => setTimeout(r, 80));
+  }
+  throw new Error('footer did not settle to CA$ money: ' + JSON.stringify(await readFooterSnap(page)));
 }
 
 async function gotoEdit(page, href) {
@@ -315,6 +347,7 @@ async function shotPair(page, spec, kind) {
         await fieldHandle.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
       }
     }
+    await waitFooterSettled(page);
     const after = await page.evaluate(inspectSaveControls);
     if (primary) {
       after.fieldValue = await page.$eval(primary, (el) => String(el.value || ''));

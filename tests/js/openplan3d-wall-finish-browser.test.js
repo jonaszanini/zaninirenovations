@@ -183,21 +183,41 @@ async function main() {
       },
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
-    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 20000 });
-    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
-    await page.waitForFunction(() => {
-      const plan = window.__openPlan3D.getProject();
-      return !!(plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0
-        && plan.zanini.wallFinishes.pw0.paint === true);
-    }, { timeout: 20000 });
+    async function pumpFrames() {
+      await page.evaluate(() => new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      }));
+    }
 
-    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', { timeout: 20000 });
-    await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el) => el.click());
-    await page.waitForFunction(() => {
-      const plan = window.__openPlan3D.getProject();
-      const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
-      return !!(flags && Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
-    }, { timeout: 20000 });
+    async function setPaintCheckbox(wantOn) {
+      await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', {
+        timeout: 20000,
+        visible: true,
+      });
+      await pumpFrames();
+      await page.$eval('#openplan3d-zanini-finish-host input[data-finish-key="paint"]', (el, want) => {
+        el.indeterminate = false;
+        if (!!el.checked !== want) {
+          el.click();
+        }
+        if (!!el.checked !== want) {
+          el.checked = want;
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }, wantOn);
+      await pumpFrames();
+      await page.waitForFunction((want) => {
+        const plan = window.__openPlan3D.getProject();
+        const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.pw0;
+        if (!flags) return false;
+        return want
+          ? flags.paint === true
+          : (Object.prototype.hasOwnProperty.call(flags, 'paint') && flags.paint === false);
+      }, { timeout: 20000 }, wantOn);
+    }
+
+    await setPaintCheckbox(true);
+    await setPaintCheckbox(false);
 
     await page.evaluate(() => {
       const mod = window.__openPlan3DStoreModule;
