@@ -15,6 +15,7 @@ tests/Unit/Models/StandardQuotationEditorTotalTest.php
 tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
 tests/Unit/Services/BasementCeilingQuantitiesTest.php
 tests/Unit/Services/BasementClientScopeGeneratedCopyTest.php
+tests/Unit/Services/BasementQuotationCalculatorTest.php
 tests/Unit/Services/BasementRoomAreaImportMapperTest.php
 tests/Unit/Services/BlogPostQualityTest.php
 tests/Unit/Services/CutOptimizerEngineTest.php
@@ -24,6 +25,7 @@ tests/Unit/Services/FenceQuotationCalculatorTest.php
 tests/Unit/Services/FenceQuotationOct8FixesTest.php
 tests/Unit/Services/FenceQuotationScenarioTest.php
 tests/Unit/Services/HomeDepotCaUrlsTest.php
+tests/Unit/Services/LowDeckQuotationCalculatorTest.php
 tests/Unit/Services/MaterialPriceSyncServiceTest.php
 tests/Unit/Services/MillworkCalcVersionGateTest.php
 tests/Unit/Services/MillworkCutPlanPlacementTest.php
@@ -32,6 +34,7 @@ tests/Unit/Services/MillworkQuotationCalculatorTest.php
 tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
 tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
+tests/Unit/Services/PavingMarbleCalculatorTest.php
 tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
 tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php
 tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php
@@ -46,6 +49,7 @@ tests/Unit/Services/RoomAreaQuotePrefillTest.php
 tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
 tests/Unit/Services/RoomAreaSharedWallsTest.php
 tests/Unit/Services/RoomAreaTemplatesTest.php
+tests/Unit/Services/ShedQuotationCalculatorTest.php
 tests/Unit/Services/StandardQuotationCalculatorTest.php
 tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php
 tests/Unit/Services/SupplierWebsiteDataExtractorAddressCapTest.php

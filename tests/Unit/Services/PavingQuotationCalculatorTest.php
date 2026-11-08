@@ -3,9 +3,9 @@
 namespace Tests\Unit\Services;
 
 use App\Services\PavingQuotationCalculator;
-use Tests\TestCase;
+use Tests\IntegrationTestCase;
 
-class PavingQuotationCalculatorTest extends TestCase
+class PavingQuotationCalculatorTest extends IntegrationTestCase
 {
     public function test_crushed_base_depth_is_excavation_minus_paver_height_minus_sand(): void
     {

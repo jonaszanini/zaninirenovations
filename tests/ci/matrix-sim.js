@@ -218,6 +218,8 @@ const cases = [
     expect: {
       run_browser_quotation: 'true',
       run_browser_admin: 'false',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
     },
   },
   {
@@ -225,6 +227,16 @@ const cases = [
     paths: ['app/Support/Quotations/PdfFoldV2.php'],
     expect: {
       run_browser_quotation: 'true',
+      filter_quotation: 'true',
+    },
+  },
+  {
+    name: 'paving quotation create help',
+    paths: ['resources/views/admin/quotations/paving/create.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
     },
   },
   {

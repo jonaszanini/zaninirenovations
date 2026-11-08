@@ -176,10 +176,27 @@ async function openDemolition(page) {
     });
     draft.hotkeyOnDraft = await page.$eval('#br-btn-draft', (el) => el.hasAttribute('data-hotkey-save'));
     draft.hotkeyOnPublish = await page.$eval('#br-btn-publish', (el) => el.hasAttribute('data-hotkey-save'));
-    await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }),
-      page.click('#br-btn-draft'),
-    ]);
+    await page.evaluate(() => {
+      sessionStorage.removeItem('__brDraftKeys');
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 's' || e.key === 'S' || e.code === 'KeyS') {
+          const row = { key: e.key, code: e.code, ctrl: !!e.ctrlKey, prevented: e.defaultPrevented };
+          const prev = JSON.parse(sessionStorage.getItem('__brDraftKeys') || '[]');
+          prev.push(row);
+          sessionStorage.setItem('__brDraftKeys', JSON.stringify(prev));
+        }
+      }, true);
+    });
+    const ctrlNav = page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 20000 }).catch(() => null);
+    const cdp = await page.target().createCDPSession();
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyDown', modifiers: 2, key: 's', code: 'KeyS', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83,
+    });
+    await cdp.send('Input.dispatchKeyEvent', {
+      type: 'keyUp', modifiers: 2, key: 's', code: 'KeyS', windowsVirtualKeyCode: 83, nativeVirtualKeyCode: 83,
+    });
+    await ctrlNav;
+    draft.ctrlSKeys = await page.evaluate(() => JSON.parse(sessionStorage.getItem('__brDraftKeys') || '[]'));
     await page.waitForSelector('#br-main-form');
     await openDemolition(page);
     draft.afterSave = await readDemo(page);

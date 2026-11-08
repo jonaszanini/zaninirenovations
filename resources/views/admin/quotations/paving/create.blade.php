@@ -366,14 +366,22 @@
           <div class="admin-card">
             <h3 style="margin:0 0 14px;">Section A — Project inputs</h3>
             <div class="admin-form-group">
-              <label for="pq-client">Client name @if(!$isEdit || !$quotation->is_draft)<span class="cp-required">*</span>@endif</label>
+              <span class="admin-label-with-tip">
+                <label for="pq-client">Client name</label>
+                <span class="admin-label-with-tip__end">
+                  @if(!$isEdit || !$quotation->is_draft)<span class="cp-required">*</span>@endif
+                  <x-admin.info-tip label="Client name">Required for a published quotation; optional for drafts.</x-admin.info-tip>
+                </span>
+              </span>
               <input type="text" id="pq-client" name="client_name" class="admin-input"
                      value="{{ old('client_name', $isEdit ? $quotation->client_name : ($linkProject?->client_name ?? '')) }}"
                      maxlength="160" @if(!old('client_name', $isEdit ? ($quotation->client_name ?? '') : '') && (!$isEdit || !($quotation->is_draft ?? false))) required @endif>
-              <p class="pq-hint">Required for a published quotation; optional for drafts.</p>
             </div>
             <div class="admin-form-group quotation-work-desc">
-              <label for="pq-work-description">Description of the work</label>
+              <span class="admin-label-with-tip">
+                <label for="pq-work-description">Description of the work</label>
+                <x-admin.info-tip label="Description of the work">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</x-admin.info-tip>
+              </span>
               <textarea id="pq-work-description" name="work_description" rows="8"
                         class="admin-input @error('work_description') is-invalid @enderror"
                         placeholder="Describe the service to be performed (visible on the client quotation PDF).">{{ old('work_description', $isEdit ? ($quotation->work_description ?? '') : '') }}</textarea>
@@ -382,7 +390,6 @@
                   'aiContextFormId' => 'pq-main-form',
                   'aiQuotationType' => 'paving',
               ])
-              <p class="pq-hint">Shown on the client PDF beneath the priced line item. Formatting (bold, lists, headings) is preserved.</p>
               @error('work_description') <p class="admin-form-error">{{ $message }}</p> @enderror
             </div>
             <div class="pq-form-sections">
@@ -390,7 +397,10 @@
               @include('admin.quotations.paving._marble_section', ['inputs' => $inputs, 'marbleTypes' => $marbleTypes])
 
               <div class="pq-field-box">
-                <span class="pq-field-box-title">Labour rates</span>
+                <span class="pq-field-box-title admin-label-with-tip">
+                  Labour rates
+                  <x-admin.info-tip label="Labour rates">Check Include a helper to bill labor hours at the helper rate as well. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</x-admin.info-tip>
+                </span>
                 <div class="pq-labour-rates-row">
                   <div class="admin-form-group">
                     <label for="pq-owner">Owner hourly rate ($/hr)</label>
@@ -407,11 +417,13 @@
                     ])
                   </div>
                 </div>
-                <p class="pq-hint">Check Include a helper to bill labor hours at the helper rate as well. Defaults come from <a href="{{ route('admin.quotations.paving.price-configuration', ['db' => 'rates']) }}">Price configuration → Fixed costs &amp; equipment → Labour</a>.</p>
               </div>
 
               <div class="pq-field-box">
-                <span class="pq-field-box-title">Equipment rental (days)</span>
+                <span class="pq-field-box-title admin-label-with-tip">
+                  Equipment rental (days)
+                  <x-admin.info-tip label="Equipment rental (days)">Whole days only (0, 1, 2, …).</x-admin.info-tip>
+                </span>
                 <div class="pq-form-row">
                   <div class="admin-form-group">
                     <label for="pq-mini">Mini skid steer</label>
@@ -424,17 +436,18 @@
                            value="{{ old('plate_compactor_days', (int) ($inputs['plate_compactor_days'] ?? 0)) }}">
                   </div>
                 </div>
-                <p class="pq-hint">Whole days only (0, 1, 2, …).</p>
               </div>
 
               <div class="pq-field-box">
                 <span class="pq-field-box-title">Estimate parameters</span>
                 <div class="pq-form-grid">
                   <div class="admin-form-group">
-                    <label for="pq-waste">Waste factor (%)</label>
+                    <span class="admin-label-with-tip">
+                      <label for="pq-waste">Waste factor (%)</label>
+                      <x-admin.info-tip label="Waste factor (%)">Extra stone quantity (e.g. 5 = 5%).</x-admin.info-tip>
+                    </span>
                     <input type="number" id="pq-waste" name="waste_factor" class="admin-input pq-calc-in" step="0.1" min="0" max="100"
                            value="{{ old('waste_factor', (($inputs['waste_factor'] ?? 0.05) <= 1 ? ($inputs['waste_factor'] ?? 0.05) * 100 : ($inputs['waste_factor'] ?? 5))) }}">
-                    <p class="pq-hint">Extra stone quantity (e.g. 5 = 5%).</p>
                   </div>
                   <div class="admin-form-group">
                     <label for="pq-depth">Excavation depth (in)</label>
@@ -442,27 +455,35 @@
                            value="{{ old('excavation_depth_in', $inputs['excavation_depth_in']) }}">
                   </div>
                   <div class="admin-form-group">
-                    <label for="pq-base-depth-display">Crushed base depth (in)</label>
+                    <span class="admin-label-with-tip">
+                      <label for="pq-base-depth-display">Crushed base depth (in)</label>
+                      <x-admin.info-tip label="Crushed base depth (in)">Excavation depth − paver height − bedding sand.</x-admin.info-tip>
+                    </span>
                     <output id="pq-base-depth-display" class="admin-input" style="background:#f8fafc; display:block; min-height:38px; line-height:1.4; padding:8px 12px;">—</output>
-                    <p class="pq-hint">Excavation depth − paver height − bedding sand.</p>
                   </div>
                   <div class="admin-form-group">
-                    <label for="pq-sand-depth">Bedding sand depth (in)</label>
+                    <span class="admin-label-with-tip">
+                      <label for="pq-sand-depth">Bedding sand depth (in)</label>
+                      <x-admin.info-tip label="Bedding sand depth (in)">Standard 1 in. screeded layer.</x-admin.info-tip>
+                    </span>
                     <input type="number" id="pq-sand-depth" name="bedding_sand_depth_in" class="admin-input pq-calc-in" step="0.25" min="0.25" max="6" readonly
                            value="{{ old('bedding_sand_depth_in', $inputs['bedding_sand_depth_in'] ?? 1) }}">
-                    <p class="pq-hint">Standard 1 in. screeded layer.</p>
                   </div>
                   <div class="admin-form-group">
-                    <label for="pq-profit">Profit margin (%)</label>
+                    <span class="admin-label-with-tip">
+                      <label for="pq-profit">Profit margin (%)</label>
+                      <x-admin.info-tip label="Profit margin (%)">Applied to tax-inclusive subtotal before profit.</x-admin.info-tip>
+                    </span>
                     <input type="number" id="pq-profit" name="profit_margin" class="admin-input pq-calc-in" step="0.01" min="0" max="100"
                            value="{{ old('profit_margin', (($inputs['profit_margin'] ?? 0.05) <= 1 ? ($inputs['profit_margin'] ?? 0.05) * 100 : ($inputs['profit_margin'] ?? 5))) }}">
-                    <p class="pq-hint">Applied to tax-inclusive subtotal before profit.</p>
                   </div>
                   <div class="admin-form-group">
-                    <label for="pq-hst">HST rate (%)</label>
+                    <span class="admin-label-with-tip">
+                      <label for="pq-hst">HST rate (%)</label>
+                      <x-admin.info-tip label="HST rate (%)">Ontario HST on materials &amp; equipment.</x-admin.info-tip>
+                    </span>
                     <input type="number" id="pq-hst" name="hst_rate" class="admin-input pq-calc-in" step="0.01" min="0" max="30"
                            value="{{ old('hst_rate', (($inputs['hst_rate'] ?? 0.13) <= 0.5 ? ($inputs['hst_rate'] ?? 0.13) * 100 : ($inputs['hst_rate'] ?? 13))) }}">
-                    <p class="pq-hint">Ontario HST on materials &amp; equipment.</p>
                   </div>
                 </div>
               </div>
@@ -487,11 +508,13 @@
             </div>
 
             <div class="admin-form-group pq-override-block" style="margin-top:16px;">
-              <label for="pq-manual">Manual price override (CAD)</label>
+              <span class="admin-label-with-tip">
+                <label for="pq-manual">Manual price override (CAD)</label>
+                <x-admin.info-tip label="Manual price override (CAD)">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</x-admin.info-tip>
+              </span>
               <input type="text" id="pq-manual" name="manual_price_override" class="admin-input pq-calc-in cp-money-input"
                      inputmode="decimal" autocomplete="off" placeholder="Blank = use built-up suggested total"
                      value="{{ old('manual_price_override', isset($inputs['manual_price_override']) && $inputs['manual_price_override'] !== null && $inputs['manual_price_override'] !== '' ? number_format((float) $inputs['manual_price_override'], 2, '.', '') : '') }}" data-cp-money-entry="direct">
-              <p class="pq-hint">Leave blank to use the formula suggested total. Enter a dollar amount to override the final quote.</p>
             </div>
           </div>
 

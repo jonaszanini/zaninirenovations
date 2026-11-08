@@ -38,6 +38,7 @@ tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
 tests/Feature/Admin/QuotationEditorHeaderTest.php
 tests/Feature/Admin/QuotationHotkeySaveStateTest.php
+tests/Feature/Admin/QuotationHelpTipBrowserTest.php
 tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 tests/Feature/Admin/RoomAreaBatch2PageTest.php
 tests/Feature/Admin/RoomAreaBatch3PageTest.php
@@ -51,6 +52,7 @@ tests/Feature/Admin/RoomAreaPdfExportTest.php
 tests/Feature/Admin/RoomAreaPhotosTest.php
 tests/Feature/Admin/RoomAreaQuoteLinesTest.php
 tests/Feature/Admin/RoomAreaQuotePrefillTest.php
+tests/Feature/Admin/StairsQuotationPagesTest.php
 tests/Feature/Admin/SupplierSiteTest.php
 tests/Feature/Admin/SupplierWebsiteImportTest.php
 tests/Feature/Admin/UtilitiesRoomAreaPageTest.php
@@ -66,5 +68,6 @@ tests/Feature/OnPageSeoOct16Test.php
 tests/Feature/SharedPricesLayoutTest.php
 tests/Feature/Smoke/AdminGetRoutesSmokeTest.php
 tests/Feature/Smoke/PublicGetRoutesSmokeTest.php
+tests/Unit/Services/PaintingQuotationCalculatorTest.php
 tests/Unit/Services/QuotationWorkDescriptionAiServiceTest.php
 tests/Unit/Services/RoomAreaDrawingImporterTest.php

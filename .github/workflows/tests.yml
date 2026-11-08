@@ -45,6 +45,7 @@ jobs:
       filter_blog: ${{ steps.flags.outputs.filter_blog }}
       filter_seo: ${{ steps.flags.outputs.filter_seo }}
       filter_millwork: ${{ steps.flags.outputs.filter_millwork }}
+      filter_quotation: ${{ steps.flags.outputs.filter_quotation }}
       filter_routes_smoke: ${{ steps.flags.outputs.filter_routes_smoke }}
       broad_run: ${{ steps.flags.outputs.broad_run }}
       global_test_deps: ${{ steps.flags.outputs.global_test_deps }}
@@ -106,6 +107,10 @@ jobs:
               - 'tests/js/shared-prices*.test.js'
               - 'tests/Unit/Models/SharedWorkLabelTest.php'
               - 'tests/Unit/Services/SharedWorkCatalogTest.php'
+              - 'tests/Unit/Services/BasementQuotationProductivityOverlayTest.php'
+              - 'app/Services/BasementQuotationCalculator.php'
+              - 'app/Services/TrimmingQuotationCalculator.php'
+              - 'tests/Unit/Services/TrimmingQuotationCalculatorTest.php'
             room_area_live:
               - 'app/**/RoomArea*.php'
               - 'app/Services/OpenPlan3DMeasurementBridge.php'
@@ -377,6 +382,7 @@ jobs:
           CI_MYSQL_FILTER_BLOG: ${{ needs.changes.outputs.filter_blog }}
           CI_MYSQL_FILTER_SEO: ${{ needs.changes.outputs.filter_seo }}
           CI_MYSQL_FILTER_MILLWORK: ${{ needs.changes.outputs.filter_millwork }}
+          CI_MYSQL_FILTER_QUOTATION: ${{ needs.changes.outputs.filter_quotation }}
           CI_MYSQL_FILTER_ROUTES_SMOKE: ${{ needs.changes.outputs.filter_routes_smoke }}
         run: tests/ci/run-database-suite.sh
 
