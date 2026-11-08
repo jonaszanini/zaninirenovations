@@ -28,6 +28,8 @@ assert.match(adminCss, /\.admin-card\s*>\s*h3\.sp-heading:has\(\.admin-info-tip\
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label:not\(\.admin-checkbox\)/);
 assert.match(adminCss, /\.admin-label-with-tip\s*>\s*label\.admin-checkbox[\s\S]{0,80}display:\s*inline-flex/);
 assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)[\s\S]{0,220}display:\s*block/);
+assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s+>\s+label\.admin-checkbox[\s\S]{0,200}position:\s*relative/);
+assert.match(adminCss, /\.admin-label-with-tip:has\(>\s*label\.admin-checkbox\)\s+\.admin-checkbox__input[\s\S]{0,240}width:\s*24px/);
 assert.match(adminCss, /\.admin-checkbox-row/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*white-space:\s*nowrap/);
 assert.match(adminCss, /\.admin-label-with-tip__end\s*\{[^}]*display:\s*inline;/);
@@ -207,6 +209,19 @@ function fixtureHtml() {
         <span class="admin-info-tip-wrap">
           <button type="button" class="admin-info-tip" aria-label="About Secondary contact" aria-expanded="false" aria-controls="t-sec">i</button>
           <span id="t-sec" class="admin-info-tip__bubble" role="tooltip">Optional — CC'd on every client email.</span>
+        </span>
+      </span>
+    </div>
+    <div class="admin-form-group">
+      <span class="admin-label-with-tip" id="pq-marble-row">
+        <label class="admin-checkbox admin-checkbox--block">
+          <input type="checkbox" class="admin-checkbox__input" id="pq-marble-enabled">
+          <span class="admin-checkbox__mark"></span>
+          <span class="admin-checkbox__text">Include decorative marble bed</span>
+        </label>
+        <span class="admin-info-tip-wrap" id="pq-marble-tip-wrap">
+          <button type="button" class="admin-info-tip" id="pq-marble-tip" aria-label="About Decorative marble bed" aria-expanded="false" aria-controls="t-marble">i</button>
+          <span id="t-marble" class="admin-info-tip__bubble" role="tooltip">Additive shallow bed.</span>
         </span>
       </span>
     </div>
@@ -741,6 +756,29 @@ async function puppeteerClick() {
     }));
     assert.equal(afterOutside.open, false, 'M16: outside click must close the tip');
     assert.equal(afterOutside.expanded, 'false', 'M16: outside click sets aria-expanded false');
+
+    assert.equal(await page.$eval('#pq-marble-enabled', (el) => el.checked), false);
+    await page.click('#pq-marble-enabled');
+    const afterMarbleId = await page.evaluate(() => ({
+      checked: document.getElementById('pq-marble-enabled').checked,
+      tipOpen: document.getElementById('pq-marble-tip-wrap').classList.contains('is-open'),
+    }));
+    assert.equal(afterMarbleId.checked, true, 'clicking #pq-marble-enabled must toggle the hanging-indent checkbox once');
+    assert.equal(afterMarbleId.tipOpen, false, 'clicking the marble checkbox must not open the ⓘ');
+    await page.click('#pq-marble-enabled');
+    assert.equal(await page.$eval('#pq-marble-enabled', (el) => el.checked), false, 'second #pq-marble-enabled click turns marble off');
+    await page.click('#pq-marble-tip');
+    const afterMarbleTip = await page.evaluate(() => ({
+      checked: document.getElementById('pq-marble-enabled').checked,
+      expanded: document.getElementById('pq-marble-tip').getAttribute('aria-expanded'),
+    }));
+    assert.equal(afterMarbleTip.checked, false, 'ⓘ must not toggle the marble checkbox');
+    assert.equal(afterMarbleTip.expanded, 'true', 'ⓘ opens only the help bubble');
+    await page.keyboard.press('Escape');
+    await page.focus('#pq-marble-enabled');
+    await page.keyboard.press('Space');
+    assert.equal(await page.$eval('#pq-marble-enabled', (el) => el.checked), true, 'Space on the native marble input must toggle');
+    await page.keyboard.press('Escape');
 
     const marks = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('#review-check .admin-checkbox__mark, #toggle-check .admin-checkbox__mark, #stack-check .admin-checkbox__mark')).map((el) => {
