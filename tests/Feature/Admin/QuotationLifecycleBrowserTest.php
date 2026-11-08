@@ -12,13 +12,14 @@ use Tests\Support\ExtractsPdfText;
 use Tests\Support\PublishesLinkedQuotations;
 
 /**
- * Genuine browser gaps the HTTP lifecycle test cannot see: sticky footer after
- * JS, footer Publish click, 1280/390 layout, View PDF navigation.
+ * Browser publish / edit / reopen / PDF at 1280 and 390 for every
+ * non-painting type. HTTP lifecycle covers persist independently;
+ * this file is the actual UI: footer Publish, JS-rendered fields,
+ * linked client PDF route, nonzero fixtures.
  *
- * Bounded to flooring / trimming / shed (simple quantity fields on edit).
- * Wizard/JS-generated editors (basement, millwork, fence, paving, stairs,
- * tile, low-deck, standard works) stay HTTP-only until that expansion is
- * approved. Painting is out of scope.
+ * Shed drafts from ?project= so publish auto-links (no test-only link POST).
+ * Other types are created through the real store+project publish path, then
+ * edited in the browser. Painting is out of scope.
  */
 class QuotationLifecycleBrowserTest extends IntegrationTestCase
 {
@@ -45,38 +46,7 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         ]);
         $this->actingAs($user);
 
-        [$shed, $shedProject] = $this->storeDraft('shed');
-        [$flooring] = $this->publishLinkedQuote('flooring');
-        [$trimming] = $this->publishLinkedQuote('trimming');
-
-        $flooringT1 = $this->quoteCalculatorTotal('flooring', $flooring);
-        $trimmingT1 = $this->quoteCalculatorTotal('trimming', $trimming);
-        $this->assertGreaterThan(0, $flooringT1);
-        $this->assertGreaterThan(0, $trimmingT1);
-
-        $cases = [
-            [
-                'type' => 'shed',
-                'editHref' => '/admin/quotations/shed/'.$shed->id.'/edit',
-                'expectDraft' => true,
-                'fieldSelector' => '#sh-length',
-                'newValue' => '8',
-            ],
-            [
-                'type' => 'flooring',
-                'editHref' => '/admin/quotations/flooring/'.$flooring->id.'/edit',
-                'expectDraft' => false,
-                'fieldSelector' => '#fl-sqft',
-                'newValue' => '80',
-            ],
-            [
-                'type' => 'trimming',
-                'editHref' => '/admin/quotations/trimming/'.$trimming->id.'/edit',
-                'expectDraft' => false,
-                'fieldSelector' => '#tm-floor-lf',
-                'newValue' => '40',
-            ],
-        ];
+        [$cases, $quotes, $t1] = $this->seedBrowserCases();
 
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/quotation-lifecycle-browser.js');
@@ -105,18 +75,12 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
         $this->assertSame($sha, (string) ($report['sha'] ?? ''), 'browser report SHA must match committed HEAD');
         $this->assertArrayNotHasKey('error', $report);
 
-        $shed->refresh();
-        $flooring->refresh();
-        $trimming->refresh();
-        $this->assertFalse((bool) $shed->is_draft, 'shed draft must publish from the header Publish click');
-        $shedT = $this->quoteCalculatorTotal('shed', $shed);
-        $flooringT2 = $this->quoteCalculatorTotal('flooring', $flooring);
-        $trimmingT2 = $this->quoteCalculatorTotal('trimming', $trimming);
-        $this->assertGreaterThan(0, $shedT);
-        $this->assertNotEquals(round($flooringT1, 2), round($flooringT2, 2), 'flooring browser qty edit must persist a new total');
-        $this->assertNotEquals(round($trimmingT1, 2), round($trimmingT2, 2), 'trimming browser qty edit must persist a new total');
+        $this->assertTrue((bool) ($report['types']['shed']['publishedFromDraft'] ?? false), 'shed header Publish must leave the draft');
 
-        foreach (['shed', 'flooring', 'trimming'] as $type) {
+        foreach ($cases as $spec) {
+            $type = $spec['type'];
+            $quote = $quotes[$type];
+            $quote->refresh();
             $row = $report['types'][$type] ?? [];
             $this->assertIsArray($row, $type.' missing from browser report');
             foreach (['1280', '390'] as $width) {
@@ -132,36 +96,95 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
                 (string) (($row['widths']['1280']['headerDraft'] ?? '')),
                 $type.' Publish and Save as draft must stay distinct'
             );
+
+            $this->assertFalse((bool) $quote->is_draft, $type.' must be published after the browser save');
+            $t2 = $this->quoteCalculatorTotal($type, $quote);
+            $this->assertGreaterThan(0, $t2, $type.' stored total after browser edit must stay nonzero');
+            if (array_key_exists($type, $t1)) {
+                $this->assertNotEquals(
+                    round($t1[$type], 2),
+                    round($t2, 2),
+                    $type.' browser qty/finish edit must persist a new total (T1='.$t1[$type].' T2='.$t2.')'
+                );
+            }
+            $this->assertEquals(
+                (float) $spec['newValue'],
+                (float) ($row['reopen']['fieldValue'] ?? 0),
+                $type.' reopen field persisted'
+            );
+            $this->assertSame(
+                ClientProject::formatMoney($t2),
+                $this->normalizeMoney((string) ($row['reopen']['footerAmount'] ?? '')),
+                $type.' reopen footer must match stored total'
+            );
+
+            $pdfHref = (string) ($row['reopen']['pdfHref'] ?? $row['pdfUrl'] ?? '');
+            $this->assertMatchesRegularExpression(
+                '#/admin/client-projects/\d+/quotations/\d+/pdf#',
+                $pdfHref,
+                $type.' View PDF must be the linked client-project quotation route, not a disabled stand-in. href='.$pdfHref
+            );
+            $this->assertGreaterThan(100, (int) ($row['pdfBytes'] ?? 0), $type.' View PDF returned bytes');
+            $this->assertSame(200, (int) ($row['pdfStatus'] ?? 0), $type.' View PDF HTTP 200');
+            $this->assertPdfFor($type, $quote, $t2);
+        }
+    }
+
+    /**
+     * @return array{0: list<array<string, mixed>>, 1: array<string, object>, 2: array<string, float>}
+     */
+    private function seedBrowserCases(): array
+    {
+        $quotes = [];
+        $t1 = [];
+        $cases = [];
+
+        [$shed, $shedProject] = $this->storeDraft('shed');
+        $quotes['shed'] = $shed;
+        $cases[] = [
+            'type' => 'shed',
+            'editHref' => '/admin/quotations/shed/'.$shed->id.'/edit?project='.$shedProject->id,
+            'expectDraft' => true,
+            'fieldSelector' => '#sh-length',
+            'newValue' => '8',
+        ];
+
+        $linked = [
+            'flooring' => ['#fl-sqft', '80'],
+            'trimming' => ['#tm-floor-lf', '40'],
+            'standard' => ['#sq-w0-labour-fixed-amount', '500'],
+            'basement' => ['#br-area', '400'],
+            'millwork' => ['input[name="pieces[0][sets][0][qty]"]', '3'],
+            'tile' => ['#tl-total-area', '20'],
+            'fence' => ['#fq-side-0', '48'],
+            'paving' => ['input[name="stone_entries[0][area_sq_ft]"]', '40'],
+            'stairs' => ['#sq-total-steps', '8'],
+            'low-deck' => ['#ld-length', '10'],
+        ];
+        foreach ($linked as $type => [$selector, $newValue]) {
+            [$quote, $cpq] = $this->publishLinkedQuote($type);
+            $this->assertGreaterThan(0, $this->quoteCalculatorTotal($type, $quote), $type.' linked fixture must be nonzero');
+            $this->assertNotNull($cpq, $type.' must be linked through store+project, not a later test-only POST');
+            $quotes[$type] = $quote;
+            $t1[$type] = $this->quoteCalculatorTotal($type, $quote);
+            $projectId = (int) ($quote->client_project_id ?: $cpq->client_project_id);
+            $case = [
+                'type' => $type,
+                'editHref' => '/admin/quotations/'.$type.'/'.$quote->id.'/edit?project='.$projectId,
+                'expectDraft' => false,
+                'fieldSelector' => $selector,
+                'newValue' => $newValue,
+            ];
+            if ($type === 'stairs') {
+                $case['fields'] = [
+                    ['selector' => 'input[name="segments[0][qty]"]', 'value' => '8'],
+                    ['selector' => '#sq-material-price', 'value' => '40'],
+                ];
+            }
+            $cases[] = $case;
         }
 
-        $this->assertEquals(8.0, (float) ($report['types']['shed']['reopen']['fieldValue'] ?? 0), 'shed length persisted');
-        $this->assertEquals(80.0, (float) ($report['types']['flooring']['reopen']['fieldValue'] ?? 0), 'flooring sqft persisted');
-        $this->assertEquals(40.0, (float) ($report['types']['trimming']['reopen']['fieldValue'] ?? 0), 'trimming lf persisted');
-
-        $this->assertSame(ClientProject::formatMoney($shedT), $this->normalizeMoney((string) ($report['types']['shed']['reopen']['footerAmount'] ?? '')));
-        $this->assertSame(ClientProject::formatMoney($flooringT2), $this->normalizeMoney((string) ($report['types']['flooring']['reopen']['footerAmount'] ?? '')));
-        $this->assertSame(ClientProject::formatMoney($trimmingT2), $this->normalizeMoney((string) ($report['types']['trimming']['reopen']['footerAmount'] ?? '')));
-
-        $shed->refresh();
-        $this->assertFalse((bool) $shed->is_draft, 'shed must stay published before link');
-        $this->assertFalse($shed->isLinked(), 'shed browser save does not auto-link without ?project=');
-        $this->from(route('admin.quotations.shed.edit', $shed))
-            ->post(route('admin.quotations.shed.link', $shed), [
-                'client_project_id' => $shedProject->id,
-            ])
-            ->assertSessionDoesntHaveErrors()
-            ->assertSessionHas('success', 'Linked to project "'.$shedProject->name.'".');
-        $shed->refresh();
-        $this->assertTrue($shed->isLinked(), 'shed must be linked after link POST');
-        $this->assertPdfFor('shed', $shed, $shedT);
-        $this->assertPdfFor('flooring', $flooring, $flooringT2);
-        $this->assertPdfFor('trimming', $trimming, $trimmingT2);
-
-        $this->assertTrue((bool) ($report['types']['shed']['publishedFromDraft'] ?? false), 'shed header Publish must leave the draft');
-        foreach (['flooring', 'trimming'] as $type) {
-            $this->assertGreaterThan(100, (int) ($report['types'][$type]['pdfBytes'] ?? 0), $type.' View PDF returned bytes');
-            $this->assertSame(200, (int) ($report['types'][$type]['pdfStatus'] ?? 0), $type.' View PDF HTTP 200');
-        }
+        return [$cases, $quotes, $t1];
     }
 
     /**
@@ -194,22 +217,10 @@ class QuotationLifecycleBrowserTest extends IntegrationTestCase
             ->where('source_type', $this->quoteSourceType($type))
             ->where('source_id', $quote->id)
             ->first();
-        if ($cpq === null) {
-            $project = ClientProject::factory()->create([
-                'status' => ClientProject::STATUS_VISIT_SCHEDULED,
-                'billing_type' => ClientProject::BILLING_FIXED,
-                'client_name' => $quote->client_name,
-            ]);
-            $this->post(route('admin.quotations.'.$type.'.link', $quote), [
-                'client_project_id' => $project->id,
-            ])->assertSessionDoesntHaveErrors();
-            $quote->refresh();
-            $cpq = ClientProjectQuotation::query()
-                ->where('source_type', $this->quoteSourceType($type))
-                ->where('source_id', $quote->id)
-                ->first();
-        }
-        $this->assertNotNull($cpq, $type.' CPQ after browser save');
+        $this->assertNotNull(
+            $cpq,
+            $type.' must already have a linked client quotation from project context (no test-only link POST)'
+        );
         $this->assertEqualsWithDelta($total, $cpq->pdfGrandTotal(), 0.02, $type.' PDF total vs stored');
 
         $project = $cpq->project;

@@ -9,12 +9,20 @@
   $qhFormId = $formId ?? null;
   $qhFooterId = $footerId ?? 'qh-sticky-footer';
   $qhAmountId = $amountId ?? 'qh-footer-grand-amount';
-  $qhInitial = (float) ($initialTotal ?? 0);
-  if ($qhInitial == 0.0 && isset($quotation) && is_object($quotation)) {
-      foreach (['final_quote_total', 'grand_total'] as $qhTotalField) {
-          if (isset($quotation->{$qhTotalField}) && $quotation->{$qhTotalField} !== null) {
-              $qhInitial = (float) $quotation->{$qhTotalField};
-              break;
+  // Explicit initialTotal (including 0) wins. Only seed from the stored
+  // quote when the include omitted the key — never treat 0 as "missing"
+  // and overlay a different stored/legacy total.
+  $qhData = $__data ?? [];
+  if (array_key_exists('initialTotal', $qhData) && $qhData['initialTotal'] !== null) {
+      $qhInitial = (float) $qhData['initialTotal'];
+  } else {
+      $qhInitial = 0.0;
+      if (isset($quotation) && is_object($quotation)) {
+          foreach (['final_quote_total', 'grand_total'] as $qhTotalField) {
+              if (isset($quotation->{$qhTotalField}) && $quotation->{$qhTotalField} !== null) {
+                  $qhInitial = (float) $quotation->{$qhTotalField};
+                  break;
+              }
           }
       }
   }

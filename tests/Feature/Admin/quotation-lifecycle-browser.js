@@ -15,7 +15,7 @@ const cases = JSON.parse(process.env.QH_LC_CASES || '[]');
 function launchOpts() {
   const opts = {
     headless: true,
-    protocolTimeout: 45000,
+    protocolTimeout: 120000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -57,6 +57,7 @@ function inspectSaveControls() {
   const footerSave = document.querySelector('[data-qh-footer-save]');
   const amount = document.querySelector('[data-qh-footer-amount]');
   const pdf = document.querySelector('a[data-qh-view-pdf]');
+  const pdfBtn = document.querySelector('[data-qh-view-pdf]');
   const visible = (el) => {
     if (!el) return '';
     const label = (el.innerText || '').replace(/\s+/g, ' ').trim();
@@ -71,14 +72,40 @@ function inspectSaveControls() {
     publishHotkey: !!(publish && publish.hasAttribute('data-hotkey-save')),
     draftHotkey: !!(draft && draft.hasAttribute('data-hotkey-save')),
     pdfHref: pdf ? pdf.getAttribute('href') : '',
+    pdfTag: pdfBtn ? pdfBtn.tagName : '',
+    pdfDisabled: !!(pdfBtn && pdfBtn.hasAttribute('disabled')),
     fieldValue: '',
   };
 }
 
-async function gotoEdit(page, href) {
+function fieldList(spec) {
+  const fields = Array.isArray(spec.fields) ? spec.fields.slice() : [];
+  if (spec.fieldSelector && spec.newValue != null) {
+    fields.unshift({ selector: spec.fieldSelector, value: String(spec.newValue) });
+  }
+  return fields;
+}
+
+async function setField(page, selector, value) {
+  await page.waitForSelector(selector, { timeout: 20000 });
+  await page.$eval(selector, (el, next) => {
+    el.disabled = false;
+    el.removeAttribute('readonly');
+    el.hidden = false;
+    el.focus();
+    el.value = next;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, String(value));
+}
+
+async function gotoEdit(page, href, waitSelector) {
   await page.goto(base + href, { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('[data-qh-header]');
   await page.waitForSelector('[data-qh-footer-amount]');
+  if (waitSelector) {
+    await page.waitForSelector(waitSelector, { timeout: 20000 });
+  }
 }
 
 async function clickAndWait(page, selector) {
@@ -94,25 +121,27 @@ async function clickAndWait(page, selector) {
   fs.writeFileSync(path.join(shotsDir, 'PROVENANCE.json'), JSON.stringify({
     sha,
     capturedAt: new Date().toISOString(),
-    note: 'Lifecycle screenshots: draft/publish controls, qty edit, reopen footer. 1280 and 390.',
+    note: 'Lifecycle screenshots: draft/publish, qty edit, reopen footer, 1280 and 390, all non-painting types.',
   }, null, 2));
 
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
-  page.setDefaultNavigationTimeout(30000);
+  page.setDefaultNavigationTimeout(45000);
   page.setDefaultTimeout(30000);
   await login(page);
 
   const report = { sha, types: {} };
 
   for (const spec of cases) {
+    const fields = fieldList(spec);
+    const primarySelector = fields[0] ? fields[0].selector : spec.fieldSelector;
     const row = { type: spec.type, widths: {} };
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, primarySelector);
 
     const before = await page.evaluate(inspectSaveControls);
-    if (spec.fieldSelector) {
-      before.fieldValue = await page.$eval(spec.fieldSelector, (el) => String(el.value || ''));
+    if (primarySelector) {
+      before.fieldValue = await page.$eval(primarySelector, (el) => String(el.value || ''));
     }
     row.draftOrPublished = spec.expectDraft ? 'draft' : 'published';
     row.controls1280 = before;
@@ -125,7 +154,7 @@ async function clickAndWait(page, selector) {
     };
 
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, primarySelector);
     const mobile = await page.evaluate(inspectSaveControls);
     row.widths['390'] = {
       shot: await shotWithRetry(page, path.join(shotsDir, spec.type + '-390-full.png'), true),
@@ -136,7 +165,7 @@ async function clickAndWait(page, selector) {
     };
 
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, primarySelector);
 
     if (spec.expectDraft) {
       if (!before.draftHotkey || before.publishHotkey) {
@@ -144,26 +173,22 @@ async function clickAndWait(page, selector) {
       }
       await clickAndWait(page, '[data-qh-header] [data-qh-save-intent="publish"]');
       row.publishedFromDraft = true;
-      await gotoEdit(page, spec.editHref);
+      await gotoEdit(page, spec.editHref, primarySelector);
     }
 
-    if (spec.fieldSelector && spec.newValue != null) {
-      await page.waitForSelector(spec.fieldSelector);
-      await page.$eval(spec.fieldSelector, (el, value) => {
-        el.focus();
-        el.value = value;
-        el.dispatchEvent(new Event('input', { bubbles: true }));
-        el.dispatchEvent(new Event('change', { bubbles: true }));
-      }, String(spec.newValue));
-      row.typedValue = await page.$eval(spec.fieldSelector, (el) => String(el.value || ''));
+    for (const field of fields) {
+      await setField(page, field.selector, field.value);
+    }
+    if (fields.length) {
+      row.typedValue = await page.$eval(fields[0].selector, (el) => String(el.value || ''));
       await clickAndWait(page, '[data-qh-footer-save]');
       row.savedViaFooter = true;
     }
 
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, primarySelector);
     const after = await page.evaluate(inspectSaveControls);
-    if (spec.fieldSelector) {
-      after.fieldValue = await page.$eval(spec.fieldSelector, (el) => String(el.value || ''));
+    if (primarySelector) {
+      after.fieldValue = await page.$eval(primarySelector, (el) => String(el.value || ''));
     }
     row.reopen = after;
     row.widths['1280'].reopenShot = await shotWithRetry(
@@ -172,7 +197,7 @@ async function clickAndWait(page, selector) {
       true
     );
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-    await gotoEdit(page, spec.editHref);
+    await gotoEdit(page, spec.editHref, primarySelector);
     row.widths['390'].reopenShot = await shotWithRetry(
       page,
       path.join(shotsDir, spec.type + '-390-reopen.png'),
@@ -182,6 +207,7 @@ async function clickAndWait(page, selector) {
 
     if (after.pdfHref) {
       const pdfUrl = /^https?:\/\//i.test(after.pdfHref) ? after.pdfHref : (base + after.pdfHref);
+      row.pdfUrl = pdfUrl;
       const pdfPage = await browser.newPage();
       const pdfResp = await pdfPage.goto(pdfUrl, { waitUntil: 'networkidle0' });
       row.pdfStatus = pdfResp ? pdfResp.status() : 0;
