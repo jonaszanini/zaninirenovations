@@ -2,5 +2,6 @@ tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
 tests/Feature/Admin/PavingMarbleBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
+tests/Feature/Admin/QuotationEditorControlInventoryTest.php
 tests/Feature/Admin/QuotationHelpTipBrowserTest.php
 tests/Feature/Admin/StairsQuotationPagesTest.php

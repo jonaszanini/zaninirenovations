@@ -20,6 +20,9 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('qh-actions__cancel', $partial);
         $this->assertStringContainsString('data-qh-save-intent="publish"', $partial);
         $this->assertStringContainsString('data-qh-save-intent="draft"', $partial);
+        $this->assertStringContainsString('aria-label="{{ $qhSaveLabel }}"', $partial);
+        $this->assertStringContainsString('aria-label="Save as draft"', $partial);
+        $this->assertStringContainsString("\$saveLabel ?? 'Save quotation'", $partial);
         $this->assertStringContainsString('Save as draft', $partial);
         $this->assertStringContainsString('← Back', $partial);
         $this->assertStringContainsString('→ Next', $partial);
@@ -53,7 +56,8 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $sh);
         $this->assertStringContainsString('if (!validateCurrentStep()) return', $br);
         $this->assertStringContainsString('sectionKeys.length + 1', $br);
-        $this->assertStringContainsString("key === 'review' ? 'Save quotation'", $br);
+        $this->assertStringContainsString("key === 'review' ? 'Publish'", $br);
+        $this->assertStringNotContainsString("key === 'review' ? 'Save quotation'", $br);
         $this->assertStringNotContainsString("key === 'review' ? 'Save'", $br);
         $this->assertStringNotContainsString("' of ' + sectionKeys.length", $br);
         $this->assertStringContainsString('[data-qh-cancel]', $leave);
@@ -186,6 +190,16 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $new = view('admin.partials.quotation_editor_header', $base + ['isEdit' => false])->render();
         $this->assertMatchesRegularExpression('/id="st-btn-draft"[^>]*data-hotkey-save/', $new);
         $this->assertDoesNotMatchRegularExpression('/id="sq-btn-save"[^>]*data-hotkey-save/', $new);
+        $this->assertStringContainsString('aria-label="Save quotation"', $new);
+        $this->assertStringContainsString('Save quotation', $new);
+
+        $optIn = view('admin.partials.quotation_editor_header', $base + [
+            'isEdit' => false,
+            'saveLabel' => 'Publish',
+        ])->render();
+        $this->assertStringContainsString('aria-label="Publish"', $optIn);
+        $this->assertMatchesRegularExpression('/aria-label="Publish"[^>]*>[\s\S]{0,120}Publish/', $optIn);
+        $this->assertStringNotContainsString('aria-label="Save quotation"', $optIn);
 
         $draft = view('admin.partials.quotation_editor_header', $base + [
             'isEdit' => true,

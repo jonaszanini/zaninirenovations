@@ -33,6 +33,8 @@
   $qhSaveId = $saveId ?? null;
   $qhDraftId = $draftId ?? null;
   $qhShowDraft = isset($showDraft) ? (bool) $showDraft : filled($qhDraftId);
+  // Default stays "Save quotation" (Painting). Non-painting editors pass
+  // saveLabel "Publish" so header/footer/review share one accessible name.
   $qhSaveLabel = $saveLabel ?? 'Save quotation';
   $qhQuote = $quotation ?? null;
   $qhIsEdit = isset($isEdit) ? (bool) $isEdit : filled($qhQuote);
@@ -94,7 +96,8 @@
             @if ($qhSaveId) id="{{ $qhSaveId }}" @endif
             @if ($qhFormAttr) form="{{ $qhFormAttr }}" @endif
             @if ($qhSaveHotkey) data-hotkey-save @endif
-            data-qh-save-intent="publish">
+            data-qh-save-intent="publish"
+            aria-label="{{ $qhSaveLabel }}">
       <i class="fa fa-save" aria-hidden="true"></i> {{ $qhSaveLabel }}
     </button>
     @if ($qhShowDraft)
@@ -103,7 +106,8 @@
               @if ($qhDraftId) id="{{ $qhDraftId }}" @endif
               @if ($qhFormAttr) form="{{ $qhFormAttr }}" @endif
               @if ($qhDraftHotkey) data-hotkey-save @endif
-              data-qh-save-intent="draft">
+              data-qh-save-intent="draft"
+              aria-label="Save as draft">
         Save as draft
       </button>
     @endif

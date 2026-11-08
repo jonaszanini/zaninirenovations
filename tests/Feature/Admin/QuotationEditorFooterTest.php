@@ -58,6 +58,15 @@ class QuotationEditorFooterTest extends IntegrationTestCase
             $this->assertStringNotContainsString('qh-sticky-footer', $html);
             $this->assertStringNotContainsString('admin-quotation-editor-footer.js', $html);
             $this->assertSame(0, substr_count($html, 'data-qh-footer-save'));
+            $this->assertMatchesRegularExpression(
+                '/qh-actions__save[^>]*>[\s\S]{0,80}Save quotation/',
+                $html,
+                'Painting header must keep Save quotation'
+            );
+            $this->assertDoesNotMatchRegularExpression(
+                '/qh-actions__save[^>]*>[\s\S]{0,80}Publish/',
+                $html
+            );
 
             return;
         }
@@ -65,9 +74,16 @@ class QuotationEditorFooterTest extends IntegrationTestCase
         $this->assertStringContainsString('data-qh-footer', $html, $type.' sticky footer');
         preg_match_all('/data-qh-footer(?!-)/', $html, $footerMarks);
         $this->assertCount(1, $footerMarks[0], $type.' must not stack footers');
-        $this->assertSame(1, substr_count($html, 'data-qh-footer-save'), $type.' one footer Save');
-        $this->assertStringContainsString('qh-sticky-footer__save-short">Publish', $html);
-        $this->assertStringNotContainsString('qh-sticky-footer__save-short">Save<', $html);
+        $this->assertSame(1, substr_count($html, 'data-qh-footer-save'), $type.' one footer Publish');
+        $this->assertStringContainsString('qh-sticky-footer__save-label">Publish', $html);
+        $this->assertStringContainsString('aria-label="Publish"', $html);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-short', $html);
+        $this->assertStringNotContainsString('qh-sticky-footer__save-full', $html);
+        $this->assertMatchesRegularExpression(
+            '/qh-actions__save[^>]*>[\s\S]{0,80}Publish/',
+            $html,
+            $type.' header visible Publish'
+        );
         $this->assertStringContainsString('data-qh-save-intent="publish"', $html);
         $this->assertGreaterThanOrEqual(1, substr_count($html, 'data-qh-save-intent="draft"'), $type.' draft intent');
         $this->assertStringContainsString('Save as draft', $html);

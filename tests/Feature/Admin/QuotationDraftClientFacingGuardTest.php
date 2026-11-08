@@ -132,7 +132,7 @@ class QuotationDraftClientFacingGuardTest extends IntegrationTestCase
             ->post(route('admin.quotations.'.$type.'.link', $quote), [
                 'client_project_id' => $project->id,
             ])
-            ->assertSessionHas('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+            ->assertSessionHas('error', 'Publish the quotation (not Save as draft) before linking.');
 
         $quote->refresh();
         $this->assertTrue((bool) $quote->is_draft);

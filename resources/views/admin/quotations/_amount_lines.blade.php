@@ -15,7 +15,7 @@
       border-radius: 8px;
     }
     .q-ac-row--with-category {
-      grid-template-columns: minmax(0, 1.5fr) minmax(7rem, 0.45fr) minmax(10.5rem, 0.7fr) auto auto;
+      grid-template-columns: minmax(0, 1.5fr) minmax(8.5rem, 0.5fr) minmax(10.5rem, 0.7fr) auto auto;
     }
     .q-ac-row__category select.admin-input {
       min-width: 10.5rem;
@@ -27,7 +27,7 @@
     @container (max-width: 720px) {
       .q-ac-row,
       .q-ac-row--with-category {
-        grid-template-columns: minmax(0, 1fr) minmax(10.5rem, 0.8fr) auto auto;
+        grid-template-columns: minmax(8.5rem, 1fr) minmax(10.5rem, 0.9fr) auto auto;
         align-items: end;
       }
       .q-ac-row__desc {
@@ -290,8 +290,7 @@
             <select id="{{ $idPrefix }}-cat-{{ $idx }}"
                     name="{{ $field }}[{{ $idx }}][category]"
                     class="admin-input {{ $inputClass }}"
-                    data-ac-category
-                    aria-label="Materials or labour">
+                    data-ac-category>
               <option value="materials" @selected(($row['category'] ?? 'materials') === 'materials')>Materials</option>
               <option value="labour" @selected(($row['category'] ?? 'materials') === 'labour')>Labour</option>
             </select>

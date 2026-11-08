@@ -145,7 +145,7 @@ class BasementQuotationController extends Controller
         $this->prepareQuotationForProjectLink($basement_quotation, $project);
 
         if ($basement_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+            return back()->with('error', 'Publish the quotation (not Save as draft) before linking.');
         }
         if ((float) $basement_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');
@@ -726,7 +726,7 @@ class BasementQuotationController extends Controller
                 return $message.' '.QuotationDraftFlash::CLIENT_LINK_PAUSED_SENTENCE;
             }
             if (! $quote->isLinked() && $hasIntendedProject) {
-                return $message.' It is not on the project until you click Save quotation. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
+                return $message.' It is not on the project until you click Publish. Find it under Basement Renovation quotations — the Quotations hub only shows calculator tiles.';
             }
 
             return $message;

@@ -141,7 +141,7 @@ class FlooringQuotationController extends Controller
         $this->prepareQuotationForProjectLink($flooring_quotation, $project);
 
         if ($flooring_quotation->is_draft) {
-            return back()->with('error', 'Publish the quotation (click Save quotation, not Save as draft) before linking.');
+            return back()->with('error', 'Publish the quotation (not Save as draft) before linking.');
         }
         if ((float) $flooring_quotation->final_quote_total <= 0) {
             return back()->with('error', 'Set a final quote total greater than zero before linking.');

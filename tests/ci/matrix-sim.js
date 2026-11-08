@@ -285,6 +285,15 @@ const cases = [
     },
   },
   {
+    name: 'quotation additional cost amount lines',
+    paths: ['resources/views/admin/quotations/_amount_lines.blade.php'],
+    expect: {
+      run_browser_quotation: 'true',
+      filter_quotation: 'true',
+      run_mysql_node: 'true',
+    },
+  },
+  {
     name: 'quotation editor header partial',
     paths: ['resources/views/admin/partials/quotation_editor_header.blade.php'],
     expect: {

@@ -68,6 +68,7 @@
     'saveId' => 'tm-btn-publish',
     'draftId' => 'tm-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
   ])
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,

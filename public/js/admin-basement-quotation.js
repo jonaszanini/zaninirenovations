@@ -996,7 +996,7 @@
       prev.textContent = '← Back';
     }
     if (next) {
-      next.textContent = key === 'review' ? 'Save quotation' : '→ Next';
+      next.textContent = key === 'review' ? 'Publish' : '→ Next';
       next.disabled = false;
     }
     if (scroll) {

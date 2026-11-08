@@ -59,6 +59,7 @@
     'saveId' => 'sh-btn-publish',
     'draftId' => 'sh-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
     'wizard' => [
       'navId' => 'sh-step-nav',
       'prevId' => 'sh-prev',

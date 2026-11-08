@@ -52,9 +52,8 @@
           @if (filled($qhFormId)) form="{{ $qhFormId }}" @endif
           data-qh-footer-save
           data-qh-save-intent="publish"
-          aria-label="Save quotation">
+          aria-label="Publish">
     <i class="fa fa-save" aria-hidden="true"></i>
-    <span class="qh-sticky-footer__save-full">Save quotation</span>
-    <span class="qh-sticky-footer__save-short">Publish</span>
+    <span class="qh-sticky-footer__save-label">Publish</span>
   </button>
 </div>

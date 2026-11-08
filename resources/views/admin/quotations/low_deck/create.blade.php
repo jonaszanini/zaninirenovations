@@ -182,6 +182,7 @@
     'saveId' => 'ld-btn-save',
     'saveHotkey' => true,
     'draftId' => 'ld-btn-draft',
+    'saveLabel' => 'Publish',
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? null) : null))->client_id,
   ])
   @include('admin.partials.quotation_editor_more_actions', [

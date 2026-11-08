@@ -5536,8 +5536,8 @@ select.admin-field-invalid,
   min-height: var(--admin-control-height);
   white-space: nowrap;
 }
-.qh-sticky-footer__save-short {
-  display: none;
+.qh-sticky-footer__save-label {
+  white-space: nowrap;
 }
 .admin-content:has([data-qh-footer]):not(:has(#mw-totals-bar)) {
   padding-bottom: calc(var(--qh-sticky-bar-h, var(--br-sticky-bar-h, 64px)) + 16px);
@@ -5560,12 +5560,6 @@ select.admin-field-invalid,
   .qh-sticky-footer__save {
     padding-left: 10px;
     padding-right: 10px;
-  }
-  .qh-sticky-footer__save-full {
-    display: none;
-  }
-  .qh-sticky-footer__save-short {
-    display: inline;
   }
 }
 form:has([data-qh-footer]) :is(input, select, textarea, button, .admin-form-group, .admin-input) {

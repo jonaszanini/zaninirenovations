@@ -232,7 +232,7 @@
         + '<div class="admin-form-group q-ac-row__category">'
         +   '<label for="' + prefix + '-cat-' + idx + '">Type</label>'
         +   '<select id="' + prefix + '-cat-' + idx + '" name="' + field + '[' + idx + '][category]"'
-        +           ' class="admin-input' + extraCls + '" data-ac-category aria-label="Materials or labour">'
+        +           ' class="admin-input' + extraCls + '" data-ac-category>'
         +     '<option value="materials"' + (category === 'materials' ? ' selected' : '') + '>Materials</option>'
         +     '<option value="labour"' + (category === 'labour' ? ' selected' : '') + '>Labour</option>'
         +   '</select>'

@@ -201,6 +201,7 @@
     'saveId' => 'sq-btn-publish',
     'draftId' => 'sq-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
   ])
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,

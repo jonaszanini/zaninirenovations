@@ -332,6 +332,7 @@
     'saveId' => 'pq-btn-publish',
     'draftId' => 'pq-btn-draft',
     'draftHotkey' => true,
+    'saveLabel' => 'Publish',
   ])
   @include('admin.partials.quotation_editor_more_actions', [
     'isEdit' => $isEdit,
