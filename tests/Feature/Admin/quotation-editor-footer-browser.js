@@ -9,6 +9,7 @@ const password = process.env.QH_FOOTER_PASSWORD;
 const base = process.env.QH_FOOTER_BASE;
 const outPath = process.env.QH_FOOTER_OUT;
 const shotsDir = process.env.QH_FOOTER_SHOTS || path.join(process.cwd(), 'storage/app/qh-footer-shots');
+const sha = process.env.QH_FOOTER_SHA || '';
 
 const pages = [
   { key: 'basement', href: '/admin/quotations/basement/create', painting: false },
@@ -47,6 +48,11 @@ async function shotWithRetry(page, dest, fullPage) {
 
 (async () => {
   fs.mkdirSync(shotsDir, { recursive: true });
+  fs.writeFileSync(path.join(shotsDir, 'PROVENANCE.json'), JSON.stringify({
+    sha,
+    capturedAt: new Date().toISOString(),
+    note: 'Screenshots taken before quote:grand-total fixture injection. Footer amount on shots is the live calculator total.',
+  }, null, 2));
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
   page.setDefaultNavigationTimeout(20000);
@@ -63,18 +69,197 @@ async function shotWithRetry(page, dest, fullPage) {
     ]);
   }
 
-  const report = {};
+  const report = { sha };
   for (const spec of pages) {
     report[spec.key] = {};
-    for (const width of [1280, 390]) {
+    const widths = spec.key === 'paving' ? [1280, 1024, 390] : [1280, 390];
+    for (const width of widths) {
       await page.setViewport({ width, height: 900, deviceScaleFactor: 1 });
       await page.goto(base + spec.href, { waitUntil: 'domcontentloaded' });
       await page.waitForSelector('[data-qh-header]');
-      await new Promise((r) => setTimeout(r, 150));
+      if (spec.key === 'paving') {
+        await page.waitForSelector('#pq-live-root[data-pq-preview-state="ready"]', { timeout: 8000 }).catch(() => {});
+      }
+      await new Promise((r) => setTimeout(r, 200));
+
+      if (spec.key === 'paving') {
+        const addBtn = await page.$('[data-ac-card] [data-ac-add]');
+        if (addBtn) {
+          await addBtn.click();
+          await new Promise((r) => setTimeout(r, 80));
+          await page.evaluate(() => {
+            const rows = document.querySelectorAll('[data-ac-card] [data-ac-row]');
+            const last = rows[rows.length - 1];
+            const amt = last && last.querySelector('[data-ac-amount]');
+            if (amt) {
+              amt.value = '1234567.89';
+              amt.dispatchEvent(new Event('input', { bubbles: true }));
+              amt.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+          });
+          await page.waitForFunction(() => {
+            const root = document.getElementById('pq-live-root');
+            const footer = document.querySelector('[data-qh-footer-amount]');
+            const ft = footer ? String(footer.textContent || '') : '';
+            return root && root.getAttribute('data-pq-preview-state') === 'ready'
+              && ft.indexOf('CA$') === 0
+              && ft !== 'CA$1,234.56';
+          }, { timeout: 8000 }).catch(() => {});
+          await new Promise((r) => setTimeout(r, 120));
+        }
+      }
+
+      const beforeShots = await page.evaluate(() => {
+        const h = (window.__qhFooterHelpers = (window.__qhFooterHelpers || (function () {
+          const visibleText = (el) => {
+            if (!el) return '';
+            const parts = [];
+            const walk = (node) => {
+              if (node.nodeType === 3) {
+                parts.push(node.textContent || '');
+                return;
+              }
+              if (node.nodeType !== 1) return;
+              if (node.getAttribute('aria-hidden') === 'true') return;
+              const cs = getComputedStyle(node);
+              if (cs.display === 'none' || cs.visibility === 'hidden') return;
+              [...node.childNodes].forEach(walk);
+            };
+            walk(el);
+            return parts.join('').replace(/\s+/g, ' ').trim();
+          };
+          const box = (el) => {
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
+          };
+          const overlap = (a, b) => !!(a && b && a.right > b.left + 1 && b.right > a.left + 1 && a.bottom > b.top + 1 && b.bottom > a.top + 1);
+          const painted = (el) => {
+            if (!el) return null;
+            const b = box(el);
+            if (!b || b.width < 1 || b.height < 1) return null;
+            const cs = getComputedStyle(el);
+            if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null;
+            return b;
+          };
+          const measureAc = () => {
+            const card = document.querySelector('[data-ac-card]');
+            if (!card) return { hasCard: false };
+            const cardBox = box(card);
+            const rows = [...card.querySelectorAll('[data-ac-row]')].map((rowEl, idx) => {
+              const cs = getComputedStyle(rowEl);
+              const amountLabel = rowEl.querySelector('.q-ac-row__amount > label');
+              const amountInput = rowEl.querySelector('[data-ac-amount]');
+              const typeLabel = rowEl.querySelector('.q-ac-row__category > label');
+              const typeSelect = rowEl.querySelector('[data-ac-category]');
+              const taxToggle = rowEl.querySelector('.q-ac-hst-toggle');
+              const taxText = rowEl.querySelector('.cp-visit-toggle__label, [data-ac-hst-text]');
+              const taxControl = rowEl.querySelector('.cp-visit-toggle__control');
+              const removeBtn = rowEl.querySelector('[data-ac-remove]');
+              const targets = {
+                amountLabel: painted(amountLabel),
+                amountInput: painted(amountInput),
+                typeLabel: painted(typeLabel),
+                typeSelect: painted(typeSelect),
+                taxToggle: painted(taxToggle),
+                taxText: painted(taxText),
+                taxControl: painted(taxControl),
+                removeBtn: painted(removeBtn),
+              };
+              const pairDefs = [
+                ['amountLabel', 'typeLabel'],
+                ['amountInput', 'typeSelect'],
+                ['amountInput', 'taxToggle'],
+                ['typeSelect', 'taxToggle'],
+                ['taxText', 'removeBtn'],
+                ['taxControl', 'removeBtn'],
+                ['taxToggle', 'removeBtn'],
+                ['amountInput', 'removeBtn'],
+                ['typeSelect', 'removeBtn'],
+                ['amountLabel', 'taxText'],
+                ['typeLabel', 'taxText'],
+              ];
+              const pairs = pairDefs.map(([a, b]) => ({
+                a,
+                b,
+                overlap: overlap(targets[a], targets[b]),
+              }));
+              return {
+                idx,
+                source: idx === 0 ? 'ssr' : 'js',
+                rowWidth: box(rowEl) ? box(rowEl).width : 0,
+                grid: cs.gridTemplateColumns,
+                areas: cs.gridTemplateAreas,
+                amountW: targets.amountInput ? targets.amountInput.width : 0,
+                typeW: targets.typeSelect ? targets.typeSelect.width : 0,
+                taxTextStr: taxText ? String(taxText.textContent || '').replace(/\s+/g, ' ').trim() : '',
+                amountLabel: amountLabel ? String(amountLabel.textContent || '').trim() : '',
+                typeLabel: typeLabel ? String(typeLabel.textContent || '').trim() : '',
+                amountValue: amountInput ? String(amountInput.value || '') : '',
+                removeSize: targets.removeBtn
+                  ? { w: targets.removeBtn.width, h: targets.removeBtn.height }
+                  : null,
+                pairs,
+                paintedOverlap: pairs.some((p) => p.overlap),
+              };
+            });
+            return {
+              hasCard: true,
+              viewportW: window.innerWidth,
+              cardWidth: cardBox ? cardBox.width : 0,
+              rowCount: rows.length,
+              rows,
+              premiseFits: rows.every((r) => !r.paintedOverlap),
+            };
+          };
+          const totals = () => {
+            const footer = document.querySelector('[data-qh-footer-amount]');
+            const footerText = footer ? String(footer.textContent || '').trim() : '';
+            let summaryTotal = '';
+            const root = document.getElementById('pq-live-root');
+            if (root) {
+              const nodes = [...root.querySelectorAll('div')];
+              for (const el of nodes) {
+                const label = el.querySelector('span');
+                const strong = el.querySelector('strong');
+                if (label && strong && /^\s*Total quote\s*$/i.test(String(label.textContent || '').replace(/\s+/g, ' ').trim())) {
+                  summaryTotal = String(strong.textContent || '').trim();
+                  break;
+                }
+              }
+            }
+            return {
+              footerText,
+              summaryTotal,
+              grand: typeof window.__quoteGrandTotal === 'number' ? window.__quoteGrandTotal : null,
+            };
+          };
+          return { visibleText, measureAc, totals };
+        })()));
+        const totals = h.totals();
+        return {
+          acLayout: h.measureAc(),
+          screenshotFooter: totals.footerText,
+          liveSummaryTotal: totals.summaryTotal,
+          screenshotGrand: totals.grand,
+        };
+      });
+
       const viewportShot = path.join(shotsDir, spec.key + '-' + width + '-viewport.png');
       const fullShot = path.join(shotsDir, spec.key + '-' + width + '-full.png');
       await shotWithRetry(page, viewportShot, false);
       await shotWithRetry(page, fullShot, true);
+      let costsShot = '';
+      if (spec.key === 'paving') {
+        const costs = await page.$('.q-additional-costs-card, [data-ac-card]');
+        if (costs) {
+          await costs.evaluate((el) => el.scrollIntoView({ block: 'center' }));
+          await new Promise((r) => setTimeout(r, 80));
+          costsShot = path.join(shotsDir, spec.key + '-' + width + '-additional-costs.png');
+          await shotWithRetry(page, costsShot, false);
+        }
+      }
+
       const row = await page.evaluate(async () => {
         const visibleText = (el) => {
           if (!el) return '';
@@ -95,25 +280,9 @@ async function shotWithRetry(page, dest, fullPage) {
         };
         const accName = (el) => {
           if (!el) return '';
-          const labelled = (el.getAttribute('aria-labelledby') || '')
-            .split(/\s+/)
-            .filter(Boolean)
-            .map((id) => {
-              const n = document.getElementById(id);
-              return n ? visibleText(n) : '';
-            })
-            .join(' ')
-            .trim();
           const aria = (el.getAttribute('aria-label') || '').trim();
-          return labelled || aria || visibleText(el);
+          return aria || visibleText(el);
         };
-        const box = (el) => {
-          if (!el) return null;
-          const r = el.getBoundingClientRect();
-          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height };
-        };
-        const overlap = (a, b) => !!(a && b && a.right > b.left + 1 && b.right > a.left + 1 && a.bottom > b.top + 1 && b.bottom > a.top + 1);
-
         const footer = document.querySelector('[data-qh-footer]');
         const save = footer && footer.querySelector('[data-qh-footer-save]');
         const amount = footer && footer.querySelector('[data-qh-footer-amount]');
@@ -125,7 +294,7 @@ async function shotWithRetry(page, dest, fullPage) {
         const saveBox = save ? save.getBoundingClientRect() : null;
         const amountBox = amount ? amount.getBoundingClientRect() : null;
         const saveLabelEl = save && save.querySelector('.qh-sticky-footer__save-label');
-        let liveBefore = amount ? String(amount.textContent || '') : '';
+        const liveBefore = amount ? String(amount.textContent || '') : '';
         let liveAfter = liveBefore;
         if (amount) {
           window.__quoteGrandTotal = 1234.56;
@@ -169,13 +338,6 @@ async function shotWithRetry(page, dest, fullPage) {
           headerSave.removeEventListener('click', onHeader, true);
           headerDraft.removeEventListener('click', onDraft, true);
         }
-
-        const amtLabel = document.querySelector('.q-ac-row--with-category .q-ac-row__amount label');
-        const typeLabel = document.querySelector('.q-ac-row--with-category .q-ac-row__category label');
-        const amtBox = box(amtLabel);
-        const typeBox = box(typeLabel);
-        const acCard = document.querySelector('[data-ac-card], .q-additional-costs-card');
-
         const status = document.getElementById('br-step-status');
         const overviewNum = document.querySelector('[data-br-step="overview"] .br-acc__num');
         const scopeNum = document.querySelector('[data-br-step="client_scope"] .br-acc__num');
@@ -213,27 +375,11 @@ async function shotWithRetry(page, dest, fullPage) {
           stepStatus: status ? String(status.textContent || '').trim() : '',
           overviewNum: overviewNum ? String(overviewNum.textContent || '').trim() : '',
           scopeNum: scopeNum ? String(scopeNum.textContent || '').trim() : '',
-          amountType: {
-            hasRow: !!(amtLabel && typeLabel),
-            amountText: amtLabel ? String(amtLabel.textContent || '').trim() : '',
-            typeText: typeLabel ? String(typeLabel.textContent || '').trim() : '',
-            overlap: overlap(amtBox, typeBox),
-            amountBox: amtBox,
-            typeBox: typeBox,
-            cardWidth: acCard ? Math.round(acCard.getBoundingClientRect().width) : null,
-          },
         };
       });
-      if (spec.key === 'paving' && row.amountType && row.amountType.hasRow) {
-        const costs = await page.$('.q-additional-costs-card, [data-ac-card]');
-        if (costs) {
-          await costs.evaluate((el) => el.scrollIntoView({ block: 'center' }));
-          await new Promise((r) => setTimeout(r, 80));
-          const costsShot = path.join(shotsDir, spec.key + '-' + width + '-additional-costs.png');
-          await shotWithRetry(page, costsShot, false);
-          row.costsShot = costsShot;
-        }
-      }
+
+      Object.assign(row, beforeShots);
+      row.injectedTotalUsedForScreenshot = false;
       if (spec.key === 'basement') {
         await page.evaluate(() => {
           const area = document.getElementById('br-area');
@@ -263,6 +409,7 @@ async function shotWithRetry(page, dest, fullPage) {
       }
       row.shot = fullShot;
       row.viewportShot = viewportShot;
+      if (costsShot) row.costsShot = costsShot;
       report[spec.key][String(width)] = row;
     }
   }

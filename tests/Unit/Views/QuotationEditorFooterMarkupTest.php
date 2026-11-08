@@ -110,6 +110,11 @@ class QuotationEditorFooterMarkupTest extends TestCase
             '/@container \(max-width: 720px\)[\s\S]{0,220}minmax\(0,\s*1fr\)\s+minmax\(10\.5rem/',
             $blade
         );
+        $this->assertMatchesRegularExpression(
+            '/@container \(max-width: 560px\)[\s\S]{0,420}taxrow taxrow/',
+            $blade
+        );
+        $this->assertStringContainsString('needs ≈513px min-content', $blade);
         $this->assertStringNotContainsString('aria-label="Materials or labour"', $blade);
         $js = file_get_contents(public_path('js/admin-additional-costs.js'));
         $this->assertStringNotContainsString('aria-label="Materials or labour"', $js);

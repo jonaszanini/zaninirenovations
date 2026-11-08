@@ -33,6 +33,7 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
         $shots = storage_path('app/qh-footer-shots');
         @unlink($out);
 
+        $sha = trim((string) shell_exec('git -C '.escapeshellarg(base_path()).' rev-parse HEAD'));
         $output = [];
         $code = $this->runNode($script, [
             'QH_FOOTER_EMAIL' => $user->email,
@@ -40,6 +41,7 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
             'QH_FOOTER_BASE' => $base,
             'QH_FOOTER_OUT' => $out,
             'QH_FOOTER_SHOTS' => $shots,
+            'QH_FOOTER_SHA' => $sha,
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -48,9 +50,14 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
         $this->assertSame(0, $code, "Footer puppeteer failed:\n".implode("\n", $output)."\n".$raw);
         $report = json_decode($raw, true);
         $this->assertIsArray($report);
+        $this->assertSame($sha, (string) ($report['sha'] ?? ''), 'browser report SHA must match committed HEAD');
+        $provenance = json_decode((string) @file_get_contents($shots.'/PROVENANCE.json'), true);
+        $this->assertIsArray($provenance);
+        $this->assertSame($sha, (string) ($provenance['sha'] ?? ''));
 
         foreach (['basement', 'millwork', 'standard', 'fence', 'paving'] as $type) {
-            foreach (['1280', '390'] as $width) {
+            $widths = $type === 'paving' ? ['1280', '1024', '390'] : ['1280', '390'];
+            foreach ($widths as $width) {
                 $row = $report[$type][$width] ?? [];
                 $this->assertTrue((bool) ($row['hasFooter'] ?? false), "{$type} @{$width} missing footer");
                 $this->assertSame(1, (int) ($row['footerCount'] ?? 0), "{$type} @{$width} stacked footers");
@@ -62,7 +69,22 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
                 $this->assertTrue((bool) ($row['pinned'] ?? false), "{$type} @{$width} footer is not viewport-fixed");
                 $this->assertTrue((bool) ($row['saveInView'] ?? false), "{$type} @{$width} Publish not in view");
                 $this->assertTrue((bool) ($row['amountInView'] ?? false), "{$type} @{$width} amount not in view");
-                $this->assertSame('CA$1,234.56', (string) ($row['liveAfter'] ?? ''), "{$type} @{$width} did not mirror quote:grand-total");
+                $this->assertSame(
+                    'CA$1,234.56',
+                    (string) ($row['liveAfter'] ?? ''),
+                    "{$type} @{$width} fixture quote:grand-total must update the footer (wiring only, not screenshot evidence)"
+                );
+                $this->assertNotSame(
+                    'CA$1,234.56',
+                    (string) ($row['screenshotFooter'] ?? ''),
+                    "{$type} @{$width} screenshot footer must be the live calculator total, not the injected CA$1,234.56"
+                );
+                $this->assertFalse((bool) ($row['injectedTotalUsedForScreenshot'] ?? true));
+                $this->assertSame(
+                    (string) ($row['screenshotFooter'] ?? ''),
+                    (string) ($row['liveBefore'] ?? ''),
+                    "{$type} @{$width} liveBefore at inject time must still be the pre-inject calculator total"
+                );
                 $this->assertSame(1, (int) ($row['headerClicks'] ?? 0), "{$type} @{$width} footer Publish did not proxy to header Publish");
                 $this->assertSame(1, (int) ($row['draftClicks'] ?? 0), "{$type} @{$width} Save as draft must fire its own control");
                 $this->assertSame(0, (int) ($row['nativeFooterSubmit'] ?? 0), "{$type} @{$width} footer must not native-submit beside the header proxy");
@@ -98,12 +120,39 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
                     $this->assertSame('→ Next', (string) ($after['nextAccName'] ?? ''));
                 }
                 if ($type === 'paving') {
-                    $costs = $row['amountType'] ?? [];
-                    $this->assertTrue((bool) ($costs['hasRow'] ?? false), "paving @{$width} Additional costs Amount/Type row");
-                    $this->assertSame('Amount', (string) ($costs['amountText'] ?? ''));
-                    $this->assertSame('Type', (string) ($costs['typeText'] ?? ''));
-                    $this->assertFalse((bool) ($costs['overlap'] ?? true), "paving @{$width} Amount and Type labels must not overlap (AMOUTYPE)");
                     $this->assertFileExists((string) ($row['costsShot'] ?? ''), "paving @{$width} Additional costs viewport shot");
+                    $this->assertNotSame('', (string) ($row['liveSummaryTotal'] ?? ''), "paving @{$width} live Total quote");
+                    $this->assertSame(
+                        (string) ($row['liveSummaryTotal'] ?? ''),
+                        (string) ($row['screenshotFooter'] ?? ''),
+                        "paving @{$width} sticky footer must match live Total quote on the screenshot (not the injected fixture)"
+                    );
+                    $layout = $row['acLayout'] ?? [];
+                    $this->assertTrue((bool) ($layout['hasCard'] ?? false), "paving @{$width} Additional costs card");
+                    $this->assertGreaterThanOrEqual(2, (int) ($layout['rowCount'] ?? 0), "paving @{$width} SSR + JS-added rows");
+                    $this->assertTrue((bool) ($layout['premiseFits'] ?? false), "paving @{$width} Additional costs row must fit the container");
+                    $sources = [];
+                    foreach ($layout['rows'] ?? [] as $acRow) {
+                        $source = (string) ($acRow['source'] ?? '');
+                        $sources[] = $source;
+                        $this->assertSame('Amount', (string) ($acRow['amountLabel'] ?? ''), "paving @{$width} {$source} Amount label");
+                        $this->assertSame('Type', (string) ($acRow['typeLabel'] ?? ''), "paving @{$width} {$source} Type label");
+                        $this->assertFalse(
+                            (bool) ($acRow['paintedOverlap'] ?? true),
+                            "paving @{$width} {$source} painted Amount/Type/Tax/Remove overlap: ".json_encode($acRow['pairs'] ?? [])
+                        );
+                        foreach ($acRow['pairs'] ?? [] as $pair) {
+                            $this->assertFalse(
+                                (bool) ($pair['overlap'] ?? true),
+                                "paving @{$width} {$source} {$pair['a']} vs {$pair['b']}"
+                            );
+                        }
+                        $remove = $acRow['removeSize'] ?? [];
+                        $this->assertGreaterThanOrEqual(44, (float) ($remove['w'] ?? 0), "paving @{$width} {$source} Remove width");
+                        $this->assertGreaterThanOrEqual(44, (float) ($remove['h'] ?? 0), "paving @{$width} {$source} Remove height");
+                    }
+                    $this->assertContains('ssr', $sources);
+                    $this->assertContains('js', $sources);
                 }
             }
         }
