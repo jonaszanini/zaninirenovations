@@ -154,15 +154,26 @@ async function floorMatTotal(page) {
       const rows = {};
       document.querySelectorAll('[data-br-recon-key]').forEach((row) => {
         const key = row.getAttribute('data-br-recon-key') || '';
-        const n = parseFloat(String(row.textContent || '').replace(/[^\d.-]/g, ''));
+        const span = row.querySelector('span:last-child');
+        const text = span ? String(span.textContent || '').trim() : '';
+        const n = parseFloat(text.replace(/[^\d.-]/g, ''));
         if (key) rows[key] = isFinite(n) ? n : 0;
       });
       const inHouse = rows.sections_subtotal_sum || 0;
+      const tradesPre = rows.qualified_trades_pre_hst || 0;
       const extra = rows.extra_materials || 0;
       const fee = rows.contractor_fee || 0;
       const subtotal = rows.subtotal_pre_hst || 0;
-      const assembled = Math.round((inHouse + extra + fee) * 100) / 100;
-      return Math.abs(assembled - subtotal) <= 0.05;
+      const assembled = Math.round((inHouse + tradesPre + extra + fee) * 100) / 100;
+      if (Math.abs(assembled - subtotal) > 0.05) {
+        return false;
+      }
+      const elec = rows.electrical_tax_in || 0;
+      const plumb = rows.plumbing_tax_in || 0;
+      const hst = rows.hst || 0;
+      const grand = rows.grand_total || 0;
+      const grandAssembled = Math.round((subtotal + hst + elec + plumb) * 100) / 100;
+      return Math.abs(grandAssembled - grand) <= 0.05;
     });
     report.reconciliationAddUp = reconOk;
 
