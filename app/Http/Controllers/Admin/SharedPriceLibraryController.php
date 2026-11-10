@@ -360,8 +360,9 @@ class SharedPriceLibraryController extends Controller
             if ($unit !== '') {
                 $work->material_unit = $unit;
             }
-            if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
-                $work->material_unit_price = round((float) $row['material_unit_price'], 4);
+            if ($catalogId <= 0 && isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
+                $postedPrice = round((float) $row['material_unit_price'], 4);
+                $work->material_unit_price = $postedPrice > 0 ? $postedPrice : null;
             }
             $work->save();
         }

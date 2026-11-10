@@ -136,15 +136,14 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/justify-content:\s*center/', $more);
 
         $columns = $this->desktopGridColumns($css);
-        $this->assertCount(8, $columns);
+        $this->assertCount(7, $columns);
         $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Productivity must fit 99,999.9900');
         $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(3.5, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(5.25, $this->cssMinRem($columns[5]), 'Mat. name keeps a readable min');
-        $this->assertSame('2.75rem', trim($columns[6]), 'Catalog search column stays fixed');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+        $this->assertGreaterThanOrEqual(6.0, $this->cssMinRem($columns[4]), 'Mat. name keeps a readable min');
+        $this->assertSame('2.75rem', trim($columns[5]), 'Catalog search column stays fixed');
+        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[6]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('sp-work-label-input sp-auto-grow-textarea', $blade);
         $this->assertStringContainsString('sp-mat-name-input sp-auto-grow-textarea', $blade);
@@ -680,7 +679,7 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
           colCount,
           theadDisplay,
           stacked: theadDisplay === 'none' || colCount <= 2,
-          rawTable: theadDisplay !== 'none' && colCount !== 8,
+          rawTable: theadDisplay !== 'none' && colCount !== 7,
         };
       });
     }
@@ -753,7 +752,7 @@ JS
                 );
                 $this->assertTrue($row['stacked'] ?? false, "Must use stacked cards at {$w}");
             } else {
-                $this->assertFalse($row['stacked'] ?? true, "Must use the 8-column grid at {$w}");
+                $this->assertFalse($row['stacked'] ?? true, "Must use the 7-column grid at {$w}");
                 $this->assertGreaterThanOrEqual(115, (int) ($row['workW'] ?? 0), "Work item too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(100, (int) ($row['sellMin'] ?? 0), "Sell column too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(44, (int) ($row['moreHit'] ?? 0), "+N hit area must be ≥44px at {$w}");

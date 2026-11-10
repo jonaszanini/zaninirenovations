@@ -37,8 +37,7 @@
     minmax(5.5rem, 1fr)
     minmax(6.6rem, 1.05fr)
     minmax(3.5rem, 0.75fr)
-    minmax(5.5rem, 1fr)
-    minmax(5.25rem, 0.95fr)
+    minmax(6.75rem, 1.2fr)
     2.75rem
     minmax(5.5rem, 1fr);
   margin-bottom: 1rem;
@@ -165,7 +164,6 @@ details.sp-group.admin-card {
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
   .sp-table td.sp-col-unit,
-  .sp-table td.sp-col-price,
   .sp-table td.sp-col-name,
   .sp-table td.sp-col-sell {
     display: flex;
@@ -239,7 +237,6 @@ details.sp-group.admin-card {
 .sp-col-rate,
 .sp-col-sell,
 .sp-col-unit,
-.sp-col-price,
 .sp-col-name,
 .sp-col-catalog,
 .sp-col-consumers {
@@ -247,6 +244,33 @@ details.sp-group.admin-card {
 }
 .sp-col-name .sp-input,
 .sp-mat-name-input { width: 100%; max-width: none; box-sizing: border-box; }
+.sp-mat-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  width: 100%;
+  min-width: 0;
+}
+.sp-mat-unlinked {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--admin-warning, #b45309);
+  white-space: nowrap;
+}
+.sp-mat-fallback-price {
+  width: 100%;
+  min-width: 0;
+  padding: 0.25rem 0.4rem;
+  font-size: 0.75rem;
+  height: 28px;
+  box-sizing: border-box;
+}
 .sp-col-name { position: relative; }
 .sp-col-name:focus-within {
   overflow: visible;
@@ -254,7 +278,7 @@ details.sp-group.admin-card {
 }
 .sp-col-rate .sp-input,
 .sp-col-sell .sp-input,
-.sp-col-price .sp-input {
+.sp-mat-fallback-price {
   width: 100%;
   min-width: 0;
   padding-left: 0.25rem;
@@ -694,7 +718,7 @@ details.sp-group.admin-card {
       "catalog consumers"
       "search search"
       "rate sell"
-      "unit price"
+      "unit unit"
       "name name";
     gap: 0.5rem 0.75rem;
     padding: 0.85rem 0;
@@ -723,7 +747,6 @@ details.sp-group.admin-card {
   .sp-col-rate { grid-area: rate; }
   .sp-col-sell { grid-area: sell; }
   .sp-col-unit { grid-area: unit; }
-  .sp-col-price { grid-area: price; }
   .sp-col-name { grid-area: name; }
   .sp-table td.sp-col-catalog {
     display: contents;
@@ -1025,7 +1048,6 @@ details.sp-group.admin-card {
                   </span>
                 </th>
                 <th class="sp-col-unit"><span class="sp-th-label">Unit</span></th>
-                <th class="sp-col-price"><span class="sp-th-label">Mat. price</span></th>
                 <th class="sp-col-name"><span class="sp-th-label">Mat. name</span></th>
                 <th class="sp-col-catalog" title="Catalog"><span class="sp-th-label"><i class="fa fa-search" aria-hidden="true"></i></span></th>
                 <th class="sp-col-consumers"><span class="sp-th-label">Used by</span></th>
@@ -1057,6 +1079,8 @@ details.sp-group.admin-card {
                       }
                   }
                   $workMeta = $work->costUnitLabel();
+                  $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name);
+                  $matPriceLive = \App\Services\SharedWorkCatalog::materialUnitPriceForSell($work);
                 @endphp
                 <tr id="work-{{ $work->key }}" class="sp-row"
                     data-sp-kind="{{ $work->labor_kind }}"
@@ -1064,7 +1088,9 @@ details.sp-group.admin-card {
                     data-sp-area="{{ $isArea ? '1' : '0' }}"
                     data-sp-blank-sell="{{ $blankSell !== null ? number_format($blankSell, 4, '.', '') : '' }}"
                     data-sp-default-sell="{{ $effective !== null ? number_format((float) $effective, 4, '.', '') : '' }}"
-                    data-sp-initial-rate="{{ $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '' }}">
+                    data-sp-initial-rate="{{ $work->rate !== null ? number_format((float) $work->rate, 4, '.', '') : '' }}"
+                    data-sp-mat-price="{{ $matPriceLive > 0 ? number_format($matPriceLive, 4, '.', '') : '' }}"
+                    data-sp-catalog-linked="{{ $catalogId > 0 ? '1' : '0' }}">
                   <td class="sp-col-label" data-label="Work item">
                     <input type="hidden" name="works[{{ $work->id }}][id]" value="{{ $work->id }}">
                     <span class="sp-work">
@@ -1106,18 +1132,24 @@ details.sp-group.admin-card {
                            value="{{ old('works.'.$work->id.'.material_unit', $work->material_unit) }}"
                            placeholder="—">
                   </td>
-                  <td class="sp-col-price" data-label="Mat. price">
-                    <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
-                           class="sp-input sp-input--sm cp-money-input" id="sp-mat-price-{{ $work->id }}"
-                           name="works[{{ $work->id }}][material_unit_price]"
-                           value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
-                           placeholder="0.00" data-cp-money-entry="direct">
-                  </td>
                   <td class="sp-col-name" data-label="Mat. name">
-                    @php $matNameVal = old('works.'.$work->id.'.material_name', $work->material_name); @endphp
-                    <textarea rows="1" class="sp-input sp-mat-name-input sp-auto-grow-textarea" id="sp-mat-name-{{ $work->id }}"
-                           name="works[{{ $work->id }}][material_name]"
-                           placeholder="—">{{ $matNameVal }}</textarea>
+                    <div class="sp-mat-slot">
+                      <textarea rows="1" class="sp-input sp-mat-name-input sp-auto-grow-textarea" id="sp-mat-name-{{ $work->id }}"
+                             name="works[{{ $work->id }}][material_name]"
+                             placeholder="—">{{ $matNameVal }}</textarea>
+                      @if ($catalogId <= 0)
+                        <span class="sp-mat-unlinked">
+                          Not linked
+                          <x-admin.info-tip text="Link a Materials catalog item with the search button so quotations use the live catalogue price. Until then, enter a fallback unit price below — it stays on this row only and is not updated when catalog prices change." label="material catalog link" />
+                        </span>
+                        <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
+                               class="sp-input sp-input--sm cp-money-input sp-mat-fallback-price" id="sp-mat-price-{{ $work->id }}"
+                               name="works[{{ $work->id }}][material_unit_price]"
+                               value="{{ old('works.'.$work->id.'.material_unit_price', $work->material_unit_price !== null ? number_format((float) $work->material_unit_price, 4, '.', '') : '') }}"
+                               placeholder="Fallback $/unit" data-cp-money-entry="direct"
+                               aria-label="Fallback material price for {{ $work->label }}">
+                      @endif
+                    </div>
                   </td>
                   <td class="sp-col-catalog" data-label="Catalog">
                     <button type="button" class="sp-catalog-btn{{ $catalogId > 0 ? ' is-selected' : '' }}"
@@ -1389,13 +1421,14 @@ details.sp-group.admin-card {
         if (!out) return;
         var rateInput = row.querySelector('.sp-col-rate input');
         var sellInput = row.querySelector('.sp-col-sell input');
-        var priceInput = row.querySelector('.sp-col-price input');
+        var priceInput = row.querySelector('.sp-mat-fallback-price');
+        var priceAttr = row.getAttribute('data-sp-mat-price') || '';
         var unitInput = row.querySelector('.sp-col-unit input');
         var effective = lib.effectiveUnitPrice({
           sell: sellInput ? sellInput.value : '',
           rate: rateInput ? rateInput.value : '',
           owner: owner,
-          price: priceInput ? priceInput.value : '',
+          price: priceInput ? priceInput.value : priceAttr,
           matUnit: unitInput ? unitInput.value : '',
           kind: row.getAttribute('data-sp-kind') || '',
           blankSell: row.getAttribute('data-sp-blank-sell') || '',
@@ -1412,9 +1445,18 @@ details.sp-group.admin-card {
     }
     document.getElementById('sp-lib-form').addEventListener('input', function(e) {
       if (!e.target) return;
-      if (e.target.id === 'owner_hourly_rate' || e.target.closest('.sp-col-rate') || e.target.closest('.sp-col-sell') || e.target.closest('.sp-col-price') || e.target.closest('.sp-col-unit')) {
+      if (e.target.id === 'owner_hourly_rate' || e.target.closest('.sp-col-rate') || e.target.closest('.sp-col-sell') || e.target.closest('.sp-mat-fallback-price') || e.target.closest('.sp-col-unit')) {
         updateSpEffective();
       }
+    });
+    document.addEventListener('admin-search-select:change', function(e) {
+      var detail = e.detail || {};
+      var wrap = e.target && e.target.closest ? e.target.closest('tr.sp-row') : null;
+      if (!wrap) return;
+      var price = detail.option && detail.option.price != null ? parseFloat(String(detail.option.price).replace(/,/g, '')) : 0;
+      wrap.setAttribute('data-sp-catalog-linked', detail.id ? '1' : '0');
+      wrap.setAttribute('data-sp-mat-price', price > 0 ? price.toFixed(4) : '');
+      updateSpEffective();
     });
   </script>
 @endsection

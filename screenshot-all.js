@@ -93,7 +93,7 @@ async function checkOverflow(page, shotName) {
       }
     });
 
-    document.querySelectorAll('.sp-col-rate input, .sp-col-sell input, .sp-col-price input').forEach(el => {
+    document.querySelectorAll('.sp-col-rate input, .sp-col-sell input, .sp-mat-fallback-price').forEach(el => {
       if (!visible(el)) return;
       const prev = el.value;
       el.value = '9,999.0000';
@@ -270,7 +270,7 @@ async function takeScreenshot(page, shot) {
     await page.evaluate(() => {
       let el = document.getElementById('sp-mat-price-16');
       if (!el) {
-        el = Array.from(document.querySelectorAll('.sp-col-price input')).find(i =>
+        el = Array.from(document.querySelectorAll('.sp-mat-fallback-price')).find(i =>
           String(i.value).replace(/\s/g, '') === '1,410.0000' || String(i.value).replace(/,/g, '') === '1410.0000'
         );
       }

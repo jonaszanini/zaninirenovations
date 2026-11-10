@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BasementSettings;
+use App\Models\Material;
 use App\Models\SharedCrewRate;
 use App\Models\SharedWork;
 use App\Models\TrimmingSettings;
@@ -929,12 +930,9 @@ class SharedWorkCatalog
             ? $rate * $owner
             : ($owner / $rate);
 
-        $material = 0.0;
-        if ($work->material_unit_price !== null && (float) $work->material_unit_price > 0) {
-            $material = (float) $work->material_unit_price;
-            if ($work->material_unit === 'stick_8ft' || $work->material_unit === 'stick') {
-                $material = $material / 8;
-            }
+        $material = self::materialUnitPriceForSell($work);
+        if ($material > 0 && ($work->material_unit === 'stick_8ft' || $work->material_unit === 'stick')) {
+            $material = $material / 8;
         }
 
         return round($labor + $material, 2);
@@ -980,14 +978,59 @@ class SharedWorkCatalog
             return $fallback;
         }
 
+        $catalogId = (int) ($work->catalog_material_id ?? 0);
+        $unit = $work->material_unit ?: ($fallback['unit'] ?? 'each');
+        $name = $work->material_name ?: ($fallback['name'] ?? '');
+        if ($catalogId > 0) {
+            $catalog = Material::query()->find($catalogId);
+            if ($catalog) {
+                if ($name === '' && filled($catalog->name)) {
+                    $name = (string) $catalog->name;
+                }
+                if ($unit === '' && filled($catalog->unit)) {
+                    $unit = (string) $catalog->unit;
+                }
+            }
+        }
+
         return [
-            'name' => $work->material_name ?: ($fallback['name'] ?? ''),
-            'unit' => $work->material_unit ?: ($fallback['unit'] ?? 'each'),
-            'unit_price' => $work->material_unit_price !== null
-                ? (float) $work->material_unit_price
-                : (float) ($fallback['unit_price'] ?? 0),
-            'catalog_material_id' => $work->catalog_material_id ?: ($fallback['catalog_material_id'] ?? null),
+            'name' => $name,
+            'unit' => $unit,
+            'unit_price' => self::resolvedMaterialUnitPrice($work, $fallback),
+            'catalog_material_id' => $catalogId > 0 ? $catalogId : ($fallback['catalog_material_id'] ?? null),
         ];
+    }
+
+    /**
+     * Material $/unit for quote math: live catalog price when linked, else stored fallback.
+     *
+     * @param  array{name?: string, unit?: string, unit_price?: float, catalog_material_id?: int|null}  $fallback
+     */
+    public static function resolvedMaterialUnitPrice(SharedWork $work, array $fallback = []): float
+    {
+        $catalogId = (int) ($work->catalog_material_id ?? 0);
+        if ($catalogId > 0) {
+            $catalog = Material::query()->find($catalogId);
+            if ($catalog !== null && $catalog->price_cad !== null) {
+                return round((float) $catalog->price_cad, 4);
+            }
+        }
+
+        if ($work->material_unit_price !== null && (float) $work->material_unit_price > 0) {
+            return round((float) $work->material_unit_price, 4);
+        }
+
+        return round((float) ($fallback['unit_price'] ?? 0), 4);
+    }
+
+    /**
+     * Same resolved price as calculators use in effective sell hints (per full unit, before stick ÷8).
+     */
+    public static function materialUnitPriceForSell(SharedWork $work): float
+    {
+        $def = self::definition($work->key) ?? [];
+
+        return self::resolvedMaterialUnitPrice($work, is_array($def['material'] ?? null) ? $def['material'] : []);
     }
 
     /**
