@@ -326,7 +326,7 @@ trait PublishesLinkedQuotations
             ],
             'basement' => [
                 'publishQty' => 850.0,
-                'publishTotal' => 31322.35,
+                'publishTotal' => 31434.49,
                 'httpEditQty' => 400.0,
                 'httpEditTotal' => 17862.36,
                 'browserEditQty' => 400.0,

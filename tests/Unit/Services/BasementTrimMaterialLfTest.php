@@ -3,7 +3,9 @@
 namespace Tests\Unit\Services;
 
 use App\Models\BasementSettings;
+use App\Models\TrimmingSettings;
 use App\Services\BasementQuotationCalculator;
+use App\Services\SharedWorkCatalog;
 use Tests\TestCase;
 
 class BasementTrimMaterialLfTest extends TestCase
@@ -56,6 +58,16 @@ class BasementTrimMaterialLfTest extends TestCase
         $recon = $calc['summary']['reconciliation'] ?? [];
         $lines = is_array($recon['lines'] ?? null) ? $recon['lines'] : [];
         $this->assertNotEmpty($lines);
+    }
+
+    public function test_trimming_overlay_keeps_eight_foot_stick_prices_from_lf_source(): void
+    {
+        $trimMats = TrimmingSettings::defaultMaterials();
+        $overlay = SharedWorkCatalog::overlayMaterials('trimming', $trimMats);
+        $this->assertSame('each', $overlay['baseboard']['unit']);
+        $this->assertSame('each', $overlay['shoe']['unit']);
+        $this->assertGreaterThan(0, (float) $overlay['baseboard']['unit_price']);
+        $this->assertGreaterThan(0, (float) $overlay['shoe']['unit_price']);
     }
 
     public function test_linked_catalog_each_price_converts_to_per_lf(): void

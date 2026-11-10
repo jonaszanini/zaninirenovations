@@ -44,9 +44,27 @@ async function gotoStep(page, key) {
   await new Promise((r) => setTimeout(r, 350));
 }
 
-function parseMoney(text) {
-  const n = parseFloat(String(text || '').replace(/[^\d.-]/g, ''));
-  return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+async function waitGrandPositive(page) {
+  await page.waitForFunction(() => {
+    const el = document.getElementById('br-toolbar-grand-amount');
+    if (!el) return false;
+    const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
+    return isFinite(n) && n > 0;
+  }, { timeout: 45000 });
+}
+
+async function typeField(page, selector, value) {
+  await page.waitForSelector(selector, { timeout: 20000 });
+  await page.click(selector, { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type(selector, String(value), { delay: 25 });
+  await page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (el) {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, selector);
 }
 
 async function waitBaseboardMaterial(page) {
@@ -56,13 +74,14 @@ async function waitBaseboardMaterial(page) {
     const label = String(row.querySelector('td')?.textContent || '');
     const qty = parseFloat(String(row.querySelector('[data-br-mat-qty]')?.textContent || '').replace(/[^\d.-]/g, ''));
     return label.toLowerCase().includes('per lin. ft') && isFinite(qty) && qty >= 99;
-  }, { timeout: 60000 });
+  }, { timeout: 90000 });
 }
 
 (async function main() {
   fs.mkdirSync(shotsDir, { recursive: true });
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
+  page.setDefaultTimeout(45000);
   await login(page);
   await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 60000 });
   await page.waitForSelector('#br-main-form', { timeout: 45000 });
@@ -70,27 +89,14 @@ async function waitBaseboardMaterial(page) {
   const report = { ok: false, materials: {}, shots: {} };
 
   await gotoStep(page, 'overview');
-  await page.waitForSelector('#br-area', { timeout: 15000 });
-  await page.$eval('#br-area', (el) => {
-    el.value = '400';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-  await page.$eval('#br-material-waste', (el) => {
-    el.value = '0';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
+  await typeField(page, '#br-area', '400');
+  await typeField(page, '#br-material-waste', '0');
+  await waitGrandPositive(page);
 
   await gotoStep(page, 'doors_trim');
-  await page.waitForSelector('#br-base', { timeout: 15000 });
-  await page.$eval('#br-base', (el) => {
-    el.value = '100';
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
-  });
-
+  await typeField(page, '#br-base', '100');
   await waitBaseboardMaterial(page);
+
   report.materials = await page.evaluate(() => {
     const row = document.querySelector('tr[data-br-mat-key="baseboard"]');
     const label = String(row?.querySelector('td')?.textContent || '').trim();
