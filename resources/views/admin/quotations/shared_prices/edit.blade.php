@@ -53,13 +53,13 @@
   }
   .sp-group {
     --sp-grid-columns:
-      minmax(10.2rem, 2.27fr)
-      minmax(7.15rem, 1.19fr)
+      minmax(10.15rem, 2.26fr)
+      minmax(7.2rem, 1.19fr)
       minmax(6.6rem, 1fr)
       minmax(5.4rem, 1fr)
-      minmax(8.7rem, 1.4fr)
+      minmax(8.55rem, 1.38fr)
       2.75rem
-      minmax(5.15rem, 0.97fr);
+      minmax(5.5rem, 1fr);
   }
 }
 details.sp-group.admin-card {
