@@ -66,8 +66,8 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
         $this->assertIsArray($report);
         $this->assertTrue((bool) ($report['ok'] ?? false), json_encode($report));
         $this->assertEqualsWithDelta(self::LITERAL_GRAND_DROP, (float) ($report['grandDrop'] ?? 0), 0.08);
-        $this->assertEqualsWithDelta(self::LITERAL_FLOOR_SUB_DROP, (float) ($report['floorSubDrop'] ?? 0), 0.05);
         $this->assertTrue((bool) ($report['clientProvidedMarker'] ?? false));
+        $this->assertTrue((bool) ($report['reconciliationAddUp'] ?? false), json_encode($report));
 
         $this->assertFileExists($shots.'/basement-client-provides-review-1280.png');
         $this->assertFileExists($shots.'/basement-client-provides-review-390.png');

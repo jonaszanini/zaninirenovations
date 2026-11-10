@@ -148,10 +148,6 @@ async function floorMatTotal(page) {
     });
     report.clientProvidedMarker = clientProvidedMarker;
 
-    report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop);
-    report.floorSubDropOk = moneyClose(report.floorSubDrop, expectFloorSubDrop);
-    report.ok = report.grandDropOk && report.floorSubDropOk && clientProvidedMarker && reconOk;
-
     const reconOk = await page.evaluate(() => {
       const rows = {};
       document.querySelectorAll('[data-br-recon-key]').forEach((row) => {
@@ -167,6 +163,10 @@ async function floorMatTotal(page) {
       return Math.abs(assembled - subtotal) <= 0.05;
     });
     report.reconciliationAddUp = reconOk;
+
+    report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop);
+    report.floorSubDropOk = moneyClose(report.floorSubDrop, expectFloorSubDrop);
+    report.ok = report.grandDropOk && report.floorSubDropOk && clientProvidedMarker && reconOk;
 
     const shotBase = path.join(shotsDir, 'basement-client-provides-review');
     await page.setViewport({ width: 1280, height: 900 });
