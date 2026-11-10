@@ -145,17 +145,16 @@ async function newLabeledPage(browser, port) {
     window.__zaniniCanvasFillTexts = [];
     const origFill = CanvasRenderingContext2D.prototype.fillText;
     const origMeasure = CanvasRenderingContext2D.prototype.measureText;
-  function capture(text) {
-    if (typeof text === 'string' && /\(\s*\d/.test(text) && (text.includes('ft') || text.includes('m²') || text.includes('m\u00b2'))) {
-      window.__zaniniCanvasFillTexts.push(text);
+    function capturePainted(text, x, y) {
+      if (typeof text !== 'string' || !/\(\s*\d/.test(text)) return;
+      if (!(text.includes('ft') || text.includes('m²') || text.includes('m\u00b2'))) return;
+      window.__zaniniCanvasFillTexts.push({ text: text, x: Number(x) || 0, y: Number(y) || 0 });
     }
-  }
-    CanvasRenderingContext2D.prototype.fillText = function (text) {
-      capture(text);
+    CanvasRenderingContext2D.prototype.fillText = function (text, x, y) {
+      capturePainted(text, x, y);
       return origFill.apply(this, arguments);
     };
     CanvasRenderingContext2D.prototype.measureText = function (text) {
-      capture(text);
       return origMeasure.apply(this, arguments);
     };
   });
@@ -204,15 +203,16 @@ async function main() {
           { timeout: 90000 }
         );
         return page.evaluate(() => {
-          const body = document.body.innerText || '';
-          const bodyLines = body
-            .split('\n')
-            .map((line) => line.trim())
-            .filter((line) => /\(\s*\d/.test(line) && (line.includes('ft') || line.includes('m²') || line.includes('m\u00b2')));
-          const merged = (window.__zaniniCanvasFillTexts || []).slice();
-          for (const line of bodyLines) merged.push(line);
-          const labels = [...new Set(merged)];
-          return { labels };
+          var painted = (window.__zaniniCanvasFillTexts || []).slice();
+          var byText = {};
+          for (var i = 0; i < painted.length; i++) {
+            var entry = painted[i];
+            var text = entry && entry.text ? entry.text : String(entry);
+            if (!byText[text]) byText[text] = [];
+            byText[text].push({ x: entry.x, y: entry.y });
+          }
+          var labels = Object.keys(byText);
+          return { labels: labels, painted: byText };
         });
       } finally {
         await page.close();
@@ -220,9 +220,10 @@ async function main() {
     }
 
     const imperialLabels = await readLabels(imperialPlan);
-    assert.ok(imperialLabels.labels.length > 0, 'canvas must draw at least one room area label');
+    assert.strictEqual(imperialLabels.labels.length, 1, 'one painted label per room on imperial rect');
     const parsedImperial = imperialLabels.labels.map(areaFromLabelText).filter(Boolean);
-    assert.ok(parsedImperial.some((p) => p.unit === 'sf' && Math.abs(p.value - 111.89) < 0.02),
+    assert.strictEqual(parsedImperial.length, 1);
+    assert.ok(parsedImperial[0].unit === 'sf' && Math.abs(parsedImperial[0].value - 111.89) < 0.02,
       'imperial on-plan label must show 111.89 sf, got ' + JSON.stringify(imperialLabels.labels));
 
     const metricLabels = await readLabels(metricPlan);

@@ -1595,22 +1595,7 @@ class OpenPlan3DMeasurementBridge
                     continue;
                 }
                 // Determine candidate walls for this room
-                $candidateWalls = [];
-                if ($isSingleRoom) {
-                    $candidateWalls = array_values($walls);
-                } else {
-                    $rWallIds = $r['walls'] ?? [];
-                    if (is_array($rWallIds) && count($rWallIds) > 0) {
-                        $idMap = array_flip($rWallIds);
-                        foreach ($walls as $wid => $w) {
-                            if (isset($idMap[$wid])) {
-                                $candidateWalls[] = $w;
-                            }
-                        }
-                    } else {
-                        $candidateWalls = array_values($walls);
-                    }
-                }
+                $candidateWalls = array_values($walls);
 
                 if (count($candidateWalls) < 1) {
                     continue;

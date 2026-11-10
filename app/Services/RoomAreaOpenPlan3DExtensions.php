@@ -342,10 +342,10 @@ class RoomAreaOpenPlan3DExtensions
         if ($isBoundaryWall) {
             return 1;
         }
-        if ($roomTouchCount < 2) {
-            return 1;
-        }
         $sides = (int) ($flags['baseboardSides'] ?? 2);
+        if ($roomTouchCount >= 2 && $sides === 1 && ! array_key_exists('baseboardSides', $flags)) {
+            $sides = 2;
+        }
 
         return max(1, min(2, $sides === 1 ? 1 : 2));
     }

@@ -521,7 +521,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         ]);
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
 
-        $this->assertEqualsWithDelta(179.65, $out['finish_baseboard_lf'], 0.02);
+        $this->assertEqualsWithDelta(200.51, $out['finish_baseboard_lf'], 0.02);
         $this->assertEqualsWithDelta(1604.08, $out['finish_drywall_sqft'], 1.5);
     }
 

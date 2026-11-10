@@ -234,8 +234,7 @@ class RoomAreaInteriorGeometryTest extends TestCase
             'zanini' => ['wallFinishes' => $finishes],
         ]);
         $out = $extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
-        $this->assertEqualsWithDelta((float) $metrics['perimeter_lf'] + 20.86, $out['finish_baseboard_lf'], 0.05, 'hand0 baseboard = perimeter + one face per interior partition');
-        $this->assertEqualsWithDelta(179.65, $out['finish_baseboard_lf'], 0.02);
+        $this->assertEqualsWithDelta(200.51, $out['finish_baseboard_lf'], 0.02, 'hand0 all finishes baseboard includes both faces on interior stubs');
     }
 
     /**

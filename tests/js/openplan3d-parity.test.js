@@ -293,13 +293,38 @@ const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0
 assert.strictEqual(hand0Metrics.area_sqft, 1307.52,
   'Drawn basement interior floor area (was ~1346 centerline / 1300–1360 range)');
 assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear perimeter (interior-face ring walk)');
+(function partitionSpanFinishBaseboard() {
+  var cm = 30.48;
+  var plan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w3', start: { x: 20 * cm, y: 10 * cm }, end: { x: 0, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w4', start: { x: 0, y: 10 * cm }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'p1', start: { x: 10 * cm, y: 0 }, end: { x: 10 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+      ],
+      rooms: [],
+    },
+  };
+  var metrics0 = bridge.layoutMetrics(plan, null, { wall_height_ft: 8.0 });
+  var wf = {};
+  (metrics0.walls || []).forEach(function (w) {
+    wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
+  });
+  var finished = ext.applyToMetrics(metrics0, Object.assign({}, plan, { zanini: { wallFinishes: wf } }), {}, cm);
+  assert.ok(Math.abs(finished.finish_baseboard_lf - 77.0) < 1.0, '20x10 spanning partition all finishes ~77 lf');
+})();
+
 (function hand0FinishPins() {
   var wf = {};
   (hand0Metrics.walls || []).forEach(function (w) {
     wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
   });
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
-  assert.ok(Math.abs(finished.finish_baseboard_lf - 179.65) < 0.02, 'hand0 finish_baseboard_lf ~179.65 lf with all finishes');
+  assert.ok(Math.abs(finished.finish_baseboard_lf - 200.51) < 0.02, 'hand0 finish_baseboard_lf ~200.51 lf with all finishes');
   assert.ok(Math.abs(finished.finish_drywall_sqft - 1604.08) < 1.5, 'hand0 finish_drywall_sqft ~1604.08 sf');
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');

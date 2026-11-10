@@ -709,7 +709,12 @@
       '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
       '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
       '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
-      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}'
+      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}',
+      '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
+      '.admin-info-tip{min-width:24px;min-height:24px;width:24px;height:24px;padding:0;border:1px solid #94a3b8;border-radius:50%;background:#fff;color:#334155;font-size:14px;line-height:22px;text-align:center;cursor:pointer;}',
+      '.admin-info-tip__bubble{position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(92vw,320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
+      '#openplan3d-zanini-finish-host{margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -778,7 +783,9 @@
       while (panel && panel !== document.body) {
         var rect = panel.getBoundingClientRect();
         var txt = (panel.textContent || '').toLowerCase();
-        if (rect.width >= 120 && rect.height >= 80 && rect.left > window.innerWidth * 0.45
+        var narrow = window.innerWidth < 520;
+        var sideOk = narrow || rect.left > window.innerWidth * 0.45;
+        if (rect.width >= 120 && rect.height >= 80 && sideOk
           && (txt.indexOf('thickness') !== -1 || txt.indexOf('height') !== -1 || txt.indexOf('elevation') !== -1)) {
           return panel;
         }
@@ -794,7 +801,7 @@
       if (el.offsetParent === null) continue;
       var r = el.getBoundingClientRect();
       if (r.width < 120 || r.height < 80) continue;
-      if (r.left < window.innerWidth * 0.5) continue;
+      if (window.innerWidth >= 520 && r.left < window.innerWidth * 0.5) continue;
       var text = (el.textContent || '').toLowerCase();
       var score = 0;
       if (text.indexOf('thickness') !== -1) score += 3;
@@ -829,13 +836,20 @@
     var plan = readPlan();
     var floor = activeFloor(plan);
     if (!floor) return true;
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.floorBoundaryWallIds === 'function') {
+      var loopIds = bridge.floorBoundaryWallIds(floor, plan);
+      if (loopIds.length) {
+        return loopIds.indexOf(String(wallId)) >= 0;
+      }
+    }
     var rooms = floor.rooms || [];
     for (var ri = 0; ri < rooms.length; ri++) {
       var room = rooms[ri];
       if (!room) continue;
-      var ids = room.boundary_wall_ids || room.walls || [];
-      for (var i = 0; i < ids.length; i++) {
-        if (String(ids[i]) === String(wallId)) return true;
+      var ids = room.boundary_wall_ids || [];
+      for (var bi = 0; bi < ids.length; bi++) {
+        if (String(ids[bi]) === String(wallId)) return true;
       }
     }
     return false;
@@ -880,7 +894,14 @@
   }
 
   function wallIsInteriorPartition(wallId, floor) {
-    return roomsTouchingWall(wallId, floor).length >= 2;
+    if (wallIsBoundary(wallId)) return false;
+    if (roomsTouchingWall(wallId, floor).length >= 2) return true;
+    var plan = readPlan();
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.wallSeparatesTwoSpaces === 'function') {
+      return bridge.wallSeparatesTwoSpaces(floor, wallId, plan);
+    }
+    return false;
   }
 
   function wallsEligibleForBaseboardSidesControl(wallIds, floor) {
@@ -1021,8 +1042,8 @@
     var primary = wallIds[0];
     var flags = wallFinishes[primary] || {};
     var defaults = finishDefaultsForWall(primary);
-    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds, floor);
     var floor = activeFloor(plan);
+    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds, floor);
     var wallLenLf = 0;
     var interiorGeom = typeof RoomAreaInteriorGeometry !== 'undefined' ? RoomAreaInteriorGeometry : null;
     if (floor && Array.isArray(floor.walls)) {
@@ -1085,6 +1106,10 @@
           plan.zanini.wallFinishes[wallId][key] = val;
           if (key === 'baseboard' && wallIsBoundary(wallId)) {
             plan.zanini.wallFinishes[wallId].baseboardSides = 1;
+          } else if (key === 'baseboard' && wallIsInteriorPartition(wallId, activeFloor(plan))) {
+            if (!Object.prototype.hasOwnProperty.call(plan.zanini.wallFinishes[wallId], 'baseboardSides')) {
+              plan.zanini.wallFinishes[wallId].baseboardSides = 2;
+            }
           }
         });
       });
@@ -1116,11 +1141,28 @@
       host.appendChild(row);
       if (st.indeterminate) inputEl.indeterminate = true;
     });
-    if (sidesEligible.length === 0 && wallIds.length > 0) {
-      var perimeterNote = document.createElement('p');
-      perimeterNote.style.cssText = 'margin:4px 0 0;opacity:.85;font-size:11px;line-height:1.35;';
-      perimeterNote.textContent = 'Perimeter walls: baseboard on interior face only (exterior has none).';
-      host.appendChild(perimeterNote);
+    if (sidesEligible.length === 0 && wallIds.length > 0 && wallIds.some(wallIsBoundary)) {
+      var perimeterRow = document.createElement('div');
+      perimeterRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:12px;';
+      perimeterRow.innerHTML =
+        '<span>Perimeter baseboard</span>' +
+        '<span class="admin-info-tip-wrap" data-finish-perimeter-tip-wrap>' +
+        '<button type="button" class="admin-info-tip" data-finish-perimeter-tip aria-label="Perimeter baseboard help">&#9432;</button>' +
+        '<span class="admin-info-tip__bubble" role="tooltip" hidden>Exterior walls measure baseboard on the interior face only. The outside face has none.</span></span>';
+      host.appendChild(perimeterRow);
+      var perTip = perimeterRow.querySelector('[data-finish-perimeter-tip-wrap]');
+      if (perTip) {
+        var perBtn = perTip.querySelector('.admin-info-tip');
+        var perBubble = perTip.querySelector('.admin-info-tip__bubble');
+        if (perBtn && perBubble) {
+          perBtn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var open = perTip.classList.toggle('is-open');
+            perBubble.hidden = !open;
+          });
+        }
+      }
     }
     if (sidesEligible.length > 0) {
       var drywallPrimary = readDrywallFacesForWall(wallFinishes, sidesEligible[0]);

@@ -1089,19 +1089,8 @@
     if (!selectedRoom && rooms.length > 0) selectedRoom = rooms[0];
 
     // Extract outer loop and partitions
-    var candidateWalls = [];
+    var candidateWalls = Object.values(walls);
     var roomWIds = (selectedRoom && selectedRoom.walls) || [];
-    var isSingleRoom = rooms.length <= 1;
-    if (isSingleRoom || roomWIds.length === 0) {
-      candidateWalls = Object.values(walls);
-    } else {
-      var idMap = {};
-      for (var i = 0; i < roomWIds.length; i++) idMap[String(roomWIds[i])] = true;
-      for (var wid in walls) {
-        if (idMap[wid]) candidateWalls.push(walls[wid]);
-      }
-      if (candidateWalls.length === 0) candidateWalls = Object.values(walls);
-    }
 
     var loopData = extractOuterLoopAndPartitions(candidateWalls, cmPerUnit);
     var partitionWalls = loopData.partition_walls || [];
@@ -1927,7 +1916,7 @@
     if (spanning.length > 0) {
       var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
       if (regions.length >= 2) {
-        var nextRooms = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit, target);
+        var nextRooms = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit, live);
         if (nextRooms.length >= 2) {
           if (roomsMatchPersisted(live.rooms, nextRooms, cmPerUnit)) {
             return { plan: plan, changed: false };
@@ -2022,6 +2011,76 @@
     return !Array.isArray(floor.rooms) || floor.rooms.length === 0;
   }
 
+  function drawableWallsList(floor) {
+    var out = [];
+    for (var wi = 0; wi < (floor && floor.walls || []).length; wi++) {
+      var w = floor.walls[wi];
+      if (w && w.id && w.start && w.end) out.push(w);
+    }
+    return out;
+  }
+
+  function floorBoundaryWallIds(floor, plan) {
+    var drawable = drawableWallsList(floor);
+    if (drawable.length < 3) return [];
+    var cm = cmPerUnitForPlan(plan || { floor: floor, unit: floor && floor.unit, units: floor && floor.units });
+    var loop = extractOuterLoopAndPartitions(drawable, cm);
+    return (loop.boundary_wall_ids || []).map(function (id) { return String(id); });
+  }
+
+  function savedRoomsTouchingWall(wallId, floor) {
+    if (!floor || !Array.isArray(floor.rooms)) return 0;
+    var id = String(wallId);
+    var count = 0;
+    for (var ri = 0; ri < floor.rooms.length; ri++) {
+      var room = floor.rooms[ri];
+      if (!room) continue;
+      var seen = {};
+      ['boundary_wall_ids', 'walls'].forEach(function (key) {
+        var list = room[key];
+        if (!Array.isArray(list)) return;
+        for (var i = 0; i < list.length; i++) seen[String(list[i])] = true;
+      });
+      if (seen[id]) count += 1;
+    }
+    return count;
+  }
+
+  function wallSeparatesTwoSpaces(floor, wallId, plan) {
+    var drawable = drawableWallsList(floor);
+    if (drawable.length < 4) return false;
+    var cm = cmPerUnitForPlan(plan || { floor: floor, unit: floor && floor.unit, units: floor && floor.units });
+    var loop = extractOuterLoopAndPartitions(drawable, cm);
+    var outer = loop.outer_polygon || [];
+    if (outer.length < 3) return false;
+    var parts = classifyPartitionWalls(loop.partition_walls, outer, cm, drawable);
+    var wid = String(wallId);
+    var inSpan = false;
+    for (var si = 0; si < parts.spanning.length; si++) {
+      if (String(parts.spanning[si].id) === wid) {
+        inSpan = true;
+        break;
+      }
+    }
+    if (!inSpan) return false;
+    var regions = splitRegionsBySpanningWalls(outer, parts.spanning, cm, parts.epsUnit);
+    if (regions.length < 2) return false;
+    var touch = 0;
+    for (var ri = 0; ri < regions.length; ri++) {
+      var wallIds = wallsForRoomPolygon(regions[ri], drawable, cm, parts.epsUnit);
+      if (wallIds.indexOf(wid) !== -1) touch += 1;
+    }
+    return touch >= 2;
+  }
+
+  function geometryRoomTouchCount(wallId, floor, plan) {
+    var saved = savedRoomsTouchingWall(wallId, floor);
+    if (saved >= 2) return saved;
+    if (wallSeparatesTwoSpaces(floor, wallId, plan)) return 2;
+    if (floorBoundaryWallIds(floor, plan).indexOf(String(wallId)) >= 0) return 1;
+    return saved > 0 ? saved : 1;
+  }
+
   return {
     CM_PER_INCH: CM_PER_INCH,
     CM_PER_FOOT: CM_PER_FOOT,
@@ -2038,6 +2097,9 @@
     canvasFillRoomEntries: canvasFillRoomEntries,
     editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom,
     cmPerUnitForPlan: cmPerUnitForPlan,
+    floorBoundaryWallIds: floorBoundaryWallIds,
+    wallSeparatesTwoSpaces: wallSeparatesTwoSpaces,
+    geometryRoomTouchCount: geometryRoomTouchCount,
     formatOnPlanRoomArea: function (room, polygonCm, holeRings, floor, settings) {
       var units = String(
         (settings && settings.units) || (floor && floor.units) || (floor && floor.unit) || 'metric'
@@ -2050,7 +2112,11 @@
         var w = wallList[wi];
         if (w && w.id) wallsBy[String(w.id)] = w;
       }
-      var boundaryIds = (room && (room.boundary_wall_ids || room.walls)) || [];
+      var planCtx = { floor: floor, unit: floor && floor.unit, units: floor && floor.units };
+      var boundaryIds = (room && room.boundary_wall_ids) || [];
+      if (!boundaryIds.length) boundaryIds = floorBoundaryWallIds(floor, planCtx);
+      if (!boundaryIds.length) boundaryIds = (room && room.walls) || [];
+      var cm = cmPerUnitForPlan(planCtx);
       var sqFt = 0;
       var interiorGeom = interiorGeomRuntime();
       if (interiorGeom && polygonCm && polygonCm.length >= 3) {
@@ -2059,16 +2125,13 @@
           boundaryIds,
           wallsBy,
           wallList,
-          cmPerUnitForPlan({ floor: floor, unit: floor && floor.unit, units: floor && floor.units }),
+          cm,
           false
         );
       }
-      if (!(sqFt > 0) && room && typeof room.area === 'number' && isFinite(room.area)) {
-        sqFt = room.area * 10.7639;
-      }
+      sqFt = Math.round(sqFt * 100) / 100;
       if (imperial) {
-        var sqRounded = Math.round(sqFt * 100) / 100;
-        return sqRounded.toFixed(2) + ' ft\u00b2';
+        return sqFt.toFixed(2) + ' ft\u00b2';
       }
       var m2 = Math.round((sqFt / 10.7639) * 100) / 100;
       return m2.toFixed(2) + ' m\u00b2';

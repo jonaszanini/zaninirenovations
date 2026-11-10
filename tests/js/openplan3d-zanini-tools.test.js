@@ -191,7 +191,7 @@ global.window.__openPlan3D = {
   setProject: function () {},
 };
 assert.strictEqual(tools.wallIsBoundary('mtn32xy9'), true, 'perimeter wall on non-first room must be boundary');
-assert.strictEqual(tools.wallIsBoundary('inner1'), true, 'room.walls list still marks boundary membership');
+assert.strictEqual(tools.wallIsBoundary('inner1'), false, 'interior segment on shared edge is not an exterior boundary wall');
 assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is not boundary');
 assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
 assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');

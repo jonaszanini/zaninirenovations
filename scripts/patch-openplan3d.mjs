@@ -345,7 +345,7 @@ function patchStoreChunk(source) {
   const roomLabelOverlayOld =
     'const y=p.measureText(`${u.name} (${Ao(u.area,t.units??"metric")})`);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
   const roomLabelOverlayNew =
-    'const __zaniniLbl=(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?(`${u.name} (${window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(u,f,d[h],e,{units:e.units||e.unit||t.units||"metric"})})`):`${u.name} (${Ao(u.area,t.units??"metric")})`);const y=p.measureText(__zaniniLbl);p.fillStyle="#9ca3af",p.fillText(__zaniniLbl,g.x,g.y);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
+    'const __zaniniLbl=(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?(`${u.name} (${window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(u,f,d[h],e,{units:e.units||e.unit||t.units||"metric"})})`):`${u.name} (${Ao(u.area,t.units??"metric")})`);const y=p.measureText(__zaniniLbl);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
   if (s.includes(roomLabelOverlayOld)) {
     s = replaceExpected(s, roomLabelOverlayOld, roomLabelOverlayNew, 'store chunk: room label overlay draw + interior area', 1);
   } else if (!s.includes('__zaniniLbl')) {
@@ -515,6 +515,8 @@ function patchHostedEditorIndexBoot() {
       'if (settingsStore) {\r\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\r\n\t\t\t\t\t\t\tif (typeof bridge.installHostedWallMeasureSettings === \'function\') {\r\n\t\t\t\t\t\t\t\tbridge.installHostedWallMeasureSettings(settingsStore);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}'
     );
   }
+  const bridgeEsc = bridgeTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  html = html.replace(new RegExp(`(?:${bridgeEsc}\\s*){2,}`, 'g'), `${bridgeTag}\n\t\t`);
   fs.writeFileSync(EDITOR_INDEX, html);
 
   const embedPath = path.join(ROOT, 'tests/js/fixtures/openplan3d-editor-embed.html');

@@ -536,7 +536,11 @@
     return metrics;
   }
 
-  function roomTouchCountForWall(wallId, floor) {
+  function roomTouchCountForWall(wallId, floor, plan) {
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.geometryRoomTouchCount === 'function') {
+      return bridge.geometryRoomTouchCount(wallId, floor, plan);
+    }
     if (!floor || !Array.isArray(floor.rooms) || floor.rooms.length === 0) return 0;
     var id = String(wallId);
     var count = 0;
@@ -557,9 +561,10 @@
 
   function resolveBaseboardSides(flags, isBoundaryWall, roomTouchCount) {
     if (isBoundaryWall) return 1;
-    roomTouchCount = roomTouchCount != null ? Number(roomTouchCount) : 0;
-    if (roomTouchCount < 2) return 1;
     var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+    if (roomTouchCount >= 2 && sides === 1 && !Object.prototype.hasOwnProperty.call(flags || {}, 'baseboardSides')) {
+      sides = 2;
+    }
     return sides === 1 ? 1 : 2;
   }
 
@@ -661,7 +666,7 @@
         var studLen = wallStudLengthLf(w);
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
-        var touchCount = roomTouchCountForWall(id, floor);
+        var touchCount = roomTouchCountForWall(id, floor, plan);
         var finishNet = drywallFinishAreaSqFt(net, flags, isB, touchCount);
         if (flagEnabled(flags, 'drywall', true)) drywall += finishNet;
         if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
