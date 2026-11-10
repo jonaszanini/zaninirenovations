@@ -31,7 +31,18 @@
   height: 34px;
 }
 .sp-heading { display: block; margin: 0 0 0.5rem; font-size: 1.1rem; }
-.sp-group { margin-bottom: 1rem; }
+.sp-group {
+  --sp-grid-columns:
+    minmax(11rem, 2.8fr)
+    minmax(5.5rem, 1fr)
+    minmax(6.6rem, 1.05fr)
+    minmax(3.5rem, 0.75fr)
+    minmax(5.5rem, 1fr)
+    minmax(5.25rem, 0.95fr)
+    2.75rem
+    minmax(5.5rem, 1fr);
+  margin-bottom: 1rem;
+}
 /* Desktop grid from 68.75em (1100px at 16px root). Larger browser fonts
    stay on stacked cards longer so rem tracks cannot blow the page width.
    If the grid is still wider than the card, scroll inside the card. */
@@ -41,8 +52,15 @@
     padding-right: 0.65rem;
   }
 }
+details.sp-group.admin-card {
+  padding: 1rem 1.25rem 1.25rem;
+}
+@media (min-width: 768px) {
+  details.sp-group.admin-card {
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+}
 @media (min-width: 68.75em) {
-  details.sp-group.admin-card { padding: 1rem 0.55rem 1rem 0.2rem; }
   .sp-group .admin-table-scroll {
     overflow-x: auto;
     overflow-y: visible;
@@ -92,19 +110,26 @@
   .sp-table thead tr,
   .sp-table tbody tr {
     display: grid;
-    grid-template-columns:
-      minmax(11rem, 2.8fr)
-      minmax(5.5rem, 1fr)
-      minmax(6.6rem, 1.05fr)
-      minmax(3.5rem, 0.75fr)
-      minmax(5.5rem, 1fr)
-      minmax(5.25rem, 0.95fr)
-      2.75rem
-      minmax(5.5rem, 1fr);
+    grid-template-columns: var(--sp-grid-columns);
     column-gap: 0.08rem;
-    align-items: stretch;
     width: 100%;
     min-height: 44px;
+  }
+  .sp-table thead tr {
+    align-items: end;
+  }
+  .sp-table tbody tr {
+    align-items: start;
+  }
+  .sp-table th {
+    display: flex;
+    align-items: center;
+    align-self: stretch;
+    min-height: 36px;
+    padding: 0.15rem 0.1rem 0.35rem;
+  }
+  .sp-table tbody td {
+    padding: 0.35rem 0.1rem;
   }
   /* Beat `.sp-table td { display:block }` so the search button and chips
      flex-center on the same midline as the inputs. */
@@ -131,29 +156,35 @@
     padding-right: 0.75rem;
   }
   .sp-table .sp-consumers {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    align-content: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    gap: 4px 6px;
   }
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
   .sp-table td.sp-col-unit,
   .sp-table td.sp-col-price,
-  .sp-table td.sp-col-name {
-    display: flex;
-    align-items: center;
-    align-self: stretch;
-    vertical-align: middle;
-  }
+  .sp-table td.sp-col-name,
   .sp-table td.sp-col-sell {
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    justify-content: center;
-    align-self: stretch;
-    vertical-align: middle;
+    justify-content: flex-start;
+    align-self: start;
+    vertical-align: top;
+  }
+  .sp-table td.sp-col-catalog,
+  .sp-table td.sp-col-consumers {
+    align-self: center;
+  }
+  .sp-work-label-input,
+  .sp-mat-name-input {
+    min-height: 28px;
+    height: auto;
+    padding: 0.3rem 0.4rem;
+    line-height: 1.25;
   }
 }
 .sp-table th,
@@ -299,7 +330,8 @@
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  min-height: 20px;
+  min-height: 1.25rem;
+  margin-top: 0.1rem;
 }
 .sp-ref-badge {
   display: inline-flex;
@@ -348,6 +380,7 @@
 .sp-col-sell .sp-input {
   padding-right: 0.25rem;
 }
+.sp-th-label,
 .sp-th-sell,
 .sp-sell-phone-label {
   display: inline-flex;
@@ -357,6 +390,10 @@
   gap: 0.15rem;
   max-width: 100%;
   min-width: 0;
+}
+.sp-th-label .admin-info-tip-wrap,
+.sp-th-sell .admin-info-tip-wrap {
+  flex-shrink: 0;
 }
 .sp-sell-phone-label {
   display: none;
@@ -409,7 +446,9 @@
 .sp-effective {
   display: block;
   font-size: 0.68rem;
-  line-height: 1.2;
+  line-height: 1.25;
+  min-height: 1.25rem;
+  margin-top: 0.1rem;
   color: var(--admin-muted);
   white-space: normal;
   overflow: visible;
@@ -805,7 +844,7 @@
 
 .sp-add {
   margin-top: 0.75rem;
-  padding-top: 0.15rem;
+  padding-top: 0.5rem;
   border-top: 1px solid var(--admin-border);
 }
 .sp-add > summary {
@@ -875,9 +914,15 @@
 }
 @media (min-width: 68.75em) {
   .sp-add__grid {
-    grid-template-columns: minmax(8rem, 1.5fr) 6.6rem 6.6rem 6.6rem;
+    grid-template-columns: var(--sp-grid-columns);
+    column-gap: 0.08rem;
+    align-items: end;
   }
-  .sp-add__name { grid-column: auto; }
+  .sp-add__name { grid-column: 1; }
+  .sp-add__field--productivity { grid-column: 2; }
+  .sp-add__field--sell { grid-column: 3; }
+  .sp-add__field--unit { grid-column: 4; }
+  .sp-add__consumers { grid-column: 1 / -1; margin-top: 0.35rem; }
   .sp-add .sp-input,
   .sp-add .admin-input { height: 28px; min-height: 28px; }
   .sp-add__checks .admin-checkbox { min-height: 32px; }
@@ -894,7 +939,9 @@
       \App\Models\SharedWork::KIND_HOURS_EACH => 'Hrs each',
       \App\Models\SharedWork::KIND_FLAT => 'Flat',
     ];
-    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Cost.';
+    $spProductivityTipText = 'How many units you finish per hour (e.g. sf or lf per hour). A rough estimate is owner hourly rate ÷ sell rate. Filling Sell does not clear Productivity.';
+    $spProductivityTipLabel = 'productivity field';
+    $spSellTipText = 'Used when Sell rate is empty. Quotations compute this from the crew rate and this row’s Productivity.';
     $spSellTipLabel = 'effective sell';
   @endphp
 
@@ -966,9 +1013,9 @@
                   </span>
                 </th>
                 <th class="sp-col-rate">
-                  <span class="sp-th-sell">
-                    Cost
-                    <x-admin.info-tip text="The old Rate field: hours per piece, or sf/lf per hour. Sell is the client price. Filling Sell does not clear Cost." label="cost field" />
+                  <span class="sp-th-label">
+                    Productivity
+                    <x-admin.info-tip :text="$spProductivityTipText" :label="$spProductivityTipLabel" />
                   </span>
                 </th>
                 <th class="sp-col-sell">
@@ -977,11 +1024,11 @@
                     <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
                   </span>
                 </th>
-                <th class="sp-col-unit">Unit</th>
-                <th class="sp-col-price">Mat. price</th>
-                <th class="sp-col-name">Mat. name</th>
-                <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
-                <th class="sp-col-consumers">Used by</th>
+                <th class="sp-col-unit"><span class="sp-th-label">Unit</span></th>
+                <th class="sp-col-price"><span class="sp-th-label">Mat. price</span></th>
+                <th class="sp-col-name"><span class="sp-th-label">Mat. name</span></th>
+                <th class="sp-col-catalog" title="Catalog"><span class="sp-th-label"><i class="fa fa-search" aria-hidden="true"></i></span></th>
+                <th class="sp-col-consumers"><span class="sp-th-label">Used by</span></th>
               </tr>
             </thead>
             <tbody>
@@ -1035,7 +1082,7 @@
                       </span>
                     </span>
                   </td>
-                  <td class="sp-col-rate" data-label="{{ $work->costUnitLabel() }}">
+                  <td class="sp-col-rate" data-label="Productivity">
                     <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                            class="sp-input sp-input--sm cp-money-input" id="sp-rate-{{ $work->id }}"
                            name="works[{{ $work->id }}][rate]"
@@ -1136,6 +1183,7 @@
               <x-admin.info-tip text="New items are reference-only. They appear on Shared lists for the types you tick so you can look up the price. Built-in quote calculators do not use them." label="add shared item" />
             </span>
           </summary>
+          @php $newUnit = old('new_works.'.$groupKey.'.0.unit', 'each'); @endphp
           <div class="sp-add__grid">
             <div class="sp-add__field sp-add__name">
               <label for="sp-new-{{ $groupKey }}-label">Name</label>
@@ -1144,18 +1192,8 @@
                      value="{{ old('new_works.'.$groupKey.'.0.label') }}"
                      placeholder="e.g. Extra return">
             </div>
-            <div class="sp-add__field">
-              <label for="sp-new-{{ $groupKey }}-unit">Unit</label>
-              <select class="admin-input sp-input" id="sp-new-{{ $groupKey }}-unit"
-                      name="new_works[{{ $groupKey }}][0][unit]" data-sp-new-unit>
-                @php $newUnit = old('new_works.'.$groupKey.'.0.unit', 'each'); @endphp
-                @foreach (['each' => 'each', 'lf' => 'lf', 'sf' => 'sf', 'opening' => 'opening'] as $unitVal => $unitLabel)
-                  <option value="{{ $unitVal }}" @selected($newUnit === $unitVal)>{{ $unitLabel }}</option>
-                @endforeach
-              </select>
-            </div>
-            <div class="sp-add__field">
-              <label for="sp-new-{{ $groupKey }}-cost">Cost <span class="sp-add__cost-hint" data-sp-cost-hint>{{ \App\Models\SharedWork::costUnitLabelFor($newUnit) }}</span></label>
+            <div class="sp-add__field sp-add__field--productivity">
+              <label for="sp-new-{{ $groupKey }}-cost">Productivity <span class="sp-add__cost-hint" data-sp-cost-hint>{{ \App\Models\SharedWork::costUnitLabelFor($newUnit) }}</span></label>
               <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                      data-cp-money-entry="direct"
                      class="sp-input cp-money-input" id="sp-new-{{ $groupKey }}-cost"
@@ -1163,7 +1201,7 @@
                      value="{{ old('new_works.'.$groupKey.'.0.rate') }}"
                      placeholder="0.00">
             </div>
-            <div class="sp-add__field">
+            <div class="sp-add__field sp-add__field--sell">
               <label for="sp-new-{{ $groupKey }}-sell">Sell</label>
               <input type="text" inputmode="decimal" autocomplete="off" data-cp-money-places="4"
                      data-cp-money-entry="direct"
@@ -1171,6 +1209,15 @@
                      name="new_works[{{ $groupKey }}][0][flat_rate]"
                      value="{{ old('new_works.'.$groupKey.'.0.flat_rate') }}"
                      placeholder="0.00">
+            </div>
+            <div class="sp-add__field sp-add__field--unit">
+              <label for="sp-new-{{ $groupKey }}-unit">Unit</label>
+              <select class="admin-input sp-input" id="sp-new-{{ $groupKey }}-unit"
+                      name="new_works[{{ $groupKey }}][0][unit]" data-sp-new-unit>
+                @foreach (['each' => 'each', 'lf' => 'lf', 'sf' => 'sf', 'opening' => 'opening'] as $unitVal => $unitLabel)
+                  <option value="{{ $unitVal }}" @selected($newUnit === $unitVal)>{{ $unitLabel }}</option>
+                @endforeach
+              </select>
             </div>
             <fieldset class="sp-add__consumers">
               <legend>Show as reference on</legend>

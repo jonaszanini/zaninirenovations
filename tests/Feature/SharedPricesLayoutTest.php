@@ -66,6 +66,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $html = $this->get(route('admin.quotations.shared-prices.edit'))
             ->assertOk()
             ->assertSee('Shared prices', false)
+            ->assertSee('Productivity', false)
+            ->assertSee('units you finish per hour', false)
             ->assertSee('class="sp-col-catalog"', false)
             ->assertSee('class="sp-col-consumers"', false)
             ->assertSee('class="sp-effective"', false)
@@ -101,6 +103,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         );
         $this->assertStringNotContainsString("'html' =>", $blade);
         $this->assertStringContainsString('sp-th-sell', $blade);
+        $this->assertStringContainsString('sp-th-label', $blade);
+        $this->assertStringContainsString('Productivity', $blade);
         $this->assertStringContainsString('sp-sell-phone-label', $blade);
         $this->assertStringNotContainsString('sp-col-trailing', $html);
         $this->assertStringNotContainsString('class="admin-form-help"', $html);
@@ -134,7 +138,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(8, $columns);
         $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Cost must fit 99,999.9900');
+        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Productivity must fit 99,999.9900');
         $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
         $this->assertGreaterThanOrEqual(3.5, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
@@ -198,8 +202,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
      */
     private function desktopGridColumns(string $css): array
     {
-        $this->assertMatchesRegularExpression('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
-        preg_match('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
+        $this->assertMatchesRegularExpression('/\.sp-group\s*\{[^}]*--sp-grid-columns:\s*(.*?);/s', $css);
+        preg_match('/\.sp-group\s*\{[^}]*--sp-grid-columns:\s*(.*?);/s', $css, $match);
         $raw = trim(preg_replace('/\s+/', ' ', $match[1]));
         preg_match_all('/minmax\([^)]+\)|[^\s]+/', $raw, $parts);
 
