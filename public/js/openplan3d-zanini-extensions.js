@@ -558,13 +558,57 @@
     return netSqFt;
   }
 
-  function applyWallFinishMetrics(metrics, zanini) {
+  function resolveFloorFromPlan(plan) {
+    if (!plan || typeof plan !== 'object') return null;
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    if (Array.isArray(plan.floors) && plan.floors.length) return plan.floors[0];
+    return null;
+  }
+
+  function openingLists(floor, plan) {
+    function pick(key) {
+      if (floor && Array.isArray(floor[key]) && floor[key].length) return floor[key];
+      if (plan && Array.isArray(plan[key]) && plan[key].length) return plan[key];
+      if (plan && plan.floor && Array.isArray(plan.floor[key]) && plan.floor[key].length) return plan.floor[key];
+      return [];
+    }
+    return [pick('doors'), pick('windows'), pick('openings')];
+  }
+
+  function boundaryOpeningDeductionLf(wallId, floor, boundaryMap, cmPerUnit, plan) {
+    if (!boundaryMap[wallId]) return 0;
+    var CM_PER_INCH = 2.54;
+    var dedIn = 0;
+    var lists = openingLists(floor, plan);
+    for (var li = 0; li < lists.length; li++) {
+      var list = lists[li] || [];
+      if (li === 1) continue;
+      for (var i = 0; i < list.length; i++) {
+        var op = list[i];
+        if (!op) continue;
+        var wid = String(op.wallId || op.wall_id || '');
+        if (wid !== String(wallId)) continue;
+        if (li === 2) {
+          var type = String(op.type || 'opening').toLowerCase();
+          if (type !== 'door' && type !== 'opening') continue;
+        }
+        var wCm = op.width != null ? Number(op.width) * cmPerUnit : 0;
+        if (op.width_in != null) wCm = Number(op.width_in) * CM_PER_INCH;
+        dedIn += Math.max(0, wCm / CM_PER_INCH);
+      }
+    }
+    return dedIn / 12;
+  }
+
+  function applyWallFinishMetrics(metrics, zanini, plan, cmPerUnit) {
     var walls = metrics.walls || [];
     var boundaryIds = metrics.boundary_wall_ids || [];
     var boundaryMap = {};
     for (var b = 0; b < boundaryIds.length; b++) boundaryMap[String(boundaryIds[b])] = true;
     var finishes = zanini.wallFinishes || {};
     var finishKeys = Object.keys(finishes);
+    var floor = resolveFloorFromPlan(plan);
+    cmPerUnit = cmPerUnit > 0 ? cmPerUnit : 1;
     var drywall = 0.0, insulation = 0.0, studs = 0.0, baseboard = 0.0;
     var paint = 0.0, paintSeen = false, paintMarked = 0, paintOff = 0, paintUnassigned = 0;
 
@@ -591,7 +635,7 @@
         if (!w) continue;
         var id = String(w.id || '');
         var isB = !!boundaryMap[id];
-        var len = Number(w.length_lf || 0);
+        var len = wallStudLengthLf(w);
         var studLen = wallStudLengthLf(w);
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
@@ -612,7 +656,11 @@
         if (flagEnabled(flags, 'studs', !isB)) studs += studLen;
         if (flagEnabled(flags, 'baseboard', true)) {
           var sides = resolveBaseboardSides(flags, isB);
-          baseboard += len * sides;
+          var runLf = len;
+          if (isB) {
+            runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(id, floor, boundaryMap, cmPerUnit, plan));
+          }
+          baseboard += runLf * sides;
         }
       }
     }
@@ -653,7 +701,7 @@
     var zanini = normalizeZanini(extractZanini(plan));
     var out = applyExcludedZones(metrics, zanini, cmPerUnit, finish || {});
     out = applyBulkheadMetrics(out, zanini, cmPerUnit);
-    out = applyWallFinishMetrics(out, zanini);
+    out = applyWallFinishMetrics(out, zanini, plan, cmPerUnit);
     return out;
   }
 

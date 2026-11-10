@@ -192,7 +192,7 @@
       <span class="openplan3d-metric-unit">lf</span>
     </div>
     <div class="openplan3d-metric-card">
-      <span class="openplan3d-metric-label">Net wall</span>
+      <span class="openplan3d-metric-label">Net wall area</span>
       <span class="openplan3d-metric-val" id="metric-wall-area">0.00</span>
       <span class="openplan3d-metric-unit">sq ft</span>
     </div>
@@ -256,7 +256,7 @@
     </div>
     <div class="openplan3d-metric-card">
       <span class="openplan3d-metric-label openplan3d-metric-label--tip">
-        BH drywall
+        Bulkhead drywall
         @include('admin.partials.info_tip', [
           'tipLabel' => 'Bulkhead / soffit drywall',
           'tipText' => 'Drywall on boxed bulkheads drawn in the editor (vertical faces plus soffit underside).',
@@ -266,12 +266,12 @@
       <span class="openplan3d-metric-unit">sq ft</span>
     </div>
     <div class="openplan3d-metric-card">
-      <span class="openplan3d-metric-label">BH frame</span>
+      <span class="openplan3d-metric-label" title="Bulkhead framing">Bulkhead framing</span>
       <span class="openplan3d-metric-val" id="metric-bulkhead-framing">0.00</span>
       <span class="openplan3d-metric-unit">lf</span>
     </div>
     <div class="openplan3d-metric-card">
-      <span class="openplan3d-metric-label">BH bead</span>
+      <span class="openplan3d-metric-label" title="Bulkhead corner bead">Bulkhead corner bead</span>
       <span class="openplan3d-metric-val" id="metric-bulkhead-bead">0.00</span>
       <span class="openplan3d-metric-unit">lf</span>
     </div>
@@ -543,10 +543,10 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-takeoffs-strip__bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 0.25rem 0.5rem;
+  display: grid;
+  grid-template-columns: auto minmax(5.5rem, 9rem) minmax(0, 1fr);
+  align-items: start;
+  gap: 0.2rem 0.45rem;
   padding: 0.2rem 0.65rem 0.25rem;
   min-height: 0;
 }
@@ -554,13 +554,11 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .openplan3d-takeoffs-summary {
   display: flex;
   flex-direction: column;
-  flex: 0 0 auto;
   gap: 0.05rem;
   line-height: 1.25;
-  font-size: 0.75rem;
+  font-size: max(0.6875rem, 11px);
   color: var(--admin-muted, #64748b);
-  min-width: 5.5rem;
-  max-width: 9rem;
+  min-width: 0;
 }
 
 .openplan3d-takeoffs-summary__floor {
@@ -811,18 +809,35 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 /* Live Metrics Ribbon */
 .openplan3d-metrics-ribbon {
-  flex: 1 1 18rem;
+  grid-column: 1 / -1;
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  align-items: center;
-  gap: 0.12rem 0.22rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
+  align-content: start;
+  gap: 0.12rem 0.2rem;
   padding: 0;
   background: transparent;
   border-bottom: none;
   overflow: visible;
   max-width: 100%;
+}
+
+@media (min-width: 901px) {
+  .openplan3d-takeoffs-strip__bar {
+    grid-template-columns: auto minmax(5.5rem, 9rem) minmax(0, 1fr);
+  }
+  .openplan3d-metrics-ribbon {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+  }
+  .openplan3d-takeoffs-toggle {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .openplan3d-takeoffs-summary {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
 }
 
 .openplan3d-metric-label--tip {
@@ -1018,14 +1033,15 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .openplan3d-metric-card {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.15rem;
-  padding: 0.08rem 0.32rem;
+  gap: 0.12rem;
+  padding: 0.06rem 0.28rem;
   background: var(--admin-card-bg, #ffffff);
   border: 1px solid var(--admin-border, #cbd5e1);
   border-radius: 5px;
   white-space: nowrap;
-  font-size: 0.68rem;
-  line-height: 1.2;
+  font-size: max(0.6875rem, 11px);
+  line-height: 1.25;
+  min-width: 0;
 }
 
 .openplan3d-metric-label {
@@ -1040,44 +1056,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-metric-unit {
-  font-size: 0.62rem;
+  font-size: max(0.6875rem, 11px);
   color: var(--admin-text-muted, #94a3b8);
-}
-
-@media (min-width: 1100px) and (max-width: 1400px) {
-  .openplan3d-takeoffs-strip__bar {
-    flex-wrap: nowrap;
-    align-items: center;
-    gap: 0.15rem 0.35rem;
-  }
-  .openplan3d-takeoffs-summary {
-    display: none;
-  }
-  .openplan3d-metrics-ribbon {
-    flex: 1 1 0;
-    gap: 0.08rem 0.14rem;
-  }
-  .openplan3d-metric-card {
-    padding: 0.02rem 0.14rem;
-    font-size: 0.52rem;
-    border-radius: 4px;
-    gap: 0.08rem;
-  }
-  .openplan3d-metric-label {
-    font-size: 0.52rem;
-  }
-  .openplan3d-metric-val {
-    font-size: 0.54rem;
-  }
-  .openplan3d-metric-unit {
-    font-size: 0.48rem;
-  }
-  .openplan3d-metric-label--tip .admin-info-tip-wrap {
-    display: none;
-  }
-  #metric-openings {
-    font-size: 0.56rem;
-  }
 }
 
 @media (max-width: 480px) {

@@ -1177,16 +1177,26 @@
       : ((selectedRoom && selectedRoom.boundary_wall_ids) || (selectedRoom && selectedRoom.walls) || []);
 
     var trimBoundaryCorners = !alreadyInterior;
+    var useRingEdges = interiorRingCm.length >= 3 && bWallIds.length === interiorRingCm.length;
     if (bWallIds.length > 0) {
       for (var i = 0; i < bWallIds.length; i++) {
         var w = walls[String(bWallIds[i])];
         if (!w) continue;
-        var lenCm = interiorGeom
-          ? interiorGeom.wallPlanEdgeLengthCm(w, allWallsList, cmPerUnit, trimBoundaryCorners)
-          : hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
+        var lenFt;
+        if (useRingEdges) {
+          var ringJ = (i + 1) % interiorRingCm.length;
+          var ringDx = (interiorRingCm[ringJ].x - interiorRingCm[i].x) * cmPerUnit;
+          var ringDy = (interiorRingCm[ringJ].y - interiorRingCm[i].y) * cmPerUnit;
+          lenFt = hypot(ringDx, ringDy) / CM_PER_FOOT;
+        } else {
+          var lenCm = interiorGeom
+            ? interiorGeom.wallPlanEdgeLengthCm(w, allWallsList, cmPerUnit, trimBoundaryCorners)
+            : hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
+          lenFt = lenCm / CM_PER_FOOT;
+        }
         boundaryWalls.push({
           id: String(w.id),
-          length_ft: lenCm / CM_PER_FOOT,
+          length_ft: lenFt,
           thickness_cm: interiorGeom
             ? interiorGeom.wallThicknessCm(w.thickness, cmPerUnit)
             : (Number(w.thickness || 11.43)) * cmPerUnit
@@ -1996,14 +2006,13 @@
       }
       var unit = String((floor && floor.units) || (floor && floor.unit) || 'cm').toLowerCase();
       var cmPerUnit = cmPerUnitForPlan({ unit: unit, units: unit, floor: floor });
-      var roomHint = { details: { floor_polygon_mode: interiorGeom.INTERIOR_FACE_MODE } };
       return interiorGeom.interiorFloorAreaSqFt(
         polygonCm,
         boundaryWallIds || [],
         wallsById || {},
         all,
         cmPerUnit,
-        interiorGeom.roomUsesInteriorPolygonDirectly(roomHint)
+        false
       );
     }
   };

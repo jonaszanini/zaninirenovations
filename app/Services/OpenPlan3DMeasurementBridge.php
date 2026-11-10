@@ -277,7 +277,7 @@ class OpenPlan3DMeasurementBridge
         if (! $areaValidation['valid']) {
             throw new InvalidArgumentException($areaValidation['message'] ?? 'Room geometry could not be measured.');
         }
-        $insideAreaSqFt = $this->roundTo((float) $areaValidation['area_sqft'], 2);
+        $insideAreaSqFt = $this->roundTo($this->polygonArea->shoelaceArea($verticesFt), 2);
         if ($insideAreaSqFt <= 0.01) {
             if ($this->polygonArea->isCollapsedZeroFootprint($verticesFt)) {
                 $insideAreaSqFt = 0.0;
@@ -295,7 +295,15 @@ class OpenPlan3DMeasurementBridge
         // Room walls and perimeter
         $roomWallIds = $selectedRoom['walls'] ?? [];
         $trimBoundaryCorners = ! $alreadyInterior;
-        $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit, $allWallsList, $trimBoundaryCorners);
+        $boundaryWalls = $this->resolveBoundaryWalls(
+            $selectedRoom,
+            $walls,
+            $cmPerUnit,
+            $allWallsList,
+            $trimBoundaryCorners,
+            $interiorRingCm,
+            $boundaryWallIds
+        );
         $partitionWalls = $selectedRoom['partition_walls'] ?? [];
 
         $perimeter = $this->interiorGeometry->planRingPerimeterLf($interiorRingCm, $cmPerUnit);
@@ -1759,24 +1767,35 @@ class OpenPlan3DMeasurementBridge
         array $walls,
         float $cmPerUnit,
         array $allWallsList = [],
-        bool $trimCornersAtJoints = true
+        bool $trimCornersAtJoints = true,
+        array $interiorRingCm = [],
+        array $boundaryWallIds = [],
     ): array {
         $out = [];
-        $wallIds = $room['boundary_wall_ids'] ?? $room['walls'] ?? [];
+        $wallIds = $boundaryWallIds !== [] ? $boundaryWallIds : ($room['boundary_wall_ids'] ?? $room['walls'] ?? []);
         if ($allWallsList === []) {
             $allWallsList = array_values($walls);
         }
+        $useRingEdges = count($interiorRingCm) >= 3 && count($wallIds) === count($interiorRingCm);
 
         if (is_array($wallIds) && count($wallIds) > 0) {
-            foreach ($wallIds as $wid) {
+            foreach ($wallIds as $idx => $wid) {
                 $w = $walls[(string) $wid] ?? null;
                 if ($w === null) {
                     continue;
                 }
-                $lenCm = $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit, $trimCornersAtJoints);
+                if ($useRingEdges) {
+                    $j = ($idx + 1) % count($interiorRingCm);
+                    $dx = ((float) $interiorRingCm[$j]['x'] - (float) $interiorRingCm[$idx]['x']) * $cmPerUnit;
+                    $dy = ((float) $interiorRingCm[$j]['y'] - (float) $interiorRingCm[$idx]['y']) * $cmPerUnit;
+                    $lenFt = hypot($dx, $dy) / self::CM_PER_FOOT;
+                } else {
+                    $lenCm = $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit, $trimCornersAtJoints);
+                    $lenFt = $lenCm / self::CM_PER_FOOT;
+                }
                 $out[] = [
                     'id' => (string) $w['id'],
-                    'length_ft' => $lenCm / self::CM_PER_FOOT,
+                    'length_ft' => $lenFt,
                     'thickness_cm' => $this->interiorGeometry->wallThicknessCm($w['thickness'] ?? null, $cmPerUnit),
                     'height_cm' => ((float) ($w['height'] ?? 243.84)) * $cmPerUnit,
                 ];

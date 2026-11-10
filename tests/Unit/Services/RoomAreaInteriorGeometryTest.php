@@ -61,8 +61,25 @@ class RoomAreaInteriorGeometryTest extends TestCase
         ];
         $wallsById = ['n' => $walls[0], 'e' => $walls[1], 's' => $walls[2], 'w' => $walls[3]];
         $area = $this->geom->interiorFloorAreaSqFt($poly, ['n', 'e', 's', 'w'], $wallsById, $walls);
-        // Centerline 10×8 ft shell; per-edge inset (3″ N/S, 7.5″ E/W) → interior ~9.8125×7.6875 ft ≈ 80.34 sf.
+        // Centerline 10 ft 5.25 in × 8 ft 5.25 in; per-edge inset (3″ N/S, 7.5″ E/W) → interior ~9.8125×8.1875 ft ≈ 80.34 sf.
         $this->assertEqualsWithDelta(80.34, $area, 0.01);
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => array_values($walls),
+                'rooms' => [['id' => 'r1', 'walls' => ['n', 'e', 's', 'w']]],
+            ],
+        ];
+        $metrics = $this->bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $north = null;
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (($wall['id'] ?? '') === 'n') {
+                $north = $wall;
+                break;
+            }
+        }
+        $this->assertNotNull($north);
+        $this->assertEqualsWithDelta(9.8127, (float) ($north['length_lf_exact'] ?? 0), 0.01, 'North thin wall interior-face span');
     }
 
     public function test_wall_plan_edge_length_uses_interior_face_span_at_corners(): void
@@ -175,5 +192,73 @@ class RoomAreaInteriorGeometryTest extends TestCase
         $this->assertGreaterThan($metrics['area_sqft'], $metrics['outside_area_sqft']);
         // Interior ring + half 4.5″ wall per edge → ~10.375 ft exterior span → 107.64 sf.
         $this->assertEqualsWithDelta(107.64, $metrics['outside_area_sqft'], 0.01);
+    }
+
+    public function test_boundary_wall_lengths_sum_to_interior_perimeter(): void
+    {
+        $fixtures = [
+            $this->bridge->layoutMetrics($this->rectPlan(10.0, 12.0), 'r1'),
+            $this->bridge->layoutMetrics($this->lRoomPlan(), 'r_l'),
+        ];
+        foreach ($fixtures as $metrics) {
+            $perimeter = (float) ($metrics['perimeter_lf'] ?? 0);
+            $boundaryIds = $metrics['boundary_wall_ids'] ?? [];
+            $sum = 0.0;
+            foreach ($metrics['walls'] ?? [] as $wall) {
+                if (! in_array($wall['id'] ?? '', $boundaryIds, true)) {
+                    continue;
+                }
+                $sum += (float) ($wall['length_lf_exact'] ?? $wall['length_lf'] ?? 0);
+            }
+            $this->assertEqualsWithDelta($perimeter, $sum, 0.02, 'Boundary interior spans must sum to polygon perimeter');
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function rectPlan(float $wFt, float $lFt): array
+    {
+        $cm = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $w = $wFt * $cm;
+        $l = $lFt * $cm;
+        $t = 11.43;
+
+        return [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => $w, 'y' => 0], 'thickness' => $t],
+                    ['id' => 'w2', 'start' => ['x' => $w, 'y' => 0], 'end' => ['x' => $w, 'y' => $l], 'thickness' => $t],
+                    ['id' => 'w3', 'start' => ['x' => $w, 'y' => $l], 'end' => ['x' => 0, 'y' => $l], 'thickness' => $t],
+                    ['id' => 'w4', 'start' => ['x' => 0, 'y' => $l], 'end' => ['x' => 0, 'y' => 0], 'thickness' => $t],
+                ],
+                'rooms' => [['id' => 'r1', 'walls' => ['w1', 'w2', 'w3', 'w4']]],
+            ],
+        ];
+    }
+
+  /**
+     * @return array<string, mixed>
+     */
+    private function lRoomPlan(): array
+    {
+        $cm = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $t = 11.43;
+
+        return [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 16 * $cm, 'y' => 0], 'thickness' => $t],
+                    ['id' => 'w2', 'start' => ['x' => 16 * $cm, 'y' => 0], 'end' => ['x' => 16 * $cm, 'y' => 12 * $cm], 'thickness' => $t],
+                    ['id' => 'w3', 'start' => ['x' => 16 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 10 * $cm, 'y' => 12 * $cm], 'thickness' => $t],
+                    ['id' => 'w4', 'start' => ['x' => 10 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 10 * $cm, 'y' => 16 * $cm], 'thickness' => $t],
+                    ['id' => 'w5', 'start' => ['x' => 10 * $cm, 'y' => 16 * $cm], 'end' => ['x' => 0, 'y' => 16 * $cm], 'thickness' => $t],
+                    ['id' => 'w6', 'start' => ['x' => 0, 'y' => 16 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => $t],
+                ],
+                'rooms' => [['id' => 'r_l', 'walls' => ['w1', 'w2', 'w3', 'w4', 'w5', 'w6']]],
+            ],
+        ];
     }
 }

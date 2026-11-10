@@ -189,10 +189,7 @@
   }
 
   function verticesToSquareFeet(verticesFt) {
-    var rounded = verticesFt.map(function (v) {
-      return { x: roundToSixteenthFoot(v.x), y: roundToSixteenthFoot(v.y) };
-    });
-    return Math.round(shoelaceArea(rounded) * 100) / 100;
+    return Math.round(shoelaceArea(verticesFt) * 100) / 100;
   }
 
   function interiorFloorAreaSqFt(centerlineVertsCm, boundaryWallIds, wallsById, allWallsList, cmPerUnit, polygonAlreadyInterior) {
@@ -271,7 +268,7 @@
         var cross = (dx / len) * (oy / olen) - (dy / len) * (ox / olen);
         if (atStart || atEnd) {
           if (!trimCornersAtJoints || Math.abs(cross) < 0.1) continue;
-          trim = Math.max(trim, wallThicknessCm(wall.thickness, cmPerUnit) / 2);
+          trim = Math.max(trim, wallThicknessCm(other.thickness, cmPerUnit) / 2);
           continue;
         }
         var t = ((px - sx) * ox + (py - sy) * oy) / (olen * olen);

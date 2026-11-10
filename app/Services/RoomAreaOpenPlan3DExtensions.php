@@ -21,7 +21,7 @@ class RoomAreaOpenPlan3DExtensions
 
         $metrics = $this->applyExcludedZones($metrics, $zanini, $cmPerUnit, $finish);
         $metrics = $this->applyBulkheadMetrics($metrics, $zanini, $cmPerUnit);
-        $metrics = $this->applyWallFinishMetrics($metrics, $zanini);
+        $metrics = $this->applyWallFinishMetrics($metrics, $zanini, $plan, $cmPerUnit);
 
         return $metrics;
     }
@@ -305,12 +305,13 @@ class RoomAreaOpenPlan3DExtensions
      * @param  array<string, mixed>  $metrics
      * @param  array<string, mixed>  $zanini
      */
-    private function applyWallFinishMetrics(array $metrics, array $zanini): array
+    private function applyWallFinishMetrics(array $metrics, array $zanini, array $plan, float $cmPerUnit): array
     {
         $walls = is_array($metrics['walls'] ?? null) ? $metrics['walls'] : [];
         $boundaryIds = array_map('strval', is_array($metrics['boundary_wall_ids'] ?? null) ? $metrics['boundary_wall_ids'] : []);
         $boundaryMap = array_fill_keys($boundaryIds, true);
         $finishes = is_array($zanini['wallFinishes'] ?? null) ? $zanini['wallFinishes'] : [];
+        $floor = $this->resolveActiveFloor($plan);
 
         $drywall = 0.0;
         $insulation = 0.0;
@@ -347,7 +348,7 @@ class RoomAreaOpenPlan3DExtensions
                 }
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
-                $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
+                $runLf = $this->wallStudLengthLf($wall);
                 $studLen = $this->wallStudLengthLf($wall);
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
@@ -378,7 +379,10 @@ class RoomAreaOpenPlan3DExtensions
                     if (! $isBoundary) {
                         $sides = max(1, min(2, $sides));
                     }
-                    $baseboard += $lengthLf * (float) $sides;
+                    if ($isBoundary) {
+                        $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
+                    }
+                    $baseboard += $runLf * (float) $sides;
                 }
             }
         }
@@ -595,6 +599,73 @@ class RoomAreaOpenPlan3DExtensions
         }
 
         return (float) ($wall['length_lf'] ?? 0.0);
+    }
+
+    /**
+     * @param  array<string, bool>  $boundaryMap
+     * @param  array<string, mixed>  $floor
+     */
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return list<list<array<string, mixed>>>
+     */
+    private function openingLists(?array $floor, array $plan): array
+    {
+        $pick = function (string $key) use ($floor, $plan): array {
+            if (is_array($floor[$key] ?? null) && $floor[$key] !== []) {
+                return $floor[$key];
+            }
+            if (is_array($plan[$key] ?? null) && $plan[$key] !== []) {
+                return $plan[$key];
+            }
+            if (is_array($plan['floor'][$key] ?? null) && $plan['floor'][$key] !== []) {
+                return $plan['floor'][$key];
+            }
+
+            return [];
+        };
+
+        return [$pick('doors'), $pick('windows'), $pick('openings')];
+    }
+
+    /**
+     * @param  array<string, bool>  $boundaryMap
+     * @param  array<string, mixed>  $plan
+     */
+    private function boundaryOpeningDeductionLf(string $wallId, array $floor, array $boundaryMap, float $cmPerUnit, array $plan): float
+    {
+        if (! isset($boundaryMap[$wallId])) {
+            return 0.0;
+        }
+        $dedIn = 0.0;
+        $lists = $this->openingLists($floor !== [] ? $floor : null, $plan);
+        foreach ($lists as $idx => $list) {
+            if ($idx === 1) {
+                continue;
+            }
+            foreach ($list as $op) {
+                if (! is_array($op)) {
+                    continue;
+                }
+                $wid = (string) ($op['wallId'] ?? $op['wall_id'] ?? '');
+                if ($wid !== $wallId) {
+                    continue;
+                }
+                if ($idx === 2) {
+                    $type = strtolower((string) ($op['type'] ?? 'opening'));
+                    if ($type !== 'door' && $type !== 'opening') {
+                        continue;
+                    }
+                }
+                $wCm = isset($op['width']) ? (float) $op['width'] * $cmPerUnit : 0.0;
+                if (isset($op['width_in'])) {
+                    $wCm = (float) $op['width_in'] * 2.54;
+                }
+                $dedIn += max(0.0, $wCm / 2.54);
+            }
+        }
+
+        return $dedIn / 12.0;
     }
 
     private function flagEnabled(array $flags, string $key, bool $default): bool

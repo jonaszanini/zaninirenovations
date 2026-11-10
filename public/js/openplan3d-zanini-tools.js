@@ -866,6 +866,30 @@
     return wallIsBoundary(wallId) ? 1 : (flags.baseboardSides != null ? Number(flags.baseboardSides) : 2);
   }
 
+  function roomNamesOnWall(wallId, floor) {
+    var names = [];
+    if (!floor || !floor.rooms) return names;
+    floor.rooms.forEach(function (r) {
+      var walls = r.walls || [];
+      for (var wi = 0; wi < walls.length; wi++) {
+        if (String(walls[wi]) === String(wallId)) {
+          names.push(String(r.name || r.id || 'Room').trim() || 'Room');
+          break;
+        }
+      }
+    });
+    return names;
+  }
+
+  function drywallSideOptionLabels(wallId, floor) {
+    var adj = roomNamesOnWall(wallId, floor);
+    return {
+      a: adj[0] ? adj[0] + ' side' : 'Side A',
+      b: adj[1] ? adj[1] + ' side' : (adj.length === 1 ? 'Opposite side' : 'Side B'),
+      tipRooms: adj.length ? adj.join(' / ') : 'the rooms on each side'
+    };
+  }
+
   function readDrywallFacesForWall(wallFinishes, wallId) {
     var flags = (wallFinishes && wallFinishes[wallId]) || {};
     var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
@@ -1084,13 +1108,14 @@
           break;
         }
       }
-      var sideLabels = { a: 'Side A (left along wall)', b: 'Side B (right along wall)' };
+      var sideInfo = drywallSideOptionLabels(sidesEligible[0], floor);
+      var sideLabels = { a: sideInfo.a, b: sideInfo.b };
       drywallRow.innerHTML =
         '<span>' + drywallLabel + '</span>' +
         '<span class="admin-info-tip-wrap" data-finish-drywall-tip-wrap>' +
         '<button type="button" class="admin-info-tip" data-finish-drywall-tip aria-label="Drywall faces help" style="min-width:44px;min-height:44px;">&#9432;</button>' +
         '<span class="admin-info-tip__bubble" hidden>Partition walls default to both faces (interior ×2). ' +
-        'Side A is on your left when standing at the wall start facing the wall end; Side B is on your right. ' +
+        'Single-face options are labeled for adjacent rooms (' + sideInfo.tipRooms + '). ' +
         'Exterior perimeter walls count the interior face only.</span></span>' +
         '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
         '<option value="both">Both sides</option>' +

@@ -3,6 +3,7 @@
 const assert = require('assert');
 const lib = require('../../public/js/room-area-lib.js');
 const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
+require('../../public/js/openplan3d-zanini-extensions.js');
 
 console.log('Running openPlan3D Measurement Bridge JavaScript Parity Tests...');
 
@@ -74,6 +75,18 @@ assert.strictEqual(rectWithOpeningsMetrics.drywall_openings, 2);
 assert.strictEqual(rectWithOpeningsMetrics.casing_lf, 46.67, 'Total casing LF is 46.67');
 // Baseboard: 42.5 lf perimeter − 36″ door (3 lf) = 39.5 lf
 assert.strictEqual(rectWithOpeningsMetrics.baseboard_lf, 39.5, 'Baseboard is 39.5 LF');
+const rectFinishPlan = Object.assign({}, rectWithOpenings, {
+  zanini: {
+    wallFinishes: {
+      w1: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w2: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w3: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w4: { baseboard: true, drywall: true, insulation: true, paint: true },
+    },
+  },
+});
+const rectFinishMetrics = bridge.layoutMetrics(rectFinishPlan, 'r1', { wall_height_ft: 8.0, ceiling_height_ft: 8.0 });
+assert.strictEqual(rectFinishMetrics.finish_baseboard_lf, 39.5, 'finish_baseboard_lf deducts door on boundary walls');
 
 // Door area: (36/12) * (80/12) = 20.00 sqft
 // Window area: (36/12) * (48/12) = 12.00 sqft
@@ -198,7 +211,7 @@ const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall
 assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
 assert.strictEqual(lPartMetrics.area_sqft, 286.98, 'Interior L-shape floor area (~10 cm walls; was 300 centerline)');
 assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter');
-assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811.04, 'Net wall area includes both faces of partitions (interior-face spans)');
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 816.28, 'Net wall area includes both faces of partitions (interior-face spans)');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
 
 // Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
@@ -251,6 +264,7 @@ const basementPlan = basementStubRegressionPlan(0);
 const basementMetrics = bridge.layoutMetrics(basementPlan, 'r1', { wall_height_ft: 8.0 });
 assert.ok(!basementMetrics.geometry_unmeasurable, 'Basement stubs with bad stored polygon is measurable');
 assert.strictEqual(basementMetrics.area_sqft, 583.7, 'Interior floor area from outer loop (30×20 ft shell inset; was 600 centerline)');
+assert.strictEqual(basementMetrics.outside_area_sqft, 616.51, '30×20 exterior footprint without 1/16′ vertex rounding');
 assert.strictEqual(basementMetrics.partition_lf, 19.67, 'Interior stub partitions total 19.67 lf (T-junction trim)');
 const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
 assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
@@ -279,6 +293,7 @@ const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0
 assert.strictEqual(hand0Metrics.area_sqft, 1307.52,
   'Drawn basement interior floor area (was ~1346 centerline / 1300–1360 range)');
 assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear perimeter (interior-face ring walk)');
+assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
 
 // Test 11: True bowtie polygon flags unmeasurable but keeps perimeter baseboard

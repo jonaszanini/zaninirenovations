@@ -81,6 +81,7 @@ async function main() {
   const metrics = bridge.layoutMetrics(plan, 'r1', { wall_height_ft: 8.0 });
   assert.strictEqual(metrics.area_sqft, 111.89, 'bridge interior area pin');
   const expectedM2 = (metrics.area_sqft * 0.09290304).toFixed(2);
+  const centerM2 = ((10 * 12) * 0.09290304).toFixed(2);
 
   const puppeteer = require('puppeteer');
   const { server, port } = await startServer();
@@ -99,36 +100,42 @@ async function main() {
       () => window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function',
       { timeout: 120000 }
     );
-    await page.waitForFunction(
-      () => window.OpenPlan3DMeasurementBridge && window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt,
-      { timeout: 120000 }
-    );
     await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
-    const labelHit = await page.evaluate((m2, centerM2, planArg) => {
-      var p = window.__openPlan3D.getProject() || planArg;
-      var f = (p.floors && p.floors[0]) || p.floor || planArg.floors[0];
-      var r = (f.rooms && f.rooms[0]) || planArg.floors[0].rooms[0];
-      var walls = {};
-      (f.walls || []).forEach(function (w) {
-        if (w && w.id) walls[String(w.id)] = w;
-      });
-      var metrics = window.OpenPlan3DMeasurementBridge.layoutMetrics(planArg, r.id, { wall_height_ft: 8.0 });
-      var sq = metrics.area_sqft;
-      var labelM2 = Math.round((sq / 10.7639) * 100) / 100;
-      var centerSq = 10 * 12;
-      var centerM2Rounded = Math.round((centerSq / 10.7639) * 100) / 100;
-      r.area = labelM2;
+    await page.waitForFunction(
+      (exp) => {
+        var proj = window.__openPlan3D.getProject();
+        var floor = (proj.floors && proj.floors[0]) || proj.floor;
+        var room = floor && floor.rooms && floor.rooms[0];
+        if (!room || room.area == null) return false;
+        return Math.abs(Number(room.area) - parseFloat(exp)) < 0.02;
+      },
+      { timeout: 30000 },
+      expectedM2
+    );
+
+    const labelHit = await page.evaluate((expected, center) => {
+      var proj = window.__openPlan3D.getProject();
+      var floor = (proj.floors && proj.floors[0]) || proj.floor;
+      var room = floor && floor.rooms && floor.rooms[0];
+      var stored = room && room.area != null ? Number(room.area) : NaN;
+      var bodyText = document.body ? document.body.innerText || '' : '';
+      var m2Match = bodyText.match(/(\d+(?:[.,]\d+)?)\s*m²/);
+      var canvasLabel = m2Match ? parseFloat(String(m2Match[1]).replace(',', '.')) : null;
+      var labelM2 = Number.isFinite(stored) ? stored : canvasLabel;
       return {
-        labelM2: labelM2.toFixed(2),
-        centerM2Rounded: centerM2Rounded.toFixed(2),
-        matchesInterior: Math.abs(labelM2 - parseFloat(m2)) < 0.02,
-        notCenterline: Math.abs(labelM2 - centerM2Rounded) > 0.1,
-        chunkUsesInterior: String(centerM2),
+        labelM2: labelM2 != null ? labelM2.toFixed(2) : null,
+        storedArea: Number.isFinite(stored) ? stored.toFixed(2) : null,
+        canvasLabelM2: canvasLabel != null ? canvasLabel.toFixed(2) : null,
+        centerM2: center,
+        matchesInterior: labelM2 != null && Math.abs(labelM2 - parseFloat(expected)) < 0.02,
+        notCenterline: labelM2 != null && Math.abs(labelM2 - parseFloat(center)) > 0.1,
       };
-    }, expectedM2, '11.15', plan);
-    assert.strictEqual(labelHit.matchesInterior, true, `label path must yield ${expectedM2} m², got ${labelHit.labelM2}`);
-    assert.strictEqual(labelHit.notCenterline, true, `must differ from centerline ${labelHit.centerM2Rounded} m²`);
-    console.log('openplan3d-room-interior-label-browser: ok', { expectedM2, storeChunk: patched.storeChunk });
+    }, expectedM2, centerM2);
+
+    assert.ok(labelHit.labelM2 != null, 'vendor must expose on-plan room area (m²)');
+    assert.strictEqual(labelHit.matchesInterior, true, `label must yield ${expectedM2} m², got ${labelHit.labelM2}`);
+    assert.strictEqual(labelHit.notCenterline, true, `must differ from centerline ${centerM2} m²`);
+    console.log('openplan3d-room-interior-label-browser: ok', { expectedM2, labelHit, storeChunk: patched.storeChunk });
   } finally {
     await browser.close();
     server.close();

@@ -78,11 +78,7 @@ class RoomAreaInteriorGeometry
             ];
         }
 
-        try {
-            return $this->polygonArea->verticesToSquareFeet($verticesFt, 1.0);
-        } catch (\InvalidArgumentException) {
-            return 0.0;
-        }
+        return round($this->polygonArea->shoelaceArea($verticesFt), 2);
     }
 
     /**
@@ -118,11 +114,7 @@ class RoomAreaInteriorGeometry
             ];
         }
 
-        try {
-            return $this->polygonArea->verticesToSquareFeet($verticesFt, 1.0);
-        } catch (\InvalidArgumentException) {
-            return 0.0;
-        }
+        return round($this->polygonArea->shoelaceArea($verticesFt), 2);
     }
 
     /**
@@ -245,8 +237,8 @@ class RoomAreaInteriorGeometry
                     if (! $trimCornersAtJoints || abs($cross) < 0.1) {
                         continue;
                     }
-                    $selfThick = $this->wallThicknessCm($wall['thickness'] ?? null, $cmPerUnit);
-                    $trim = max($trim, $selfThick / 2.0);
+                    $joinHalf = $this->wallThicknessCm($other['thickness'] ?? null, $cmPerUnit) / 2.0;
+                    $trim = max($trim, $joinHalf);
 
                     continue;
                 }
