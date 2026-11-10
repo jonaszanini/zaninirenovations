@@ -192,6 +192,12 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $plan = [
             'format' => 'openplan3d',
             'units' => 'cm',
+            'floor' => [
+                'rooms' => [
+                    ['id' => 'r1', 'walls' => ['w1', 'w3']],
+                    ['id' => 'r2', 'walls' => ['w3']],
+                ],
+            ],
             'zanini' => [
                 'wallFinishes' => [
                     'w3' => ['baseboard' => true],
@@ -489,6 +495,34 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
 
         $this->assertSame(175.0, $out['excluded_area_sqft']);
+    }
+
+    public function test_hand0_all_finishes_baseboard_and_drywall_pins(): void
+    {
+        $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $hand0 = json_decode((string) file_get_contents($hand0Path), true);
+        $metrics = app(OpenPlan3DMeasurementBridge::class)->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]);
+        $finishes = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (! is_array($wall)) {
+                continue;
+            }
+            $finishes[(string) ($wall['id'] ?? '')] = [
+                'drywall' => true,
+                'baseboard' => true,
+                'insulation' => true,
+                'studs' => true,
+            ];
+        }
+        $plan = array_merge($hand0, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => ['wallFinishes' => $finishes],
+        ]);
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
+
+        $this->assertEqualsWithDelta(179.65, $out['finish_baseboard_lf'], 0.02);
+        $this->assertEqualsWithDelta(1604.08, $out['finish_drywall_sqft'], 1.5);
     }
 
     public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void

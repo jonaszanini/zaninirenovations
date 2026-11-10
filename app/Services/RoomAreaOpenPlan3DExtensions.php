@@ -288,7 +288,7 @@ class RoomAreaOpenPlan3DExtensions
     /**
      * @param  array<string, mixed>  $flags
      */
-    public function drywallFinishAreaSqFt(float $netSqFt, array $flags, bool $isBoundaryWall): float
+    public function drywallFinishAreaSqFt(float $netSqFt, array $flags, bool $isBoundaryWall, int $roomTouchCount = 0): float
     {
         if ($isBoundaryWall) {
             return $netSqFt;
@@ -297,8 +297,57 @@ class RoomAreaOpenPlan3DExtensions
         if ($faces === 'a' || $faces === 'b') {
             return $netSqFt / 2.0;
         }
+        if ($roomTouchCount >= 2) {
+            return $netSqFt;
+        }
 
         return $netSqFt;
+    }
+
+  /**
+     * @param  array<string, mixed>|null  $floor
+     */
+    public function roomTouchCountForWall(string $wallId, ?array $floor): int
+    {
+        if ($floor === null || ! is_array($floor['rooms'] ?? null)) {
+            return 0;
+        }
+        $count = 0;
+        foreach ($floor['rooms'] as $room) {
+            if (! is_array($room)) {
+                continue;
+            }
+            $seen = [];
+            foreach (['boundary_wall_ids', 'walls'] as $key) {
+                if (! is_array($room[$key] ?? null)) {
+                    continue;
+                }
+                foreach ($room[$key] as $id) {
+                    $seen[(string) $id] = true;
+                }
+            }
+            if (isset($seen[$wallId])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function resolveBaseboardSides(array $flags, bool $isBoundaryWall, int $roomTouchCount = 0): int
+    {
+        if ($isBoundaryWall) {
+            return 1;
+        }
+        if ($roomTouchCount < 2) {
+            return 1;
+        }
+        $sides = (int) ($flags['baseboardSides'] ?? 2);
+
+        return max(1, min(2, $sides === 1 ? 1 : 2));
     }
 
     /**
@@ -353,7 +402,8 @@ class RoomAreaOpenPlan3DExtensions
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
 
-                $finishNetSqFt = $this->drywallFinishAreaSqFt($netSqFt, $flags, $isBoundary);
+                $touchCount = $this->roomTouchCountForWall($wallId, $floor);
+                $finishNetSqFt = $this->drywallFinishAreaSqFt($netSqFt, $flags, $isBoundary, $touchCount);
                 if ($this->flagEnabled($flags, 'drywall', true)) {
                     $drywall += $finishNetSqFt;
                 }
@@ -375,10 +425,7 @@ class RoomAreaOpenPlan3DExtensions
                     $studs += $studLen;
                 }
                 if ($this->flagEnabled($flags, 'baseboard', true)) {
-                    $sides = $isBoundary ? 1 : (int) ($flags['baseboardSides'] ?? 2);
-                    if (! $isBoundary) {
-                        $sides = max(1, min(2, $sides));
-                    }
+                    $sides = $this->resolveBaseboardSides($flags, $isBoundary, $touchCount);
                     if ($isBoundary) {
                         $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
                     }

@@ -175,12 +175,14 @@ async function captureTakeoffsPanel(width, height, filename) {
       areaSqft: areaSqft,
       finishDrywall: metrics ? Number(metrics.finish_drywall_sqft) : 0,
       finishInsulation: metrics ? Number(metrics.finish_insulation_sqft) : 0,
+      finishBaseboard: metrics ? Number(metrics.finish_baseboard_lf != null ? metrics.finish_baseboard_lf : metrics.baseboard_lf) : 0,
     };
   }, hand0Plan);
   assert.strictEqual(chipState.areaSqft, 1307.52, 'takeoffs ribbon must show measured hand0 interior floor area');
   assert.ok(chipState.finishDrywall > 0, 'drywall finish chip must be non-zero on measured hand0 plan');
   assert.ok(chipState.finishInsulation > 0, 'insulation finish chip must be non-zero on measured hand0 plan');
   assert.ok(Math.abs(chipState.finishDrywall - 1604.08) < 1.5, 'hand0 drywall finish pin ~1604.08 sf');
+  assert.ok(Math.abs(chipState.finishBaseboard - 179.65) < 0.05, 'hand0 finish_baseboard_lf ~179.65 lf with all finishes');
 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');

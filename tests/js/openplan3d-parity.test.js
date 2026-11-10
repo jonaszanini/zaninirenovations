@@ -3,7 +3,7 @@
 const assert = require('assert');
 const lib = require('../../public/js/room-area-lib.js');
 const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
-require('../../public/js/openplan3d-zanini-extensions.js');
+const ext = require('../../public/js/openplan3d-zanini-extensions.js');
 
 console.log('Running openPlan3D Measurement Bridge JavaScript Parity Tests...');
 
@@ -293,6 +293,15 @@ const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0
 assert.strictEqual(hand0Metrics.area_sqft, 1307.52,
   'Drawn basement interior floor area (was ~1346 centerline / 1300–1360 range)');
 assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear perimeter (interior-face ring walk)');
+(function hand0FinishPins() {
+  var wf = {};
+  (hand0Metrics.walls || []).forEach(function (w) {
+    wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
+  });
+  var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
+  assert.ok(Math.abs(finished.finish_baseboard_lf - 179.65) < 0.02, 'hand0 finish_baseboard_lf ~179.65 lf with all finishes');
+  assert.ok(Math.abs(finished.finish_drywall_sqft - 1604.08) < 1.5, 'hand0 finish_drywall_sqft ~1604.08 sf');
+})();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
 

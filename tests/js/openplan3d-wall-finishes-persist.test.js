@@ -51,8 +51,9 @@ assert.strictEqual(incomingOverride.a.studs, true, 'explicit incoming flag wins'
 assert.strictEqual(incomingOverride.a.drywall, true, 'unspecified incoming keys keep previous');
 
 assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 2 }, true), 1, 'perimeter ignores outside baseboard sides');
-assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 1 }, false), 1);
-assert.strictEqual(ext.resolveBaseboardSides({}, false), 2);
+assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 1 }, false, 2), 1);
+assert.strictEqual(ext.resolveBaseboardSides({}, false, 0), 1, 'partition with <2 rooms counts one baseboard face');
+assert.strictEqual(ext.resolveBaseboardSides({}, false, 2), 2, 'shared partition counts both baseboard faces by default');
 
 const perimeterBb = ext.applyToMetrics(Object.assign({}, {
   boundary_wall_ids: ['w1'],

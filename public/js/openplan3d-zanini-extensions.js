@@ -536,11 +536,31 @@
     return metrics;
   }
 
-  function resolveBaseboardSides(flags, isBoundaryWall) {
+  function roomTouchCountForWall(wallId, floor) {
+    if (!floor || !Array.isArray(floor.rooms) || floor.rooms.length === 0) return 0;
+    var id = String(wallId);
+    var count = 0;
+    for (var ri = 0; ri < floor.rooms.length; ri++) {
+      var room = floor.rooms[ri];
+      if (!room) continue;
+      var seen = {};
+      var lists = [room.boundary_wall_ids, room.walls];
+      for (var li = 0; li < lists.length; li++) {
+        var list = lists[li];
+        if (!Array.isArray(list)) continue;
+        for (var i = 0; i < list.length; i++) seen[String(list[i])] = true;
+      }
+      if (seen[id]) count += 1;
+    }
+    return count;
+  }
+
+  function resolveBaseboardSides(flags, isBoundaryWall, roomTouchCount) {
     if (isBoundaryWall) return 1;
+    roomTouchCount = roomTouchCount != null ? Number(roomTouchCount) : 0;
+    if (roomTouchCount < 2) return 1;
     var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
-    sides = sides === 1 ? 1 : 2;
-    return sides;
+    return sides === 1 ? 1 : 2;
   }
 
   function resolveDrywallFaces(flags, isBoundaryWall) {
@@ -550,11 +570,13 @@
     return 'both';
   }
 
-  function drywallFinishAreaSqFt(netSqFt, flags, isBoundaryWall) {
+  function drywallFinishAreaSqFt(netSqFt, flags, isBoundaryWall, roomTouchCount) {
     netSqFt = Number(netSqFt) || 0;
     if (isBoundaryWall) return netSqFt;
+    roomTouchCount = roomTouchCount != null ? Number(roomTouchCount) : 0;
     var faces = resolveDrywallFaces(flags, false);
     if (faces === 'a' || faces === 'b') return netSqFt / 2;
+    if (roomTouchCount >= 2) return netSqFt;
     return netSqFt;
   }
 
@@ -639,7 +661,8 @@
         var studLen = wallStudLengthLf(w);
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
-        var finishNet = drywallFinishAreaSqFt(net, flags, isB);
+        var touchCount = roomTouchCountForWall(id, floor);
+        var finishNet = drywallFinishAreaSqFt(net, flags, isB, touchCount);
         if (flagEnabled(flags, 'drywall', true)) drywall += finishNet;
         if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
           paintSeen = true;
@@ -655,7 +678,7 @@
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
         if (flagEnabled(flags, 'studs', !isB)) studs += studLen;
         if (flagEnabled(flags, 'baseboard', true)) {
-          var sides = resolveBaseboardSides(flags, isB);
+          var sides = resolveBaseboardSides(flags, isB, touchCount);
           var runLf = len;
           if (isB) {
             runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(id, floor, boundaryMap, cmPerUnit, plan));
@@ -717,6 +740,7 @@
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
     mergeWallFinishes: mergeWallFinishes,
     mergeZaniniSnapshots: mergeZaniniSnapshots,
+    roomTouchCountForWall: roomTouchCountForWall,
     resolveBaseboardSides: resolveBaseboardSides,
     resolveDrywallFaces: resolveDrywallFaces,
     drywallFinishAreaSqFt: drywallFinishAreaSqFt,

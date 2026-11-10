@@ -905,11 +905,15 @@
 
   function readBaseboardSidesForWall(wallFinishes, wallId) {
     var flags = (wallFinishes && wallFinishes[wallId]) || {};
+    var floor = activeFloor(readPlan());
+    var touchCount = roomsTouchingWall(wallId, floor).length;
     var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
     if (ext && typeof ext.resolveBaseboardSides === 'function') {
-      return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId));
+      return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId), touchCount);
     }
-    return wallIsBoundary(wallId) ? 1 : (flags.baseboardSides != null ? Number(flags.baseboardSides) : 2);
+    if (wallIsBoundary(wallId)) return 1;
+    if (touchCount < 2) return 1;
+    return flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
   }
 
   function roomNamesOnWall(wallId, floor) {

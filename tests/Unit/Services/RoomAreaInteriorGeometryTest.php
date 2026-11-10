@@ -217,6 +217,27 @@ class RoomAreaInteriorGeometryTest extends TestCase
         }
     }
 
+    public function test_finish_baseboard_sides_follow_room_adjacency_on_hand0(): void
+    {
+        $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $hand0 = json_decode((string) file_get_contents($hand0Path), true);
+        $extensions = app(\App\Services\RoomAreaOpenPlan3DExtensions::class);
+        $metrics = $this->bridge->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]);
+        $finishes = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (! is_array($wall)) {
+                continue;
+            }
+            $finishes[(string) ($wall['id'] ?? '')] = ['baseboard' => true];
+        }
+        $plan = array_merge($hand0, [
+            'zanini' => ['wallFinishes' => $finishes],
+        ]);
+        $out = $extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
+        $this->assertEqualsWithDelta((float) $metrics['perimeter_lf'] + 20.86, $out['finish_baseboard_lf'], 0.05, 'hand0 baseboard = perimeter + one face per interior partition');
+        $this->assertEqualsWithDelta(179.65, $out['finish_baseboard_lf'], 0.02);
+    }
+
     /**
      * @return array<string, mixed>
      */

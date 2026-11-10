@@ -135,6 +135,12 @@ const partitionBb = ext.applyToMetrics(Object.assign({}, {
 }), {
   format: 'openplan3d',
   units: 'cm',
+  floor: {
+    rooms: [
+      { id: 'r1', walls: ['w1', 'w3'] },
+      { id: 'r2', walls: ['w3'] },
+    ],
+  },
   zanini: {
     wallFinishes: { w3: { baseboard: true } },
   },
