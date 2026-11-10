@@ -33,6 +33,7 @@ tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
 tests/Unit/Services/MillworkQuotationCalculatorTest.php
 tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
+tests/Unit/Services/RoomAreaInteriorGeometryTest.php
 tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
 tests/Unit/Services/PavingMarbleCalculatorTest.php
 tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php

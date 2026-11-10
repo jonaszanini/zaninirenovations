@@ -393,15 +393,23 @@
     return totalArea / 144.0;
   }
 
+  function roundToSixteenthFoot(feet) {
+    return Math.round(feet * 16) / 16;
+  }
+
   function verticesToSquareFeet(vertices) {
     var n = vertices.length;
     if (n < 3) return 0.0;
     var sum = 0.0;
     for (var i = 0; i < n; i++) {
       var j = (i + 1) % n;
-      sum += (vertices[i].x * vertices[j].y) - (vertices[j].x * vertices[i].y);
+      var ax = roundToSixteenthFoot(vertices[i].x);
+      var ay = roundToSixteenthFoot(vertices[i].y);
+      var bx = roundToSixteenthFoot(vertices[j].x);
+      var by = roundToSixteenthFoot(vertices[j].y);
+      sum += (ax * by) - (bx * ay);
     }
-    return Math.abs(sum) * 0.5;
+    return Math.round(Math.abs(sum) * 0.5 * 100) / 100;
   }
 
   function cornerCounts(vertices) {
@@ -1192,8 +1200,12 @@
       }
     }
 
-    var perimeter = 0.0;
-    for (var i = 0; i < boundaryWalls.length; i++) perimeter += boundaryWalls[i].length_ft;
+    var perimeter = interiorGeom
+      ? interiorGeom.planRingPerimeterLf(interiorRingCm, cmPerUnit)
+      : 0.0;
+    if (!perimeter) {
+      for (var i = 0; i < boundaryWalls.length; i++) perimeter += boundaryWalls[i].length_ft;
+    }
     perimeter = roundTo(perimeter, 2);
 
     // Openings on boundary walls and partition walls
@@ -1405,12 +1417,13 @@
       sharedLf = roundTo(sharedLf, 2);
     }
     var framingLf = Math.max(0.0, roundTo(perimeter - sharedLf, 2));
-  var outsideAreaSqFt = interiorGeom
-      ? roundTo(interiorGeom.exteriorFloorAreaSqFt(interiorRingCm, boundaryIds, walls, cmPerUnit), 2)
+  var outsideRingVerts = alreadyInterior ? interiorRingCm : polyVertices;
+    var outsideAreaSqFt = interiorGeom
+      ? roundTo(
+        interiorGeom.exteriorFloorAreaSqFt(outsideRingVerts, boundaryIds, walls, cmPerUnit, alreadyInterior),
+        2
+      )
       : roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (Math.max(0, perimeter - 2 * sharedLf) * thicknessFt)), 2);
-    if (outsideAreaSqFt <= insideAreaSqFt) {
-      outsideAreaSqFt = roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (Math.max(0, perimeter - 2 * sharedLf) * thicknessFt)), 2);
-    }
 
     // Furniture / Cabinets / Stairs
     var lib = resolveLibraryMetrics(floor, cmPerUnit);
@@ -1761,11 +1774,14 @@
   }
 
   function cmPerUnitForPlan(plan) {
-    if (!plan || typeof plan !== 'object') return CM_PER_FOOT;
-    var unit = String(plan.unit || 'cm').toLowerCase();
+    if (!plan || typeof plan !== 'object') return 1.0;
+    var floor = plan.floor || (plan.floors && plan.floors[0]) || plan;
+    var unit = String(plan.unit || plan.units || floor.unit || floor.units || 'cm').toLowerCase();
     if (unit === 'ft' || unit === 'feet' || unit === 'foot') return CM_PER_FOOT;
     if (unit === 'm' || unit === 'meter' || unit === 'meters') return 100;
-    return CM_PER_FOOT;
+    if (unit === 'mm' || unit === 'millimeter' || unit === 'millimeters') return 0.1;
+    if (unit === 'in' || unit === 'inch' || unit === 'inches') return CM_PER_INCH;
+    return 1.0;
   }
 
   function floorEligibleForCanvasFillSync(floor, activeId) {
@@ -1952,8 +1968,17 @@
       } else if (floor && floor.walls) {
         for (var i = 0; i < floor.walls.length; i++) all.push(floor.walls[i]);
       }
-      var cmPerUnit = 1.0;
-      return interiorGeom.interiorFloorAreaSqFt(polygonCm, boundaryWallIds || [], wallsById || {}, all, cmPerUnit, false);
+      var unit = String((floor && floor.units) || (floor && floor.unit) || 'cm').toLowerCase();
+      var cmPerUnit = cmPerUnitForPlan({ unit: unit, units: unit, floor: floor });
+      var roomHint = { details: { floor_polygon_mode: interiorGeom.INTERIOR_FACE_MODE } };
+      return interiorGeom.interiorFloorAreaSqFt(
+        polygonCm,
+        boundaryWallIds || [],
+        wallsById || {},
+        all,
+        cmPerUnit,
+        interiorGeom.roomUsesInteriorPolygonDirectly(roomHint)
+      );
     }
   };
 }));

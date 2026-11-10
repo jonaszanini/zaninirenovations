@@ -91,19 +91,20 @@ class RoomAreaInteriorGeometry
      * @param  array<string, array<string, mixed>>  $wallsById
      */
     public function exteriorFloorAreaSqFt(
-        array $interiorVertsCm,
+        array $ringVertsCm,
         array $boundaryWallIds,
         array $wallsById,
         float $cmPerUnit = 1.0,
+        bool $polygonIsInteriorFace = false,
     ): float {
-        if (count($interiorVertsCm) < 3) {
+        if (count($ringVertsCm) < 3) {
             return 0.0;
         }
 
-        $ring = $this->normalizeCmRing($interiorVertsCm);
+        $ring = $this->normalizeCmRing($ringVertsCm);
         $unit = max($cmPerUnit, 1e-9);
-        $offsetsCm = $this->halfThicknessPerEdgeCm($ring, $boundaryWallIds, $wallsById, $cmPerUnit);
-        $offsets = array_map(static fn (float $o): float => abs($o) / $unit, $offsetsCm);
+        $outwardFactor = $polygonIsInteriorFace ? 1.5 : 1.0;
+        $offsets = $this->wallThicknessPerEdgePlan($ring, $boundaryWallIds, $wallsById, $cmPerUnit, $outwardFactor);
         $outer = $this->offsetPolygonByEdgeOffsetsCm($ring, $offsets, false);
         if (count($outer) < 3) {
             return 0.0;
@@ -152,6 +153,27 @@ class RoomAreaInteriorGeometry
      * @param  array<string, mixed>  $wall
      * @param  list<array<string, mixed>>  $allWalls
      */
+    /**
+     * @param  list<array{x: float|int, y: float|int}>  $ring
+     */
+    public function planRingPerimeterLf(array $ring, float $cmPerUnit = 1.0): float
+    {
+        if (count($ring) < 3) {
+            return 0.0;
+        }
+        $unit = max($cmPerUnit, 1e-9);
+        $lf = 0.0;
+        $n = count($ring);
+        for ($i = 0; $i < $n; $i++) {
+            $j = ($i + 1) % $n;
+            $dx = ((float) $ring[$j]['x'] - (float) $ring[$i]['x']) * $unit;
+            $dy = ((float) $ring[$j]['y'] - (float) $ring[$i]['y']) * $unit;
+            $lf += hypot($dx, $dy) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        }
+
+        return round($lf, 2);
+    }
+
     public function wallPlanEdgeLengthCm(array $wall, array $allWalls, float $cmPerUnit = 1.0): float
     {
         $center = $this->wallCenterlineLengthCm($wall, $cmPerUnit);
@@ -205,14 +227,21 @@ class RoomAreaInteriorGeometry
                 $ey = (float) $other['end']['y'] * $cmPerUnit;
                 $px = (float) $point['x'] * $cmPerUnit;
                 $py = (float) $point['y'] * $cmPerUnit;
-                $atStart = hypot($sx - $px, $sy - $py) < $eps;
-                $atEnd = hypot($ex - $px, $ey - $py) < $eps;
-                if (! $atStart && ! $atEnd) {
-                    continue;
-                }
                 $ox = $ex - $sx;
                 $oy = $ey - $sy;
                 $olen = hypot($ox, $oy) ?: 1.0;
+                $atStart = hypot($sx - $px, $sy - $py) < $eps;
+                $atEnd = hypot($ex - $px, $ey - $py) < $eps;
+                $t = (($px - $sx) * $ox + ($py - $sy) * $oy) / ($olen * $olen);
+                $onInterior = ! $atStart && ! $atEnd && $t > $eps / $olen && $t < 1 - $eps / $olen;
+                if (! $onInterior) {
+                    continue;
+                }
+                $projX = $sx + $t * $ox;
+                $projY = $sy + $t * $oy;
+                if (hypot($px - $projX, $py - $projY) >= $eps) {
+                    continue;
+                }
                 if (abs(($dx / $len) * ($oy / $olen) - ($dy / $len) * ($ox / $olen)) < 0.1) {
                     continue;
                 }
@@ -289,6 +318,31 @@ class RoomAreaInteriorGeometry
      * @param  array<string, array<string, mixed>>  $wallsById
      * @return list<float>
      */
+    /**
+     * @return list<float>
+     */
+    private function wallThicknessPerEdgePlan(
+        array $ring,
+        array $boundaryWallIds,
+        array $wallsById,
+        float $cmPerUnit,
+        float $outwardFactor,
+    ): array {
+        $count = count($ring);
+        $unit = max($cmPerUnit, 1e-9);
+        $mult = $outwardFactor > 0 ? $outwardFactor : 1.0;
+        $out = [];
+        for ($i = 0; $i < $count; $i++) {
+            $j = ($i + 1) % $count;
+            $wallId = $boundaryWallIds[$i] ?? $this->matchWallToEdge($ring[$i], $ring[$j], $wallsById, $cmPerUnit);
+            $wall = $wallId !== null ? ($wallsById[(string) $wallId] ?? null) : null;
+            $thickCm = $this->wallThicknessCm(is_array($wall) ? ($wall['thickness'] ?? null) : null, $cmPerUnit);
+            $out[] = ($thickCm * $mult) / $unit;
+        }
+
+        return $out;
+    }
+
     private function halfThicknessPerEdgeCm(
         array $ring,
         array $boundaryWallIds,

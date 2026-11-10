@@ -142,6 +142,19 @@
     return bestId;
   }
 
+  function planRingPerimeterLf(ring, cmPerUnit) {
+    if (!ring || ring.length < 3) return 0;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var lf = 0;
+    for (var i = 0; i < ring.length; i++) {
+      var j = (i + 1) % ring.length;
+      var dx = (ring[j].x - ring[i].x) * unit;
+      var dy = (ring[j].y - ring[i].y) * unit;
+      lf += hypot(dx, dy) / CM_PER_FOOT;
+    }
+    return Math.round(lf * 100) / 100;
+  }
+
   function halfThicknessPerEdgeCm(ring, boundaryWallIds, wallsById, cmPerUnit) {
     var count = ring.length;
     var out = [];
@@ -171,8 +184,15 @@
     return offsetPolygonByEdgeOffsetsCm(ring, offsets, true);
   }
 
+  function roundToSixteenthFoot(feet) {
+    return Math.round(feet * 16) / 16;
+  }
+
   function verticesToSquareFeet(verticesFt) {
-    return Math.round(shoelaceArea(verticesFt) * 100) / 100;
+    var rounded = verticesFt.map(function (v) {
+      return { x: roundToSixteenthFoot(v.x), y: roundToSixteenthFoot(v.y) };
+    });
+    return Math.round(shoelaceArea(rounded) * 100) / 100;
   }
 
   function interiorFloorAreaSqFt(centerlineVertsCm, boundaryWallIds, wallsById, allWallsList, cmPerUnit, polygonAlreadyInterior) {
@@ -190,12 +210,27 @@
     return verticesToSquareFeet(verticesFt);
   }
 
-  function exteriorFloorAreaSqFt(interiorVertsCm, boundaryWallIds, wallsById, cmPerUnit) {
-    var ring = normalizeRing(interiorVertsCm);
+  function wallThicknessPerEdgePlan(ring, boundaryWallIds, wallsById, cmPerUnit, outwardFactor) {
+    var count = ring.length;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var mult = outwardFactor > 0 ? outwardFactor : 1.0;
+    var out = [];
+    for (var i = 0; i < count; i++) {
+      var j = (i + 1) % count;
+      var wallId = boundaryWallIds[i] || matchWallToEdge(ring[i], ring[j], wallsById, cmPerUnit);
+      var wall = wallId ? wallsById[String(wallId)] : null;
+      var thickCm = wallThicknessCm(wall ? wall.thickness : 11.43, cmPerUnit);
+      out.push((thickCm * mult) / unit);
+    }
+    return out;
+  }
+
+  function exteriorFloorAreaSqFt(ringVertsCm, boundaryWallIds, wallsById, cmPerUnit, polygonIsInteriorFace) {
+    var ring = normalizeRing(ringVertsCm);
     if (ring.length < 3) return 0;
     var unit = Math.max(cmPerUnit, 1e-9);
-    var offsetsCm = halfThicknessPerEdgeCm(ring, boundaryWallIds, wallsById, cmPerUnit);
-    var offsets = offsetsCm.map(function (o) { return Math.abs(o) / unit; });
+    var outwardFactor = polygonIsInteriorFace ? 1.5 : 1.0;
+    var offsets = wallThicknessPerEdgePlan(ring, boundaryWallIds, wallsById, cmPerUnit, outwardFactor);
     var outer = offsetPolygonByEdgeOffsetsCm(ring, offsets, false);
     if (outer.length < 3) return 0;
     var verticesFt = outer.map(function (pt) {
@@ -218,6 +253,8 @@
     var eps = WALL_JOIN_TOLERANCE_CM;
     function trimAt(point) {
       var trim = 0;
+      var px = point.x * cmPerUnit;
+      var py = point.y * cmPerUnit;
       for (var i = 0; i < allWalls.length; i++) {
         var other = allWalls[i];
         if (!other || other.id === wall.id || !other.start || !other.end) continue;
@@ -225,14 +262,19 @@
         var sy = other.start.y * cmPerUnit;
         var ex = other.end.x * cmPerUnit;
         var ey = other.end.y * cmPerUnit;
-        var px = point.x * cmPerUnit;
-        var py = point.y * cmPerUnit;
-        var atStart = hypot(sx - px, sy - py) < eps;
-        var atEnd = hypot(ex - px, ey - py) < eps;
-        if (!atStart && !atEnd) continue;
         var ox = ex - sx;
         var oy = ey - sy;
         var olen = hypot(ox, oy) || 1;
+        var atStart = hypot(sx - px, sy - py) < eps;
+        var atEnd = hypot(ex - px, ey - py) < eps;
+        var t = ((px - sx) * ox + (py - sy) * oy) / (olen * olen);
+        var onInterior = !atStart && !atEnd && t > eps / olen && t < 1 - eps / olen;
+        if (!onInterior) {
+          continue;
+        }
+        var projX = sx + t * ox;
+        var projY = sy + t * oy;
+        if (hypot(px - projX, py - projY) >= eps) continue;
         if (Math.abs((dx / len) * (oy / olen) - (dy / len) * (ox / olen)) < 0.1) continue;
         var thick = wallThicknessCm(other.thickness, cmPerUnit);
         trim = Math.max(trim, thick / 2);
@@ -260,6 +302,7 @@
     wallPlanEdgeLengthCm: wallPlanEdgeLengthCm,
     wallEndpointTrimCm: wallEndpointTrimCm,
     wallThicknessCm: wallThicknessCm,
+    planRingPerimeterLf: planRingPerimeterLf,
     offsetPolygonByEdgeOffsetsCm: offsetPolygonByEdgeOffsetsCm,
     shoelaceArea: shoelaceArea
   };

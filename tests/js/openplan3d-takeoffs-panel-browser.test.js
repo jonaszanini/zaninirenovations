@@ -108,7 +108,10 @@ async function captureTakeoffsPanel(width, height, filename) {
   await page.waitForSelector('#openplan3d-metrics-ribbon', { timeout: 30000 });
   await page.waitForSelector('#openplan3d-takeoffs-summary-floor', { timeout: 30000 });
 
-  await page.evaluate(() => {
+  const hand0Plan = JSON.parse(
+    fs.readFileSync(path.join(ROOT, 'tests/fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8')
+  );
+  const measuredArea = await page.evaluate((plan) => {
     var strip = document.getElementById('openplan3d-takeoffs-strip');
     var toggle = document.getElementById('openplan3d-takeoffs-toggle');
     if (strip) {
@@ -117,13 +120,22 @@ async function captureTakeoffsPanel(width, height, filename) {
     if (toggle) {
       toggle.setAttribute('aria-expanded', 'true');
     }
+    var HostLib = window.OpenPlan3DHostLib;
+    var bridge = window.OpenPlan3DMeasurementBridge;
+    var metrics = HostLib && bridge
+      ? HostLib.computeMetrics(plan, { wall_height_ft: 8.0 }, null, bridge)
+      : null;
+    var areaSqft = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
+    var areaText = areaSqft.toFixed(2);
     var area = document.getElementById('metric-area');
-    if (area) area.textContent = '1379.85';
+    if (area) area.textContent = areaText;
     var floor = document.getElementById('openplan3d-takeoffs-summary-floor');
     var zones = document.getElementById('openplan3d-takeoffs-summary-zones');
-    if (floor) floor.textContent = '1379.85 sf floor';
+    if (floor) floor.textContent = areaText + ' sf floor';
     if (zones) zones.textContent = '0 zones';
-  });
+    return areaSqft;
+  }, hand0Plan);
+  assert.strictEqual(measuredArea, 1305.98, 'takeoffs ribbon must show measured hand0 interior floor area');
 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');

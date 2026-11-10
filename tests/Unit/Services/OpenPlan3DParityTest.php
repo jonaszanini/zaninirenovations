@@ -499,12 +499,14 @@ class OpenPlan3DParityTest extends TestCase
         $plan = $this->basementStubRegressionPlan(0.0);
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertEquals(600.0, $metrics['area_sqft']);
+        // 30×20 ft centerline shell was 600 sf; 10 cm walls inset → 581.39 sf interior.
+        $this->assertEquals(581.39, $metrics['area_sqft']);
 
         $walls = $plan['floor']['walls'];
         $loop = $this->bridge->extractOuterLoopAndPartitions($walls, 1.0);
         $this->assertCount(2, $loop['partition_walls']);
-        $this->assertEquals(20.0, $metrics['partition_lf']);
+        // Stub partitions 12 ft + 8 ft centerline, T-trim ¼″ each at floor junction → 19.67 lf clear.
+        $this->assertEquals(19.67, $metrics['partition_lf']);
         $storedPoly = $plan['floor']['rooms'][0]['polygon'];
         $this->assertTrue($this->bridge->shouldReplaceRoomPolygonWithOuterLoop(
             $storedPoly,
@@ -519,7 +521,7 @@ class OpenPlan3DParityTest extends TestCase
         $plan = $this->basementStubRegressionPlan(15.0);
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertEquals(600.0, $metrics['area_sqft']);
+        $this->assertEquals(581.39, $metrics['area_sqft']);
 
         $loop = $this->bridge->extractOuterLoopAndPartitions($plan['floor']['walls'], 1.0);
         $this->assertCount(2, $loop['partition_walls']);
@@ -571,11 +573,11 @@ class OpenPlan3DParityTest extends TestCase
                     "Independent endpoint jitter {$maxCm} cm trial {$trial} must stay measurable"
                 );
                 $this->assertGreaterThan(
-                    1300.0,
+                    1295.0,
                     $metrics['area_sqft'],
-                    "Area should match drawn basement (~1346 sq ft) at {$maxCm} cm noise"
+                    "Area should match drawn basement interior (~1306 sf) at {$maxCm} cm noise"
                 );
-                $this->assertLessThan(1380.0, $metrics['area_sqft']);
+                $this->assertLessThan(1320.0, $metrics['area_sqft']);
             }
         }
     }
@@ -599,8 +601,7 @@ class OpenPlan3DParityTest extends TestCase
         $plan = json_decode((string) file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
         $metrics = $this->bridge->safeLayoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertGreaterThan(1300.0, $metrics['area_sqft']);
-        $this->assertLessThan(1360.0, $metrics['area_sqft']);
+        $this->assertEquals(1305.98, $metrics['area_sqft']);
     }
 
     public function test_degenerate_zero_area_plan_returns_measurable_zero_for_save_guard(): void
@@ -657,7 +658,8 @@ class OpenPlan3DParityTest extends TestCase
         ];
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertEquals(120.0, $metrics['area_sqft']);
+        // 10×12 ft wall outer loop: 120 sf centerline → 111.89 sf interior (4.5″ default walls).
+        $this->assertEquals(111.89, $metrics['area_sqft']);
     }
 
     public function test_stale_empty_plan_floor_uses_floors_array_for_live_area(): void
@@ -745,8 +747,7 @@ class OpenPlan3DParityTest extends TestCase
 
         $metrics = $this->bridge->safeLayoutMetrics($plan, 'r2', ['wall_height_ft' => 8.0]);
         $this->assertFalse($metrics['geometry_unmeasurable'] ?? false);
-        $this->assertGreaterThan(90.0, $metrics['area_sqft']);
-        $this->assertLessThan(110.0, $metrics['area_sqft']);
+        $this->assertEquals(92.64, $metrics['area_sqft']);
     }
 
     public function test_remove_partition_keeps_positive_area_with_invalid_stored_polygon(): void

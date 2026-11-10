@@ -297,9 +297,12 @@ class OpenPlan3DMeasurementBridge
         $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit, $allWallsList);
         $partitionWalls = $selectedRoom['partition_walls'] ?? [];
 
-        $perimeter = 0.0;
-        foreach ($boundaryWalls as $bw) {
-            $perimeter += $bw['length_ft'];
+        $perimeter = $this->interiorGeometry->planRingPerimeterLf($interiorRingCm, $cmPerUnit);
+        if ($perimeter <= 0) {
+            $perimeter = 0.0;
+            foreach ($boundaryWalls as $bw) {
+                $perimeter += $bw['length_ft'];
+            }
         }
         $perimeter = $this->roundTo($perimeter, 2);
 
@@ -459,13 +462,17 @@ class OpenPlan3DMeasurementBridge
         // Shared walls & outside area
         $sharedLf = $this->detectSharedWallLf($floor, $selectedRoom, $walls, $cmPerUnit, $allWallsList);
         $framingLf = max(0.0, $this->roundTo($perimeter - $sharedLf, 2));
+        $outsideRingVerts = $alreadyInterior ? $interiorRingCm : $polygonVertices;
         $outsideAreaSqFt = $this->roundTo(
-            $this->interiorGeometry->exteriorFloorAreaSqFt($interiorRingCm, $boundaryWallIds, $walls, $cmPerUnit),
+            $this->interiorGeometry->exteriorFloorAreaSqFt(
+                $outsideRingVerts,
+                $boundaryWallIds,
+                $walls,
+                $cmPerUnit,
+                $alreadyInterior,
+            ),
             2
         );
-        if ($outsideAreaSqFt <= $insideAreaSqFt) {
-            $outsideAreaSqFt = max($insideAreaSqFt, $this->canvasData->outsideAreaSqFt($insideAreaSqFt, $perimeter, $sharedLf, $thicknessIn));
-        }
 
         // Library items (cabinets, stairs)
         $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
