@@ -60,11 +60,12 @@ class BasementToolbarFirstPaintTest extends IntegrationTestCase
         $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
         $formatted = \App\Models\ClientProject::formatMoney($expected);
         $this->assertMatchesRegularExpression(
-            '/id="br-toolbar-grand-amount"[^>]*>\s*'.preg_quote($formatted, '/').'/s',
+            '/id="br-toolbar-grand-amount"[^<]*>\s*'.preg_quote($formatted, '/').'/s',
             $html
         );
+        $expensesJson = json_encode(BasementQuotationLiveGrandTotal::expensePayload($quote));
         $this->assertStringContainsString(
-            '"initialExpenseTotals":'.json_encode(BasementQuotationLiveGrandTotal::expensePayload($quote)),
+            'initialExpenseTotals:'.str_replace([' '], '', $expensesJson),
             preg_replace('/\s+/', '', $html)
         );
     }
