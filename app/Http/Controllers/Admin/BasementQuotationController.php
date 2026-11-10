@@ -644,8 +644,12 @@ class BasementQuotationController extends Controller
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
-        $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
-        $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
+        $storedElec = is_array($storedInputs['electrical_lines'] ?? null) ? $storedInputs['electrical_lines'] : [];
+        $storedPlumb = is_array($storedInputs['plumbing_lines'] ?? null) ? $storedInputs['plumbing_lines'] : [];
+        $elecRaw = $request->exists('electrical_lines') ? $request->input('electrical_lines', []) : $storedElec;
+        $plumbRaw = $request->exists('plumbing_lines') ? $request->input('plumbing_lines', []) : $storedPlumb;
+        $out['electrical_lines'] = AdditionalCostsService::normalizeRows($elecRaw, 'Electrical work');
+        $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($plumbRaw, 'Plumbing work');
 
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');
