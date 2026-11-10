@@ -443,7 +443,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             ['x' => 0, 'y' => $lCm],
         ];
 
-        $room = $this->storeSampleRoom(111.89, $this->sampleOpenPlan(10.0, 12.0));
+        $room = $this->storeSampleRoom(112.89, $this->sampleOpenPlan(10.0, 12.0));
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -457,7 +457,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('ok', true);
-        $this->assertEquals(111.89, $response->json('room.area_sqft'));
+        $this->assertEquals(112.89, $response->json('room.area_sqft'));
     }
 
     public function test_rejects_nan_and_impossible_sizes_with_422(): void
@@ -581,7 +581,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             ['x' => 10.0 * 30.48, 'y' => 0],
             ['x' => 0, 'y' => 12.0 * 30.48],
         ];
-        $this->storeSampleRoom(111.89, $this->sampleOpenPlan(10.0, 12.0));
+        $this->storeSampleRoom(112.89, $this->sampleOpenPlan(10.0, 12.0));
         RoomAreaRoom::create([
             'room_area_project_id' => $this->project->id,
             'name' => 'Broken Bowtie',
@@ -635,7 +635,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_canvas_v2_bowtie_sibling_does_not_block_valid_room_save(): void
     {
-        $good = $this->storeSampleRoom(111.89, $this->sampleOpenPlan(10.0, 12.0));
+        $good = $this->storeSampleRoom(112.89, $this->sampleOpenPlan(10.0, 12.0));
         RoomAreaRoom::create([
             'room_area_project_id' => $this->project->id,
             'name' => 'Canvas bowtie sibling',
@@ -660,7 +660,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_layouts_search_survives_invalid_sibling_room(): void
     {
-        $good = $this->storeSampleRoom(111.89, $this->sampleOpenPlan(10.0, 12.0));
+        $good = $this->storeSampleRoom(112.89, $this->sampleOpenPlan(10.0, 12.0));
         RoomAreaRoom::create([
             'room_area_project_id' => $this->project->id,
             'name' => 'Bad sibling',
@@ -685,7 +685,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_sibling_with_bowtie_does_not_block_valid_room_save(): void
     {
-        $this->storeSampleRoom(111.89, $this->sampleOpenPlan(10.0, 12.0));
+        $this->storeSampleRoom(112.89, $this->sampleOpenPlan(10.0, 12.0));
         $bowtie = $this->sampleOpenPlan(10.0, 12.0);
         $bowtie['floor']['rooms'][0]['polygon'] = [
             ['x' => 0, 'y' => 0],

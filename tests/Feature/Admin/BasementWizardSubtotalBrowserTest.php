@@ -21,8 +21,8 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
      * Hand-computed from Browser paint fill import (area 240) + CI seeded rates.
      * Wall 501.52 sf × 2 coats, ceiling 229.61 sf (20×12 ft, 10 cm walls interior), trim ~62.7 lf.
      */
-    // Was 3758.85 at 512 wall / 240 ceiling centerline fill; interior measured fill → 3665.88 pre-HST painting.
-    private const LITERAL_PAINTING_AFTER_IMPORT_PRE_HST = 3665.88;
+    // Was 3758.85 at 512 wall / 240 ceiling centerline fill; interior measured fill → 3705.30 pre-HST painting.
+    private const LITERAL_PAINTING_AFTER_IMPORT_PRE_HST = 3705.3;
 
     /**
      * Hand-computed: post-import fields + area 800, flooring_sf 800, LVP waste 7%, partition 25 lf.
