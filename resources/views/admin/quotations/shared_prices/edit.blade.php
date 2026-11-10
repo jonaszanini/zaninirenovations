@@ -51,6 +51,16 @@
     padding-left: 0.65rem;
     padding-right: 0.65rem;
   }
+  .sp-group {
+    --sp-grid-columns:
+      minmax(10.25rem, 2.28fr)
+      minmax(7.1rem, 1.18fr)
+      minmax(6.45rem, 0.98fr)
+      minmax(5.4rem, 1fr)
+      minmax(8.75rem, 1.4fr)
+      2.75rem
+      minmax(5.35rem, 0.98fr);
+  }
 }
 details.sp-group.admin-card {
   padding: 1rem 1.25rem 1.25rem;
