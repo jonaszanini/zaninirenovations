@@ -604,10 +604,14 @@ async function run() {
     await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await page.click('#openplan3d-save-btn');
-    await new Promise((r) => setTimeout(r, 700));
+    await page.waitForFunction(
+      () => {
+        const host = window.OpenPlan3DHost;
+        return host && !host.getState().isSaving;
+      },
+      { timeout: 5000 }
+    );
     assert.strictEqual(saveCount, 1, 'in-flight save lock must drop duplicate Save clicks');
-    const busyDuring = await page.evaluate(() => window.OpenPlan3DHost.getState().isSaving);
-    assert.strictEqual(busyDuring, false, 'isSaving clears after the single in-flight request');
 
     // On error/timeout: always clear isSaving, re-enable Save, keep Unsaved state, and show visible error
     const modifiedPlan = clone(noScalePlan);
