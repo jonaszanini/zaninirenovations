@@ -721,10 +721,14 @@ class BasementQuotationCalculator
 
     /**
      * Saved quotes without a header_lf key used header_qty as an opening count.
+     *
+     * @param  array<string, mixed>  $inputs  Merged wizard inputs (defaults applied).
+     * @param  array<string, mixed>|null  $storedInputs  Raw stored/posted inputs before defaults merge.
      */
-    public static function usesLegacyHeaderCount(array $inputs): bool
+    public static function usesLegacyHeaderCount(array $inputs, ?array $storedInputs = null): bool
     {
-        if (array_key_exists('header_lf', $inputs)) {
+        $source = $storedInputs ?? $inputs;
+        if (array_key_exists('header_lf', $source)) {
             return false;
         }
 
@@ -733,11 +737,12 @@ class BasementQuotationCalculator
 
     /**
      * @param  array<string, float>  $prod
+     * @param  array<string, mixed>|null  $storedInputs
      * @return array{0: float, 1: string}
      */
-    public static function headerFramingLabor(array $inputs, array $prod): array
+    public static function headerFramingLabor(array $inputs, array $prod, ?array $storedInputs = null): array
     {
-        if (self::usesLegacyHeaderCount($inputs)) {
+        if (self::usesLegacyHeaderCount($inputs, $storedInputs)) {
             $qty = max(0, (int) ($inputs['header_qty'] ?? 0));
             $hours = $qty * (float) ($prod['header_hours_each'] ?? 2);
 
@@ -1151,7 +1156,7 @@ class BasementQuotationCalculator
         if ($on('framing')) {
             $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft, '.$studSpacing.'" o.c.', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
             $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
-            [$headerHours, $headerDetail] = self::headerFramingLabor($inputs, $prod);
+            [$headerHours, $headerDetail] = self::headerFramingLabor($inputs, $prod, $originalInputs);
             $addLabor('framing_headers', 'framing', 'Headers / beams', $headerDetail, $headerHours);
             $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
             if ($partitionLf > 0) {

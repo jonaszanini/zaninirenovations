@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="vendor/autoload.php"
+         colors="true">
+    <testsuites>
+        <testsuite name="CI">
+            <file>tests/Unit/BasementQuotationWizardViewTest.php</file>
+            <file>tests/Unit/Github/DeployDependsOnTestsTest.php</file>
+            <file>tests/Unit/Models/BasementQuotationScopePdfTest.php</file>
+            <file>tests/Unit/Models/BlogPostListHelpersTest.php</file>
+            <file>tests/Unit/Models/ClientProjectQuotationPdfFoldV2IdentityTest.php</file>
+            <file>tests/Unit/Models/ClientProjectQuotationPdfFoldV2Test.php</file>
+            <file>tests/Unit/Models/ClientProjectQuotationPdfFoldV3Test.php</file>
+            <file>tests/Unit/Models/ClientProjectQuotationPdfLineItemsTest.php</file>
+            <file>tests/Unit/Models/FenceMaterialTest.php</file>
+            <file>tests/Unit/Models/FenceQuotationLabourHstTest.php</file>
+            <file>tests/Unit/Models/FenceQuotationTest.php</file>
+            <file>tests/Unit/Models/MaterialStoreProductUrlTest.php</file>
+            <file>tests/Unit/Models/SharedWorkLabelTest.php</file>
+            <file>tests/Unit/Models/StandardQuotationEditorTotalTest.php</file>
+            <file>tests/Unit/Models/StandardQuotationPdfLineItemsTest.php</file>
+            <file>tests/Unit/Services/BasementCeilingQuantitiesTest.php</file>
+            <file>tests/Unit/Services/BasementClientScopeGeneratedCopyTest.php</file>
+            <file>tests/Unit/Services/BasementQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/BasementRoomAreaImportMapperTest.php</file>
+            <file>tests/Unit/Services/BlogPostQualityTest.php</file>
+            <file>tests/Unit/Services/CutOptimizerEngineTest.php</file>
+            <file>tests/Unit/Services/EtransferInvoiceMatcherTest.php</file>
+            <file>tests/Unit/Services/EtransferNoticeParserTest.php</file>
+            <file>tests/Unit/Services/FenceQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/FenceQuotationOct8FixesTest.php</file>
+            <file>tests/Unit/Services/FenceQuotationScenarioTest.php</file>
+            <file>tests/Unit/Services/HomeDepotCaUrlsTest.php</file>
+            <file>tests/Unit/Services/LowDeckQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/MaterialPriceSyncServiceTest.php</file>
+            <file>tests/Unit/Services/MillworkCalcVersionGateTest.php</file>
+            <file>tests/Unit/Services/MillworkCutPlanPlacementTest.php</file>
+            <file>tests/Unit/Services/Millwork/MillworkDimensionParserTest.php</file>
+            <file>tests/Unit/Services/MillworkQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php</file>
+            <file>tests/Unit/Services/OpenPlan3DParityTest.php</file>
+            <file>tests/Unit/Services/OpenPlan3DPlanValidatorTest.php</file>
+            <file>tests/Unit/Services/PavingMarbleCalculatorTest.php</file>
+            <file>tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php</file>
+            <file>tests/Unit/Services/QuotationWorkDescriptionInstructionTest.php</file>
+            <file>tests/Unit/Services/QuotationWorkDescriptionLowDeckContextTest.php</file>
+            <file>tests/Unit/Services/QuotationWorkDescriptionStandardContextTest.php</file>
+            <file>tests/Unit/Services/RecalculateRemainingInstallmentsServiceTest.php</file>
+            <file>tests/Unit/Services/RoomAreaCanvasDataTest.php</file>
+            <file>tests/Unit/Services/RoomAreaClosingErrorTest.php</file>
+            <file>tests/Unit/Services/RoomAreaFinishMathTest.php</file>
+            <file>tests/Unit/Services/RoomAreaFormulaParserTest.php</file>
+            <file>tests/Unit/Services/RoomAreaMeasurementParserTest.php</file>
+            <file>tests/Unit/Services/RoomAreaQuotePrefillTest.php</file>
+            <file>tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php</file>
+            <file>tests/Unit/Services/RoomAreaSharedWallsTest.php</file>
+            <file>tests/Unit/Services/RoomAreaTemplatesTest.php</file>
+            <file>tests/Unit/Services/ShedQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/StandardQuotationCalculatorTest.php</file>
+            <file>tests/Unit/Services/StandardQuotationKitRewriteAuditorTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorAddressCapTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorAddressFinalizeTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorGoogleMapsAddressTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorLogoUrlTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorTagsTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteDataExtractorTest.php</file>
+            <file>tests/Unit/Services/SupplierWebsiteImportServiceTest.php</file>
+            <file>tests/Unit/Support/AdminListFiltersTest.php</file>
+            <file>tests/Unit/Support/AdminOnceSubmitTokenTest.php</file>
+            <file>tests/Unit/Support/CadMoneyTest.php</file>
+            <file>tests/Unit/Support/FenceSideFlagsTest.php</file>
+            <file>tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php</file>
+            <file>tests/Unit/Support/HtmlContentSanitizerTest.php</file>
+            <file>tests/Unit/Support/PlainTextLimiterTest.php</file>
+            <file>tests/Unit/Support/QuotationDraftFlashTest.php</file>
+            <file>tests/Unit/Support/QuotationSaveIntentTest.php</file>
+            <file>tests/Unit/Support/QuotationWorkDescriptionStyleTest.php</file>
+            <file>tests/Unit/Support/SafeOutboundHttpGetWebTest.php</file>
+            <file>tests/Unit/Support/SecurityHardeningTest.php</file>
+            <file>tests/Unit/Support/SeoGeoTest.php</file>
+            <file>tests/Unit/Views/AdminDarkThemeCoverageTest.php</file>
+            <file>tests/Unit/Views/AdminDatePickerThemeTest.php</file>
+            <file>tests/Unit/Views/AdminInfoTipBehaviourTest.php</file>
+            <file>tests/Unit/Views/AdminInfoTipCallerContractTest.php</file>
+            <file>tests/Unit/Views/AdminInfoTipIdIsolationTest.php</file>
+            <file>tests/Unit/Views/AdminInfoTipTest.php</file>
+            <file>tests/Unit/Views/AiActionGroupTest.php</file>
+            <file>tests/Unit/Views/BladeSyntaxTest.php</file>
+            <file>tests/Unit/Views/ClientProjectUtilitiesDarkThemeTest.php</file>
+            <file>tests/Unit/Views/FencePriceBannerTipTest.php</file>
+            <file>tests/Unit/Views/FenceQuotationFormRestoreTest.php</file>
+            <file>tests/Unit/Views/HomeKitchenTileImageTest.php</file>
+            <file>tests/Unit/Views/PublicCssLightOnlyTest.php</file>
+            <file>tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php</file>
+            <file>tests/Unit/Views/PublicMobileNavDropdownTest.php</file>
+            <file>tests/Unit/Views/QuotationEditorFooterMarkupTest.php</file>
+            <file>tests/Unit/Views/QuotationEditorHeaderMarkupTest.php</file>
+            <file>tests/Unit/Views/QuotationExpensePairLayoutTest.php</file>
+            <file>tests/Unit/Views/QuotationPdfPageBreakTest.php</file>
+            <file>tests/Unit/Views/StandardQuotationEditorJsTest.php</file>
+        </testsuite>
+    </testsuites>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="CACHE_DRIVER" value="array"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="mysql"/>
+        <env name="DB_HOST" value="127.0.0.1"/>
+        <env name="DB_PORT" value="3306"/>
+        <env name="DB_DATABASE" value="zanini_renovations_test"/>
+        <env name="DB_USERNAME" value="root"/>
+        <env name="DB_PASSWORD" value=""/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="MAIL_FROM_ADDRESS" value="zaninirenovations@gmail.com"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+    </php>
+</phpunit>

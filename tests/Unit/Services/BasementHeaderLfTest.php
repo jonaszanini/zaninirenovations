@@ -62,7 +62,7 @@ class BasementHeaderLfTest extends TestCase
         ]);
         unset($legacyInputs['header_lf']);
 
-        [$hours, $detail] = BasementQuotationCalculator::headerFramingLabor($legacyInputs, $prod);
+        [$hours, $detail] = BasementQuotationCalculator::headerFramingLabor($legacyInputs, $prod, $legacyInputs);
         $this->assertEqualsWithDelta(4.0, $hours, 0.001);
         $this->assertSame('2 opening(s)', $detail);
     }
