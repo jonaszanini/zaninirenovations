@@ -126,18 +126,20 @@ async function shot(page, name) {
   const report = { subtotals: {}, importPaint: {} };
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-  await page.goto(base + createPath, { waitUntil: 'domcontentloaded' });
-  await page.waitForSelector('#br-main-form');
-  await page.type('[name="client_name"]', 'Subtotal Browser Client');
-  const area = await page.$('#br-area');
-  if (area) {
-    await area.click({ clickCount: 3 });
-    await area.type('500');
-    await page.evaluate(() => {
-      const el = document.getElementById('br-area');
-      if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
-  }
+  await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 45000 });
+  await page.waitForSelector('#br-main-form', { timeout: 45000 });
+  await page.evaluate(() => {
+    const name = document.querySelector('[name="client_name"]');
+    if (name) {
+      name.value = 'Subtotal Browser Client';
+      name.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    const area = document.getElementById('br-area');
+    if (area) {
+      area.value = '500';
+      area.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
   await waitGrandPositive(page);
   await new Promise((r) => setTimeout(r, 400));
 
@@ -168,14 +170,14 @@ async function shot(page, name) {
   report.subtotals.sumMatchesSubtotal = Math.abs(sectionSum + feePre - subtotalPre) < 0.05;
 
   const framingBefore = Number(apiSections.framing || 0);
-  const partition = await page.$('#br-partition');
-  if (partition) {
-    await partition.click({ clickCount: 3 });
-    await partition.type('25');
-    await page.evaluate(() => {
-      const el = document.getElementById('br-partition');
-      if (el) el.dispatchEvent(new Event('input', { bubbles: true }));
-    });
+  await page.evaluate(() => {
+    const el = document.getElementById('br-partition');
+    if (el) {
+      el.value = '25';
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+  });
+  {
     await waitGrandPositive(page);
     await new Promise((r) => setTimeout(r, 500));
     const previewAfter = await fetchPreview(page);
