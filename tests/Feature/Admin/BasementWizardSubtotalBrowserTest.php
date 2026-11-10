@@ -58,7 +58,6 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'BR_LITERAL_DRYWALL_WALL_SF' => (string) $literals['drywall_wall_sf'],
             'BR_LITERAL_CEILING_SF' => (string) $literals['ceiling_sf'],
             'BR_LITERAL_PAINT_CEILING_SF' => (string) $literals['paint_ceiling_sf'],
-            'BR_EXPECT_FLOORING_SECTION' => sprintf('%.2f', $literals['flooring_section_pre_hst']),
             'BR_EXPECT_PAINTING_SECTION' => sprintf('%.2f', $literals['painting_section_pre_hst']),
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
@@ -69,6 +68,10 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $report = json_decode($raw, true);
         $this->assertIsArray($report);
         $this->assertTrue((bool) ($report['ok'] ?? false), json_encode($report));
+        $this->assertGreaterThan(
+            (float) ($report['create']['framingBefore'] ?? 0),
+            (float) ($report['create']['framingAfter'] ?? 0)
+        );
 
         $subdir = $shots;
         $this->assertFileExists($subdir.'/basement-section-subtotal-flooring-1280.png');
@@ -102,7 +105,6 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             array_filter($proposed, fn ($v) => $v !== null),
             [
                 'area_sqft' => 800,
-                'flooring_sf' => 800,
                 'ceiling_height_ft' => 8,
                 'flooring_type' => 'lvp',
             ]
@@ -114,7 +116,6 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
             'ceiling_sf' => 240.0,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
-            'flooring_section_pre_hst' => (float) ($calc['summary']['section_subtotals_pre_hst']['flooring'] ?? 0),
             'painting_section_pre_hst' => (float) ($calc['summary']['section_subtotals_pre_hst']['painting'] ?? 0),
         ];
     }

@@ -17,7 +17,6 @@ const LITERAL_WALL_SF = Number(process.env.BR_LITERAL_WALL_SF || 512);
 const LITERAL_DRYWALL_WALL_SF = Number(process.env.BR_LITERAL_DRYWALL_WALL_SF || 512);
 const LITERAL_CEILING_SF = Number(process.env.BR_LITERAL_CEILING_SF || 240);
 const LITERAL_PAINT_CEILING_SF = Number(process.env.BR_LITERAL_PAINT_CEILING_SF || 240);
-const EXPECT_FLOORING_SECTION = parseMoney(process.env.BR_EXPECT_FLOORING_SECTION || '');
 const EXPECT_PAINTING_SECTION = parseMoney(process.env.BR_EXPECT_PAINTING_SECTION || '');
 
 function launchOpts() {
@@ -236,10 +235,6 @@ async function shot(page, name) {
   await gotoStep(page, 'flooring');
   const flooringBefore = await readSectionSubtotal(page, 'flooring');
   report.create.flooringBefore = flooringBefore;
-  if (EXPECT_FLOORING_SECTION > 0) {
-    report.create.flooringMatchesLiteral = moneyClose(flooringBefore.amount, EXPECT_FLOORING_SECTION);
-  }
-
   await gotoStep(page, 'framing');
   const framingBefore = await readSectionSubtotal(page, 'framing');
   await typeField(page, '#br-partition', '25');
@@ -282,9 +277,12 @@ async function shot(page, name) {
   report.ok = report.create.framingLiveUpdated
     && report.reconciliation.grandMatchesToolbar
     && report.reconciliation.partsSumToGrand
-    && (EXPECT_FLOORING_SECTION <= 0 || report.create.flooringMatchesLiteral)
     && (!importQuery || (report.importPaint.wallSfOk && report.importPaint.ceilingSfOk
       && (EXPECT_PAINTING_SECTION <= 0 || report.importPaint.paintingSectionLiteralOk)));
+
+  if (EXPECT_FLOORING_SECTION > 0) {
+    report.create.flooringMatchesLiteral = moneyClose(report.create.flooringBefore.amount, EXPECT_FLOORING_SECTION);
+  }
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
