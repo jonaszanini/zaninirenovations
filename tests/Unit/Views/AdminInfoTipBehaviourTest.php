@@ -759,7 +759,8 @@ BLADE);
         $this->assertStringContainsString("'tipLabel' => 'Other openings'", $drywall);
         $this->assertStringContainsString('skipped on Level 0', $drywall);
         $this->assertStringContainsString('added for labour', $drywall);
-        $this->assertStringNotContainsString("'tipLabel' => 'Outside corners'", $drywall);
+        $this->assertStringContainsString("'tipLabel' => 'Outside corners'", $drywall);
+        $this->assertStringContainsString('stick length from Materials', $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Opening area'", $drywall);
         $this->assertStringContainsString("'tipLabel' => 'Level of finish'", $drywall);
 

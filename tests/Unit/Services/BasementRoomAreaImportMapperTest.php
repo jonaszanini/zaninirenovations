@@ -23,6 +23,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(90.0, $proposed['perimeter_lf']);
         $this->assertSame(12.0, $proposed['partition_lf']);
         $this->assertSame(16.0, $proposed['bulkhead_lf']);
+        $this->assertSame(18.0, $proposed['header_lf']);
         $this->assertSame(2, $proposed['framing_door_openings']);
         $this->assertSame(2, $proposed['door_qty']);
         $this->assertSame(2, $proposed['drywall_door_openings']);
@@ -65,6 +66,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(200.0, $proposed['drywall_ceiling_sf']);
         $this->assertNull($proposed['partition_lf']);
         $this->assertNull($proposed['bulkhead_lf']);
+        $this->assertNull($proposed['header_lf']);
         $this->assertNull($proposed['baseboard_lf']);
         $this->assertNull($proposed['door_qty']);
         $this->assertNull($proposed['paint_trim_lf']);
@@ -273,7 +275,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         ], 8);
 
         $this->assertSame(210.0, $proposed['drywall_wall_sf']);
-        $this->assertNull($proposed['paint_wall_sf']);
+        $this->assertSame(210.0, $proposed['paint_wall_sf']);
         $this->assertSame(180.0, $proposed['insulation_wall_sf']);
         $this->assertSame(12.5, $proposed['partition_lf']);
         $this->assertSame(70.0, $proposed['baseboard_lf']);
@@ -313,7 +315,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(652.0, $proposed['drywall_wall_sf']);
     }
 
-    public function test_missing_paint_finish_leaves_paint_wall_unavailable(): void
+    public function test_missing_paint_finish_fills_paint_wall_from_imported_drywall_wall(): void
     {
         $proposed = BasementRoomAreaImportMapper::proposedQuantities([
             'area_sqft' => 80,
@@ -321,11 +323,40 @@ class BasementRoomAreaImportMapperTest extends TestCase
             'bulkhead_drywall_sqft' => 12,
         ], 8);
 
-        $this->assertNull($proposed['paint_wall_sf']);
+        $this->assertSame(652.0, $proposed['paint_wall_sf']);
         $this->assertSame(652.0, $proposed['drywall_wall_sf']);
         $this->assertFalse(
             BasementRoomAreaImportMapper::present(['finish_paint_sqft' => null], 'finish_paint_sqft')
         );
+    }
+
+    public function test_paint_ceiling_import_zero_when_ceiling_type_is_drop_or_none(): void
+    {
+        $opt = ['area_sqft' => 500, 'ceiling_area_sqft' => 500, 'perimeter_lf' => 90];
+        $this->assertSame(0.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'drop')['paint_ceiling_sf']);
+        $this->assertSame(0.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'none')['paint_ceiling_sf']);
+        $this->assertSame(500.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'drywall')['paint_ceiling_sf']);
+    }
+
+    public function test_import_maps_header_lf_when_layout_provides_it(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 240,
+            'finish_header_lf' => 14.5,
+        ], 8, 'drywall');
+        $this->assertSame(14.5, $proposed['header_lf']);
+    }
+
+    public function test_legacy_perimeter_paint_deducts_door_opening_when_no_measured_wall(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 240,
+            'perimeter_lf' => 64,
+            'door_count' => 1,
+            'ceiling_area_sqft' => 240,
+        ], 8, 'drywall');
+        $this->assertSame(512.0, $proposed['drywall_wall_sf']);
+        $this->assertSame(491.0, $proposed['paint_wall_sf']);
     }
 
     public function test_mixed_legacy_paint_confirm_names_counts_and_previous_quantity(): void
@@ -353,17 +384,29 @@ class BasementRoomAreaImportMapperTest extends TestCase
             'finish_drywall_sqft' => 640,
             'paint_walls_unassigned' => 3,
         ], 8);
-        $this->assertNull($missing['paint_wall_sf']);
-        $this->assertFalse(BasementRoomAreaImportMapper::needsImportConfirm(
+        $this->assertSame(640.0, $missing['paint_wall_sf']);
+        $this->assertTrue(BasementRoomAreaImportMapper::needsImportConfirm(
             array_merge($missing, ['paint_wall_sf' => 400, 'import_label' => 'Manual']),
             $missing,
             ['paint_walls_unassigned' => 3]
         ));
     }
 
+    public function test_bulkhead_corner_bead_lf_imports_for_boxing_cb2(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 400,
+            'bulkhead_corner_bead_lf' => 14,
+            'bulkhead_drywall_sqft' => 30,
+        ], 8);
+
+        $this->assertSame(14.0, $proposed['import_bulkhead_corner_bead_lf']);
+        $this->assertSame(30.0, $proposed['import_bulkhead_drywall_sqft']);
+    }
+
     public function test_unmapped_keys_are_documented_and_exclude_corner_bead(): void
     {
-        $this->assertContains('bulkhead_corner_bead_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
+        $this->assertNotContains('bulkhead_corner_bead_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('cabinet_base_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('stairs_treads', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('framing_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
@@ -393,7 +436,9 @@ class BasementRoomAreaImportMapperTest extends TestCase
             'bulkhead_lf' => 16,
             'bulkhead_framing_lf' => 16,
             'bulkhead_drywall_sqft' => 30,
+            'bulkhead_corner_bead_lf' => 14,
             'partition_lf' => 12,
+            'finish_header_lf' => 18,
             'finish_drywall_sqft' => 720,
             'finish_paint_sqft' => 480,
             'finish_insulation_sqft' => 640,

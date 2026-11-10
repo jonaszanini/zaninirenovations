@@ -10,8 +10,14 @@ use App\Support\QuotationHelperLabor;
 
 class BasementQuotationCalculator
 {
-    /** Extra drywall for boxed ducts / soffits (three ~12 in faces) on bathroom-only quotes. */
+    /** Rough drywall area per linear foot of duct bulkhead boxing (about three 12 in faces). */
     public const BULKHEAD_DRYWALL_SF_PER_LF = 3.0;
+
+    /** Rough drywall area per linear foot of wood header or steel beam boxing. */
+    public const HEADER_DRYWALL_SF_PER_LF = 3.0;
+
+    /** Outside corner bead along each linear foot of duct or header boxing (two long edges per run). */
+    public const BOXING_CORNER_BEAD_LF_PER_RUN_LF = 2.0;
 
     public const SECTIONS = [
         'overview' => 'Project Overview',
@@ -625,6 +631,7 @@ class BasementQuotationCalculator
             'demo_bin_qty' => 1,
             'partition_lf' => 0,
             'bulkhead_lf' => 0,
+            'header_lf' => 0,
             'header_qty' => 0,
             'framing_door_openings' => 0,
             'stud_spacing_in' => BasementSettings::STUD_SPACING_DEFAULT,
@@ -656,6 +663,11 @@ class BasementQuotationCalculator
             'drywall_wall_sf' => null,
             'drywall_ceiling_sf' => null,
             'drywall_corners' => 0,
+            'corner_bead_by_height' => true,
+            'drywall_boxing_v2' => true,
+            'import_bulkhead_drywall_sqft' => 0,
+            'import_bulkhead_corner_bead_lf' => 0,
+            'trim_material_lf_v2' => true,
             'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
             'drywall_door_openings' => 0,
@@ -715,6 +727,165 @@ class BasementQuotationCalculator
             'extra_materials' => [],
             'labor_override' => [],
             'materials_override' => [],
+        ];
+    }
+
+    /**
+     * Saved quotes without a header_lf key used header_qty as an opening count.
+     *
+     * @param  array<string, mixed>  $inputs  Merged wizard inputs (defaults applied).
+     * @param  array<string, mixed>|null  $storedInputs  Raw stored/posted inputs before defaults merge.
+     */
+    public static function usesLegacyHeaderCount(array $inputs, ?array $storedInputs = null): bool
+    {
+        $source = $storedInputs ?? $inputs;
+        if (array_key_exists('header_lf', $source)) {
+            return false;
+        }
+
+        return (int) ($inputs['header_qty'] ?? 0) > 0;
+    }
+
+    /**
+     * @param  array<string, float>  $prod
+     * @param  array<string, mixed>|null  $storedInputs
+     * @return array{0: float, 1: string}
+     */
+    public static function headerFramingLabor(array $inputs, array $prod, ?array $storedInputs = null): array
+    {
+        if (self::usesLegacyHeaderCount($inputs, $storedInputs)) {
+            $qty = max(0, (int) ($inputs['header_qty'] ?? 0));
+            $hours = $qty * (float) ($prod['header_hours_each'] ?? 2);
+
+            return [$hours, $qty.' opening(s)'];
+        }
+
+        $lf = max(0, (float) ($inputs['header_lf'] ?? 0));
+        if ($lf <= 0) {
+            return [0.0, '0 lf'];
+        }
+        $rate = max(0.001, (float) ($prod['header_lf_per_hr'] ?? 4));
+
+        return [$lf / $rate, number_format($lf, 0).' lf'];
+    }
+
+    /**
+     * Saved quotes without corner_bead_by_height used one stick per outside corner regardless of height.
+     *
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function usesLegacyCornerBeadCount(array $storedInputs): bool
+    {
+        return ! array_key_exists('corner_bead_by_height', $storedInputs);
+    }
+
+    /**
+     * Saved quotes without drywall_boxing_v2 omitted duct/header boxing from drywall takeoff.
+     *
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function usesLegacyDrywallBoxing(array $storedInputs): bool
+    {
+        return ! array_key_exists('drywall_boxing_v2', $storedInputs);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $matCatalog
+     */
+    public static function cornerBeadStickLengthFt(array $matCatalog): float
+    {
+        $name = (string) ($matCatalog['corner_bead']['name'] ?? '');
+        $fromName = Material::stickLengthFeetFromLabel($name);
+
+        return max(0.001, $fromName ?? BasementSettings::CORNER_BEAD_FEET_PER_STICK);
+    }
+
+    public static function outsideCornerBeadSticks(int $outsideCorners, float $wallHeightFt, float $stickLengthFt, bool $legacyCountOnly): int
+    {
+        if ($outsideCorners <= 0) {
+            return 0;
+        }
+        if ($legacyCountOnly) {
+            return $outsideCorners;
+        }
+        $perCorner = (int) ceil(max(0.001, $wallHeightFt) / max(0.001, $stickLengthFt));
+
+        return $outsideCorners * max(1, $perCorner);
+    }
+
+    public static function boxingCornerBeadLf(
+        float $bulkheadLf,
+        float $headerLf,
+        float $importBulkheadBeadLf,
+        bool $boxingV2
+    ): float {
+        if (! $boxingV2) {
+            return 0.0;
+        }
+        $fromImport = max(0.0, $importBulkheadBeadLf);
+        if ($fromImport > 0) {
+            return round($fromImport + (self::BOXING_CORNER_BEAD_LF_PER_RUN_LF * max(0.0, $headerLf)), 4);
+        }
+
+        return round(
+            self::BOXING_CORNER_BEAD_LF_PER_RUN_LF * (max(0.0, $bulkheadLf) + max(0.0, $headerLf)),
+            4
+        );
+    }
+
+    public static function boxingCornerBeadSticks(float $beadLf, float $stickLengthFt): int
+    {
+        if ($beadLf <= 0) {
+            return 0;
+        }
+
+        return (int) ceil($beadLf / max(0.001, $stickLengthFt));
+    }
+
+    /**
+     * @param  array<string, mixed>  $storedInputs
+     * @return array{bulkhead_sf: float, header_sf: float, total_sf: float}
+     */
+    /** @deprecated Legacy saved quotes priced trim as 8 ft sticks (each). */
+    private const LEGACY_BASEBOARD_EACH_PRICE = 16.8;
+
+    private const LEGACY_SHOE_EACH_PRICE = 7.6;
+
+    public static function usesLegacyTrimMaterialSticks(array $storedInputs): bool
+    {
+        return ! array_key_exists('trim_material_lf_v2', $storedInputs);
+    }
+
+    public static function trimStickLengthFt(array $matCatalog, string $catalogKey): float
+    {
+        $name = (string) ($matCatalog[$catalogKey]['name'] ?? '');
+
+        return max(
+            0.001,
+            Material::stickLengthFeetFromLabel($name) ?? BasementSettings::BASEBOARD_FEET_PER_STICK
+        );
+    }
+
+    public static function drywallBoxingSf(
+        float $bulkheadLf,
+        float $headerLf,
+        bool $boxingV2,
+        float $importBulkheadDrywallSqft
+    ): array {
+        if (! $boxingV2) {
+            return ['bulkhead_sf' => 0.0, 'header_sf' => 0.0, 'total_sf' => 0.0];
+        }
+
+        $bulkheadSf = 0.0;
+        if ($bulkheadLf > 0 && $importBulkheadDrywallSqft <= 0) {
+            $bulkheadSf = round($bulkheadLf * self::BULKHEAD_DRYWALL_SF_PER_LF, 2);
+        }
+        $headerSf = $headerLf > 0 ? round($headerLf * self::HEADER_DRYWALL_SF_PER_LF, 2) : 0.0;
+
+        return [
+            'bulkhead_sf' => $bulkheadSf,
+            'header_sf' => $headerSf,
+            'total_sf' => round($bulkheadSf + $headerSf, 2),
         ];
     }
 
@@ -960,7 +1131,7 @@ class BasementQuotationCalculator
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
         $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
-        if ($inputs['scope_preset'] === 'bathroom') {
+        if ($inputs['scope_preset'] === 'bathroom' && self::usesLegacyDrywallBoxing($originalInputs)) {
             $dwWallFallback = round(
                 $suggestedWallSf
                 + ($partitionLf * $height * 2)
@@ -968,6 +1139,19 @@ class BasementQuotationCalculator
                 2
             );
         }
+        $boxingV2 = ! self::usesLegacyDrywallBoxing($originalInputs);
+        $headerLfForBoxing = self::usesLegacyHeaderCount($inputs, $originalInputs)
+            ? 0.0
+            : max(0.0, (float) ($inputs['header_lf'] ?? 0));
+        $importBulkheadDrywall = max(0.0, (float) ($originalInputs['import_bulkhead_drywall_sqft'] ?? $inputs['import_bulkhead_drywall_sqft'] ?? 0));
+        $importBulkheadBead = max(0.0, (float) ($originalInputs['import_bulkhead_corner_bead_lf'] ?? $inputs['import_bulkhead_corner_bead_lf'] ?? 0));
+        $drywallBoxing = self::drywallBoxingSf($bulkheadLf, $headerLfForBoxing, $boxingV2, $importBulkheadDrywall);
+        $stickLengthFt = self::cornerBeadStickLengthFt($matCatalog);
+        $legacyCornerBead = self::usesLegacyCornerBeadCount($originalInputs);
+        $outsideCorners = max(0, (int) $inputs['drywall_corners']);
+        $cornerBeadWallSticks = self::outsideCornerBeadSticks($outsideCorners, $height, $stickLengthFt, $legacyCornerBead);
+        $boxingBeadLf = self::boxingCornerBeadLf($bulkheadLf, $headerLfForBoxing, $importBulkheadBead, $boxingV2);
+        $cornerBeadBoxingSticks = self::boxingCornerBeadSticks($boxingBeadLf, $stickLengthFt);
         $paintColors = ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1;
         $on = function (string $section) use ($inputs): bool {
             return self::sectionEnabled($inputs, $section);
@@ -1022,7 +1206,9 @@ class BasementQuotationCalculator
             string $section,
             float $qty,
             ?string $catalogKey = null,
-            ?string $labelOverride = null
+            ?string $labelOverride = null,
+            ?string $unitOverride = null,
+            ?float $unitPriceOverride = null
         ) use (&$materials, $inputs, $matCatalog, $clientProvidedMat): void {
             $qty = round(max(0, $qty), 2);
             if ($qty <= 0) {
@@ -1055,6 +1241,9 @@ class BasementQuotationCalculator
                     ? round($studPrice / BasementSettings::PLATE_FEET_PER_BOARD, 4)
                     : 0.0;
             }
+            if ($unitPriceOverride !== null) {
+                $unitPrice = round(max(0, $unitPriceOverride), 4);
+            }
             $clientProvided = $clientProvidedMat($section, $catalogKey, $key);
             $amount = $clientProvided ? 0.0 : round($qty * $unitPrice, 2);
             $derivedPlate = $key === BasementSettings::MATERIAL_PLATE_2X4;
@@ -1063,7 +1252,7 @@ class BasementQuotationCalculator
                 'section' => $section,
                 'label' => ($labelOverride !== null && $labelOverride !== '') ? $labelOverride : $def['name'],
                 'qty' => $qty,
-                'unit' => $derivedPlate ? 'lf' : $def['unit'],
+                'unit' => $derivedPlate ? 'lf' : ($unitOverride ?? $def['unit']),
                 'unit_price' => $unitPrice,
                 'amount' => $amount,
                 'catalog_material_id' => $derivedPlate ? null : $def['catalog_material_id'],
@@ -1110,14 +1299,14 @@ class BasementQuotationCalculator
         }
 
         // --- Framing ---
-        $headers = max(0, (int) $inputs['header_qty']);
         $frameDoors = max(0, (int) $inputs['framing_door_openings']);
         $studSpacing = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
         $inputs['stud_spacing_in'] = $studSpacing;
         if ($on('framing')) {
             $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft, '.$studSpacing.'" o.c.', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
             $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
-            $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
+            [$headerHours, $headerDetail] = self::headerFramingLabor($inputs, $prod, $originalInputs);
+            $addLabor('framing_headers', 'framing', 'Headers / beams', $headerDetail, $headerHours);
             $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
             if ($partitionLf > 0) {
                 $studs = max(1, (int) ceil($this->withMaterialWaste(($partitionLf * 12 / $studSpacing) + 2, $inputs)));
@@ -1172,18 +1361,40 @@ class BasementQuotationCalculator
             $dwWallGross = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
             $openingSf = self::drywallOpeningSf($inputs);
             $dwWall = round(max(0, $dwWallGross - $openingSf), 2);
+            $dwWallBeforeBoxing = $dwWall;
+            $dwWall = round($dwWall + $drywallBoxing['total_sf'], 2);
             $dwSf = $dwWall + $dwCeil;
             $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
             $hangOnly = $level === 0;
-            $hangDetail = number_format($dwSf, 0).' sq ft';
+            $dwSfCore = $dwWallBeforeBoxing + $dwCeil;
+            $hangDetail = number_format($dwSfCore, 0).' sq ft';
             if ($openingSf > 0) {
                 $hangDetail .= ' ('.number_format($openingSf, 0).' sf openings deducted)';
             }
-            $addLabor('dw_hang', 'drywall', 'Hang drywall', $hangDetail, $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
+            $addLabor('dw_hang', 'drywall', 'Hang drywall', $hangDetail, $perHr($dwSfCore, (float) $prod['drywall_hang_sf_per_hr']));
+            if ($drywallBoxing['total_sf'] > 0) {
+                $boxDetail = [];
+                if ($drywallBoxing['bulkhead_sf'] > 0) {
+                    $boxDetail[] = number_format($drywallBoxing['bulkhead_sf'], 0).' sf duct boxing';
+                }
+                if ($drywallBoxing['header_sf'] > 0) {
+                    $boxDetail[] = number_format($drywallBoxing['header_sf'], 0).' sf header/beam boxing';
+                }
+                $addLabor(
+                    'dw_boxing',
+                    'drywall',
+                    'Hang duct and header boxing',
+                    implode(', ', $boxDetail),
+                    $perHr($drywallBoxing['total_sf'], (float) $prod['drywall_hang_sf_per_hr'])
+                );
+            }
             if (! $hangOnly) {
                 $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
                 $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
                 $finishDetail = number_format($dwSf, 0).' sq ft';
+                if ($drywallBoxing['total_sf'] > 0) {
+                    $finishDetail .= ' incl. '.number_format($drywallBoxing['total_sf'], 0).' sf duct/header boxing';
+                }
                 if ($paintColors === 2) {
                     $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
                     $finishDetail .= ', two-color';
@@ -1206,13 +1417,32 @@ class BasementQuotationCalculator
                     'drywall_screws'
                 );
             }
-            $corners = max(0, (int) $inputs['drywall_corners']);
             $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = self::drywallOpeningCount($inputs);
             if (! $hangOnly) {
                 $addMat('joint_compound', 'drywall', $this->packages($dwOrderSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
                 $addMat('drywall_tape', 'drywall', $this->packages($dwOrderSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
-                $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
+                if ($cornerBeadWallSticks > 0) {
+                    $wallBeadDetail = $legacyCornerBead
+                        ? $outsideCorners.' corner(s)'
+                        : $outsideCorners.' corner(s), '.number_format($height, 0).' ft wall height';
+                    $addMat(
+                        'corner_bead',
+                        'drywall',
+                        $cornerBeadWallSticks,
+                        'corner_bead',
+                        'Corner bead (outside corners, '.$wallBeadDetail.')'
+                    );
+                }
+                if ($cornerBeadBoxingSticks > 0) {
+                    $addMat(
+                        'corner_bead_boxing',
+                        'drywall',
+                        $cornerBeadBoxingSticks,
+                        'corner_bead',
+                        'Corner bead (duct and header boxing, '.number_format($boxingBeadLf, 0).' lf edges)'
+                    );
+                }
                 $addLabor(
                     'dw_inside_corners',
                     'drywall',
@@ -1280,11 +1510,58 @@ class BasementQuotationCalculator
             $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
             $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
             $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
-            $addMat('baseboard', 'doors_trim', $this->packages($this->withMaterialWaste($baseLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
+            $legacyTrimSticks = self::usesLegacyTrimMaterialSticks($originalInputs);
+            if ($legacyTrimSticks) {
+                $stick = self::trimStickLengthFt($matCatalog, 'baseboard');
+                $wasteLf = $this->withMaterialWaste($baseLf, $inputs);
+                $stickQty = $this->packages($wasteLf, $stick);
+                $def = $matCatalog['baseboard'] ?? [];
+                $catalogUnit = strtolower((string) ($def['unit'] ?? ''));
+                $catalogPrice = (float) ($def['unit_price'] ?? 0);
+                if ($catalogUnit === 'each' && $catalogPrice > 0) {
+                    $eachPrice = $catalogPrice;
+                } else {
+                    $eachPrice = self::LEGACY_BASEBOARD_EACH_PRICE;
+                }
+                $addMat(
+                    'baseboard',
+                    'doors_trim',
+                    $stickQty,
+                    'baseboard',
+                    '8 ft baseboard (each)',
+                    'each',
+                    $eachPrice
+                );
+            } else {
+                $addMat('baseboard', 'doors_trim', round($this->withMaterialWaste($baseLf, $inputs), 2), 'baseboard');
+            }
             if (! empty($inputs['include_shoe'])) {
                 $shoeLf = $this->qtyOr($inputs['shoe_lf'] ?? null, $baseLf);
                 $addLabor('trim_shoe', 'doors_trim', 'Shoe moulding', number_format($shoeLf, 0).' lf', $perHr($shoeLf, (float) ($prod['shoe_lf_per_hr'] ?? 30)));
-                $addMat('shoe', 'doors_trim', $this->packages($this->withMaterialWaste($shoeLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'shoe');
+                if ($legacyTrimSticks) {
+                    $stick = self::trimStickLengthFt($matCatalog, 'shoe');
+                    $wasteLf = $this->withMaterialWaste($shoeLf, $inputs);
+                    $stickQty = $this->packages($wasteLf, $stick);
+                    $def = $matCatalog['shoe'] ?? [];
+                    $catalogUnit = strtolower((string) ($def['unit'] ?? ''));
+                    $catalogPrice = (float) ($def['unit_price'] ?? 0);
+                    if ($catalogUnit === 'each' && $catalogPrice > 0) {
+                        $eachPrice = $catalogPrice;
+                    } else {
+                        $eachPrice = self::LEGACY_SHOE_EACH_PRICE;
+                    }
+                    $addMat(
+                        'shoe',
+                        'doors_trim',
+                        $stickQty,
+                        'shoe',
+                        '8 ft shoe moulding (each)',
+                        'each',
+                        $eachPrice
+                    );
+                } else {
+                    $addMat('shoe', 'doors_trim', round($this->withMaterialWaste($shoeLf, $inputs), 2), 'shoe');
+                }
             }
             $addMat('casing', 'doors_trim', $casing, 'casing');
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
@@ -1547,6 +1824,13 @@ class BasementQuotationCalculator
         $bcinPre = round($bcinPre, 2);
         $matPre = round($matAll - $permitPre - $bcinPre, 2);
         $trade = $this->tradeLineSummary($inputs);
+        $sectionSubtotalsPre = self::sectionSubtotalsPreHst($labor, $materials, $extraMaterials, $trade);
+        $extraMaterialsPre = 0.0;
+        foreach ($extraMaterials as $row) {
+            $extraMaterialsPre += (float) ($row['amount'] ?? 0);
+        }
+        $extraMaterialsPre = round($extraMaterialsPre, 2);
+        $sectionsSubtotalSum = round(array_sum($sectionSubtotalsPre), 2);
         $fee = self::contractorFeeBreakdown($feePercent, $matPre, $trade['pre_hst'], $bcinPre, $laborPre);
         $feePre = $fee['amount'];
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
@@ -1558,6 +1842,17 @@ class BasementQuotationCalculator
         $hst = round($laborHst + $matHst + $permitHst + $bcinHst + $feeHst, 2);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
         $wastePercent = $this->materialWastePercent($inputs);
+        $feeLabel = BasementClientScope::contractorFeeLabel($feePercent);
+        $reconciliation = self::buildSummaryReconciliation(
+            $sectionsSubtotalSum,
+            $extraMaterialsPre,
+            $feePre,
+            $subtotal,
+            $hst,
+            $grand,
+            $trade,
+            $feeLabel
+        );
 
         $eta = $this->etaScenarios($totalHours, $hoursPerDay, $ownerRate, $helperRate);
 
@@ -1641,7 +1936,7 @@ class BasementQuotationCalculator
                 'contractor_fee_hst' => $feeHst,
                 'contractor_fee_after_hst' => round($feePre + $feeHst, 2),
                 'contractor_fee_base_pre_hst' => $fee['base'],
-                'contractor_fee_label' => BasementClientScope::contractorFeeLabel($feePercent),
+                'contractor_fee_label' => $feeLabel,
                 'material_waste_percent' => $wastePercent,
                 'flooring_waste_percent' => $flooringWastePercent,
                 'subtotal_pre_hst' => $subtotal,
@@ -1656,6 +1951,10 @@ class BasementQuotationCalculator
                     'electrical' => $trade['electrical'],
                     'plumbing' => $trade['plumbing'],
                 ],
+                'section_subtotals_pre_hst' => $sectionSubtotalsPre,
+                'sections_subtotal_sum' => $sectionsSubtotalSum,
+                'extra_materials_pre_hst' => $extraMaterialsPre,
+                'reconciliation' => $reconciliation,
             ],
         ];
 
@@ -1822,6 +2121,94 @@ class BasementQuotationCalculator
         }
 
         return $out;
+    }
+
+    /**
+     * Sidebar reconciliation: section subtotals + extra materials + fee = subtotal_pre_hst
+     * (qualified-trade pre-HST is included in section subtotals, not in subtotal_pre_hst).
+     * Grand total = subtotal_pre_hst + HST + qualified-trade tax-inclusive amounts.
+     *
+     * @param  array{pre_hst: float, tax_in: float, electrical: array{tax_in: float}, plumbing: array{tax_in: float}}  $trade
+     * @return array{lines: list<array{key: string, label: string, amount: float, row_class?: string}>, checks: array<string, float>}
+     */
+    public static function buildSummaryReconciliation(
+        float $sectionsSubtotalSum,
+        float $extraMaterialsPre,
+        float $feePre,
+        float $subtotalPre,
+        float $hst,
+        float $grandTotal,
+        array $trade,
+        string $feeLabel,
+    ): array {
+        $tradePre = round((float) ($trade['pre_hst'] ?? 0), 2);
+        $lines = [
+            ['key' => 'sections_subtotal_sum', 'label' => 'Section subtotals', 'amount' => round($sectionsSubtotalSum, 2)],
+            ['key' => 'extra_materials', 'label' => 'Extra materials', 'amount' => round($extraMaterialsPre, 2)],
+            ['key' => 'contractor_fee', 'label' => $feeLabel, 'amount' => round($feePre, 2)],
+            ['key' => 'subtotal_pre_hst', 'label' => 'Subtotal (pre-HST)', 'amount' => round($subtotalPre, 2), 'row_class' => 'sub'],
+        ];
+        $elecTaxIn = round((float) ($trade['electrical']['tax_in'] ?? 0), 2);
+        if ($elecTaxIn > 0) {
+            $lines[] = ['key' => 'electrical_tax_in', 'label' => 'Electrical (incl. HST)', 'amount' => $elecTaxIn];
+        }
+        $plumbTaxIn = round((float) ($trade['plumbing']['tax_in'] ?? 0), 2);
+        if ($plumbTaxIn > 0) {
+            $lines[] = ['key' => 'plumbing_tax_in', 'label' => 'Plumbing (incl. HST)', 'amount' => $plumbTaxIn];
+        }
+        $lines[] = ['key' => 'hst', 'label' => 'HST 13%', 'amount' => round($hst, 2)];
+        $lines[] = ['key' => 'grand_total', 'label' => 'Grand total', 'amount' => round($grandTotal, 2), 'row_class' => 'hl'];
+
+        $subtotalFromSections = round($sectionsSubtotalSum + $extraMaterialsPre + $feePre - $tradePre, 2);
+        $grandFromParts = round($subtotalPre + $hst + (float) ($trade['tax_in'] ?? 0), 2);
+
+        return [
+            'lines' => $lines,
+            'checks' => [
+                'sections_plus_extra_plus_fee_minus_trade_pre' => $subtotalFromSections,
+                'subtotal_pre_hst' => round($subtotalPre, 2),
+                'grand_from_subtotal_hst_trades' => $grandFromParts,
+                'trade_lines_pre_hst' => $tradePre,
+            ],
+        ];
+    }
+
+    /**
+     * Pre-HST labour + materials per wizard trade section (single source for live section subtotals).
+     * Contractor fee, HST, commute, debris, and extra-material rows are excluded.
+     *
+     * @param  list<array{section: string, amount: float}>  $labor
+     * @param  list<array{section: string, amount: float}>  $materials
+     * @param  list<array{section: string, amount: float}>  $extraMaterials
+     * @param  array{electrical: array{pre_hst: float}, plumbing: array{pre_hst: float}}  $tradeSummary
+     * @return array<string, float>
+     */
+    public static function sectionSubtotalsPreHst(array $labor, array $materials, array $extraMaterials, array $tradeSummary): array
+    {
+        $totals = [];
+        foreach (array_keys(self::SECTIONS) as $key) {
+            $totals[$key] = 0.0;
+        }
+        foreach ($labor as $row) {
+            $sec = (string) ($row['section'] ?? '');
+            if (array_key_exists($sec, $totals)) {
+                $totals[$sec] += (float) ($row['amount'] ?? 0);
+            }
+        }
+        foreach (array_merge($materials, $extraMaterials) as $row) {
+            $sec = (string) ($row['section'] ?? '');
+            if ($sec === '' || $sec === 'extra' || ! array_key_exists($sec, $totals)) {
+                continue;
+            }
+            $totals[$sec] += (float) ($row['amount'] ?? 0);
+        }
+        $totals['electrical'] += (float) ($tradeSummary['electrical']['pre_hst'] ?? 0);
+        $totals['plumbing'] += (float) ($tradeSummary['plumbing']['pre_hst'] ?? 0);
+        foreach ($totals as $key => $amount) {
+            $totals[$key] = round($amount, 2);
+        }
+
+        return $totals;
     }
 
     /**
@@ -2019,6 +2406,19 @@ class BasementQuotationCalculator
         $subtotal = $feePre;
         $hst = $feeHst;
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
+        $sectionSubtotalsPre = self::sectionSubtotalsPreHst([], [], [], $trade);
+        $sectionsSubtotalSum = round(array_sum($sectionSubtotalsPre), 2);
+        $feeLabel = BasementClientScope::contractorFeeLabel($feePercent);
+        $reconciliation = self::buildSummaryReconciliation(
+            $sectionsSubtotalSum,
+            0.0,
+            $feePre,
+            $subtotal,
+            $hst,
+            $grand,
+            $trade,
+            $feeLabel
+        );
 
         $result = [
             'scope' => [
@@ -2073,6 +2473,10 @@ class BasementQuotationCalculator
                     'electrical' => $trade['electrical'],
                     'plumbing' => $trade['plumbing'],
                 ],
+                'section_subtotals_pre_hst' => $sectionSubtotalsPre,
+                'sections_subtotal_sum' => $sectionsSubtotalSum,
+                'extra_materials_pre_hst' => 0.0,
+                'reconciliation' => $reconciliation,
             ],
         ];
 

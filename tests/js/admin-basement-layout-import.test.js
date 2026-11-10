@@ -35,7 +35,7 @@ assert.strictEqual(proposed.area_sqft, 500);
 assert.strictEqual(proposed.flooring_sf, 500);
 assert.strictEqual(proposed.perimeter_lf, 90);
 assert.strictEqual(proposed.drywall_wall_sf, 750);
-assert.strictEqual(proposed.paint_wall_sf, null);
+assert.strictEqual(proposed.paint_wall_sf, 750);
 assert.strictEqual(proposed.bulkhead_lf, 16);
 assert.strictEqual(proposed.partition_lf, 12);
 assert.strictEqual(proposed.baseboard_lf, 87);
@@ -47,6 +47,19 @@ assert.strictEqual(proposed.casing_openings, 1);
 assert.strictEqual(proposed.ceiling_sf, 500);
 assert.strictEqual(proposed.drywall_ceiling_sf, 500);
 assert.strictEqual(proposed.paint_ceiling_sf, 500);
+
+const dropCeil = layout.proposedQuantities(Object.assign({}, opt, { ceiling_area_sqft: 500 }), 8, 'drop');
+assert.strictEqual(dropCeil.paint_ceiling_sf, 0);
+assert.strictEqual(dropCeil.drywall_ceiling_sf, 500);
+
+const legacyDoor = layout.proposedQuantities({
+  area_sqft: 240,
+  perimeter_lf: 64,
+  door_count: 1,
+  ceiling_area_sqft: 240,
+}, 8, 'drywall');
+assert.strictEqual(legacyDoor.drywall_wall_sf, 512);
+assert.strictEqual(legacyDoor.paint_wall_sf, 491);
 assert.strictEqual(proposed.insulation_ceiling_sf, 500);
 assert.strictEqual(proposed.paint_trim_lf, 131);
 assert.strictEqual(proposed.drywall_opening_sf, 0);
@@ -184,7 +197,7 @@ const finishes = layout.proposedQuantities({
   finish_casing_lf: 18,
 }, 8);
 assert.strictEqual(finishes.drywall_wall_sf, 210);
-assert.strictEqual(finishes.paint_wall_sf, null);
+assert.strictEqual(finishes.paint_wall_sf, 210);
 assert.strictEqual(finishes.insulation_wall_sf, 180);
 assert.strictEqual(finishes.partition_lf, 12.5);
 assert.strictEqual(finishes.baseboard_lf, 70);
@@ -217,14 +230,14 @@ const missingPaint = layout.proposedQuantities({
   finish_drywall_sqft: 640,
   bulkhead_drywall_sqft: 12
 }, 8);
-assert.strictEqual(missingPaint.paint_wall_sf, null);
+assert.strictEqual(missingPaint.paint_wall_sf, 652);
 assert.strictEqual(
   layout.wouldOverwrite(Object.assign({}, missingPaint, {
     paint_wall_sf: 400,
     import_label: 'Manual'
   }), missingPaint),
-  false,
-  'unavailable wall paint must not wipe a hand-typed paint qty'
+  true,
+  'drywall-fallback wall paint overwrites a hand-typed value after confirm'
 );
 assert.strictEqual(
   layout.wouldOverwrite({ paint_wall_sf: 400, import_label: 'Manual' }, zeroPaint),
@@ -257,13 +270,13 @@ const untouchedLegacy = layout.proposedQuantities({
   finish_drywall_sqft: 640,
   paint_walls_unassigned: 3
 }, 8);
-assert.strictEqual(untouchedLegacy.paint_wall_sf, null);
+assert.strictEqual(untouchedLegacy.paint_wall_sf, 640);
 assert.strictEqual(
   layout.needsImportConfirm(Object.assign({}, untouchedLegacy, { paint_wall_sf: 400, import_label: 'Manual' }), untouchedLegacy, {
     paint_walls_unassigned: 3
   }),
-  false,
-  'untouched legacy missing paint must not confirm-wipe 400'
+  true,
+  'drywall-fallback legacy paint confirms before replacing 400'
 );
 assert.ok(layout.FIELD_IDS.flooring_sf === 'br-fl-sf');
 assert.ok(layout.FIELD_IDS.paint_wall_sf === 'br-p-wall');

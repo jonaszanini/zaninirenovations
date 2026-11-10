@@ -33,6 +33,18 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="bulkhead_lf"', $html);
     }
 
+    public function test_wizard_trade_steps_include_live_section_subtotal_markup(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('data-br-section-subtotal="painting"', $html);
+        $this->assertStringContainsString('data-br-section-subtotal="flooring"', $html);
+        $this->assertStringContainsString('Section subtotal', $html);
+        $this->assertStringNotContainsString('data-br-section-subtotal="overview"', $html);
+    }
+
     public function test_full_preset_section_nums_match_footer_denominator_including_client_scope(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

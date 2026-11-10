@@ -168,10 +168,22 @@ async function typeAccessible(page, selector, value, label) {
     await page.select(selector, String(value));
     return;
   }
-  const focused = await page.evaluate((sel) => {
+  let focused = await page.evaluate((sel) => {
     const el = document.querySelector(sel);
     return !!(el && (document.activeElement === el || (el.labels && [].some.call(el.labels, (l) => l.contains(document.activeElement)))));
   }, selector);
+  if (!focused) {
+    await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return;
+      if (el.scrollIntoView) el.scrollIntoView({ block: 'center', inline: 'nearest' });
+      if (el.focus) el.focus({ preventScroll: true });
+    }, selector);
+    focused = await page.evaluate((sel) => {
+      const el = document.querySelector(sel);
+      return !!(el && document.activeElement === el);
+    }, selector);
+  }
   if (!focused) {
     throw new Error((label || selector) + ' click did not focus the control (covered or not editable)');
   }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\BasementSettings;
+use App\Models\Material;
 use App\Models\SharedCrewRate;
 use App\Models\SharedWork;
 use App\Models\TrimmingSettings;
@@ -846,12 +847,41 @@ class SharedWorkCatalog
             }
             $slot = self::materialSlotFromWork($work, $def);
             foreach ($matKeys as $matKey) {
+                $slotForConsumer = self::trimStickMaterialSlotForConsumer($consumer, $matKey, $slot);
                 $existing = $materials[$matKey] ?? [];
-                $materials[$matKey] = array_merge($existing, $slot);
+                $materials[$matKey] = array_merge($existing, $slotForConsumer);
             }
         }
 
         return $materials;
+    }
+
+    /**
+     * Basement quotes price some trim materials per lf; trimming and flooring
+     * calculators still buy 8 ft sticks (each).
+     *
+     * @param  array<string, mixed>  $slot
+     * @return array<string, mixed>
+     */
+    private static function trimStickMaterialSlotForConsumer(string $consumer, string $matKey, array $slot): array
+    {
+        if ($consumer === 'basement' || ! in_array($matKey, ['baseboard', 'shoe'], true)) {
+            return $slot;
+        }
+        $unit = strtolower((string) ($slot['unit'] ?? ''));
+        if ($unit !== 'lf') {
+            return $slot;
+        }
+        $stick = Material::stickLengthFeetFromLabel((string) ($slot['name'] ?? ''))
+            ?? TrimmingSettings::STICK_FEET;
+        $priceLf = (float) ($slot['unit_price'] ?? 0);
+        $slot['unit'] = 'each';
+        $slot['name'] = $matKey === 'baseboard'
+            ? '8 ft baseboard (each)'
+            : '8 ft shoe moulding (each)';
+        $slot['unit_price'] = round($priceLf * $stick, 4);
+
+        return $slot;
     }
 
     /**

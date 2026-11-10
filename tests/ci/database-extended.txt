@@ -11,6 +11,7 @@ tests/Feature/Admin/BasementDemoChoiceTest.php
 tests/Feature/Admin/BasementDisabledTradeScopeTest.php
 tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/BasementRoomAreaImportTest.php
+tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
 tests/Feature/Admin/BlogPostsIndexLayoutTest.php
 tests/Feature/Admin/ClientIndexAddressSearchTest.php
 tests/Feature/Admin/ClientProjectCalendarUpgradeTest.php

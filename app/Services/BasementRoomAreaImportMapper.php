@@ -9,7 +9,7 @@ namespace App\Services;
  * Null in the proposed set means “not on the drawing” — leave the form field alone.
  * Explicit 0 means the drawing measured zero.
  *
- * Corner bead (CB-1/CB-2), wall-height sticks, and bulkhead bead are not mapped.
+ * Corner bead stick counts use ceiling height at quote time. Bulkhead bead length imports as a hint for CB2.
  */
 class BasementRoomAreaImportMapper
 {
@@ -25,6 +25,7 @@ class BasementRoomAreaImportMapper
         'perimeter_lf' => 'br-perimeter-lf',
         'partition_lf' => 'br-partition',
         'bulkhead_lf' => 'br-bulkhead',
+        'header_lf' => 'br-headers',
         'framing_door_openings' => 'br-frame-doors',
         'insulation_wall_sf' => 'br-ins-wall-sf',
         'insulation_ceiling_sf' => 'br-ins-ceil-sf',
@@ -45,6 +46,8 @@ class BasementRoomAreaImportMapper
         'paint_wall_sf' => 'br-p-wall',
         'paint_ceiling_sf' => 'br-p-ceil',
         'paint_trim_lf' => 'br-p-trim',
+        'import_bulkhead_drywall_sqft' => 'br-import-bh-dw',
+        'import_bulkhead_corner_bead_lf' => 'br-import-bh-bead',
     ];
 
     /**
@@ -111,7 +114,6 @@ class BasementRoomAreaImportMapper
      * @var list<string>
      */
     public const UNMAPPED_LAYOUT_KEYS = [
-        'bulkhead_corner_bead_lf',
         'cabinet_base_lf',
         'cabinet_upper_lf',
         'stairs_count',
@@ -333,10 +335,41 @@ class BasementRoomAreaImportMapper
     }
 
     /**
+     * Wall paint on import: explicit Paint-marked area when present; otherwise the
+     * same gross wall drywall area imported for the Drywall step (incl. bulkhead drywall).
+     *
+     * @param  array<string, mixed>  $opt
+     */
+    public static function resolveImportedPaintWallSf(array $opt, ?float $drywallWallSf): ?float
+    {
+        if (self::present($opt, 'finish_paint_sqft')) {
+            return (float) $opt['finish_paint_sqft'];
+        }
+        if ($drywallWallSf !== null) {
+            return $drywallWallSf;
+        }
+
+        return null;
+    }
+
+    /**
+     * Drop ceiling and skip-ceiling types do not get ceiling paint on import (matches live Auto rule).
+     */
+    public static function resolveImportedPaintCeilingSf(?float $ceilingArea, ?string $formCeilingType): ?float
+    {
+        $type = strtolower(trim((string) $formCeilingType));
+        if (in_array($type, ['drop', 'none'], true)) {
+            return 0.0;
+        }
+
+        return $ceilingArea;
+    }
+
+    /**
      * @param  array<string, mixed>  $opt
      * @return array<string, float|int|null>
      */
-    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null): array
+    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null, ?string $formCeilingType = null): array
     {
         $height = 8.0;
         if (self::present($opt, 'ceiling_height_ft') && (float) $opt['ceiling_height_ft'] > 0) {
@@ -397,6 +430,22 @@ class BasementRoomAreaImportMapper
             $bulkhead = (float) $opt['bulkhead_framing_lf'];
         }
 
+        $importBulkheadDrywall = self::present($opt, 'bulkhead_drywall_sqft')
+            ? max(0.0, (float) $opt['bulkhead_drywall_sqft'])
+            : 0.0;
+        $importBulkheadBead = self::present($opt, 'bulkhead_corner_bead_lf')
+            ? max(0.0, (float) $opt['bulkhead_corner_bead_lf'])
+            : 0.0;
+
+        $headerLf = null;
+        if (self::present($opt, 'finish_header_lf')) {
+            $headerLf = (float) $opt['finish_header_lf'];
+        } elseif (self::present($opt, 'header_lf')) {
+            $headerLf = (float) $opt['header_lf'];
+        } elseif (self::present($opt, 'header_beam_lf')) {
+            $headerLf = (float) $opt['header_beam_lf'];
+        }
+
         $doors = self::present($opt, 'door_count') ? max(0, (int) $opt['door_count']) : null;
         $windows = self::present($opt, 'window_count') ? max(0, (int) $opt['window_count']) : null;
         $openings = self::present($opt, 'opening_count') ? max(0, (int) $opt['opening_count']) : null;
@@ -406,15 +455,28 @@ class BasementRoomAreaImportMapper
             $casingOpenings = ($doors ?? 0) + ($openings ?? 0);
         }
 
+        $casingLf = null;
+        if (self::present($opt, 'finish_casing_lf')) {
+            $casingLf = (float) $opt['finish_casing_lf'];
+        } elseif (self::present($opt, 'casing_lf')) {
+            $casingLf = (float) $opt['casing_lf'];
+        }
         $paintTrim = null;
-        if (self::present($opt, 'casing_lf') || self::present($opt, 'finish_casing_lf')) {
-            $casingLf = self::present($opt, 'finish_casing_lf')
-                ? (float) $opt['finish_casing_lf']
-                : (float) $opt['casing_lf'];
-            $paintTrim = max(0.0, ($baseboard ?? 0.0) + $casingLf);
+        if ($baseboard !== null || $casingLf !== null) {
+            $paintTrim = max(0.0, ($baseboard ?? 0.0) + ($casingLf ?? 0.0));
         }
 
         $openingSf = $measuredNet ? 0.0 : null;
+
+        $paintWallBasis = $wallSf;
+        if ($wallSf !== null && ! self::present($opt, 'finish_paint_sqft') && ! $measuredNet) {
+            $openingDeduction = BasementQuotationCalculator::drywallOpeningSf([
+                'drywall_door_openings' => $doors ?? 0,
+                'drywall_window_openings' => $windows ?? 0,
+                'drywall_openings' => $openings ?? 0,
+            ]);
+            $paintWallBasis = max(0.0, $wallSf - $openingDeduction);
+        }
 
         return [
             'area_sqft' => $area,
@@ -423,6 +485,7 @@ class BasementRoomAreaImportMapper
             'perimeter_lf' => $peri,
             'partition_lf' => $partition,
             'bulkhead_lf' => $bulkhead,
+            'header_lf' => $headerLf,
             'framing_door_openings' => $doors,
             'insulation_wall_sf' => $insWall,
             'insulation_ceiling_sf' => $ceilingArea,
@@ -440,11 +503,11 @@ class BasementRoomAreaImportMapper
             'baseboard_lf' => $baseboard,
             'casing_openings' => $casingOpenings,
             'window_trim_qty' => $windows,
-            'paint_wall_sf' => self::present($opt, 'finish_paint_sqft')
-                ? (float) $opt['finish_paint_sqft']
-                : null,
-            'paint_ceiling_sf' => $ceilingArea,
+            'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $paintWallBasis),
+            'paint_ceiling_sf' => self::resolveImportedPaintCeilingSf($ceilingArea, $formCeilingType),
             'paint_trim_lf' => $paintTrim,
+            'import_bulkhead_drywall_sqft' => $importBulkheadDrywall > 0 ? $importBulkheadDrywall : null,
+            'import_bulkhead_corner_bead_lf' => $importBulkheadBead > 0 ? $importBulkheadBead : null,
         ];
     }
 }

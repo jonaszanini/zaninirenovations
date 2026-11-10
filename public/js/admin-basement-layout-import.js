@@ -14,6 +14,7 @@
     perimeter_lf: 'br-perimeter-lf',
     partition_lf: 'br-partition',
     bulkhead_lf: 'br-bulkhead',
+    header_lf: 'br-headers',
     framing_door_openings: 'br-frame-doors',
     insulation_wall_sf: 'br-ins-wall-sf',
     insulation_ceiling_sf: 'br-ins-ceil-sf',
@@ -33,7 +34,9 @@
     window_trim_qty: 'br-windows',
     paint_wall_sf: 'br-p-wall',
     paint_ceiling_sf: 'br-p-ceil',
-    paint_trim_lf: 'br-p-trim'
+    paint_trim_lf: 'br-p-trim',
+    import_bulkhead_drywall_sqft: 'br-import-bh-dw',
+    import_bulkhead_corner_bead_lf: 'br-import-bh-bead'
   };
 
   var LW_KEYS = {
@@ -122,13 +125,39 @@
     return null;
   }
 
+  function resolveImportedPaintWallSf(opt, drywallWallSf) {
+    if (present(opt, 'finish_paint_sqft')) {
+      return num(opt.finish_paint_sqft);
+    }
+    if (drywallWallSf !== null) {
+      return drywallWallSf;
+    }
+    return null;
+  }
+
+  function resolveImportedPaintCeilingSf(ceilingArea, ceilingType) {
+    var type = String(ceilingType || '').toLowerCase();
+    if (type === 'drop' || type === 'none') {
+      return 0;
+    }
+    return ceilingArea;
+  }
+
+  function drywallOpeningSfFromLayout(doors, windows, openings) {
+    var d = Math.max(0, parseInt(doors, 10) || 0);
+    var w = Math.max(0, parseInt(windows, 10) || 0);
+    var listed = Math.max(0, parseInt(openings, 10) || 0);
+    var extra = Math.max(0, listed - d - w);
+    return Math.round((d * 21 + w * 12 + extra * 21) * 100) / 100;
+  }
+
   function readFieldNumber(el) {
     if (!el) return 0;
     var n = parseFloat(el.value);
     return isFinite(n) ? n : 0;
   }
 
-  function proposedQuantities(opt, ceilingHeightFt) {
+  function proposedQuantities(opt, ceilingHeightFt, ceilingType) {
     opt = opt || {};
     var height = 8;
     if (present(opt, 'ceiling_height_ft') && num(opt.ceiling_height_ft) > 0) {
@@ -172,6 +201,18 @@
     if (present(opt, 'bulkhead_lf')) bulkhead = num(opt.bulkhead_lf);
     else if (present(opt, 'bulkhead_framing_lf')) bulkhead = num(opt.bulkhead_framing_lf);
 
+    var headerLf = null;
+    if (present(opt, 'finish_header_lf')) headerLf = num(opt.finish_header_lf);
+    else if (present(opt, 'header_lf')) headerLf = num(opt.header_lf);
+    else if (present(opt, 'header_beam_lf')) headerLf = num(opt.header_beam_lf);
+
+    var importBulkheadDrywall = present(opt, 'bulkhead_drywall_sqft')
+      ? Math.max(0, num(opt.bulkhead_drywall_sqft))
+      : 0;
+    var importBulkheadBead = present(opt, 'bulkhead_corner_bead_lf')
+      ? Math.max(0, num(opt.bulkhead_corner_bead_lf))
+      : 0;
+
     var doors = present(opt, 'door_count') ? Math.max(0, parseInt(opt.door_count, 10) || 0) : null;
     var windows = present(opt, 'window_count') ? Math.max(0, parseInt(opt.window_count, 10) || 0) : null;
     var openings = present(opt, 'opening_count') ? Math.max(0, parseInt(opt.opening_count, 10) || 0) : null;
@@ -181,10 +222,20 @@
       casingOpenings = (doors || 0) + (openings || 0);
     }
 
+    var casingLf = null;
+    if (present(opt, 'finish_casing_lf')) {
+      casingLf = num(opt.finish_casing_lf);
+    } else if (present(opt, 'casing_lf')) {
+      casingLf = num(opt.casing_lf);
+    }
     var paintTrim = null;
-    if (present(opt, 'casing_lf') || present(opt, 'finish_casing_lf')) {
-      var casingLf = present(opt, 'finish_casing_lf') ? num(opt.finish_casing_lf) : num(opt.casing_lf);
-      paintTrim = Math.max(0, (baseboard || 0) + casingLf);
+    if (baseboard !== null || casingLf !== null) {
+      paintTrim = Math.max(0, (baseboard || 0) + (casingLf || 0));
+    }
+
+    var paintWallBasis = wallSf;
+    if (wallSf !== null && !present(opt, 'finish_paint_sqft') && !measuredNet) {
+      paintWallBasis = Math.max(0, wallSf - drywallOpeningSfFromLayout(doors, windows, openings));
     }
 
     return {
@@ -194,6 +245,7 @@
       perimeter_lf: peri,
       partition_lf: partition,
       bulkhead_lf: bulkhead,
+      header_lf: headerLf,
       framing_door_openings: doors,
       insulation_wall_sf: insWall,
       insulation_ceiling_sf: ceilingArea,
@@ -211,9 +263,11 @@
       baseboard_lf: baseboard,
       casing_openings: casingOpenings,
       window_trim_qty: windows,
-      paint_wall_sf: present(opt, 'finish_paint_sqft') ? num(opt.finish_paint_sqft) : null,
-      paint_ceiling_sf: ceilingArea,
-      paint_trim_lf: paintTrim
+      paint_wall_sf: resolveImportedPaintWallSf(opt, paintWallBasis),
+      paint_ceiling_sf: resolveImportedPaintCeilingSf(ceilingArea, ceilingType),
+      paint_trim_lf: paintTrim,
+      import_bulkhead_drywall_sqft: importBulkheadDrywall > 0 ? importBulkheadDrywall : null,
+      import_bulkhead_corner_bead_lf: importBulkheadBead > 0 ? importBulkheadBead : null
     };
   }
 
@@ -349,6 +403,7 @@
     present: present,
     ceilingTakeoffAvailable: ceilingTakeoffAvailable,
     resolveImportedCeilingArea: resolveImportedCeilingArea,
+    resolveImportedPaintCeilingSf: resolveImportedPaintCeilingSf,
     proposedQuantities: proposedQuantities,
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,

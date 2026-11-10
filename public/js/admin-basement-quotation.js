@@ -421,8 +421,10 @@
       return;
     }
     var layoutImport = window.BasementLayoutImport;
+    var ceilingTypeEl = document.getElementById('br-ceil-type');
+    var ceilingType = ceilingTypeEl ? ceilingTypeEl.value : '';
     var proposed = layoutImport
-      ? layoutImport.proposedQuantities(opt, ceilingHeightFt())
+      ? layoutImport.proposedQuantities(opt, ceilingHeightFt(), ceilingType)
       : {};
     if (layoutImport) {
       var current = layoutImport.currentQuantities(document);
@@ -1130,26 +1132,7 @@
     }
     if (empty) empty.hidden = true;
     if (body) body.hidden = false;
-    var laborPre = Number(summary.labor_pre_hst || 0) + lastAdditionalLaborPreTax;
-    var matPre = Number(summary.materials_pre_hst || 0) + lastAdditionalMaterialsPreTax;
-    var permitPre = Number(summary.permit_pre_hst || 0);
-    var bcinPre = Number(summary.bcin_pre_hst || 0);
-    var feePre = Number(summary.contractor_fee_pre_hst || 0);
-    var extraHst = lastAdditionalLaborHst + lastAdditionalMaterialsHst;
-    var subtotal = laborPre + matPre + permitPre + bcinPre + feePre;
-    var hst = Number(summary.hst != null ? summary.hst : subtotal * 0.13) + extraHst;
     var html = '';
-    html += '<div class="pq-row"><span>Labour</span><span>' + fmt(laborPre) + '</span></div>';
-    html += '<div class="pq-row"><span>Materials</span><span>' + fmt(matPre) + '</span></div>';
-    if (permitPre > 0) {
-      html += '<div class="pq-row"><span>City permit (extra)</span><span>' + fmt(permitPre) + '</span></div>';
-    }
-    if (bcinPre > 0) {
-      html += '<div class="pq-row"><span>BCIN drawings (extra)</span><span>' + fmt(bcinPre) + '</span></div>';
-    }
-    if (feePre > 0) {
-      html += '<div class="pq-row"><span>' + escapeHtml(summary.contractor_fee_label || 'Contractor fee') + '</span><span>' + fmt(feePre) + '</span></div>';
-    }
     var wastePct = Number(summary.material_waste_percent);
     if (isFinite(wastePct) && wastePct > 0) {
       html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
@@ -1158,20 +1141,49 @@
     if (isFinite(floorWastePct) && floorWastePct >= 0 && document.getElementById('br-fl-waste')) {
       html += '<div class="pq-row"><span class="admin-form-help">Flooring waste</span><span class="admin-form-help">' + floorWastePct + '%</span></div>';
     }
-    html += tradeBreakdownHtml('Electrical', summary.trades && summary.trades.electrical);
-    html += tradeBreakdownHtml('Plumbing', summary.trades && summary.trades.plumbing);
-    if (lastCommuteAmount > 0) {
+  if (lastCommuteAmount > 0) {
       html += '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
     }
     if (lastDebrisAmount > 0) {
       html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
     }
-    html += '<div class="pq-row pq-row--sub"><span>Subtotal</span><span>' + fmt(subtotal) + '</span></div>';
-    html += '<div class="pq-row"><span>HST 13%</span><span>' + fmt(hst) + '</span></div>';
-    html += '<div class="pq-row pq-row--hl"><span>Grand total</span><span>' + fmt(grand) + '</span></div>';
+    var recon = summary.reconciliation || {};
+    var reconLines = recon.lines || [];
+    if (reconLines.length) {
+      html += '<div class="br-reconciliation" data-br-reconciliation="1">';
+      reconLines.forEach(function (line) {
+        var rowClass = 'pq-row';
+        if (line.row_class === 'sub') rowClass += ' pq-row--sub';
+        if (line.row_class === 'hl') rowClass += ' pq-row--hl';
+        var lineAmount = Number(line.amount || 0);
+        if (line.key === 'grand_total') {
+          lineAmount = grand;
+        }
+        html += '<div class="' + rowClass + '" data-br-recon-key="' + escapeHtml(line.key || '') + '">'
+          + '<span>' + escapeHtml(line.label || '') + '</span><span>' + fmt(lineAmount) + '</span></div>';
+      });
+      html += '</div>';
+    }
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
     updateClientScopeFromPreview(data);
+    updateSectionSubtotals(data);
+  }
+
+  function updateSectionSubtotals(data) {
+    if (!data || !data.summary) return;
+    var map = data.summary.section_subtotals_pre_hst || {};
+    var enabled = enabledTradeKeys();
+    form.querySelectorAll('[data-br-section-subtotal]').forEach(function (wrap) {
+      var key = wrap.getAttribute('data-br-section-subtotal') || '';
+      var on = enabled.indexOf(key) !== -1;
+      var amt = Number(map[key] || 0);
+      var val = wrap.querySelector('[data-br-section-subtotal-amount]');
+      if (val) {
+        val.textContent = fmt(amt);
+      }
+      wrap.hidden = !on;
+    });
   }
 
   function updateDrywallNetHint(scope) {
@@ -1241,8 +1253,8 @@
       if (row.detail) trade += ' <span class="admin-form-help">- ' + escapeHtml(row.detail) + '</span>';
       return '<tr data-br-labor-key="' + escapeHtml(row.key) + '">'
         + '<td>' + trade + '</td>'
-        + '<td>' + Number(row.hours || 0).toFixed(2) + '</td>'
-        + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td>'
+        + '<td data-br-labor-hrs>' + Number(row.hours || 0).toFixed(2) + '</td>'
+        + '<td class="cp-col-amount" data-br-labor-amt>' + fmt(row.amount || 0) + '</td>'
         + '</tr>';
     }).join('');
   }

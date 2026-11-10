@@ -15,8 +15,12 @@
   $formAction = ($isEdit ? route('admin.quotations.basement.update', $quotation) : route('admin.quotations.basement.store')).$formQuery;
   $inputs = $isEdit ? ($quotation->inputs ?? []) : BasementQuotationCalculator::defaultInputs();
   $demoChoiceStored = array_key_exists('include_demolition', is_array($inputs) ? $inputs : []);
+  $preserveMissingOnEdit = ['header_lf', 'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2'];
   foreach (BasementQuotationCalculator::defaultInputs() as $k => $v) {
       if ($k === 'include_demolition' && $isEdit && ! $demoChoiceStored) {
+          continue;
+      }
+      if ($isEdit && in_array($k, $preserveMissingOnEdit, true) && ! array_key_exists($k, $inputs)) {
           continue;
       }
       if (! array_key_exists($k, $inputs)) {

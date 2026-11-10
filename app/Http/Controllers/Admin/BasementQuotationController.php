@@ -31,6 +31,13 @@ use Illuminate\Validation\ValidationException;
 
 class BasementQuotationController extends Controller
 {
+    /** When absent from stored inputs and from POST, legacy quotes must not get false from defaults. */
+    private const LEGACY_V2_BOOL_FLAGS = [
+        'corner_bead_by_height',
+        'drywall_boxing_v2',
+        'trim_material_lf_v2',
+    ];
+
     use HandlesQuotationAdditionalCosts;
     use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
@@ -330,6 +337,11 @@ class BasementQuotationController extends Controller
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
             }
+            foreach (['header_lf', 'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2'] as $legacyKey) {
+                if (! array_key_exists($legacyKey, $quotation->inputs)) {
+                    unset($previewInputs[$legacyKey]);
+                }
+            }
         }
         $initialPreview = (new BasementQuotationCalculator)->calculate($previewInputs, $settings);
 
@@ -419,7 +431,7 @@ class BasementQuotationController extends Controller
         $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'area_sqft', 'ceiling_height_ft',
-            'partition_lf', 'bulkhead_lf',
+            'partition_lf', 'bulkhead_lf', 'header_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
             'building_permit_amount',
@@ -433,6 +445,7 @@ class BasementQuotationController extends Controller
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
             'area_length_ft', 'area_width_ft',
             'perimeter_lf',
+            'import_bulkhead_drywall_sqft', 'import_bulkhead_corner_bead_lf',
         ];
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
@@ -457,6 +470,7 @@ class BasementQuotationController extends Controller
             'include_bcin_drawings',
             'ceiling_hang_unified',
             'client_provides_all', 'include_helper',
+            'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
@@ -485,13 +499,43 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($ints as $key) {
+            if ($key === 'header_qty') {
+                continue;
+            }
             $out[$key] = max(0, (int) $request->input($key, $defaults[$key]));
+        }
+        $storedHeaderLegacy = is_array($storedInputs)
+            && ! array_key_exists('header_lf', $storedInputs)
+            && (int) ($storedInputs['header_qty'] ?? 0) > 0;
+        $rawHeaderLf = $request->input('header_lf');
+        $parsedHeaderLf = is_string($rawHeaderLf) ? str_replace([',', '$', ' '], '', $rawHeaderLf) : $rawHeaderLf;
+        $postedHeaderLf = is_numeric($parsedHeaderLf) ? (float) $parsedHeaderLf : 0.0;
+        if ($storedHeaderLegacy && $postedHeaderLf <= 0) {
+            $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
+            unset($out['header_lf']);
+        } else {
+            $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
+            $out['header_qty'] = 0;
+        }
+        if (is_array($storedInputs)) {
+            if (! array_key_exists('corner_bead_by_height', $storedInputs)) {
+                unset($out['corner_bead_by_height']);
+            }
+            if (! array_key_exists('drywall_boxing_v2', $storedInputs)) {
+                unset($out['drywall_boxing_v2']);
+            }
+            if (! array_key_exists('trim_material_lf_v2', $storedInputs)) {
+                unset($out['trim_material_lf_v2']);
+            }
         }
         $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);
         $out['stud_spacing_in'] = BasementQuotationCalculator::normalizeStudSpacing($out['stud_spacing_in'] ?? 16);
         $out['drywall_sheet_size'] = BasementQuotationCalculator::normalizeSheetSize($out['drywall_sheet_size'] ?? '4x8');
         foreach ($bools as $key) {
             if ($key === 'include_demolition') {
+                continue;
+            }
+            if (in_array($key, self::LEGACY_V2_BOOL_FLAGS, true) && ! array_key_exists($key, $out)) {
                 continue;
             }
             $raw = $request->input($key);

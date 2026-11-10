@@ -655,6 +655,91 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertStringContainsString('Paint walls', $pdfText);
     }
 
+    public function test_legacy_unassigned_layout_fills_paint_from_drywall_and_persists_on_save(): void
+    {
+        $this->actingAsAdmin();
+
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Legacy fill paint',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Legacy fill paint room',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 80,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 20 * $cm, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Legacy fill paint room',
+                        'walls' => ['w1', 'w2', 'w3', 'w4'],
+                    ]],
+                ],
+                'zanini' => [
+                    'wallFinishes' => [
+                        'w1' => ['drywall' => true],
+                        'w2' => ['drywall' => true],
+                        'w3' => ['drywall' => true],
+                        'w4' => ['drywall' => true],
+                    ],
+                ],
+            ],
+        ]);
+
+        $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Legacy fill paint room']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $this->assertIsArray($opt);
+        $this->assertArrayNotHasKey('finish_paint_sqft', $opt);
+
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt, 8);
+        $this->assertNotNull($proposed['paint_wall_sf']);
+        $this->assertEqualsWithDelta((float) $proposed['drywall_wall_sf'], (float) $proposed['paint_wall_sf'], 0.05);
+        $this->assertNotNull($proposed['paint_ceiling_sf']);
+        $this->assertGreaterThan(0, (float) $proposed['paint_ceiling_sf']);
+
+        $enabled = array_merge(['overview'], array_keys(BasementQuotationCalculator::tradeSections()));
+        $payload = array_merge([
+            'save_intent' => 'draft',
+            'client_name' => 'Legacy Paint Fill Client',
+            'flooring_type' => 'lvp',
+            'ceiling_type' => 'drywall',
+            'finish_level' => 4,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'material_waste_percent' => 10,
+            'room_area_import_id' => 'room:'.$room->id,
+            'room_area_import_label' => 'Legacy fill',
+            'enabled_sections' => $enabled,
+            'payment_installments' => 3,
+            'include_demolition' => 0,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+        ], array_filter($proposed, fn ($v) => $v !== null));
+
+        $this->post(route('admin.quotations.basement.store'), $payload)->assertRedirect();
+        $quote = BasementQuotation::query()->where('client_name', 'Legacy Paint Fill Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) ($quote->inputs['paint_wall_sf'] ?? 0), 0.05);
+        $this->assertEqualsWithDelta((float) $proposed['paint_ceiling_sf'], (float) ($quote->inputs['paint_ceiling_sf'] ?? 0), 0.05);
+
+        $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/\bid="br-p-wall"/', $editHtml);
+        $this->assertEqualsWithDelta((float) $proposed['paint_wall_sf'], (float) ($quote->inputs['paint_wall_sf'] ?? 0), 0.05);
+    }
+
     /**
      * @param  array<string, array{drywall?: bool, paint?: bool}>  $finishes
      * @return array<string, mixed>
