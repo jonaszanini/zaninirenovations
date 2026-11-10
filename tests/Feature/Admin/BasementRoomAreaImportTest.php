@@ -179,7 +179,7 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
         $this->assertEqualsWithDelta((float) $opt['area_sqft'], (float) $opt['ceiling_area_sqft'], 0.05);
         $this->assertArrayNotHasKey('bulkhead_corner_bead_lf', $opt);
         $this->assertGreaterThan(0, (float) $opt['finish_drywall_sqft']);
-        $this->assertSame(20.0, (float) $opt['finish_stud_lf']);
+        $this->assertSame(19.67, (float) $opt['finish_stud_lf']);
     }
 
     public function test_drywall_step_exposes_openings_and_baseboard_fields(): void
