@@ -96,44 +96,26 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     private function browserSubtotalLiterals(array $import): array
     {
         $proposed = $import['proposed'];
-        $settings = new BasementSettings([
-            'owner_hourly_rate' => 80,
-            'helper_hourly_rate' => 40,
-            'hours_per_day' => 8,
-            'productivity' => BasementSettings::defaultProductivity(),
-            'materials' => BasementSettings::defaultMaterials(),
-        ]);
-        $enabled = array_merge(['overview'], array_keys(BasementQuotationCalculator::tradeSections()));
-        $paintInputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
-            'area_sqft' => 240,
-            'ceiling_height_ft' => 8,
-            'flooring_type' => 'lvp',
-            'owner_hourly_rate' => 80,
-            'helper_hourly_rate' => 40,
-            'finish_level' => 4,
-            'enabled_sections' => $enabled,
-        ], array_filter($proposed, fn ($v) => $v !== null));
-        $paintCalc = (new BasementQuotationCalculator)->calculate($paintInputs, $settings);
-
-        $floorInputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
-            'area_sqft' => 800,
-            'ceiling_height_ft' => 8,
-            'flooring_type' => 'lvp',
-            'flooring_sf' => 800,
-            'owner_hourly_rate' => 80,
-            'helper_hourly_rate' => 40,
-            'finish_level' => 4,
-            'enabled_sections' => $enabled,
-        ]);
-        $floorCalc = (new BasementQuotationCalculator)->calculate($floorInputs, $settings);
+        $settings = BasementSettings::current();
+        $wizard = array_merge(
+            BasementQuotationCalculator::defaultInputs(),
+            array_filter($proposed, fn ($v) => $v !== null),
+            [
+                'area_sqft' => 800,
+                'flooring_sf' => 800,
+                'ceiling_height_ft' => 8,
+                'flooring_type' => 'lvp',
+            ]
+        );
+        $calc = (new BasementQuotationCalculator)->calculate($wizard, $settings);
 
         return [
             'wall_sf' => 512.0,
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
             'ceiling_sf' => 240.0,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
-            'flooring_section_pre_hst' => (float) ($floorCalc['summary']['section_subtotals_pre_hst']['flooring'] ?? 0),
-            'painting_section_pre_hst' => (float) ($paintCalc['summary']['section_subtotals_pre_hst']['painting'] ?? 0),
+            'flooring_section_pre_hst' => (float) ($calc['summary']['section_subtotals_pre_hst']['flooring'] ?? 0),
+            'painting_section_pre_hst' => (float) ($calc['summary']['section_subtotals_pre_hst']['painting'] ?? 0),
         ];
     }
 
