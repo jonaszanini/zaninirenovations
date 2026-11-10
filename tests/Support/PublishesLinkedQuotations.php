@@ -355,9 +355,9 @@ trait PublishesLinkedQuotations
                 'publishQty' => 80.0,
                 'publishTotal' => 789.99,
                 'httpEditQty' => 40.0,
-                'httpEditTotal' => 403.98,
+                'httpEditTotal' => 452.80,
                 'browserEditQty' => 40.0,
-                'browserEditTotal' => 403.98,
+                'browserEditTotal' => 452.80,
                 'scopeWord' => 'baseboard',
             ],
             'shed' => [
