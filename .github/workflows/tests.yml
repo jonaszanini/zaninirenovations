@@ -338,6 +338,16 @@ jobs:
             tests/js/artifacts/room-area-takeoffs-panel-390.png
           if-no-files-found: warn
 
+      - name: Upload wall finishes drywall panel screenshots
+        if: success() && needs.changes.outputs.run_browser_openplan3d == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-area-wall-finishes-drywall-screenshots
+          path: |
+            storage/app/qa-screenshots/room-area-wall-finishes-drywall-1280.png
+            storage/app/qa-screenshots/room-area-wall-finishes-drywall-390.png
+          if-no-files-found: warn
+
   mysql:
     needs: changes
     if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'
