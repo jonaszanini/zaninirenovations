@@ -2,6 +2,10 @@
 
 @section('heading', 'Basement renovation price configuration')
 
+@push('head')
+  <link rel="stylesheet" href="{{ asset('css/admin-materials.css') }}?v={{ @filemtime(public_path('css/admin-materials.css')) ?: time() }}">
+@endpush
+
 @section('content')
   @php
     $qparam = $qpid ? ['project' => $qpid] : [];
@@ -26,11 +30,24 @@
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
+      @include('admin.partials.basement_material_price_sync', [
+        'prefix' => 'br-bsm',
+        'syncableCount' => $basementSyncableCount ?? 0,
+        'usesSerpApi' => $usesSerpApi ?? false,
+        'mode' => 'button',
+      ])
       <button type="submit" form="br-config-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save configuration
       </button>
     </div>
   </div>
+
+  @include('admin.partials.basement_material_price_sync', [
+    'prefix' => 'br-bsm',
+    'syncableCount' => $basementSyncableCount ?? 0,
+    'usesSerpApi' => $usesSerpApi ?? false,
+    'mode' => 'progress',
+  ])
 
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
 
@@ -151,6 +168,10 @@
                 <td data-label="Line item">
                   <div class="br-config-line-wrap">
                     <strong class="br-config-line">{{ $lineLabel }}</strong>
+                    @if ($catalogId > 0)
+                      @php $catalogMat = ($basementCatalogSyncById ?? collect())->get($catalogId); @endphp
+                      <x-admin.material-price-sync-age :material="$catalogMat" class="br-config-sync-age" />
+                    @endif
                     @if ($derivedPlate)
                       <span class="br-config-source br-config-source--derived" data-br-cfg-source>
                         <i class="fa fa-lock" aria-hidden="true"></i> From stud
@@ -235,6 +256,7 @@
 @endsection
 
 @push('scripts')
+  <script src="{{ asset('js/admin-basement-material-sync.js') }}?v={{ @filemtime(public_path('js/admin-basement-material-sync.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-basement-quotation.js') }}?v={{ @filemtime(public_path('js/admin-basement-quotation.js')) ?: time() }}"></script>
   <script>
     (function () {

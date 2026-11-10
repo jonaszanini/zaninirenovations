@@ -161,6 +161,7 @@ class MaterialPriceSyncService
             if (! $dryRun) {
                 $this->applyParsedFields($material, $parsed);
                 $material->last_scraped_at = now();
+                $material->last_price_synced_at = now();
                 $material->last_scrape_status = Material::SCRAPE_OK;
                 $material->last_scrape_error = null;
                 $material->save();
@@ -331,6 +332,7 @@ class MaterialPriceSyncService
             if (! $dryRun) {
                 $this->applyParsedFields($material, $parsed);
                 $material->last_scraped_at = now();
+                $material->last_price_synced_at = now();
                 $material->last_scrape_status = Material::SCRAPE_OK;
                 $material->last_scrape_error = null;
                 $material->save();

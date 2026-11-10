@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Material;
 use App\Models\SharedCrewRate;
 use App\Models\SharedWork;
+use App\Services\BasementMaterialPriceSyncScope;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\SharedWorkCatalog;
 use App\Support\CadMoney;
 use App\Support\MaterialCatalogPickerOptions;
@@ -18,11 +21,23 @@ class SharedPriceLibraryController extends Controller
 {
     public function edit()
     {
+        $syncScope = app(BasementMaterialPriceSyncScope::class);
+        $linkedIds = $syncScope->linkedCatalogMaterialIds();
+        $basementCatalogSyncById = $linkedIds === []
+            ? collect()
+            : Material::query()
+                ->whereIn('id', $linkedIds)
+                ->get(['id', 'last_price_synced_at'])
+                ->keyBy('id');
+
         return view('admin.quotations.shared_prices.edit', [
             'crew' => SharedCrewRate::current(),
             'works' => SharedWorkCatalog::allWorks(),
             'groups' => SharedWorkCatalog::GROUPS,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
+            'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
+            'basementSyncableCount' => $syncScope->syncableLinkedCount(),
+            'basementCatalogSyncById' => $basementCatalogSyncById,
         ]);
     }
 
@@ -360,8 +375,12 @@ class SharedPriceLibraryController extends Controller
             if ($unit !== '') {
                 $work->material_unit = $unit;
             }
-            if (isset($row['material_unit_price']) && is_numeric($row['material_unit_price'])) {
-                $work->material_unit_price = round((float) $row['material_unit_price'], 4);
+            if ($catalogId <= 0 && array_key_exists('material_unit_price', $row)) {
+                if ($row['material_unit_price'] === '' || $row['material_unit_price'] === null) {
+                    $work->material_unit_price = null;
+                } elseif (is_numeric($row['material_unit_price'])) {
+                    $work->material_unit_price = round((float) $row['material_unit_price'], 4);
+                }
             }
             $work->save();
         }

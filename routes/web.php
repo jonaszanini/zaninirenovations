@@ -788,6 +788,10 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('quotations.basement.calculate');
     Route::post('quotations/basement/database', [\App\Http\Controllers\Admin\BasementDatabaseController::class, 'update'])
         ->name('quotations.basement.database.update');
+    Route::post('quotations/basement/materials/sync/start', [\App\Http\Controllers\Admin\BasementMaterialPriceSyncController::class, 'start'])
+        ->name('quotations.basement.materials.sync.start');
+    Route::post('quotations/basement/materials/sync/step', [\App\Http\Controllers\Admin\BasementMaterialPriceSyncController::class, 'step'])
+        ->name('quotations.basement.materials.sync.step');
     Route::post('quotations/basement', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'store'])
         ->name('quotations.basement.store');
     Route::post('quotations/basement/preview', [\App\Http\Controllers\Admin\BasementQuotationController::class, 'preview'])

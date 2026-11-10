@@ -48,13 +48,16 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         }
         SharedWorkCatalog::forgetCache();
 
-        Material::query()->create([
+        $linkedCatalog = Material::query()->create([
             'name' => '8 ft shoe moulding',
             'store_sku' => 'SHOE-8',
             'price_cad' => 12.99,
             'is_active' => true,
             'unit' => 'each',
+            'last_price_synced_at' => now()->subDays(3),
         ]);
+        $work->catalog_material_id = $linkedCatalog->id;
+        $work->save();
         Material::query()->create([
             'name' => 'MDF casing 8 ft',
             'store_sku' => 'CASE-8',
@@ -66,12 +69,17 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $html = $this->get(route('admin.quotations.shared-prices.edit'))
             ->assertOk()
             ->assertSee('Shared prices', false)
+            ->assertSee('Productivity', false)
+            ->assertSee('units you finish per hour', false)
             ->assertSee('class="sp-col-catalog"', false)
             ->assertSee('class="sp-col-consumers"', false)
             ->assertSee('class="sp-effective"', false)
             ->assertSee('class="sp-th-sell"', false)
             ->assertSee('class="sp-sell-phone-label"', false)
             ->assertSee('cp-money-input', false)
+            ->assertSee('Update basement material prices', false)
+            ->assertSee('mat-price-sync-age', false)
+            ->assertSee('data-bsm-material-sync', false)
             ->getContent();
 
         $this->assertStringContainsString('99999.9900', $html);
@@ -101,6 +109,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         );
         $this->assertStringNotContainsString("'html' =>", $blade);
         $this->assertStringContainsString('sp-th-sell', $blade);
+        $this->assertStringContainsString('sp-th-label', $blade);
+        $this->assertStringContainsString('Productivity', $blade);
         $this->assertStringContainsString('sp-sell-phone-label', $blade);
         $this->assertStringNotContainsString('sp-col-trailing', $html);
         $this->assertStringNotContainsString('class="admin-form-help"', $html);
@@ -132,15 +142,14 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/justify-content:\s*center/', $more);
 
         $columns = $this->desktopGridColumns($css);
-        $this->assertCount(8, $columns);
-        $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Cost must fit 99,999.9900');
+        $this->assertCount(7, $columns);
+        $this->assertGreaterThanOrEqual(10.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
+        $this->assertGreaterThanOrEqual(7.0, $this->cssMinRem($columns[1]), 'Productivity must fit header + icon');
         $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(3.5, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[4]), 'Mat. price must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(5.25, $this->cssMinRem($columns[5]), 'Mat. name keeps a readable min');
-        $this->assertSame('2.75rem', trim($columns[6]), 'Catalog search column stays fixed');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[7]), 'Used-by must fit Trimming + +N without clipping');
+        $this->assertGreaterThanOrEqual(4.0, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
+        $this->assertGreaterThanOrEqual(8.5, $this->cssMinRem($columns[4]), 'Mat. name keeps a readable min');
+        $this->assertSame('2.75rem', trim($columns[5]), 'Catalog search column stays fixed');
+        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[6]), 'Used-by must fit Trimming + +N without clipping');
 
         $this->assertStringContainsString('sp-work-label-input sp-auto-grow-textarea', $blade);
         $this->assertStringContainsString('sp-mat-name-input sp-auto-grow-textarea', $blade);
@@ -198,8 +207,8 @@ class SharedPricesLayoutTest extends IntegrationTestCase
      */
     private function desktopGridColumns(string $css): array
     {
-        $this->assertMatchesRegularExpression('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css);
-        preg_match('/@media \(min-width: 68\.75em\)\s*\{.*?grid-template-columns:\s*(.*?);/s', $css, $match);
+        $this->assertMatchesRegularExpression('/\.sp-group\s*\{[^}]*--sp-grid-columns:\s*(.*?);/s', $css);
+        preg_match('/\.sp-group\s*\{[^}]*--sp-grid-columns:\s*(.*?);/s', $css, $match);
         $raw = trim(preg_replace('/\s+/', ' ', $match[1]));
         preg_match_all('/minmax\([^)]+\)|[^\s]+/', $raw, $parts);
 
@@ -465,6 +474,37 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
             fieldset: !!document.querySelector('fieldset.sp-add__consumers legend'),
           };
         })(),
+        addUnitSelect: (() => {
+          const sel = document.querySelector('.sp-add__field--unit select');
+          if (!sel) return { ok: false, reason: 'missing' };
+          const opt = sel.options[sel.selectedIndex];
+          const text = opt ? String(opt.textContent || '').trim() : '';
+          const textW = (() => {
+            const m = document.createElement('span');
+            m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + getComputedStyle(sel).font;
+            m.textContent = text || 'opening';
+            document.body.appendChild(m);
+            const w = m.getBoundingClientRect().width;
+            m.remove();
+            return w;
+          })();
+          const clipped = sel.scrollWidth > sel.clientWidth + 1 || textW + 28 > sel.clientWidth;
+          return {
+            ok: !clipped,
+            text,
+            sw: sel.scrollWidth,
+            cw: sel.clientWidth,
+          };
+        })(),
+        bsmTipRow: (() => {
+          const btn = document.querySelector('[data-bsm-material-sync]');
+          const tip = btn && btn.parentElement && btn.parentElement.querySelector('.admin-info-tip');
+          if (!btn || !tip) return { ok: true, skip: true };
+          const b = btn.getBoundingClientRect();
+          const t = tip.getBoundingClientRect();
+          const sameRow = Math.abs(b.top - t.top) < 28 && t.left >= b.left - 2;
+          return { ok: sameRow, btnTop: Math.round(b.top), tipTop: Math.round(t.top) };
+        })(),
       };
     }, w);
 
@@ -676,7 +716,7 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
           colCount,
           theadDisplay,
           stacked: theadDisplay === 'none' || colCount <= 2,
-          rawTable: theadDisplay !== 'none' && colCount !== 8,
+          rawTable: theadDisplay !== 'none' && colCount !== 7,
         };
       });
     }
@@ -687,6 +727,21 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
   await openPage();
   fs.mkdirSync(outDir, { recursive: true });
   await page.screenshot({ path: path.join(outDir, 'sp-layout-1100.png'), fullPage: true });
+  const addUnitSel = await page.$('.sp-add__field--unit select');
+  if (addUnitSel) {
+    await addUnitSel.screenshot({ path: path.join(outDir, 'sp-add-unit-1100.png') });
+  }
+  for (const spec of [
+    { file: 'sp-shared-prices-1280-dark.png', width: 1280, height: 900 },
+    { file: 'sp-shared-prices-390-dark.png', width: 390, height: 844 },
+  ]) {
+    await page.setViewport({ width: spec.width, height: spec.height });
+    await openPage();
+    await page.evaluate(() => {
+      document.documentElement.classList.add('admin-dark');
+    });
+    await page.screenshot({ path: path.join(outDir, spec.file), fullPage: true });
+  }
   fs.writeFileSync(path.join(outDir, 'sp-layout-geometry.json'), JSON.stringify(out, null, 2));
 
   await browser.close();
@@ -741,6 +796,24 @@ JS
                 $this->assertTrue($check['fieldset'] ?? false, "Add-item quote types must be a fieldset with a legend at {$w}");
             }
 
+            if (in_array($w, [390, 1100, 1280], true)) {
+                $unit = $row['addUnitSelect'] ?? [];
+                $this->assertTrue(
+                    $unit['ok'] ?? false,
+                    "Add item Unit select must not clip its label at {$w}: ".json_encode($unit)
+                );
+            }
+
+            if ($w === 390) {
+                $bsm = $row['bsmTipRow'] ?? [];
+                if (! ($bsm['skip'] ?? false)) {
+                    $this->assertTrue(
+                        $bsm['ok'] ?? false,
+                        'Basement sync info icon must stay on the same row as its button at 390: '.json_encode($bsm)
+                    );
+                }
+            }
+
             if ($w <= 1099) {
                 $this->assertSame(
                     (int) ($row['groupCount'] ?? 0),
@@ -749,7 +822,7 @@ JS
                 );
                 $this->assertTrue($row['stacked'] ?? false, "Must use stacked cards at {$w}");
             } else {
-                $this->assertFalse($row['stacked'] ?? true, "Must use the 8-column grid at {$w}");
+                $this->assertFalse($row['stacked'] ?? true, "Must use the 7-column grid at {$w}");
                 $this->assertGreaterThanOrEqual(115, (int) ($row['workW'] ?? 0), "Work item too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(100, (int) ($row['sellMin'] ?? 0), "Sell column too narrow at {$w}");
                 $this->assertGreaterThanOrEqual(44, (int) ($row['moreHit'] ?? 0), "+N hit area must be ≥44px at {$w}");

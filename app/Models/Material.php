@@ -37,6 +37,7 @@ class Material extends Model
         'quantity_per_package',
         'is_active',
         'last_scraped_at',
+        'last_price_synced_at',
         'last_scrape_status',
         'last_scrape_error',
         'sort_order',
@@ -48,12 +49,17 @@ class Material extends Model
         'quantity_per_package' => 'integer',
         'is_active' => 'boolean',
         'last_scraped_at' => 'datetime',
+        'last_price_synced_at' => 'datetime',
         'sort_order' => 'integer',
     ];
 
     protected static function booted(): void
     {
         static::saving(function (Material $material) {
+            if ($material->exists && $material->isDirty('price_cad')) {
+                $material->last_price_synced_at = now();
+            }
+
             if (! $material->isHomeDepotCatalogRow()) {
                 return;
             }

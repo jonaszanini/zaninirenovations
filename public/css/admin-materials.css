@@ -993,3 +993,80 @@
   font-size: 1.05rem;
   background: var(--admin-surface-hover, #f4f6f8);
 }
+
+.mat-price-sync-age {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--admin-muted, #5a6570);
+  white-space: nowrap;
+}
+
+.mat-price-sync-age--stale {
+  color: #b45309;
+}
+
+.br-config-sync-age,
+.sp-mat-sync-age {
+  display: block;
+  margin: 0.2rem 0 0;
+  margin-left: 0;
+}
+
+.sp-mat-sync-age {
+  font-size: 0.7rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fq-list-toolbar .admin-toolbar-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.bsm-sync-toolbar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
+.fq-list-toolbar .admin-toolbar-actions [data-bsm-material-sync] {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+}
+
+@media (max-width: 24.5em) {
+  .fq-list-toolbar {
+    align-items: stretch;
+  }
+  .fq-list-toolbar .admin-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .fq-list-toolbar .admin-toolbar-actions .bsm-sync-toolbar-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  .fq-list-toolbar .admin-toolbar-actions .bsm-sync-toolbar-item [data-bsm-material-sync] {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+  .fq-list-toolbar .admin-toolbar-actions > .admin-btn.admin-btn--primary {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+}
