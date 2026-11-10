@@ -825,10 +825,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 @media (min-width: 901px) {
   .openplan3d-takeoffs-strip__bar {
     grid-template-columns: auto minmax(5.5rem, 9rem) minmax(0, 1fr);
-  }
-  .openplan3d-metrics-ribbon {
-    grid-column: 3;
-    grid-row: 1 / span 2;
+    align-items: center;
   }
   .openplan3d-takeoffs-toggle {
     grid-column: 1;
@@ -836,7 +833,14 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   }
   .openplan3d-takeoffs-summary {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 1;
+  }
+  .openplan3d-metrics-ribbon {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }
 
