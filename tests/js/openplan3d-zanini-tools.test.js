@@ -179,10 +179,11 @@ global.window.__openPlan3D = {
         walls: [
           { id: 'inner1', start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
           { id: 'mtn32xy9', start: { x: 0, y: 0 }, end: { x: 20, y: 0 } },
+          { id: 'partA', start: { x: 10, y: 0 }, end: { x: 10, y: 8 } },
         ],
         rooms: [
-          { id: 'r-living', walls: ['inner1'] },
-          { id: 'r-basement', boundary_wall_ids: ['mtn32xy9'], walls: ['mtn32xy9'] },
+          { id: 'r-living', walls: ['inner1', 'partA'] },
+          { id: 'r-basement', boundary_wall_ids: ['mtn32xy9'], walls: ['mtn32xy9', 'partA'] },
         ],
       }],
     };
@@ -195,11 +196,14 @@ assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is 
 assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
 assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');
 
+var partitionFloor = global.window.__openPlan3D.getProject().floors[0];
 assert.deepStrictEqual(
-  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA']),
+  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA'], partitionFloor),
   ['partA'],
-  'perimeter walls excluded from baseboard sides control'
+  'only interior partitions (2+ rooms) get sides control'
 );
+assert.ok(tools.wallIsInteriorPartition('partA', partitionFloor), 'partition between two rooms');
+assert.strictEqual(tools.wallIsInteriorPartition('inner1', partitionFloor), false, 'single-room wall is not a partition');
 assert.strictEqual(
   tools.readBaseboardSidesForWall({ mtn32xy9: { baseboardSides: 2 } }, 'mtn32xy9'),
   1,

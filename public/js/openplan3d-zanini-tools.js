@@ -855,7 +855,20 @@
     var hits = [];
     if (!floor || !floor.rooms) return hits;
     floor.rooms.forEach(function (room) {
-      var ids = room.boundary_wall_ids || room.walls || [];
+      var ids = [];
+      var seen = {};
+      var merge = function (list) {
+        if (!Array.isArray(list)) return;
+        for (var j = 0; j < list.length; j++) {
+          var id = String(list[j]);
+          if (!seen[id]) {
+            seen[id] = true;
+            ids.push(id);
+          }
+        }
+      };
+      merge(room.boundary_wall_ids);
+      merge(room.walls);
       for (var i = 0; i < ids.length; i++) {
         if (String(ids[i]) === String(wallId)) {
           hits.push(String(room.name || room.id || 'Room').trim() || 'Room');
@@ -900,18 +913,7 @@
   }
 
   function roomNamesOnWall(wallId, floor) {
-    var names = [];
-    if (!floor || !floor.rooms) return names;
-    floor.rooms.forEach(function (r) {
-      var walls = r.walls || [];
-      for (var wi = 0; wi < walls.length; wi++) {
-        if (String(walls[wi]) === String(wallId)) {
-          names.push(String(r.name || r.id || 'Room').trim() || 'Room');
-          break;
-        }
-      }
-    });
-    return names;
+    return roomsTouchingWall(wallId, floor);
   }
 
   function drywallSideOptionLabels(wallId, floor) {
@@ -1402,6 +1404,7 @@
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
     wallIsBoundary: wallIsBoundary,
+    wallIsInteriorPartition: wallIsInteriorPartition,
     finishDefaultsForWall: finishDefaultsForWall,
     wallsEligibleForBaseboardSidesControl: wallsEligibleForBaseboardSidesControl,
     readBaseboardSidesForWall: readBaseboardSidesForWall,
