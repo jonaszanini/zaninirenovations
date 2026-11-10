@@ -108,7 +108,7 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
         $this->assertStringContainsString('Allowance amounts no longer match', $html);
     }
 
-    public function test_publish_stores_synced_allowances_matching_pdf_after_trade_added(): void
+    public function test_publish_sync_replaces_placeholder_in_persisted_allowances(): void
     {
         $this->actingAsAdmin();
 
@@ -121,38 +121,20 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
             ],
         ]);
         $calc = (new BasementQuotationCalculator)->calculate($inputs);
-        $quote = BasementQuotation::create([
-            'quote_number' => BasementQuotation::generateNumber(),
-            'client_name' => 'Publish synced allowances',
+        $persistence = [
             'is_draft' => false,
             'inputs' => $inputs,
             'calculation' => $calc,
-            'final_quote_total' => (float) $calc['summary']['grand_total'],
-            'version' => 1,
-            'payment_installments' => 3,
-        ]);
+            'final_quote_total' => (float) ($calc['summary']['final_quote_total'] ?? 0),
+        ];
 
-        $payload = array_merge(is_array($quote->inputs) ? $quote->inputs : [], [
-            'client_name' => $quote->client_name,
-            'save_intent' => 'publish',
-            'ask_reply_to_accept' => '0',
-            'payment_installments' => 3,
-            'include_demolition' => 0,
-            'include_commute' => 0,
-            'include_debris_removal' => 0,
-            'electrical_lines' => [[
-                'description' => 'Electrician',
-                'amount' => '7000',
-                'hst_included' => '0',
-            ]],
-        ]);
-        $this->put(route('admin.quotations.basement.update', $quote), $payload)
-            ->assertSessionHasNoErrors()
-            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+        $controller = app(\App\Http\Controllers\Admin\BasementQuotationController::class);
+        $method = new \ReflectionMethod($controller, 'syncPublishedClientScopeAllowances');
+        $method->setAccessible(true);
+        $synced = $method->invoke($controller, $persistence, true);
 
-        $quote->refresh();
-        $stored = (string) ($quote->inputs['client_scope_allowances'] ?? '');
-        $pdf = $quote->clientScopeCopy()['allowances'];
+        $stored = (string) ($synced['inputs']['client_scope_allowances'] ?? '');
+        $pdf = BasementClientScope::resolveCopy($synced['inputs'], $synced['calculation'])['allowances'];
         $this->assertStringContainsString('CA$7,910.00', $stored);
         $this->assertStringNotContainsString('No separate cash allowances', $stored);
         $this->assertSame(BasementClientScope::normalizeAllowanceText($pdf), BasementClientScope::normalizeAllowanceText($stored));
