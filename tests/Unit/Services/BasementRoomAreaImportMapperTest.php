@@ -392,9 +392,21 @@ class BasementRoomAreaImportMapperTest extends TestCase
         ));
     }
 
+    public function test_bulkhead_corner_bead_lf_imports_for_boxing_cb2(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 400,
+            'bulkhead_corner_bead_lf' => 14,
+            'bulkhead_drywall_sqft' => 30,
+        ], 8);
+
+        $this->assertSame(14.0, $proposed['import_bulkhead_corner_bead_lf']);
+        $this->assertSame(30.0, $proposed['import_bulkhead_drywall_sqft']);
+    }
+
     public function test_unmapped_keys_are_documented_and_exclude_corner_bead(): void
     {
-        $this->assertContains('bulkhead_corner_bead_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
+        $this->assertNotContains('bulkhead_corner_bead_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('cabinet_base_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('stairs_treads', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
         $this->assertContains('framing_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
@@ -424,6 +436,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
             'bulkhead_lf' => 16,
             'bulkhead_framing_lf' => 16,
             'bulkhead_drywall_sqft' => 30,
+            'bulkhead_corner_bead_lf' => 14,
             'partition_lf' => 12,
             'finish_header_lf' => 18,
             'finish_drywall_sqft' => 720,

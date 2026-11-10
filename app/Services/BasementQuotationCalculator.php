@@ -10,8 +10,14 @@ use App\Support\QuotationHelperLabor;
 
 class BasementQuotationCalculator
 {
-    /** Extra drywall for boxed ducts / soffits (three ~12 in faces) on bathroom-only quotes. */
+    /** Rough drywall area per linear foot of duct bulkhead boxing (about three 12 in faces). */
     public const BULKHEAD_DRYWALL_SF_PER_LF = 3.0;
+
+    /** Rough drywall area per linear foot of wood header or steel beam boxing. */
+    public const HEADER_DRYWALL_SF_PER_LF = 3.0;
+
+    /** Outside corner bead along each linear foot of duct or header boxing (two long edges per run). */
+    public const BOXING_CORNER_BEAD_LF_PER_RUN_LF = 2.0;
 
     public const SECTIONS = [
         'overview' => 'Project Overview',
@@ -657,6 +663,10 @@ class BasementQuotationCalculator
             'drywall_wall_sf' => null,
             'drywall_ceiling_sf' => null,
             'drywall_corners' => 0,
+            'corner_bead_by_height' => true,
+            'drywall_boxing_v2' => true,
+            'import_bulkhead_drywall_sqft' => 0,
+            'import_bulkhead_corner_bead_lf' => 0,
             'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
             'drywall_door_openings' => 0,
@@ -756,6 +766,106 @@ class BasementQuotationCalculator
         $rate = max(0.001, (float) ($prod['header_lf_per_hr'] ?? 4));
 
         return [$lf / $rate, number_format($lf, 0).' lf'];
+    }
+
+    /**
+     * Saved quotes without corner_bead_by_height used one stick per outside corner regardless of height.
+     *
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function usesLegacyCornerBeadCount(array $storedInputs): bool
+    {
+        return ! array_key_exists('corner_bead_by_height', $storedInputs);
+    }
+
+    /**
+     * Saved quotes without drywall_boxing_v2 omitted duct/header boxing from drywall takeoff.
+     *
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function usesLegacyDrywallBoxing(array $storedInputs): bool
+    {
+        return ! array_key_exists('drywall_boxing_v2', $storedInputs);
+    }
+
+    /**
+     * @param  array<string, array<string, mixed>>  $matCatalog
+     */
+    public static function cornerBeadStickLengthFt(array $matCatalog): float
+    {
+        $name = (string) ($matCatalog['corner_bead']['name'] ?? '');
+        $fromName = Material::stickLengthFeetFromLabel($name);
+
+        return max(0.001, $fromName ?? BasementSettings::CORNER_BEAD_FEET_PER_STICK);
+    }
+
+    public static function outsideCornerBeadSticks(int $outsideCorners, float $wallHeightFt, float $stickLengthFt, bool $legacyCountOnly): int
+    {
+        if ($outsideCorners <= 0) {
+            return 0;
+        }
+        if ($legacyCountOnly) {
+            return $outsideCorners;
+        }
+        $perCorner = (int) ceil(max(0.001, $wallHeightFt) / max(0.001, $stickLengthFt));
+
+        return $outsideCorners * max(1, $perCorner);
+    }
+
+    public static function boxingCornerBeadLf(
+        float $bulkheadLf,
+        float $headerLf,
+        float $importBulkheadBeadLf,
+        bool $boxingV2
+    ): float {
+        if (! $boxingV2) {
+            return 0.0;
+        }
+        $fromImport = max(0.0, $importBulkheadBeadLf);
+        if ($fromImport > 0) {
+            return round($fromImport + (self::BOXING_CORNER_BEAD_LF_PER_RUN_LF * max(0.0, $headerLf)), 4);
+        }
+
+        return round(
+            self::BOXING_CORNER_BEAD_LF_PER_RUN_LF * (max(0.0, $bulkheadLf) + max(0.0, $headerLf)),
+            4
+        );
+    }
+
+    public static function boxingCornerBeadSticks(float $beadLf, float $stickLengthFt): int
+    {
+        if ($beadLf <= 0) {
+            return 0;
+        }
+
+        return (int) ceil($beadLf / max(0.001, $stickLengthFt));
+    }
+
+    /**
+     * @param  array<string, mixed>  $storedInputs
+     * @return array{bulkhead_sf: float, header_sf: float, total_sf: float}
+     */
+    public static function drywallBoxingSf(
+        float $bulkheadLf,
+        float $headerLf,
+        bool $boxingV2,
+        float $importBulkheadDrywallSqft
+    ): array {
+        if (! $boxingV2) {
+            return ['bulkhead_sf' => 0.0, 'header_sf' => 0.0, 'total_sf' => 0.0];
+        }
+
+        $bulkheadSf = 0.0;
+        if ($bulkheadLf > 0 && $importBulkheadDrywallSqft <= 0) {
+            $bulkheadSf = round($bulkheadLf * self::BULKHEAD_DRYWALL_SF_PER_LF, 2);
+        }
+        $headerSf = $headerLf > 0 ? round($headerLf * self::HEADER_DRYWALL_SF_PER_LF, 2) : 0.0;
+
+        return [
+            'bulkhead_sf' => $bulkheadSf,
+            'header_sf' => $headerSf,
+            'total_sf' => round($bulkheadSf + $headerSf, 2),
+        ];
     }
 
     /**
@@ -1000,7 +1110,7 @@ class BasementQuotationCalculator
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
         $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
-        if ($inputs['scope_preset'] === 'bathroom') {
+        if ($inputs['scope_preset'] === 'bathroom' && self::usesLegacyDrywallBoxing($originalInputs)) {
             $dwWallFallback = round(
                 $suggestedWallSf
                 + ($partitionLf * $height * 2)
@@ -1008,6 +1118,19 @@ class BasementQuotationCalculator
                 2
             );
         }
+        $boxingV2 = ! self::usesLegacyDrywallBoxing($originalInputs);
+        $headerLfForBoxing = self::usesLegacyHeaderCount($inputs, $originalInputs)
+            ? 0.0
+            : max(0.0, (float) ($inputs['header_lf'] ?? 0));
+        $importBulkheadDrywall = max(0.0, (float) ($originalInputs['import_bulkhead_drywall_sqft'] ?? $inputs['import_bulkhead_drywall_sqft'] ?? 0));
+        $importBulkheadBead = max(0.0, (float) ($originalInputs['import_bulkhead_corner_bead_lf'] ?? $inputs['import_bulkhead_corner_bead_lf'] ?? 0));
+        $drywallBoxing = self::drywallBoxingSf($bulkheadLf, $headerLfForBoxing, $boxingV2, $importBulkheadDrywall);
+        $stickLengthFt = self::cornerBeadStickLengthFt($matCatalog);
+        $legacyCornerBead = self::usesLegacyCornerBeadCount($originalInputs);
+        $outsideCorners = max(0, (int) $inputs['drywall_corners']);
+        $cornerBeadWallSticks = self::outsideCornerBeadSticks($outsideCorners, $height, $stickLengthFt, $legacyCornerBead);
+        $boxingBeadLf = self::boxingCornerBeadLf($bulkheadLf, $headerLfForBoxing, $importBulkheadBead, $boxingV2);
+        $cornerBeadBoxingSticks = self::boxingCornerBeadSticks($boxingBeadLf, $stickLengthFt);
         $paintColors = ((int) ($inputs['paint_colors'] ?? 1) === 2) ? 2 : 1;
         $on = function (string $section) use ($inputs): bool {
             return self::sectionEnabled($inputs, $section);
@@ -1212,18 +1335,40 @@ class BasementQuotationCalculator
             $dwWallGross = $this->qtyOr($inputs['drywall_wall_sf'], $dwWallFallback);
             $openingSf = self::drywallOpeningSf($inputs);
             $dwWall = round(max(0, $dwWallGross - $openingSf), 2);
+            $dwWallBeforeBoxing = $dwWall;
+            $dwWall = round($dwWall + $drywallBoxing['total_sf'], 2);
             $dwSf = $dwWall + $dwCeil;
             $level = self::normalizeFinishLevel($inputs['finish_level'] ?? 4);
             $hangOnly = $level === 0;
-            $hangDetail = number_format($dwSf, 0).' sq ft';
+            $dwSfCore = $dwWallBeforeBoxing + $dwCeil;
+            $hangDetail = number_format($dwSfCore, 0).' sq ft';
             if ($openingSf > 0) {
                 $hangDetail .= ' ('.number_format($openingSf, 0).' sf openings deducted)';
             }
-            $addLabor('dw_hang', 'drywall', 'Hang drywall', $hangDetail, $perHr($dwSf, (float) $prod['drywall_hang_sf_per_hr']));
+            $addLabor('dw_hang', 'drywall', 'Hang drywall', $hangDetail, $perHr($dwSfCore, (float) $prod['drywall_hang_sf_per_hr']));
+            if ($drywallBoxing['total_sf'] > 0) {
+                $boxDetail = [];
+                if ($drywallBoxing['bulkhead_sf'] > 0) {
+                    $boxDetail[] = number_format($drywallBoxing['bulkhead_sf'], 0).' sf duct boxing';
+                }
+                if ($drywallBoxing['header_sf'] > 0) {
+                    $boxDetail[] = number_format($drywallBoxing['header_sf'], 0).' sf header/beam boxing';
+                }
+                $addLabor(
+                    'dw_boxing',
+                    'drywall',
+                    'Hang duct and header boxing',
+                    implode(', ', $boxDetail),
+                    $perHr($drywallBoxing['total_sf'], (float) $prod['drywall_hang_sf_per_hr'])
+                );
+            }
             if (! $hangOnly) {
                 $finishKey = 'drywall_finish_l'.$level.'_sf_per_hr';
                 $finishHours = $perHr($dwSf, (float) ($prod[$finishKey] ?? $prod['drywall_finish_l4_sf_per_hr']));
                 $finishDetail = number_format($dwSf, 0).' sq ft';
+                if ($drywallBoxing['total_sf'] > 0) {
+                    $finishDetail .= ' incl. '.number_format($drywallBoxing['total_sf'], 0).' sf duct/header boxing';
+                }
                 if ($paintColors === 2) {
                     $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
                     $finishDetail .= ', two-color';
@@ -1246,13 +1391,32 @@ class BasementQuotationCalculator
                     'drywall_screws'
                 );
             }
-            $corners = max(0, (int) $inputs['drywall_corners']);
             $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = self::drywallOpeningCount($inputs);
             if (! $hangOnly) {
                 $addMat('joint_compound', 'drywall', $this->packages($dwOrderSf, BasementSettings::JOINT_COMPOUND_SF_PER_PAIL), 'joint_compound');
                 $addMat('drywall_tape', 'drywall', $this->packages($dwOrderSf, BasementSettings::DRYWALL_TAPE_SF_PER_ROLL), 'drywall_tape');
-                $addMat('corner_bead', 'drywall', $corners, 'corner_bead');
+                if ($cornerBeadWallSticks > 0) {
+                    $wallBeadDetail = $legacyCornerBead
+                        ? $outsideCorners.' corner(s)'
+                        : $outsideCorners.' corner(s), '.number_format($height, 0).' ft wall height';
+                    $addMat(
+                        'corner_bead',
+                        'drywall',
+                        $cornerBeadWallSticks,
+                        'corner_bead',
+                        'Corner bead (outside corners, '.$wallBeadDetail.')'
+                    );
+                }
+                if ($cornerBeadBoxingSticks > 0) {
+                    $addMat(
+                        'corner_bead_boxing',
+                        'drywall',
+                        $cornerBeadBoxingSticks,
+                        'corner_bead',
+                        'Corner bead (duct and header boxing, '.number_format($boxingBeadLf, 0).' lf edges)'
+                    );
+                }
                 $addLabor(
                     'dw_inside_corners',
                     'drywall',

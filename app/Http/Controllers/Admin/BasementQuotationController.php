@@ -330,6 +330,11 @@ class BasementQuotationController extends Controller
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
             }
+            foreach (['header_lf', 'corner_bead_by_height', 'drywall_boxing_v2'] as $legacyKey) {
+                if (! array_key_exists($legacyKey, $quotation->inputs)) {
+                    unset($previewInputs[$legacyKey]);
+                }
+            }
         }
         $initialPreview = (new BasementQuotationCalculator)->calculate($previewInputs, $settings);
 
@@ -433,6 +438,7 @@ class BasementQuotationController extends Controller
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
             'area_length_ft', 'area_width_ft',
             'perimeter_lf',
+            'import_bulkhead_drywall_sqft', 'import_bulkhead_corner_bead_lf',
         ];
         $ints = [
             'room_count', 'demo_bin_qty', 'header_qty', 'framing_door_openings',
@@ -457,6 +463,7 @@ class BasementQuotationController extends Controller
             'include_bcin_drawings',
             'ceiling_hang_unified',
             'client_provides_all', 'include_helper',
+            'corner_bead_by_height', 'drywall_boxing_v2',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
@@ -502,6 +509,14 @@ class BasementQuotationController extends Controller
         } else {
             $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
             $out['header_qty'] = 0;
+        }
+        if (is_array($storedInputs)) {
+            if (! array_key_exists('corner_bead_by_height', $storedInputs)) {
+                unset($out['corner_bead_by_height']);
+            }
+            if (! array_key_exists('drywall_boxing_v2', $storedInputs)) {
+                unset($out['drywall_boxing_v2']);
+            }
         }
         $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);
         $out['stud_spacing_in'] = BasementQuotationCalculator::normalizeStudSpacing($out['stud_spacing_in'] ?? 16);

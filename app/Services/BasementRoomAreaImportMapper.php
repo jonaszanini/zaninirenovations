@@ -9,7 +9,7 @@ namespace App\Services;
  * Null in the proposed set means “not on the drawing” — leave the form field alone.
  * Explicit 0 means the drawing measured zero.
  *
- * Corner bead (CB-1/CB-2), wall-height sticks, and bulkhead bead are not mapped.
+ * Corner bead stick counts use ceiling height at quote time. Bulkhead bead length imports as a hint for CB2.
  */
 class BasementRoomAreaImportMapper
 {
@@ -46,6 +46,8 @@ class BasementRoomAreaImportMapper
         'paint_wall_sf' => 'br-p-wall',
         'paint_ceiling_sf' => 'br-p-ceil',
         'paint_trim_lf' => 'br-p-trim',
+        'import_bulkhead_drywall_sqft' => 'br-import-bh-dw',
+        'import_bulkhead_corner_bead_lf' => 'br-import-bh-bead',
     ];
 
     /**
@@ -112,7 +114,6 @@ class BasementRoomAreaImportMapper
      * @var list<string>
      */
     public const UNMAPPED_LAYOUT_KEYS = [
-        'bulkhead_corner_bead_lf',
         'cabinet_base_lf',
         'cabinet_upper_lf',
         'stairs_count',
@@ -429,6 +430,13 @@ class BasementRoomAreaImportMapper
             $bulkhead = (float) $opt['bulkhead_framing_lf'];
         }
 
+        $importBulkheadDrywall = self::present($opt, 'bulkhead_drywall_sqft')
+            ? max(0.0, (float) $opt['bulkhead_drywall_sqft'])
+            : 0.0;
+        $importBulkheadBead = self::present($opt, 'bulkhead_corner_bead_lf')
+            ? max(0.0, (float) $opt['bulkhead_corner_bead_lf'])
+            : 0.0;
+
         $headerLf = null;
         if (self::present($opt, 'finish_header_lf')) {
             $headerLf = (float) $opt['finish_header_lf'];
@@ -498,6 +506,8 @@ class BasementRoomAreaImportMapper
             'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $paintWallBasis),
             'paint_ceiling_sf' => self::resolveImportedPaintCeilingSf($ceilingArea, $formCeilingType),
             'paint_trim_lf' => $paintTrim,
+            'import_bulkhead_drywall_sqft' => $importBulkheadDrywall > 0 ? $importBulkheadDrywall : null,
+            'import_bulkhead_corner_bead_lf' => $importBulkheadBead > 0 ? $importBulkheadBead : null,
         ];
     }
 }

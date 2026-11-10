@@ -15,6 +15,8 @@ class BasementSettings extends Model
 
     public const BASEBOARD_FEET_PER_STICK = 8;
 
+    public const CORNER_BEAD_FEET_PER_STICK = 8;
+
     /** 10 ft × 100 ft roll. */
     public const VAPOR_SF_PER_ROLL = 1000;
 

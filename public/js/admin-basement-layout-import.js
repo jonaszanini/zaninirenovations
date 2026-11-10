@@ -34,7 +34,9 @@
     window_trim_qty: 'br-windows',
     paint_wall_sf: 'br-p-wall',
     paint_ceiling_sf: 'br-p-ceil',
-    paint_trim_lf: 'br-p-trim'
+    paint_trim_lf: 'br-p-trim',
+    import_bulkhead_drywall_sqft: 'br-import-bh-dw',
+    import_bulkhead_corner_bead_lf: 'br-import-bh-bead'
   };
 
   var LW_KEYS = {
@@ -199,6 +201,18 @@
     if (present(opt, 'bulkhead_lf')) bulkhead = num(opt.bulkhead_lf);
     else if (present(opt, 'bulkhead_framing_lf')) bulkhead = num(opt.bulkhead_framing_lf);
 
+    var headerLf = null;
+    if (present(opt, 'finish_header_lf')) headerLf = num(opt.finish_header_lf);
+    else if (present(opt, 'header_lf')) headerLf = num(opt.header_lf);
+    else if (present(opt, 'header_beam_lf')) headerLf = num(opt.header_beam_lf);
+
+    var importBulkheadDrywall = present(opt, 'bulkhead_drywall_sqft')
+      ? Math.max(0, num(opt.bulkhead_drywall_sqft))
+      : 0;
+    var importBulkheadBead = present(opt, 'bulkhead_corner_bead_lf')
+      ? Math.max(0, num(opt.bulkhead_corner_bead_lf))
+      : 0;
+
     var doors = present(opt, 'door_count') ? Math.max(0, parseInt(opt.door_count, 10) || 0) : null;
     var windows = present(opt, 'window_count') ? Math.max(0, parseInt(opt.window_count, 10) || 0) : null;
     var openings = present(opt, 'opening_count') ? Math.max(0, parseInt(opt.opening_count, 10) || 0) : null;
@@ -231,6 +245,7 @@
       perimeter_lf: peri,
       partition_lf: partition,
       bulkhead_lf: bulkhead,
+      header_lf: headerLf,
       framing_door_openings: doors,
       insulation_wall_sf: insWall,
       insulation_ceiling_sf: ceilingArea,
@@ -250,7 +265,9 @@
       window_trim_qty: windows,
       paint_wall_sf: resolveImportedPaintWallSf(opt, paintWallBasis),
       paint_ceiling_sf: resolveImportedPaintCeilingSf(ceilingArea, ceilingType),
-      paint_trim_lf: paintTrim
+      paint_trim_lf: paintTrim,
+      import_bulkhead_drywall_sqft: importBulkheadDrywall > 0 ? importBulkheadDrywall : null,
+      import_bulkhead_corner_bead_lf: importBulkheadBead > 0 ? importBulkheadBead : null
     };
   }
 

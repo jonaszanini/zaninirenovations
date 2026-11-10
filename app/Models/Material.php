@@ -484,4 +484,21 @@ class Material extends Model
                 ->orWhere('last_scrape_status', '!=', self::SCRAPE_OK);
         });
     }
+
+    /**
+     * Stick length in feet parsed from catalog names such as "8 ft corner bead".
+     */
+    public static function stickLengthFeetFromLabel(?string $label): ?float
+    {
+        if ($label === null || trim($label) === '') {
+            return null;
+        }
+        if (preg_match('/(\d+(?:\.\d+)?)\s*(?:ft|feet|foot|\′)\b/i', $label, $m)) {
+            $feet = (float) $m[1];
+
+            return $feet > 0 ? $feet : null;
+        }
+
+        return null;
+    }
 }

@@ -4,6 +4,9 @@ tests/Feature/Admin/BasementPaintManualEditTest.php
 tests/Feature/Admin/BasementHeaderLegacyQuoteTest.php
 tests/Feature/Admin/BasementHeaderLfBrowserTest.php
 tests/Unit/Services/BasementHeaderLfTest.php
+tests/Unit/Services/BasementCornerBeadTest.php
+tests/Feature/Admin/BasementCornerBeadLegacyQuoteTest.php
+tests/Feature/Admin/BasementCornerBeadBrowserTest.php
 tests/Feature/Admin/PavingMarbleBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php

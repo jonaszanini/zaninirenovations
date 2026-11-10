@@ -123,7 +123,7 @@
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
       'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
       'drywall_ceiling_sf' => 'Saved hang area for this quote. Totals keep this figure — including leftover hang on drop or skip — until you confirm using Ceiling area.',
-      'drywall_corners' => 'Outside corners that need metal or paper bead.',
+      'drywall_corners' => 'Outside corners for metal or paper bead. Sticks are counted per corner from your ceiling height and the live corner bead stick length from Materials (typically 8 ft).',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
       'drywall_openings' => 'Other openings (archways) to cut and bead, counted each. Door and window counts above are added for labour.',
       'drywall_door_openings' => 'Door rough openings. Each deducts 21 sq ft (3×7 ft) from wall drywall unless you type Opening area.',
@@ -778,10 +778,23 @@
                value="{{ $brQty('drywall_opening_sf') }}" placeholder="Auto">
       </div>
       <div class="admin-form-group">
-        <label for="br-dw-corners">Outside corners</label>
+        <span class="admin-label-with-tip">
+          <label for="br-dw-corners">Outside corners</label>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['drywall_corners'], 'tipLabel' => 'Outside corners'])
+        </span>
         <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-dw-corners" name="drywall_corners"
                value="{{ $brVal('drywall_corners', 0) }}">
       </div>
+      <input type="hidden" id="br-import-bh-dw" name="import_bulkhead_drywall_sqft" value="{{ $brVal('import_bulkhead_drywall_sqft', 0) }}">
+      <input type="hidden" id="br-import-bh-bead" name="import_bulkhead_corner_bead_lf" value="{{ $brVal('import_bulkhead_corner_bead_lf', 0) }}">
+      @if ($isEdit && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'corner_bead_by_height'))
+      @else
+        <input type="hidden" name="corner_bead_by_height" value="1">
+      @endif
+      @if ($isEdit && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'drywall_boxing_v2'))
+      @else
+        <input type="hidden" name="drywall_boxing_v2" value="1">
+      @endif
       <div class="admin-form-group">
         <span class="admin-label-with-tip">
           <label for="br-dw-inside-corners">Inside corners</label>
