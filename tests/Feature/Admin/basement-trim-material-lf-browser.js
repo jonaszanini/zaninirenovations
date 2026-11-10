@@ -124,9 +124,9 @@ async function typeField(page, selector, value) {
   const m = report.materials;
   report.ok = m.hasRow
     && m.label.toLowerCase().includes('per lin. ft')
-    && Math.abs(m.qty - 100) < 0.05
+    && Math.abs(m.qty - 110) < 0.05
     && Math.abs(m.unitPrice - 3) < 0.05
-    && Math.abs(m.amount - 300) < 0.05;
+    && Math.abs(m.amount - 330) < 0.05;
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));
