@@ -11,6 +11,7 @@ const outPath = process.env.BR_SUBTOTAL_OUT;
 const shotsDir = process.env.BR_SUBTOTAL_SHOTS || path.join(process.cwd(), 'storage/app/qa-screenshots');
 const createPath = process.env.BR_SUBTOTAL_CREATE_PATH || '/admin/quotations/basement/create';
 const importQuery = process.env.BR_SUBTOTAL_IMPORT_LAYOUT_Q || '';
+const layoutsPath = process.env.BR_SUBTOTAL_LAYOUTS_PATH || '';
 
 const LITERAL_WALL_SF = Number(process.env.BR_LITERAL_WALL_SF || 512);
 const LITERAL_DRYWALL_WALL_SF = Number(process.env.BR_LITERAL_DRYWALL_WALL_SF || 512);
@@ -122,23 +123,46 @@ async function importLayoutViaUi(page, query) {
   await input.click({ clickCount: 3 });
   await page.keyboard.press('Backspace');
   await input.type(query, { delay: 40 });
-  await page.waitForFunction(() => {
-    const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
-    const opts = list
-      ? list.querySelectorAll('.admin-search-select__option:not(.admin-search-select__option--action)')
-      : [];
-    return opts.length > 0;
-  }, { timeout: 45000 });
-  const clicked = await page.evaluate(() => {
-    const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
-    const opt = list
-      ? list.querySelector('.admin-search-select__option:not(.admin-search-select__option--action)')
-      : null;
-    if (!opt) return false;
-    opt.click();
-    return true;
-  });
-  if (!clicked) throw new Error('Layout search returned no options for ' + query);
+  let picked = false;
+  try {
+    await page.waitForFunction(() => {
+      const list = document.getElementById('br-layout-import-list');
+      if (!list) return false;
+      const opts = list.querySelectorAll('.admin-search-select__option:not(.admin-search-select__option--action)');
+      return opts.length > 0;
+    }, { timeout: 20000 });
+    picked = await page.evaluate(() => {
+      const list = document.getElementById('br-layout-import-list');
+      const opt = list
+        ? list.querySelector('.admin-search-select__option:not(.admin-search-select__option--action)')
+        : null;
+      if (!opt) return false;
+      opt.click();
+      return true;
+    });
+  } catch (err) {
+    picked = false;
+  }
+  if (!picked && layoutsPath) {
+    picked = await page.evaluate(async (q, pathPrefix) => {
+      const res = await fetch(pathPrefix + '?q=' + encodeURIComponent(q), { credentials: 'same-origin' });
+      const rows = await res.json();
+      const opt = Array.isArray(rows) ? rows[0] : null;
+      if (!opt) return false;
+      const picker = document.querySelector('[data-br-layout-picker]');
+      if (!picker) return false;
+      const input = document.getElementById('br-layout-import-input');
+      if (input) {
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+      picker.dispatchEvent(new CustomEvent('admin-search-select:change', {
+        bubbles: true,
+        detail: { option: opt },
+      }));
+      return true;
+    }, query, base + layoutsPath);
+  }
+  if (!picked) throw new Error('Layout search returned no options for ' + query);
   await new Promise((r) => setTimeout(r, 400));
   const dialogVisible = await page.evaluate(() => {
     const dlg = document.getElementById('admin-dialog');
