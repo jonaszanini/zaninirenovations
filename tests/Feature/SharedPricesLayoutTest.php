@@ -69,7 +69,9 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             ->assertSee('class="sp-col-catalog"', false)
             ->assertSee('class="sp-col-consumers"', false)
             ->assertSee('class="sp-effective"', false)
-            ->assertSee('class="sp-th-sell"', false)
+            ->assertSee('sp-th-sell', false)
+            ->assertSee('class="sp-th-head"', false)
+            ->assertSee('class="sp-th-head__label"', false)
             ->assertSee('class="sp-sell-phone-label"', false)
             ->assertSee('cp-money-input', false)
             ->getContent();
@@ -101,11 +103,23 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         );
         $this->assertStringNotContainsString("'html' =>", $blade);
         $this->assertStringContainsString('sp-th-sell', $blade);
+        $this->assertStringContainsString('sp-th-head', $blade);
+        $this->assertStringContainsString('sp-th-head__label', $blade);
         $this->assertStringContainsString('sp-sell-phone-label', $blade);
         $this->assertStringNotContainsString('sp-col-trailing', $html);
         $this->assertStringNotContainsString('class="admin-form-help"', $html);
 
         $css = $this->pageCss($html);
+        $this->assertMatchesRegularExpression(
+            '/details\.sp-group\.admin-card\s*\{[^}]*padding:\s*1rem;/',
+            $css,
+            'Category cards need balanced horizontal padding on desktop'
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media \(min-width: 68\.75em\)[\s\S]*\.sp-table\s+\.sp-consumers\s*\{[^}]*flex-direction:\s*row/',
+            $css,
+            'Used-by chips should wrap in a row on desktop'
+        );
         $catalog = $this->cssBlock($css, '.sp-table td.sp-col-catalog');
         $this->assertMatchesRegularExpression('/align-items:\s*center/', $catalog);
         $this->assertDoesNotMatchRegularExpression('/align-items:\s*flex-start/', $catalog);

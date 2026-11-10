@@ -42,7 +42,9 @@
   }
 }
 @media (min-width: 68.75em) {
-  details.sp-group.admin-card { padding: 1rem 0.55rem 1rem 0.2rem; }
+  details.sp-group.admin-card {
+    padding: 1rem;
+  }
   .sp-group .admin-table-scroll {
     overflow-x: auto;
     overflow-y: visible;
@@ -101,10 +103,27 @@
       minmax(5.25rem, 0.95fr)
       2.75rem
       minmax(5.5rem, 1fr);
-    column-gap: 0.08rem;
+    column-gap: 0.2rem;
     align-items: stretch;
     width: 100%;
     min-height: 44px;
+  }
+  .sp-table thead tr {
+    align-items: end;
+    min-height: 0;
+    padding-bottom: 0.2rem;
+    box-shadow: none;
+  }
+  .sp-table th {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    min-width: 0;
+    overflow: visible;
+    padding: 0 0.1rem 0.15rem;
+  }
+  .sp-table td {
+    padding: 0.25rem 0.1rem;
   }
   /* Beat `.sp-table td { display:block }` so the search button and chips
      flex-center on the same midline as the inputs. */
@@ -128,14 +147,20 @@
     justify-content: flex-start;
     align-self: stretch;
     vertical-align: middle;
-    padding-right: 0.75rem;
+    padding-right: 0.55rem;
   }
   .sp-table .sp-consumers {
-    flex-direction: column;
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    align-content: flex-start;
-    gap: 4px;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    align-content: center;
+    gap: 4px 6px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .sp-consumers:has(.sp-chip--more) .sp-chip:not(.sp-chip--more) {
+    max-width: calc(100% - 2.35rem);
   }
   .sp-table td.sp-col-label,
   .sp-table td.sp-col-rate,
@@ -203,6 +228,17 @@
   letter-spacing: 0.04em;
   color: var(--admin-muted);
   white-space: nowrap;
+}
+@media (min-width: 68.75em) {
+  .sp-table th {
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-start;
+    padding: 0 0.1rem 0.15rem;
+  }
+  .sp-table td {
+    padding: 0.25rem 0.1rem;
+  }
 }
 .sp-col-label,
 .sp-col-rate,
@@ -290,6 +326,33 @@
   box-sizing: border-box;
   field-sizing: content;
 }
+@media (min-width: 68.75em) {
+  .sp-work-label-input,
+  .sp-mat-name-input {
+    min-height: 28px;
+    height: 28px;
+    padding: 0.3rem 0.4rem;
+    line-height: 1.2;
+    field-sizing: fixed;
+  }
+  .sp-table tbody tr {
+    align-items: center;
+  }
+  .sp-col-label .sp-work,
+  .sp-col-sell {
+    gap: 0.12rem;
+  }
+  .sp-work-extra,
+  .sp-effective {
+    min-height: 1.05rem;
+    line-height: 1.05rem;
+  }
+  .sp-work-meta {
+    display: block;
+    width: 100%;
+    text-align: left;
+  }
+}
 .sp-work-label-input:focus {
   outline: none;
   border-color: var(--admin-primary);
@@ -349,6 +412,7 @@
   padding-right: 0.25rem;
 }
 .sp-th-sell,
+.sp-th-head,
 .sp-sell-phone-label {
   display: inline-flex;
   align-items: center;
@@ -357,6 +421,25 @@
   gap: 0.15rem;
   max-width: 100%;
   min-width: 0;
+}
+.sp-th-head__label {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+@media (min-width: 68.75em) {
+  .sp-table th .sp-th-head,
+  .sp-table th .sp-th-sell {
+    width: 100%;
+    min-width: 0;
+  }
+  .sp-table th.sp-col-catalog {
+    justify-content: center;
+    padding-bottom: 0.15rem;
+  }
+  .sp-table th.sp-col-consumers {
+    align-items: flex-end;
+    padding-bottom: 0.15rem;
+  }
 }
 .sp-sell-phone-label {
   display: none;
@@ -808,6 +891,13 @@
   padding-top: 0.15rem;
   border-top: 1px solid var(--admin-border);
 }
+@media (min-width: 68.75em) {
+  .sp-add {
+    margin-top: 0.75rem;
+    padding-left: 0.1rem;
+    padding-right: 0.1rem;
+  }
+}
 .sp-add > summary {
   display: flex;
   align-items: center;
@@ -960,28 +1050,28 @@
             <thead>
               <tr>
                 <th class="sp-col-label">
-                  <span class="sp-th-sell">
-                    Work item
+                  <span class="sp-th-head sp-th-sell">
+                    <span class="sp-th-head__label">Work item</span>
                     <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group. Custom items are reference-only." label="work item name" />
                   </span>
                 </th>
                 <th class="sp-col-rate">
-                  <span class="sp-th-sell">
-                    Cost
+                  <span class="sp-th-head sp-th-sell">
+                    <span class="sp-th-head__label">Cost</span>
                     <x-admin.info-tip text="The old Rate field: hours per piece, or sf/lf per hour. Sell is the client price. Filling Sell does not clear Cost." label="cost field" />
                   </span>
                 </th>
                 <th class="sp-col-sell">
-                  <span class="sp-th-sell">
-                    Sell rate
+                  <span class="sp-th-head sp-th-sell">
+                    <span class="sp-th-head__label">Sell rate</span>
                     <x-admin.info-tip :text="$spSellTipText" :label="$spSellTipLabel" />
                   </span>
                 </th>
-                <th class="sp-col-unit">Unit</th>
-                <th class="sp-col-price">Mat. price</th>
-                <th class="sp-col-name">Mat. name</th>
+                <th class="sp-col-unit"><span class="sp-th-head"><span class="sp-th-head__label">Unit</span></span></th>
+                <th class="sp-col-price"><span class="sp-th-head"><span class="sp-th-head__label">Mat. price</span></span></th>
+                <th class="sp-col-name"><span class="sp-th-head"><span class="sp-th-head__label">Mat. name</span></span></th>
                 <th class="sp-col-catalog" title="Catalog"><i class="fa fa-search" aria-hidden="true"></i></th>
-                <th class="sp-col-consumers">Used by</th>
+                <th class="sp-col-consumers"><span class="sp-th-head"><span class="sp-th-head__label">Used by</span></span></th>
               </tr>
             </thead>
             <tbody>
