@@ -1332,6 +1332,7 @@
         index: wallIdx,
         label: 'W' + wallIdx,
         length_lf: roundTo(wLenFt, 2),
+        length_lf_exact: wLenFt,
         opening_area_sqft: roundTo(dedRaw, 2),
         net_area_sqft: netArea
       });
@@ -1372,6 +1373,7 @@
         index: wallIdx,
         label: 'W' + wallIdx,
         length_lf: roundTo(wLenFt, 2),
+        length_lf_exact: wLenFt,
         opening_area_sqft: roundTo(dedRaw * 2.0, 2),
         net_area_sqft: netArea
       });

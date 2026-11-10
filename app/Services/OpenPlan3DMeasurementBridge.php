@@ -393,6 +393,7 @@ class OpenPlan3DMeasurementBridge
                 'index' => $wallIdx,
                 'label' => 'W'.$wallIdx,
                 'length_lf' => $this->roundTo($lengthFt, 2),
+                'length_lf_exact' => $lengthFt,
                 'opening_area_sqft' => $deductSqFt,
                 'net_area_sqft' => $netWallArea,
             ];
@@ -430,6 +431,7 @@ class OpenPlan3DMeasurementBridge
                 'index' => $wallIdx,
                 'label' => 'W'.$wallIdx,
                 'length_lf' => $this->roundTo($lengthFt, 2),
+                'length_lf_exact' => $lengthFt,
                 'opening_area_sqft' => $deductSqFt,
                 'net_area_sqft' => $netWallArea,
             ];

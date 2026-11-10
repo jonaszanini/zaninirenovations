@@ -329,14 +329,14 @@ class RoomAreaOpenPlan3DExtensions
                 }
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
-                $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
+                $studLen = $this->wallStudLengthLf($wall);
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $drywall += $netSqFt;
                 $paintUnassigned++;
                 if ($isBoundary) {
                     $insulation += $netSqFt;
                 } else {
-                    $studs += $lengthLf;
+                    $studs += $studLen;
                 }
             }
             $baseboard = (float) ($metrics['baseboard_lf'] ?? 0.0);
@@ -348,6 +348,7 @@ class RoomAreaOpenPlan3DExtensions
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
                 $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
+                $studLen = $this->wallStudLengthLf($wall);
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
 
@@ -370,7 +371,7 @@ class RoomAreaOpenPlan3DExtensions
                     $insulation += $netSqFt;
                 }
                 if ($this->flagEnabled($flags, 'studs', ! $isBoundary)) {
-                    $studs += $lengthLf;
+                    $studs += $studLen;
                 }
                 if ($this->flagEnabled($flags, 'baseboard', true)) {
                     $sides = $isBoundary ? 1 : (int) ($flags['baseboardSides'] ?? 2);
@@ -585,8 +586,17 @@ class RoomAreaOpenPlan3DExtensions
     }
 
     /**
-     * @param  array<string, mixed>  $flags
+     * @param  array<string, mixed>  $wall
      */
+    private function wallStudLengthLf(array $wall): float
+    {
+        if (array_key_exists('length_lf_exact', $wall)) {
+            return (float) $wall['length_lf_exact'];
+        }
+
+        return (float) ($wall['length_lf'] ?? 0.0);
+    }
+
     private function flagEnabled(array $flags, string $key, bool $default): bool
     {
         if (! array_key_exists($key, $flags)) {

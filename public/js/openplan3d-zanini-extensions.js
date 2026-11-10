@@ -574,14 +574,14 @@
         if (!wall) continue;
         var wallId = String(wall.id || '');
         var isBoundary = !!boundaryMap[wallId];
-        var lengthLf = Number(wall.length_lf || 0);
+        var studLen = wallStudLengthLf(wall);
         var netSqFt = Number(wall.net_area_sqft || 0);
         drywall += netSqFt;
         paintUnassigned += 1;
         if (isBoundary) {
           insulation += netSqFt;
         } else {
-          studs += lengthLf;
+          studs += studLen;
         }
       }
       baseboard = Number(metrics.baseboard_lf || 0);
@@ -592,6 +592,7 @@
         var id = String(w.id || '');
         var isB = !!boundaryMap[id];
         var len = Number(w.length_lf || 0);
+        var studLen = wallStudLengthLf(w);
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
         var finishNet = drywallFinishAreaSqFt(net, flags, isB);
@@ -608,7 +609,7 @@
           paintUnassigned += 1;
         }
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
-        if (flagEnabled(flags, 'studs', !isB)) studs += len;
+        if (flagEnabled(flags, 'studs', !isB)) studs += studLen;
         if (flagEnabled(flags, 'baseboard', true)) {
           var sides = resolveBaseboardSides(flags, isB);
           baseboard += len * sides;
@@ -632,6 +633,13 @@
       delete metrics.finish_paint_sqft;
     }
     return metrics;
+  }
+
+  function wallStudLengthLf(wall) {
+    if (wall && Object.prototype.hasOwnProperty.call(wall, 'length_lf_exact')) {
+      return Number(wall.length_lf_exact) || 0;
+    }
+    return Number(wall && wall.length_lf) || 0;
   }
 
   function flagEnabled(flags, key, defaultVal) {
