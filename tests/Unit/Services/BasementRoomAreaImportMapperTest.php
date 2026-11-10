@@ -23,6 +23,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(90.0, $proposed['perimeter_lf']);
         $this->assertSame(12.0, $proposed['partition_lf']);
         $this->assertSame(16.0, $proposed['bulkhead_lf']);
+        $this->assertSame(18.0, $proposed['header_lf']);
         $this->assertSame(2, $proposed['framing_door_openings']);
         $this->assertSame(2, $proposed['door_qty']);
         $this->assertSame(2, $proposed['drywall_door_openings']);
@@ -65,6 +66,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(200.0, $proposed['drywall_ceiling_sf']);
         $this->assertNull($proposed['partition_lf']);
         $this->assertNull($proposed['bulkhead_lf']);
+        $this->assertNull($proposed['header_lf']);
         $this->assertNull($proposed['baseboard_lf']);
         $this->assertNull($proposed['door_qty']);
         $this->assertNull($proposed['paint_trim_lf']);
@@ -423,6 +425,7 @@ class BasementRoomAreaImportMapperTest extends TestCase
             'bulkhead_framing_lf' => 16,
             'bulkhead_drywall_sqft' => 30,
             'partition_lf' => 12,
+            'finish_header_lf' => 18,
             'finish_drywall_sqft' => 720,
             'finish_paint_sqft' => 480,
             'finish_insulation_sqft' => 640,
