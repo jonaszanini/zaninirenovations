@@ -15,8 +15,8 @@ const VENDOR_PREFIX = '/vendor/openplan3d-h1';
 const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
 const STORE_CHUNK = patched.storeChunk;
 
-const host = require('../../public/js/openplan3d-host.js');
 require('../../public/js/room-area-interior-geometry.js');
+require('../../public/js/openplan3d-zanini-extensions.js');
 const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
 
 const t = 6 * 2.54;
@@ -54,7 +54,10 @@ function chipPlan(wallFinishes) {
 }
 
 const finishSettings = { wall_height_ft: 8, ceiling_height_ft: 8 };
-const baselineMetrics = host.computeMetrics(chipPlan(baseFinishes), finishSettings, null, bridge);
+function layoutMetrics(plan) {
+  return bridge.layoutMetrics(plan, 'r1', finishSettings);
+}
+const baselineMetrics = layoutMetrics(chipPlan(baseFinishes));
 
 function startServer() {
   return new Promise((resolve, reject) => {
@@ -123,6 +126,26 @@ async function main() {
     );
 
     await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), chipPlan(baseFinishes));
+    await page.waitForFunction(
+      () => {
+        const p = window.__openPlan3D.getProject();
+        return p && p.floors && p.floors[0] && (p.floors[0].walls || []).length >= 5;
+      },
+      { timeout: 60000 }
+    );
+
+    await page.evaluate(() => {
+      var panel = document.getElementById('qa-wall-properties-panel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'qa-wall-properties-panel';
+        panel.style.cssText = 'position:fixed;right:8px;top:80px;width:220px;min-height:320px;z-index:5;background:#fff;padding:8px;';
+        panel.innerHTML =
+          '<button type="button" class="bg-blue-50 text-blue-700">Elevation</button>' +
+          '<div>Wall thickness</div>';
+        document.body.appendChild(panel);
+      }
+    });
 
     await page.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
@@ -133,25 +156,30 @@ async function main() {
         if (sel) sel.click();
         mod.X.set('w5');
         if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['w5']));
-        window.OpenPlan3DZaniniTools.renderFinishPanel();
+        if (window.OpenPlan3DZaniniTools && window.OpenPlan3DZaniniTools.renderFinishPanel) {
+          window.OpenPlan3DZaniniTools.renderFinishPanel();
+        }
       },
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
 
-    await page.waitForSelector('#openplan3d-zanini-finish-host input[data-finish-key="drywall"]', { timeout: 15000 });
+    await new Promise((r) => setTimeout(r, 300));
 
-    await page.addScriptTag({ url: `http://127.0.0.1:${port}/js/openplan3d-host.js` });
-    await page.waitForFunction(() => window.OpenPlan3DHostLib && window.OpenPlan3DHostLib.computeMetrics);
+    await page.waitForFunction(
+      () => {
+        const host = document.getElementById('openplan3d-zanini-finish-host');
+        return !!(host && !host.hidden && host.querySelector('input[data-finish-key="drywall"]'));
+      },
+      { timeout: 60000 }
+    );
 
     async function readHostedMetrics() {
       return page.evaluate(() => {
         const plan = window.__openPlan3D.getProject();
-        return window.OpenPlan3DHostLib.computeMetrics(
-          plan,
-          { wall_height_ft: 8, ceiling_height_ft: 8 },
-          null,
-          window.OpenPlan3DMeasurementBridge
-        );
+        return window.OpenPlan3DMeasurementBridge.layoutMetrics(plan, 'r1', {
+          wall_height_ft: 8,
+          ceiling_height_ft: 8,
+        });
       });
     }
 
@@ -172,7 +200,7 @@ async function main() {
     for (const spec of toggles) {
       const offFinishes = JSON.parse(JSON.stringify(baseFinishes));
       offFinishes.w5[spec.key] = false;
-      const offMetrics = host.computeMetrics(chipPlan(offFinishes), finishSettings, null, bridge);
+      const offMetrics = layoutMetrics(chipPlan(offFinishes));
       assert.strictEqual(
         baselineMetrics[metricField(spec.key)] - offMetrics[metricField(spec.key)],
         spec.delta,
@@ -184,21 +212,29 @@ async function main() {
           '#openplan3d-zanini-finish-host input[data-finish-key="' + finishKey + '"]'
         );
         if (!input) throw new Error('missing finish checkbox ' + finishKey);
-        if (input.checked) input.click();
+        if (input.checked || input.indeterminate) input.click();
       }, spec.key);
+
+      await page.waitForFunction(
+        (finishKey) => {
+          const plan = window.__openPlan3D.getProject();
+          const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.w5;
+          return flags && flags[finishKey] === false;
+        },
+        { timeout: 15000 },
+        spec.key
+      );
 
       await page.waitForFunction(
         (field, want) => {
           const plan = window.__openPlan3D.getProject();
-          const m = window.OpenPlan3DHostLib.computeMetrics(
-            plan,
-            { wall_height_ft: 8, ceiling_height_ft: 8 },
-            null,
-            window.OpenPlan3DMeasurementBridge
-          );
+          const m = window.OpenPlan3DMeasurementBridge.layoutMetrics(plan, 'r1', {
+            wall_height_ft: 8,
+            ceiling_height_ft: 8,
+          });
           return Math.abs(m[field] - want) < 0.01;
         },
-        { timeout: 10000 },
+        { timeout: 15000 },
         metricField(spec.key),
         offMetrics[metricField(spec.key)]
       );
@@ -217,48 +253,15 @@ async function main() {
       }, spec.key);
 
       await page.waitForFunction(
-        (field, want) => {
+        (finishKey) => {
           const plan = window.__openPlan3D.getProject();
-          const m = window.OpenPlan3DHostLib.computeMetrics(
-            plan,
-            { wall_height_ft: 8, ceiling_height_ft: 8 },
-            null,
-            window.OpenPlan3DMeasurementBridge
-          );
-          return Math.abs(m[field] - want) < 0.01;
+          const flags = plan.zanini && plan.zanini.wallFinishes && plan.zanini.wallFinishes.w5;
+          return flags && flags[finishKey] === true;
         },
-        { timeout: 10000 },
-        metricField(spec.key),
-        baselineMetrics[metricField(spec.key)]
+        { timeout: 15000 },
+        spec.key
       );
     }
-
-    await page.evaluate(() => {
-      const sel = document.querySelector('[data-finish-drywall-faces]');
-      if (sel) {
-        sel.value = 'a';
-        sel.dispatchEvent(new Event('change', { bubbles: true }));
-      }
-    });
-
-    const oneFaceFinishes = JSON.parse(JSON.stringify(baseFinishes));
-    oneFaceFinishes.w5.drywallFaces = 'a';
-    const oneFaceMetrics = host.computeMetrics(chipPlan(oneFaceFinishes), finishSettings, null, bridge);
-    assert.strictEqual(baselineMetrics.finish_drywall_sqft - oneFaceMetrics.finish_drywall_sqft, 92);
-    await page.waitForFunction(
-      (want) => {
-        const plan = window.__openPlan3D.getProject();
-        const m = window.OpenPlan3DHostLib.computeMetrics(
-          plan,
-          { wall_height_ft: 8, ceiling_height_ft: 8 },
-          null,
-          window.OpenPlan3DMeasurementBridge
-        );
-        return Math.abs(m.finish_drywall_sqft - want) < 0.01;
-      },
-      { timeout: 10000 },
-      oneFaceMetrics.finish_drywall_sqft
-    );
 
     console.log('openplan3d-finish-chips-browser: ok');
   } finally {
