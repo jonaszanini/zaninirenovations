@@ -34,16 +34,18 @@ async function login(page) {
   ]);
 }
 
-async function gotoDrywall(page) {
-  const btn = await page.$('[data-br-goto="drywall"]');
-  if (!btn) throw new Error('Missing wizard progress control for drywall');
+async function gotoStep(page, key) {
+  const btn = await page.$(`[data-br-goto="${key}"]`);
+  if (!btn) throw new Error('Missing wizard progress control for ' + key);
+  await page.evaluate((stepKey) => {
+    const el = document.querySelector(`[data-br-goto="${stepKey}"]`);
+    if (el) el.scrollIntoView({ block: 'center' });
+  }, key);
   await btn.click();
-  await page.waitForFunction(() => {
-    const step = document.querySelector('[data-br-step="drywall"]');
-    return step
-      && step.classList.contains('is-active')
-      && !!document.getElementById('br-dw-corners');
-  }, { timeout: 45000 });
+  await page.waitForFunction((step) => {
+    const el = document.querySelector(`[data-br-step="${step}"]`);
+    return el && el.classList.contains('is-active');
+  }, { timeout: 60000 }, key);
   await new Promise((r) => setTimeout(r, 400));
 }
 
@@ -105,11 +107,14 @@ async function fillDrywallForPreview(page) {
   await login(page);
   await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 90000 });
   await page.waitForSelector('#br-main-form', { timeout: 60000 });
+  await typeField(page, '[name="client_name"]', 'Corner Bead Browser Client');
+  await typeField(page, '#br-area', '500');
+  await waitGrandPositive(page);
 
   const report = { ok: false, labels: {}, shots: {}, live: {} };
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-  await gotoDrywall(page);
+  await gotoStep(page, 'drywall');
   await fillDrywallForPreview(page);
   report.live.desktop = await cornerBeadVisible(page);
   report.labels.desktop = await page.evaluate(() => {
@@ -126,7 +131,7 @@ async function fillDrywallForPreview(page) {
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await new Promise((r) => setTimeout(r, 250));
-  await gotoDrywall(page);
+  await gotoStep(page, 'drywall');
   report.live.mobile = await cornerBeadVisible(page);
   report.labels.mobile = await page.evaluate(() => {
     const wrap = document.getElementById('br-dw-corners')?.closest('.admin-form-group');

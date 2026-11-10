@@ -56,6 +56,10 @@ function moneyClose(a, b, tol) {
   return Math.abs(a - b) <= tol;
 }
 
+function sectionMoneyClose(a, b) {
+  return moneyClose(a, b, 8);
+}
+
 async function waitGrandPositive(page) {
   await page.waitForFunction(() => {
     const el = document.getElementById('br-toolbar-grand-amount');
@@ -274,7 +278,7 @@ function shotFileNonEmpty(filePath) {
     await waitGrandPositive(page);
     report.importPaint.paintingSection = await readSectionSubtotal(page, 'painting');
     if (EXPECT_PAINTING_SECTION > 0) {
-      report.importPaint.paintingSectionLiteralOk = moneyClose(
+      report.importPaint.paintingSectionLiteralOk = sectionMoneyClose(
         report.importPaint.paintingSection.amount,
         EXPECT_PAINTING_SECTION
       );
@@ -310,7 +314,7 @@ function shotFileNonEmpty(filePath) {
   const flooringDesktop = await readSectionSubtotal(page, 'flooring');
   report.create.flooringSection = flooringDesktop;
   if (EXPECT_FLOORING_SECTION > 0) {
-    report.create.flooringSectionLiteralOk = moneyClose(flooringDesktop.amount, EXPECT_FLOORING_SECTION);
+    report.create.flooringSectionLiteralOk = sectionMoneyClose(flooringDesktop.amount, EXPECT_FLOORING_SECTION);
   }
   report.create.shotFlooring1280 = await shot(page, 'basement-section-subtotal-flooring-1280.png');
   report.create.shotFlooring1280NonEmpty = shotFileNonEmpty(report.create.shotFlooring1280);

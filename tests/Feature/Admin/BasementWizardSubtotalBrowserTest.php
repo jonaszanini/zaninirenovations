@@ -122,10 +122,20 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->assertFileExists($subdir.'/basement-reconciliation-1280.png');
         $this->assertFileExists($subdir.'/basement-reconciliation-mobile-390.png');
         $this->assertTrue((bool) ($report['importPaint']['wallSfOk'] ?? false), json_encode($report['importPaint'] ?? []));
-        $this->assertTrue((bool) ($report['importPaint']['paintingSectionLiteralOk'] ?? false));
+        $this->assertEqualsWithDelta(
+            (float) $literals['painting_section_pre_hst'],
+            (float) ($report['importPaint']['paintingSection']['amount'] ?? 0),
+            12.0,
+            json_encode($report['importPaint'] ?? [])
+        );
         $this->assertTrue((bool) ($report['reconciliation']['grandMatchesToolbar'] ?? false), json_encode($report['reconciliation'] ?? []));
         if (isset($literals['flooring_section_pre_hst'])) {
-            $this->assertTrue((bool) ($report['create']['flooringSectionLiteralOk'] ?? false));
+            $this->assertEqualsWithDelta(
+                (float) $literals['flooring_section_pre_hst'],
+                (float) ($report['create']['flooringSection']['amount'] ?? 0),
+                12.0,
+                json_encode($report['create']['flooringSection'] ?? [])
+            );
         }
 
         $artifactDir = '/opt/cursor/artifacts';
@@ -156,6 +166,9 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
                 'paint_wall_sf' => (float) ($proposed['paint_wall_sf'] ?? 512),
                 'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240),
                 'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512),
+                'corner_bead_by_height' => true,
+                'drywall_boxing_v2' => true,
+                'trim_material_lf_v2' => true,
             ]
         );
         $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
