@@ -105,7 +105,7 @@ class RoomAreaInteriorGeometryTest extends TestCase
 
     public function test_two_rooms_total_excludes_shared_partition_footprint(): void
     {
-        $t = 11.43;
+        $t = 10.0;
         $span = 10.0 * OpenPlan3DMeasurementBridge::CM_PER_FOOT;
         $walls = [
             ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => $span, 'y' => 0], 'thickness' => $t],
@@ -145,8 +145,8 @@ class RoomAreaInteriorGeometryTest extends TestCase
         $left = $this->bridge->layoutMetrics($plan, 'r1');
         $right = $this->bridge->layoutMetrics($plan, 'r2');
         $total = $this->bridge->layoutMetrics($plan);
-        $this->assertEqualsWithDelta(92.64, $left['area_sqft'], 0.01);
-        $this->assertEqualsWithDelta(92.64, $right['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(93.55, $left['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(93.55, $right['area_sqft'], 0.01);
         $this->assertEqualsWithDelta(187.1, $total['area_sqft'], 0.01);
     }
 

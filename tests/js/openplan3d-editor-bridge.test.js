@@ -478,13 +478,13 @@ const twoRoomPlan = {
       { id: 'r2', name: 'Bath', polygon: [{ x: 304.8, y: 0 }, { x: 609.6, y: 0 }, { x: 609.6, y: 304.8 }, { x: 304.8, y: 304.8 }] },
     ],
     walls: [
-      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 } },
-      { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 } },
-      { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 } },
-      { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 } },
-      { id: 'w5', start: { x: 304.8, y: 0 }, end: { x: 609.6, y: 0 } },
-      { id: 'w6', start: { x: 609.6, y: 0 }, end: { x: 609.6, y: 304.8 } },
-      { id: 'w7', start: { x: 609.6, y: 304.8 }, end: { x: 304.8, y: 304.8 } },
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 }, thickness: 10 },
+      { id: 'w2', start: { x: 304.8, y: 0 }, end: { x: 304.8, y: 304.8 }, thickness: 10 },
+      { id: 'w3', start: { x: 304.8, y: 304.8 }, end: { x: 0, y: 304.8 }, thickness: 10 },
+      { id: 'w4', start: { x: 0, y: 304.8 }, end: { x: 0, y: 0 }, thickness: 10 },
+      { id: 'w5', start: { x: 304.8, y: 0 }, end: { x: 609.6, y: 0 }, thickness: 10 },
+      { id: 'w6', start: { x: 609.6, y: 0 }, end: { x: 609.6, y: 304.8 }, thickness: 10 },
+      { id: 'w7', start: { x: 609.6, y: 304.8 }, end: { x: 304.8, y: 304.8 }, thickness: 10 },
     ],
   },
 };
@@ -497,7 +497,7 @@ assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, null), null, 'whole
 const metricsAll = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, null, measurement);
 const metricsFirst = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, 'r1', measurement);
 assert.strictEqual(metricsAll.area_sqft, 187.1, 'whole-plan interior area sums rooms without double-counting partition (10 cm walls)');
-assert.strictEqual(metricsFirst.area_sqft, 92.64, 'selected openPlan3D room interior area');
+assert.strictEqual(metricsFirst.area_sqft, 93.55, 'selected openPlan3D room interior area (10 cm walls)');
 assert.ok(Math.abs(metricsAll.area_sqft - metricsFirst.area_sqft * 2) < 0.01);
 
 // Verify hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first

@@ -67,7 +67,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_stores_room_with_openplan3d_plan(): void
     {
-        $plan = $this->sampleOpenPlan(10.0, 15.0); // 140.77 sqft interior (was 150 centerline)
+        $plan = $this->sampleOpenPlan(10.0, 15.0); // 141.91 sqft interior (was 150 centerline)
 
         $response = $this->actingAs($this->user)->postJson(
             route('admin.utilities.room-area.rooms.store', $this->project),
@@ -82,12 +82,12 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertJsonPath('ok', true);
         $response->assertJsonPath('room.name', 'OpenPlan Room');
         $response->assertJsonPath('room.is_openplan3d', true);
-        $this->assertEquals(140.77, $response->json('room.area_sqft'));
+        $this->assertEquals(141.91, $response->json('room.area_sqft'));
 
         $this->assertDatabaseHas('room_area_rooms', [
             'name' => 'OpenPlan Room',
             'room_area_project_id' => $this->project->id,
-            'area_sqft' => 140.77,
+            'area_sqft' => 141.91,
         ]);
     }
 
@@ -122,7 +122,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
             'vertices' => $legacyCanvas,
         ]);
 
-        $newPlan = $this->sampleOpenPlan(12.0, 12.0); // 135.14 sqft interior (was 144 centerline)
+        $newPlan = $this->sampleOpenPlan(12.0, 12.0); // 136.23 sqft interior (was 144 centerline)
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -137,13 +137,13 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertJsonPath('ok', true);
         $response->assertJsonPath('room.name', 'Updated to OpenPlan');
         $response->assertJsonPath('room.is_openplan3d', true);
-        $this->assertEquals(135.14, $response->json('room.area_sqft'));
+        $this->assertEquals(136.23, $response->json('room.area_sqft'));
 
         $room->refresh();
         $this->assertNotNull($room->legacy_canvas_data);
         $this->assertEquals($legacyCanvas, $room->legacy_canvas_data);
         $this->assertTrue($this->bridge->isPlan($room->vertices));
-        $this->assertEquals(135.14, $room->area_sqft);
+        $this->assertEquals(136.23, $room->area_sqft);
     }
 
     public function test_rejects_empty_plan_with_422(): void
@@ -237,7 +237,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_rejects_zero_area_overwrite_of_positive_room_without_confirm(): void
     {
-        $room = $this->storeSampleRoom(140.77);
+        $room = $this->storeSampleRoom(141.91);
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -253,13 +253,13 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertJsonPath('code', 'zero_area_overwrite');
 
         $room->refresh();
-        $this->assertEquals(140.77, (float) $room->area_sqft);
+        $this->assertEquals(141.91, (float) $room->area_sqft);
         $this->assertTrue($this->bridge->isPlan($room->vertices));
     }
 
     public function test_allows_zero_area_overwrite_when_confirm_flag_is_sent(): void
     {
-        $room = $this->storeSampleRoom(140.77);
+        $room = $this->storeSampleRoom(141.91);
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -279,7 +279,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
     public function test_confirm_zero_area_still_rejects_plan_with_no_room_or_wall(): void
     {
-        $room = $this->storeSampleRoom(140.77);
+        $room = $this->storeSampleRoom(141.91);
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -303,13 +303,13 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertStringContainsString('at least one closed room or wall', $response->getContent());
 
         $room->refresh();
-        $this->assertEquals(140.77, (float) $room->area_sqft);
+        $this->assertEquals(141.91, (float) $room->area_sqft);
         $this->assertTrue($this->bridge->isPlan($room->vertices));
     }
 
     public function test_empty_room_object_without_polygon_is_rejected_even_with_confirm(): void
     {
-        $room = $this->storeSampleRoom(140.77);
+        $room = $this->storeSampleRoom(141.91);
 
         $response = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $room),
@@ -333,7 +333,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertStringContainsString('at least one closed room or wall', $response->getContent());
 
         $room->refresh();
-        $this->assertEquals(140.77, (float) $room->area_sqft);
+        $this->assertEquals(141.91, (float) $room->area_sqft);
         $this->assertTrue($this->bridge->isPlan($room->vertices));
     }
 
@@ -494,7 +494,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertDatabaseMissing('room_area_rooms', ['name' => 'Non Plan Room']);
 
         // Update
-        $existingRoom = $this->storeSampleRoom(140.77);
+        $existingRoom = $this->storeSampleRoom(141.91);
         $updateResponse = $this->actingAs($this->user)->putJson(
             route('admin.utilities.room-area.rooms.update', $existingRoom),
             [

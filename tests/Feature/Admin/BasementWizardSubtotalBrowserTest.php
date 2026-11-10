@@ -19,10 +19,10 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
 
     /**
      * Hand-computed from Browser paint fill import (area 240) + CI seeded rates.
-     * Wall 512 sf × 2 coats, ceiling 240 sf, trim 64 lf, paint cans per calculator.
+     * Wall 501.52 sf × 2 coats, ceiling 229.61 sf (20×12 ft, 10 cm walls interior), trim ~62.7 lf.
      */
-    // Was 3787.75 at 1346 sf centerline; interior hand0 1305.98 sf → 3758.85 pre-HST painting section.
-    private const LITERAL_PAINTING_AFTER_IMPORT_PRE_HST = 3758.85;
+    // Was 3758.85 at 512 wall / 240 ceiling centerline fill; interior measured fill → 3665.88 pre-HST painting.
+    private const LITERAL_PAINTING_AFTER_IMPORT_PRE_HST = 3665.88;
 
     /**
      * Hand-computed: post-import fields + area 800, flooring_sf 800, LVP waste 7%, partition 25 lf.
@@ -164,7 +164,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             $shared,
             [
                 'client_name' => 'Subtotal Browser Client',
-                'area_sqft' => 240.0,
+                'area_sqft' => 229.61,
                 'ceiling_height_ft' => 8.0,
             ]
         ), $settings);
@@ -202,10 +202,10 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(self::LITERAL_FLOORING_AT_800_PRE_HST, $hand['flooring_section_pre_hst'], 0.01);
 
         return [
-            'wall_sf' => 512.0,
-            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
-            'ceiling_sf' => 240.0,
-            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
+            'wall_sf' => 501.52,
+            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 501.52),
+            'ceiling_sf' => 229.61,
+            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 229.61),
             'painting_section_pre_hst' => self::LITERAL_PAINTING_AFTER_IMPORT_PRE_HST,
             'flooring_section_pre_hst' => self::LITERAL_FLOORING_AT_800_PRE_HST,
         ];
@@ -225,7 +225,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'room_area_project_id' => $project->id,
             'name' => 'Browser paint fill room',
             'scale_pixels_per_foot' => 12,
-            'area_sqft' => 240,
+            'area_sqft' => 229.61,
             'wall_height_ft' => 8,
             'vertices' => [
                 'format' => 'openplan3d',
@@ -258,8 +258,8 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             ->assertOk()
             ->json())->firstWhere('id', 'room:'.$room->id);
         $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8, 'drywall');
-        $this->assertEqualsWithDelta(512.0, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.5);
-        $this->assertEqualsWithDelta(512.0, (float) ($proposed['paint_wall_sf'] ?? 0), 0.5);
+        $this->assertEqualsWithDelta(501.52, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta(501.52, (float) ($proposed['paint_wall_sf'] ?? 0), 0.01);
 
         return ['query' => 'Browser paint fill room', 'proposed' => $proposed];
     }
