@@ -290,7 +290,7 @@ function shotFileNonEmpty(filePath) {
 
   await typeField(page, '#br-area', '800');
   await waitGrandPositive(page);
-  await new Promise((r) => setTimeout(r, 500));
+  await new Promise((r) => setTimeout(r, 1200));
 
   await gotoStep(page, 'flooring');
   const flooringBefore = await readSectionSubtotal(page, 'flooring');

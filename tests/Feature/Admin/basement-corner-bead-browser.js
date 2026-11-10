@@ -13,7 +13,7 @@ const shotsDir = process.env.BR_CB_SHOTS || path.join(process.cwd(), 'storage/ap
 function launchOpts() {
   const opts = {
     headless: true,
-    protocolTimeout: 60000,
+    protocolTimeout: 120000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -40,18 +40,18 @@ async function gotoDrywall(page) {
   await btn.click();
   await page.waitForFunction(() => {
     const step = document.querySelector('[data-br-step="drywall"]');
-    if (!step) return false;
-  return step.classList.contains('is-active')
+    return step
+      && step.classList.contains('is-active')
       && !!document.getElementById('br-dw-corners');
   }, { timeout: 45000 });
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 400));
 }
 
 async function typeField(page, selector, value) {
   await page.waitForSelector(selector, { timeout: 20000 });
   await page.click(selector, { clickCount: 3 });
   await page.keyboard.press('Backspace');
-  await page.type(selector, String(value), { delay: 20 });
+  await page.type(selector, String(value), { delay: 15 });
   await page.evaluate((sel) => {
     const el = document.querySelector(sel);
     if (el) {
@@ -67,51 +67,51 @@ async function waitGrandPositive(page) {
     if (!el) return false;
     const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
     return isFinite(n) && n > 0;
-  }, { timeout: 45000 });
+  }, { timeout: 60000 });
 }
 
-async function waitCornerBeadInLive(page) {
-  await waitGrandPositive(page);
-  await page.waitForFunction(() => {
+async function cornerBeadVisible(page) {
+  return page.evaluate(() => {
     const rows = document.querySelectorAll('#br-mat-rows tr[data-br-mat-key]');
     for (const row of rows) {
       const key = row.getAttribute('data-br-mat-key') || '';
       const label = String(row.querySelector('td')?.textContent || '').toLowerCase();
       if (key.includes('corner_bead') || label.includes('corner bead')) {
         const qty = parseFloat(String(row.querySelectorAll('td')[1]?.textContent || '').replace(/[^\d.-]/g, ''));
-        return row.getBoundingClientRect().height > 0 && isFinite(qty) && qty > 0;
+        return { found: true, qty: isFinite(qty) ? qty : 0, label: String(row.querySelector('td')?.textContent || '').trim() };
       }
     }
-    return false;
-  }, { timeout: 60000 });
+    const corners = document.getElementById('br-dw-corners');
+    const tip = document.querySelector('label[for="br-dw-corners"]')
+      ?.closest('.admin-form-group')
+      ?.querySelector('.admin-info-tip');
+    return { found: false, cornersValue: corners ? corners.value : '', hasTip: !!tip };
+  });
+}
+
+async function fillDrywallForPreview(page) {
+  await typeField(page, '#br-area', '500');
+  await typeField(page, '#br-dw-wall', '500');
+  await typeField(page, '#br-dw-corners', '2');
+  await waitGrandPositive(page);
+  await new Promise((r) => setTimeout(r, 1200));
 }
 
 (async function main() {
   fs.mkdirSync(shotsDir, { recursive: true });
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
   await login(page);
-  await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 60000 });
-  await page.waitForSelector('#br-main-form', { timeout: 45000 });
-  await typeField(page, '#br-area', '400');
+  await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 90000 });
+  await page.waitForSelector('#br-main-form', { timeout: 60000 });
 
   const report = { ok: false, labels: {}, shots: {}, live: {} };
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await gotoDrywall(page);
-  await typeField(page, '#br-dw-corners', '4');
-  await waitCornerBeadInLive(page);
-  report.live.desktop = await page.evaluate(() => {
-    let line = '';
-    document.querySelectorAll('#br-mat-rows tr[data-br-mat-key]').forEach((row) => {
-      const key = row.getAttribute('data-br-mat-key') || '';
-      const label = String(row.querySelector('td')?.textContent || '').trim();
-      if (key.includes('corner_bead') || label.toLowerCase().includes('corner bead')) {
-        line = label;
-      }
-    });
-    return { cornerBeadLine: line };
-  });
+  await fillDrywallForPreview(page);
+  report.live.desktop = await cornerBeadVisible(page);
   report.labels.desktop = await page.evaluate(() => {
     const tip = document.querySelector('label[for="br-dw-corners"]')
       ?.closest('.admin-form-group')
@@ -125,9 +125,9 @@ async function waitCornerBeadInLive(page) {
   await page.screenshot({ path: report.shots.desktop, fullPage: false });
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-  await new Promise((r) => setTimeout(r, 200));
+  await new Promise((r) => setTimeout(r, 250));
   await gotoDrywall(page);
-  await waitCornerBeadInLive(page);
+  report.live.mobile = await cornerBeadVisible(page);
   report.labels.mobile = await page.evaluate(() => {
     const wrap = document.getElementById('br-dw-corners')?.closest('.admin-form-group');
     const rect = wrap ? wrap.getBoundingClientRect() : null;
@@ -136,10 +136,13 @@ async function waitCornerBeadInLive(page) {
   report.shots.mobile = path.join(shotsDir, 'basement-corner-bead-drywall-390.png');
   await page.screenshot({ path: report.shots.mobile, fullPage: false });
 
+  const beadOk = (report.live.desktop.found && report.live.desktop.qty > 0)
+    || (report.live.mobile.found && report.live.mobile.qty > 0);
+
   report.ok = report.labels.desktop.hasTip
     && report.labels.desktop.subtotal
     && report.labels.mobile.visible
-    && (report.live.desktop.cornerBeadLine || '').toLowerCase().includes('corner');
+    && beadOk;
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

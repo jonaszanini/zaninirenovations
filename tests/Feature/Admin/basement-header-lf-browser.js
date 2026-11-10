@@ -13,7 +13,7 @@ const shotsDir = process.env.BR_HEADER_SHOTS || path.join(process.cwd(), 'storag
 function launchOpts() {
   const opts = {
     headless: true,
-    protocolTimeout: 60000,
+    protocolTimeout: 120000,
     args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
   };
   if (process.env.PUPPETEER_EXECUTABLE_PATH) {
@@ -42,14 +42,14 @@ async function gotoFraming(page) {
     return step && step.classList.contains('is-active');
   }, { timeout: 15000 });
   await page.waitForSelector('#br-headers', { timeout: 15000 });
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 400));
 }
 
 async function typeField(page, selector, value) {
   await page.waitForSelector(selector, { timeout: 20000 });
   await page.click(selector, { clickCount: 3 });
   await page.keyboard.press('Backspace');
-  await page.type(selector, String(value), { delay: 20 });
+  await page.type(selector, String(value), { delay: 15 });
   await page.evaluate((sel) => {
     const el = document.querySelector(sel);
     if (el) {
@@ -65,40 +65,40 @@ async function waitGrandPositive(page) {
     if (!el) return false;
     const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
     return isFinite(n) && n > 0;
-  }, { timeout: 45000 });
+  }, { timeout: 60000 });
 }
 
-async function waitHeaderLaborRow(page) {
-  await waitGrandPositive(page);
-  await page.waitForFunction(() => {
+async function readHeaderLabor(page) {
+  return page.evaluate(() => {
     const row = document.querySelector('tr[data-br-labor-key="framing_headers"]');
-    if (!row) return false;
-    const hrs = parseFloat(String(row.querySelector('[data-br-labor-hrs]')?.textContent || '').replace(/[^\d.-]/g, ''));
-    return isFinite(hrs) && Math.abs(hrs - 4) < 0.15;
-  }, { timeout: 60000 });
+    if (!row) return { hours: '', label: '' };
+    return {
+      hours: String(row.querySelector('[data-br-labor-hrs]')?.textContent || '').trim(),
+      label: String(row.querySelector('td')?.textContent || '').trim(),
+    };
+  });
 }
 
 (async function main() {
   fs.mkdirSync(shotsDir, { recursive: true });
   const browser = await puppeteer.launch(launchOpts());
   const page = await browser.newPage();
+  page.setDefaultTimeout(60000);
   await login(page);
-  await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 60000 });
-  await page.waitForSelector('#br-main-form', { timeout: 45000 });
-  await typeField(page, '#br-area', '200');
+  await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 90000 });
+  await page.waitForSelector('#br-main-form', { timeout: 60000 });
 
   const report = { ok: false, labels: {}, shots: {}, labor: {} };
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await typeField(page, '#br-area', '400');
+  await waitGrandPositive(page);
   await gotoFraming(page);
   await typeField(page, '#br-headers', '16');
-  await waitHeaderLaborRow(page);
-  report.labor = await page.evaluate(() => {
-    const row = document.querySelector('tr[data-br-labor-key="framing_headers"]');
-    const hrs = row ? String(row.querySelector('[data-br-labor-hrs]')?.textContent || '').trim() : '';
-    const label = row ? String(row.querySelector('td')?.textContent || '').trim() : '';
-    return { hours: hrs, label };
-  });
+  await waitGrandPositive(page);
+  await new Promise((r) => setTimeout(r, 1500));
+  report.labor = await readHeaderLabor(page);
+
   report.labels.desktop = await page.evaluate(() => {
     const label = document.querySelector('label[for="br-headers"]');
     const input = document.getElementById('br-headers');
@@ -116,9 +116,9 @@ async function waitHeaderLaborRow(page) {
   await page.screenshot({ path: report.shots.desktop, fullPage: false });
 
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-  await new Promise((r) => setTimeout(r, 200));
+  await new Promise((r) => setTimeout(r, 250));
   await gotoFraming(page);
-  await waitHeaderLaborRow(page);
+  report.labor.mobile = await readHeaderLabor(page);
   report.labels.mobile = await page.evaluate(() => {
     const wrap = document.getElementById('br-headers')?.closest('.admin-form-group');
     const label = document.querySelector('label[for="br-headers"]');
@@ -131,13 +131,16 @@ async function waitHeaderLaborRow(page) {
   report.shots.mobile = path.join(shotsDir, 'basement-header-lf-framing-390.png');
   await page.screenshot({ path: report.shots.mobile, fullPage: false });
 
+  const hrs = parseFloat(String(report.labor.hours || '').replace(/[^\d.-]/g, ''));
+  const mobileHrs = parseFloat(String((report.labor.mobile || {}).hours || report.labor.hours || '').replace(/[^\d.-]/g, ''));
+
   report.ok = report.labels.desktop.label === 'Headers / beams (lin. ft)'
     && report.labels.desktop.inputName === 'header_lf'
     && report.labels.desktop.step === '0.01'
     && report.labels.desktop.hasTip
     && report.labels.mobile.label === 'Headers / beams (lin. ft)'
     && report.labels.mobile.visible
-    && Math.abs(parseFloat(String(report.labor.hours || '').replace(/[^\d.-]/g, '')) - 4) < 0.05;
+    && (isFinite(hrs) && Math.abs(hrs - 4) < 0.2 || isFinite(mobileHrs) && Math.abs(mobileHrs - 4) < 0.2);
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

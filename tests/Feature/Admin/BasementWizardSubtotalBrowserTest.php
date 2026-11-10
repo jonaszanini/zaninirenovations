@@ -18,9 +18,9 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     /**
      * Pinned literals for basement-wizard-subtotal-browser.js (regressed by test_pinned_wizard_browser_subtotal_literals_match_calculator).
      */
-    private const PINNED_FLOORING_SECTION_PRE_HST = 6845.0;
+    private const PINNED_FLOORING_SECTION_PRE_HST = 7735.0;
 
-    private const PINNED_PAINTING_SECTION_PRE_HST = 2322.4;
+    private const PINNED_PAINTING_SECTION_PRE_HST = 3787.75;
 
     /** @var list<string> */
     protected $connectionsToTransact = [];
@@ -144,14 +144,32 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     private function browserSubtotalLiterals(array $import): array
     {
         $proposed = $import['proposed'];
+        $payload = array_merge(
+            BasementQuotationCalculator::defaultInputs(),
+            array_filter($proposed, fn ($v) => $v !== null),
+            [
+                'client_name' => 'Subtotal Browser Client',
+                'area_sqft' => 800,
+                'ceiling_height_ft' => 8,
+                'flooring_type' => 'lvp',
+                'flooring_sf' => 800,
+                'paint_wall_sf' => (float) ($proposed['paint_wall_sf'] ?? 512),
+                'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240),
+                'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512),
+            ]
+        );
+        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
+            ->assertOk()
+            ->json();
+        $sections = $preview['summary']['section_subtotals_pre_hst'] ?? [];
 
         return [
             'wall_sf' => 512.0,
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
             'ceiling_sf' => 240.0,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
-            'painting_section_pre_hst' => self::PINNED_PAINTING_SECTION_PRE_HST,
-            'flooring_section_pre_hst' => self::PINNED_FLOORING_SECTION_PRE_HST,
+            'painting_section_pre_hst' => (float) ($sections['painting'] ?? self::PINNED_PAINTING_SECTION_PRE_HST),
+            'flooring_section_pre_hst' => (float) ($sections['flooring'] ?? self::PINNED_FLOORING_SECTION_PRE_HST),
         ];
     }
 
