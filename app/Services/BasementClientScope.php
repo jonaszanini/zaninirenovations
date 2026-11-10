@@ -192,7 +192,12 @@ class BasementClientScope
             return false;
         }
 
-        return self::normalizeAllowanceText(self::syncAllowanceAmounts($stored, $generated)) !== $stored;
+        $synced = self::normalizeAllowanceText(self::syncAllowanceAmounts($stored, $generated));
+        if ($synced !== $stored) {
+            return true;
+        }
+
+        return self::generatedAllowancePrefixesMissingFromStored($stored, $generated);
     }
 
     public static function syncAllowanceAmounts(string $stored, string $generated): string
@@ -208,7 +213,7 @@ class BasementClientScope
         $freshByPrefix = [];
         foreach (explode("\n", $generated) as $line) {
             $line = trim($line);
-            if ($line === '') {
+            if ($line === '' || self::isPlaceholderAllowanceLine($line)) {
                 continue;
             }
             $prefix = self::allowanceLinePrefix($line);
@@ -217,20 +222,39 @@ class BasementClientScope
             }
         }
 
+        $storedHadPlaceholder = false;
         $out = [];
+        $presentPrefixes = [];
         foreach (explode("\n", $stored) as $line) {
             $line = trim($line);
             if ($line === '') {
+                continue;
+            }
+            if (self::isPlaceholderAllowanceLine($line)) {
+                $storedHadPlaceholder = true;
+                if ($freshByPrefix === []) {
+                    $out[] = $line;
+                }
                 continue;
             }
             $prefix = self::allowanceLinePrefix($line);
             if ($prefix !== '') {
                 if (isset($freshByPrefix[$prefix])) {
                     $out[] = $freshByPrefix[$prefix];
+                    $presentPrefixes[$prefix] = true;
                 }
                 continue;
             }
             $out[] = $line;
+        }
+
+        if ($storedHadPlaceholder && $freshByPrefix !== []) {
+            foreach ($freshByPrefix as $prefix => $freshLine) {
+                if (! isset($presentPrefixes[$prefix])) {
+                    $out[] = $freshLine;
+                    $presentPrefixes[$prefix] = true;
+                }
+            }
         }
 
         if ($out === []) {
@@ -238,6 +262,35 @@ class BasementClientScope
         }
 
         return implode("\n", $out);
+    }
+
+    public static function isPlaceholderAllowanceLine(string $line): bool
+    {
+        return trim($line) === 'No separate cash allowances beyond the priced lines on this quotation.';
+    }
+
+    private static function generatedAllowancePrefixesMissingFromStored(string $stored, string $generated): bool
+    {
+        $storedPrefixes = [];
+        foreach (explode("\n", $stored) as $line) {
+            $prefix = self::allowanceLinePrefix(trim($line));
+            if ($prefix !== '') {
+                $storedPrefixes[$prefix] = true;
+            }
+        }
+
+        foreach (explode("\n", $generated) as $line) {
+            $line = trim($line);
+            if ($line === '' || self::isPlaceholderAllowanceLine($line)) {
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '' && empty($storedPrefixes[$prefix])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public static function normalizeAllowanceText(string $text): string

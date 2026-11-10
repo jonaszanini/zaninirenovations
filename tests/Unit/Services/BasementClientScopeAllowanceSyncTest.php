@@ -64,4 +64,39 @@ class BasementClientScopeAllowanceSyncTest extends TestCase
         $this->assertStringNotContainsString('Electrical work allowance', $copy['allowances']);
         $this->assertTrue($copy['allowances_stale'] ?? false);
     }
+
+    public function test_sync_replaces_placeholder_when_electrical_trade_added_later(): void
+    {
+        $stored = 'No separate cash allowances beyond the priced lines on this quotation.';
+        $generated = "Electrical work allowance CA$7,910.00 (HST included in the trade line).";
+
+        $this->assertTrue(BasementClientScope::allowancesAmountsStale($stored, $generated));
+        $synced = BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        $this->assertStringContainsString('CA$7,910.00', $synced);
+        $this->assertStringNotContainsString('No separate cash allowances', $synced);
+    }
+
+    public function test_deleted_permit_is_stale_but_not_reappended_to_pdf_sync(): void
+    {
+        $stored = 'Electrical work allowance CA$7,910.00 (HST included in the trade line).';
+        $generated = "Electrical work allowance CA$7,910.00 (HST included in the trade line).\n"
+            .'City building permit extra-charge CA$200.00 before HST (municipal fee; no contractor fee).';
+
+        $this->assertTrue(BasementClientScope::allowancesAmountsStale($stored, $generated));
+        $synced = BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        $this->assertStringNotContainsString('City building permit', $synced);
+    }
+
+    public function test_reset_sync_keeps_custom_non_prefixed_line_and_updates_trade_amount(): void
+    {
+        $stored = "Electrical work allowance CA$9,040.00 (HST included in the trade line).\n"
+            .'Client to choose fixtures from a CA$500.00 fixture budget.';
+        $generated = "Electrical work allowance CA$7,910.00 (HST included in the trade line).";
+
+        $synced = BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        $this->assertStringContainsString('CA$7,910.00', $synced);
+        $this->assertStringNotContainsString('9,040.00', $synced);
+        $this->assertStringContainsString('Client to choose fixtures from a CA$500.00 fixture budget', $synced);
+        $this->assertFalse(BasementClientScope::allowancesAmountsStale($synced, $generated));
+    }
 }

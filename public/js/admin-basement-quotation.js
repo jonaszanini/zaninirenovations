@@ -1221,9 +1221,10 @@
     btn.dataset.brBound = '1';
     btn.addEventListener('click', function () {
       var field = document.getElementById('br-scope-allowances');
-      var generated = lastPreviewData && lastPreviewData.client_scope && lastPreviewData.client_scope.generated;
-      if (!field || !generated || generated.allowances == null) return;
-      field.value = String(generated.allowances || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      var scope = lastPreviewData && lastPreviewData.client_scope;
+      var synced = scope && scope.allowances;
+      if (!field || synced == null || synced === '') return;
+      field.value = String(synced).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       field.setAttribute('data-br-scope-dirty', '1');
       var banner = document.getElementById('br-scope-allowances-stale');
       if (banner) banner.remove();
@@ -1247,8 +1248,8 @@
   function bathItemHasPricedMaterials(data, itemKey) {
     var mats = (data && data.materials) || [];
     var keys = {
-      vanity: ['vanity', 'faucet'],
-      pedestal_sink: ['pedestal_sink', 'faucet'],
+      vanity: ['vanity'],
+      pedestal_sink: ['pedestal_sink'],
       toilet: ['toilet'],
       shower_frame: ['shower_kit'],
       tub: ['tub_kit'],

@@ -74,4 +74,37 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
         $this->assertStringNotContainsString('id="br-scope-allowances-stale"', $html);
         $this->assertStringNotContainsString('Allowance amounts no longer match', $html);
     }
+
+    public function test_pdf_includes_electrical_after_placeholder_stored_when_trade_added(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 800,
+            'flooring_sf' => 800,
+            'client_scope_allowances' => 'No separate cash allowances beyond the priced lines on this quotation.',
+            'electrical_lines' => [
+                ['description' => 'Electrician', 'amount' => 7000, 'hst_included' => false],
+            ],
+        ]);
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $this->assertTrue($calc['client_scope']['allowances_stale'] ?? false);
+
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
+            'client_name' => 'Placeholder then electrical',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => (float) $calc['summary']['grand_total'],
+            'version' => 1,
+        ]);
+
+        $pdfAllowances = $quote->clientScopeCopy()['allowances'];
+        $this->assertStringContainsString('CA$7,910.00', $pdfAllowances);
+        $this->assertStringNotContainsString('No separate cash allowances', $pdfAllowances);
+
+        $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertStringContainsString('Allowance amounts no longer match', $html);
+    }
 }
