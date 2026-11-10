@@ -926,8 +926,13 @@
 
   function readBaseboardSidesForWall(wallFinishes, wallId) {
     var flags = (wallFinishes && wallFinishes[wallId]) || {};
-    var floor = activeFloor(readPlan());
+    var plan = readPlan();
+    var floor = activeFloor(plan);
     var touchCount = roomsTouchingWall(wallId, floor).length;
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.geometryRoomTouchCount === 'function') {
+      touchCount = bridge.geometryRoomTouchCount(wallId, floor, plan);
+    }
     var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
     if (ext && typeof ext.resolveBaseboardSides === 'function') {
       return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId), touchCount);

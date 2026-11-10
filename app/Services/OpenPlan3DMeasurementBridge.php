@@ -175,6 +175,17 @@ class OpenPlan3DMeasurementBridge
             $flooringWithWasteSqFt = $this->finishMath->flooringWithWasteSqFt($totalInsideArea, $wastePercent);
 
             $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
+            $floorLoop = $this->extractOuterLoopAndPartitions(array_values($walls), $cmPerUnit);
+            $mergedWalls = [];
+            $seenWallIds = [];
+            foreach ($allWalls as $wall) {
+                $wid = (string) ($wall['id'] ?? '');
+                if ($wid === '' || isset($seenWallIds[$wid])) {
+                    continue;
+                }
+                $seenWallIds[$wid] = true;
+                $mergedWalls[] = $wall;
+            }
 
             return $this->extensions->applyToMetrics([
                 'area_sqft' => $this->roundTo($totalInsideArea, 2),
@@ -204,7 +215,8 @@ class OpenPlan3DMeasurementBridge
                 'ceiling_height_ft' => $firstMetrics['ceiling_height_ft'],
                 'ceiling_area_sqft' => $this->roundTo($totalCeilingArea, 2),
                 'net_wall_area_sqft' => $this->roundTo($totalNetWallArea, 2),
-                'walls' => $allWalls,
+                'walls' => $mergedWalls,
+                'boundary_wall_ids' => $floorLoop['boundary_wall_ids'] ?? [],
                 'flooring_waste_percent' => $wastePercent,
                 'flooring_direction' => $firstMetrics['flooring_direction'],
                 'flooring_box_sqft' => $boxSqFt,
@@ -1595,7 +1607,22 @@ class OpenPlan3DMeasurementBridge
                     continue;
                 }
                 // Determine candidate walls for this room
-                $candidateWalls = array_values($walls);
+                $candidateWalls = [];
+                if ($isSingleRoom) {
+                    $candidateWalls = array_values($walls);
+                } else {
+                    $rWallIds = $r['walls'] ?? [];
+                    if (is_array($rWallIds) && count($rWallIds) > 0) {
+                        $idMap = array_flip($rWallIds);
+                        foreach ($walls as $wid => $w) {
+                            if (isset($idMap[$wid])) {
+                                $candidateWalls[] = $w;
+                            }
+                        }
+                    } else {
+                        $candidateWalls = array_values($walls);
+                    }
+                }
 
                 if (count($candidateWalls) < 1) {
                     continue;

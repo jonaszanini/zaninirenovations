@@ -1038,6 +1038,17 @@
       var flBoxes = flooringBoxes(totalArea, wastePct, boxSqFt);
       var flWithWaste = flooringWithWasteSqFt(totalArea, wastePct);
       var lib = resolveLibraryMetrics(floor, cmPerUnit);
+      var floorLoop = extractOuterLoopAndPartitions(Object.values(walls), cmPerUnit);
+      var mergedWalls = [];
+      var seenWallIds = {};
+      for (var mwi = 0; mwi < allWalls.length; mwi++) {
+        var mw = allWalls[mwi];
+        if (!mw || !mw.id) continue;
+        var mid = String(mw.id);
+        if (seenWallIds[mid]) continue;
+        seenWallIds[mid] = true;
+        mergedWalls.push(mw);
+      }
 
       return applyZaniniExtensions({
         area_sqft: roundTo(totalArea, 2),
@@ -1067,7 +1078,8 @@
         ceiling_height_ft: firstSub.ceiling_height_ft,
         ceiling_area_sqft: roundTo(totalCeilingArea, 2),
         net_wall_area_sqft: roundTo(totalNetWall, 2),
-        walls: allWalls,
+        walls: mergedWalls,
+        boundary_wall_ids: floorLoop.boundary_wall_ids || [],
         flooring_waste_percent: wastePct,
         flooring_direction: firstSub.flooring_direction,
         flooring_box_sqft: boxSqFt,
@@ -1089,8 +1101,19 @@
     if (!selectedRoom && rooms.length > 0) selectedRoom = rooms[0];
 
     // Extract outer loop and partitions
-    var candidateWalls = Object.values(walls);
+    var candidateWalls = [];
     var roomWIds = (selectedRoom && selectedRoom.walls) || [];
+    var isSingleRoom = rooms.length <= 1;
+    if (isSingleRoom || roomWIds.length === 0) {
+      candidateWalls = Object.values(walls);
+    } else {
+      var idMap = {};
+      for (var ci = 0; ci < roomWIds.length; ci++) idMap[String(roomWIds[ci])] = true;
+      for (var wid in walls) {
+        if (idMap[wid]) candidateWalls.push(walls[wid]);
+      }
+      if (candidateWalls.length === 0) candidateWalls = Object.values(walls);
+    }
 
     var loopData = extractOuterLoopAndPartitions(candidateWalls, cmPerUnit);
     var partitionWalls = loopData.partition_walls || [];
