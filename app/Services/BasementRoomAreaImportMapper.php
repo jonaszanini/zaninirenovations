@@ -333,6 +333,24 @@ class BasementRoomAreaImportMapper
     }
 
     /**
+     * Wall paint on import: explicit Paint-marked area when present; otherwise the
+     * same gross wall drywall area imported for the Drywall step (incl. bulkhead drywall).
+     *
+     * @param  array<string, mixed>  $opt
+     */
+    public static function resolveImportedPaintWallSf(array $opt, ?float $drywallWallSf): ?float
+    {
+        if (self::present($opt, 'finish_paint_sqft')) {
+            return (float) $opt['finish_paint_sqft'];
+        }
+        if ($drywallWallSf !== null) {
+            return $drywallWallSf;
+        }
+
+        return null;
+    }
+
+    /**
      * @param  array<string, mixed>  $opt
      * @return array<string, float|int|null>
      */
@@ -406,12 +424,15 @@ class BasementRoomAreaImportMapper
             $casingOpenings = ($doors ?? 0) + ($openings ?? 0);
         }
 
+        $casingLf = null;
+        if (self::present($opt, 'finish_casing_lf')) {
+            $casingLf = (float) $opt['finish_casing_lf'];
+        } elseif (self::present($opt, 'casing_lf')) {
+            $casingLf = (float) $opt['casing_lf'];
+        }
         $paintTrim = null;
-        if (self::present($opt, 'casing_lf') || self::present($opt, 'finish_casing_lf')) {
-            $casingLf = self::present($opt, 'finish_casing_lf')
-                ? (float) $opt['finish_casing_lf']
-                : (float) $opt['casing_lf'];
-            $paintTrim = max(0.0, ($baseboard ?? 0.0) + $casingLf);
+        if ($baseboard !== null || $casingLf !== null) {
+            $paintTrim = max(0.0, ($baseboard ?? 0.0) + ($casingLf ?? 0.0));
         }
 
         $openingSf = $measuredNet ? 0.0 : null;
@@ -440,9 +461,7 @@ class BasementRoomAreaImportMapper
             'baseboard_lf' => $baseboard,
             'casing_openings' => $casingOpenings,
             'window_trim_qty' => $windows,
-            'paint_wall_sf' => self::present($opt, 'finish_paint_sqft')
-                ? (float) $opt['finish_paint_sqft']
-                : null,
+            'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $wallSf),
             'paint_ceiling_sf' => $ceilingArea,
             'paint_trim_lf' => $paintTrim,
         ];

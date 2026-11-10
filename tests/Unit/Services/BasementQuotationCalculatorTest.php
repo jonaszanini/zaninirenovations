@@ -2039,6 +2039,39 @@ class BasementQuotationCalculatorTest extends TestCase
         );
     }
 
+    public function test_section_subtotals_sum_labor_and_materials_excluding_contractor_fee(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 800,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => true,
+            'demo_flooring_sf' => 800,
+            'demo_bin_qty' => 1,
+            'partition_lf' => 40,
+            'insulate_walls' => true,
+            'drywall_wall_sf' => 640,
+            'ceiling_type' => 'drywall',
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 800,
+            'door_qty' => 2,
+            'paint_coats' => 2,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ], $this->settings());
+
+        $sections = $calc['summary']['section_subtotals_pre_hst'] ?? [];
+        $this->assertIsArray($sections);
+        $sectionSum = 0.0;
+        foreach ($sections as $amount) {
+            $sectionSum += (float) $amount;
+        }
+        $feePre = (float) ($calc['summary']['contractor_fee_pre_hst'] ?? 0);
+        $subtotalPre = (float) ($calc['summary']['subtotal_pre_hst'] ?? 0);
+        $this->assertEqualsWithDelta($subtotalPre - $feePre, $sectionSum, 0.05);
+        $this->assertGreaterThan(0, (float) ($sections['flooring'] ?? 0));
+        $this->assertGreaterThan(0, (float) ($sections['drywall'] ?? 0));
+    }
+
     private function settings(?array $materials = null): BasementSettings
     {
         return new BasementSettings([

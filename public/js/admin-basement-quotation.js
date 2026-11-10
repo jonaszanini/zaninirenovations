@@ -1172,6 +1172,22 @@
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
     updateClientScopeFromPreview(data);
+    updateSectionSubtotals(data);
+  }
+
+  function updateSectionSubtotals(data) {
+    var map = (data.summary && data.summary.section_subtotals_pre_hst) || {};
+    var enabled = enabledTradeKeys();
+    form.querySelectorAll('[data-br-section-subtotal]').forEach(function (wrap) {
+      var key = wrap.getAttribute('data-br-section-subtotal') || '';
+      var on = enabled.indexOf(key) !== -1;
+      var amt = Number(map[key] || 0);
+      var val = wrap.querySelector('[data-br-section-subtotal-amount]');
+      if (val) {
+        val.textContent = fmt(amt);
+      }
+      wrap.hidden = !on;
+    });
   }
 
   function updateDrywallNetHint(scope) {

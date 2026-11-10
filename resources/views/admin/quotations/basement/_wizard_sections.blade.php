@@ -130,7 +130,7 @@
       'drywall_window_openings' => 'Window openings. Each deducts 12 sq ft (4×3 ft) from wall drywall unless you type Opening area.',
       'drywall_opening_sf' => 'Total opening area to subtract from wall drywall. Blank uses 21 sq ft per door and 12 sq ft per window. Enter 0 if the wall area you typed is already net.',
       'drywall_sheet_size' => '4×12 sheets cover a typical 8–9 ft basement wall in one piece (fewer seams). 4×8 is two rows. Sheet count and waste follow this choice.',
-      'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, and corners. Wall paint uses walls and bulkheads marked Paint in Room Area, independently of Drywall. A mixed or zero paint takeoff that would replace a typed wall-paint quantity asks for confirmation first. Does not change rates, flooring type, ceiling type, paint colors/coats, or shared prices. Measured zeros replace the form; takeoffs the drawing does not have are left as-is.',
+      'room_area_import' => 'Fills layout quantities from the saved drawing: floor, walls, ceiling, partitions, doors, windows, openings, baseboard, casing, bulkheads, corners, and painting takeoffs. Wall paint fills from walls and bulkheads marked Paint when the layout has paint choices; otherwise it fills with the same wall drywall area imported for Drywall (both sides of a new wall on the wall preset). Ceiling and trim paint fill with their layout lengths/areas. A mixed or zero paint takeoff that would replace a typed wall-paint quantity asks for confirmation first. Does not change rates, flooring type, ceiling type, paint colors/coats, or shared prices.',
       'finish_level' => 'How far the drywall is finished. Level 0 hangs boards only (no tape). Level 4 is standard paint-ready for living space.',
       'ceiling_type' => 'How the ceiling is finished. Drywall hang/mud and drop-ceiling tiles both use Ceiling area on this step. Leave existing / skip charges neither.',
       'ceiling_sf' => 'One ceiling area for this quote. Drywall hang, tape, and mud use it when the type is drywall. Drop-ceiling tiles use it when the type is drop. Blank uses the work area.',
@@ -146,7 +146,7 @@
       'shoe_lf' => 'Shoe length. Blank uses the baseboard length.',
       'casing_openings' => 'Door openings to case (both sides). Blank uses the interior door count.',
       'window_trim_qty' => 'Window openings to wrap with stool, apron, and casing.',
-      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset). Import fills this from walls and bulkheads marked Paint in Room Area — not automatically from drywall or from bulkheads without a Paint choice.',
+      'paint_wall_sf' => 'Wall area to paint. Blank follows drywall wall area (both sides of a new wall on the wall preset). Import fills with Paint-marked wall and bulkhead area when the layout has paint choices; otherwise with the same imported drywall wall area.',
       'paint_ceiling_sf' => 'Ceiling area to paint. Blank follows Ceiling area unless you chose a drop ceiling. Hidden on New wall — no ceiling work.',
       'paint_trim_lf' => 'Base and casing to paint. Blank uses baseboard plus door casing length.',
       'paint_colors' => 'One color = walls and ceiling the same. Two colors packs paint separately and adds tape / cut-in labour plus extra drywall finish time.',
@@ -537,6 +537,7 @@
                title="Dumpster / bin count. Price comes from the basement materials database.">
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'demolition'])
   </div>
 </details>
 
@@ -550,6 +551,7 @@
         @include('admin.quotations.basement._framing_fields')
       @endunless
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'framing'])
   </div>
 </details>
 
@@ -563,6 +565,7 @@
         @include('admin.quotations.basement._electrical_fields')
       @endunless
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'electrical'])
   </div>
 </details>
 
@@ -576,6 +579,7 @@
         @include('admin.quotations.basement._plumbing_fields')
       @endunless
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'plumbing'])
   </div>
 </details>
 
@@ -643,6 +647,7 @@
         </div>
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'insulation'])
   </div>
 </details>
 
@@ -696,6 +701,7 @@
         </div>
       @endif
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'ceiling'])
   </div>
 </details>
 
@@ -797,6 +803,7 @@
       </div>
     </div>
     <p class="admin-form-help br-dw-net" id="br-dw-net-hint" hidden></p>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'drywall'])
   </div>
 </details>
 
@@ -881,6 +888,7 @@
       @include('admin.partials.checkbox', ['name' => 'subfloor_prep', 'hiddenFallback' => true, 'checked' => $brOn('subfloor_prep'), 'label' => 'Subfloor preparation / leveling', 'info' => $brInfo['subfloor_prep'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('subfloor_prep')])
       @include('admin.partials.checkbox', ['name' => 'underlayment', 'hiddenFallback' => true, 'checked' => $brOn('underlayment', true), 'label' => 'Underlayment (LVP / laminate)', 'info' => $brInfo['underlayment'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => $brFilled('underlayment')])
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'flooring'])
   </div>
 </details>
 
@@ -978,6 +986,7 @@
         ])
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'doors_trim'])
   </div>
 </details>
 
@@ -1054,6 +1063,7 @@
                value="{{ $brVal('paint_coats', 2) }}">
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'painting'])
   </div>
 </details>
 
@@ -1244,6 +1254,7 @@
         </template>
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'bathroom'])
   </div>
 </details>
 
@@ -1310,6 +1321,7 @@
         </div>
       </div>
     </div>
+    @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'finishing'])
   </div>
 </details>
 

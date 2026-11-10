@@ -1547,6 +1547,7 @@ class BasementQuotationCalculator
         $bcinPre = round($bcinPre, 2);
         $matPre = round($matAll - $permitPre - $bcinPre, 2);
         $trade = $this->tradeLineSummary($inputs);
+        $sectionSubtotalsPre = self::sectionSubtotalsPreHst($labor, $materials, $extraMaterials, $trade);
         $fee = self::contractorFeeBreakdown($feePercent, $matPre, $trade['pre_hst'], $bcinPre, $laborPre);
         $feePre = $fee['amount'];
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
@@ -1656,6 +1657,7 @@ class BasementQuotationCalculator
                     'electrical' => $trade['electrical'],
                     'plumbing' => $trade['plumbing'],
                 ],
+                'section_subtotals_pre_hst' => $sectionSubtotalsPre,
             ],
         ];
 
@@ -1822,6 +1824,44 @@ class BasementQuotationCalculator
         }
 
         return $out;
+    }
+
+    /**
+     * Pre-HST labour + materials per wizard trade section (single source for live section subtotals).
+     * Contractor fee, HST, commute, debris, and extra-material rows are excluded.
+     *
+     * @param  list<array{section: string, amount: float}>  $labor
+     * @param  list<array{section: string, amount: float}>  $materials
+     * @param  list<array{section: string, amount: float}>  $extraMaterials
+     * @param  array{electrical: array{pre_hst: float}, plumbing: array{pre_hst: float}}  $tradeSummary
+     * @return array<string, float>
+     */
+    public static function sectionSubtotalsPreHst(array $labor, array $materials, array $extraMaterials, array $tradeSummary): array
+    {
+        $totals = [];
+        foreach (array_keys(self::SECTIONS) as $key) {
+            $totals[$key] = 0.0;
+        }
+        foreach ($labor as $row) {
+            $sec = (string) ($row['section'] ?? '');
+            if (array_key_exists($sec, $totals)) {
+                $totals[$sec] += (float) ($row['amount'] ?? 0);
+            }
+        }
+        foreach (array_merge($materials, $extraMaterials) as $row) {
+            $sec = (string) ($row['section'] ?? '');
+            if ($sec === '' || $sec === 'extra' || ! array_key_exists($sec, $totals)) {
+                continue;
+            }
+            $totals[$sec] += (float) ($row['amount'] ?? 0);
+        }
+        $totals['electrical'] += (float) ($tradeSummary['electrical']['pre_hst'] ?? 0);
+        $totals['plumbing'] += (float) ($tradeSummary['plumbing']['pre_hst'] ?? 0);
+        foreach ($totals as $key => $amount) {
+            $totals[$key] = round($amount, 2);
+        }
+
+        return $totals;
     }
 
     /**
@@ -2073,6 +2113,7 @@ class BasementQuotationCalculator
                     'electrical' => $trade['electrical'],
                     'plumbing' => $trade['plumbing'],
                 ],
+                'section_subtotals_pre_hst' => self::sectionSubtotalsPreHst([], [], [], $trade),
             ],
         ];
 

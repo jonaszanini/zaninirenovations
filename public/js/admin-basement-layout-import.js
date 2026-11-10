@@ -122,6 +122,16 @@
     return null;
   }
 
+  function resolveImportedPaintWallSf(opt, drywallWallSf) {
+    if (present(opt, 'finish_paint_sqft')) {
+      return num(opt.finish_paint_sqft);
+    }
+    if (drywallWallSf !== null) {
+      return drywallWallSf;
+    }
+    return null;
+  }
+
   function readFieldNumber(el) {
     if (!el) return 0;
     var n = parseFloat(el.value);
@@ -181,10 +191,15 @@
       casingOpenings = (doors || 0) + (openings || 0);
     }
 
+    var casingLf = null;
+    if (present(opt, 'finish_casing_lf')) {
+      casingLf = num(opt.finish_casing_lf);
+    } else if (present(opt, 'casing_lf')) {
+      casingLf = num(opt.casing_lf);
+    }
     var paintTrim = null;
-    if (present(opt, 'casing_lf') || present(opt, 'finish_casing_lf')) {
-      var casingLf = present(opt, 'finish_casing_lf') ? num(opt.finish_casing_lf) : num(opt.casing_lf);
-      paintTrim = Math.max(0, (baseboard || 0) + casingLf);
+    if (baseboard !== null || casingLf !== null) {
+      paintTrim = Math.max(0, (baseboard || 0) + (casingLf || 0));
     }
 
     return {
@@ -211,7 +226,7 @@
       baseboard_lf: baseboard,
       casing_openings: casingOpenings,
       window_trim_qty: windows,
-      paint_wall_sf: present(opt, 'finish_paint_sqft') ? num(opt.finish_paint_sqft) : null,
+      paint_wall_sf: resolveImportedPaintWallSf(opt, wallSf),
       paint_ceiling_sf: ceilingArea,
       paint_trim_lf: paintTrim
     };

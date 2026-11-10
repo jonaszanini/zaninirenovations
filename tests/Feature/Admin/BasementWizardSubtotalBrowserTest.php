@@ -1,0 +1,255 @@
+<?php
+
+namespace Tests\Feature\Admin;
+
+use App\Models\BasementQuotation;
+use App\Models\RoomAreaProject;
+use App\Models\RoomAreaRoom;
+use App\Models\User;
+use App\Services\BasementQuotationCalculator;
+use App\Services\BasementRoomAreaImportMapper;
+use Illuminate\Support\Facades\Hash;
+use Tests\IntegrationTestCase;
+
+class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
+{
+    /** @var list<string> */
+    protected $connectionsToTransact = [];
+
+    /** @var resource|null */
+    private $serverProcess = null;
+
+    private int $serverPort = 8055;
+
+    public function test_section_subtotals_live_update_and_paint_import_screenshots(): void
+    {
+        $this->assertTrue(is_dir(base_path('node_modules/puppeteer')), 'Puppeteer must be installed');
+
+        $user = User::factory()->create([
+            'email' => 'br-subtotal-browser@zanini.ca',
+            'password' => Hash::make('password'),
+            'role' => User::ROLE_ADMIN,
+        ]);
+        $this->actingAs($user);
+
+        $import = $this->seedLegacyPaintQuote();
+
+        $base = $this->startServer();
+        $script = base_path('tests/Feature/Admin/basement-wizard-subtotal-browser.js');
+        $out = storage_path('app/br-wizard-subtotal-browser.json');
+        $shots = storage_path('app/qa-screenshots');
+        @unlink($out);
+        if (! is_dir($shots)) {
+            mkdir($shots, 0777, true);
+        }
+
+        $output = [];
+        $code = $this->runNode($script, [
+            'BR_SUBTOTAL_EMAIL' => $user->email,
+            'BR_SUBTOTAL_PASSWORD' => 'password',
+            'BR_SUBTOTAL_BASE' => $base,
+            'BR_SUBTOTAL_OUT' => $out,
+            'BR_SUBTOTAL_SHOTS' => $shots,
+            'BR_SUBTOTAL_CREATE_PATH' => route('admin.quotations.basement.create', [], false),
+            'BR_SUBTOTAL_IMPORT_PATH' => route('admin.quotations.basement.edit', $import['quote'], false),
+            'BR_SUBTOTAL_IMPORT_LAYOUT_Q' => $import['query'],
+            'BR_SUBTOTAL_LAYOUTS_PATH' => route('admin.utilities.room-area.layouts', [], false),
+            'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
+        ], $output);
+        $this->stopServer();
+
+        $raw = (string) @file_get_contents($out);
+        $this->assertSame(0, $code, "Subtotal puppeteer failed:\n".implode("\n", $output)."\n".$raw);
+        $report = json_decode($raw, true);
+        $this->assertIsArray($report);
+        $this->assertTrue((bool) ($report['ok'] ?? false), json_encode($report));
+
+        $subdir = $shots;
+        $this->assertFileExists($subdir.'/basement-section-subtotal-flooring-1280.png');
+        $this->assertFileExists($subdir.'/basement-section-subtotal-flooring-390.png');
+        $this->assertFileExists($subdir.'/basement-painting-after-import-1280.png');
+        $this->assertFileExists($subdir.'/basement-painting-after-import-390.png');
+
+        $artifactDir = '/opt/cursor/artifacts';
+        if (! is_dir($artifactDir)) {
+            mkdir($artifactDir, 0777, true);
+        }
+        foreach ([
+            'basement-section-subtotal-flooring-1280.png',
+            'basement-section-subtotal-flooring-390.png',
+            'basement-painting-after-import-1280.png',
+            'basement-painting-after-import-390.png',
+        ] as $name) {
+            @copy($subdir.'/'.$name, $artifactDir.'/'.$name);
+        }
+    }
+
+    /**
+     * @return array{quote: BasementQuotation, query: string}
+     */
+    private function seedLegacyPaintQuote(): array
+    {
+        $cm = 30.48;
+        $project = RoomAreaProject::create([
+            'name' => 'Browser paint fill',
+            'scale_pixels_per_foot' => 12,
+        ]);
+        $room = RoomAreaRoom::create([
+            'room_area_project_id' => $project->id,
+            'name' => 'Browser paint fill room',
+            'scale_pixels_per_foot' => 12,
+            'area_sqft' => 80,
+            'wall_height_ft' => 8,
+            'vertices' => [
+                'format' => 'openplan3d',
+                'units' => 'cm',
+                'floor' => [
+                    'walls' => [
+                        ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w2', 'start' => ['x' => 20 * $cm, 'y' => 0], 'end' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w3', 'start' => ['x' => 20 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 12 * $cm], 'thickness' => 10, 'height' => 8 * $cm],
+                        ['id' => 'w4', 'start' => ['x' => 0, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 10, 'height' => 8 * $cm],
+                    ],
+                    'rooms' => [[
+                        'id' => 'r1',
+                        'name' => 'Browser paint fill room',
+                        'walls' => ['w1', 'w2', 'w3', 'w4'],
+                    ]],
+                ],
+                'zanini' => [
+                    'wallFinishes' => [
+                        'w1' => ['drywall' => true],
+                        'w2' => ['drywall' => true],
+                        'w3' => ['drywall' => true],
+                        'w4' => ['drywall' => true],
+                    ],
+                ],
+            ],
+        ]);
+
+        $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Browser paint fill room']))
+            ->assertOk()
+            ->json())->firstWhere('id', 'room:'.$room->id);
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8);
+        $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'client_name' => 'Browser Paint Fill Quote',
+            'area_sqft' => 80,
+            'paint_wall_sf' => null,
+        ], array_filter($proposed, fn ($v) => $v !== null));
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $quote = BasementQuotation::query()->create([
+            'client_name' => 'Browser Paint Fill Quote',
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $calc['summary']['final_quote_total'],
+            'is_draft' => true,
+        ]);
+
+        return ['quote' => $quote, 'query' => 'Browser paint fill room'];
+    }
+
+    /**
+     * @param  array<string, string>  $env
+     * @param  list<string>  $output
+     */
+    private function runNode(string $script, array $env, &$output): int
+    {
+        $cmd = 'node '.escapeshellarg($script);
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['pipe', 'w'],
+            2 => ['pipe', 'w'],
+        ];
+        $merged = array_merge($_ENV, $env);
+        $proc = proc_open($cmd, $descriptors, $pipes, base_path(), $merged);
+        $this->assertTrue(is_resource($proc));
+        fclose($pipes[0]);
+        $output = array_filter([
+            stream_get_contents($pipes[1]),
+            stream_get_contents($pipes[2]),
+        ]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+
+        return proc_close($proc);
+    }
+
+    private function startServer(): string
+    {
+        $port = $this->serverPort;
+        $base = 'http://127.0.0.1:'.$port;
+        $router = sys_get_temp_dir().'/br-subtotal-browser-router.php';
+        $forced = [
+            'APP_ENV' => 'testing',
+            'APP_URL' => $base,
+        ];
+        $forcePhp = '';
+        foreach ($forced as $key => $value) {
+            $forcePhp .= '$_ENV['.var_export($key, true).'] = $_SERVER['.var_export($key, true).'] = '.var_export($value, true).";\n";
+        }
+        file_put_contents($router, '<?php
+'.$forcePhp.'
+$public = '.var_export(public_path(), true).';
+$uri = urldecode((string) parse_url($_SERVER[\'REQUEST_URI\'] ?? \'/\', PHP_URL_PATH));
+$path = $public.$uri;
+if ($uri !== \'/\' && $uri !== \'\' && is_file($path)) {
+    return false;
+}
+require $public.\'/index.php\';
+');
+        $cmd = 'exec '.escapeshellarg(PHP_BINARY)
+            .' -S 127.0.0.1:'.$port
+            .' -t '.escapeshellarg(public_path())
+            .' '.escapeshellarg($router);
+        $env = [];
+        foreach (array_merge($_SERVER, $_ENV) as $key => $value) {
+            if (is_string($key) && is_string($value)) {
+                $env[$key] = $value;
+            }
+        }
+        foreach ($forced as $key => $value) {
+            $env[$key] = $value;
+        }
+        $descriptors = [
+            0 => ['pipe', 'r'],
+            1 => ['file', sys_get_temp_dir().'/br-subtotal-serve.log', 'w'],
+            2 => ['file', sys_get_temp_dir().'/br-subtotal-serve.err', 'w'],
+        ];
+        $this->serverProcess = proc_open($cmd, $descriptors, $pipes, base_path(), $env);
+        if (isset($pipes[0]) && is_resource($pipes[0])) {
+            fclose($pipes[0]);
+        }
+        for ($i = 0; $i < 50; $i++) {
+            usleep(150000);
+            $ctx = stream_context_create(['http' => ['timeout' => 0.4, 'ignore_errors' => true]]);
+            $body = @file_get_contents($base.'/admin/login', false, $ctx);
+            if (is_string($body) && $body !== '') {
+                return $base;
+            }
+        }
+        $this->stopServer();
+        $this->fail('Browser server did not become ready on '.$base);
+    }
+
+    private function stopServer(): void
+    {
+        $port = $this->serverPort;
+        if (is_resource($this->serverProcess)) {
+            $status = @proc_get_status($this->serverProcess);
+            $pid = (int) ($status['pid'] ?? 0);
+            if ($pid > 0) {
+                @exec('kill -TERM '.$pid.' 2>/dev/null');
+            }
+            @proc_terminate($this->serverProcess, 9);
+        }
+        @exec('pkill -f '.escapeshellarg('127.0.0.1:'.$port).' 2>/dev/null');
+        $this->serverProcess = null;
+    }
+
+    protected function tearDown(): void
+    {
+        $this->stopServer();
+        User::query()->where('email', 'br-subtotal-browser@zanini.ca')->delete();
+        parent::tearDown();
+    }
+}
