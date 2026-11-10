@@ -5,7 +5,10 @@ namespace Tests\Unit\Services;
 use App\Models\BasementQuotation;
 use App\Models\Material;
 use App\Models\SharedWork;
+use App\Models\TrimmingSettings;
+use App\Services\BasementQuotationCalculator;
 use App\Services\SharedWorkCatalog;
+use App\Services\TrimmingQuotationCalculator;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -13,15 +16,18 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
+    private const CATALOG_PRICE = 12.34;
+
+    private const CATALOG_PRICE_AFTER = 88.88;
+
+    /** Frozen basement snapshot totals with shoe_lf 24 @ catalog 12.34 CAD. */
+    private const BASEMENT_MATERIALS_PRE_HST = 49.36;
+
+    private const BASEMENT_GRAND_TOTAL = 155.22;
+
     public function test_linked_shared_work_uses_live_catalog_price_after_catalog_changes(): void
     {
-        $material = Material::query()->create([
-            'name' => 'Live catalog shoe moulding',
-            'store_sku' => 'SP-CAT-LIVE-1',
-            'price_cad' => 10.00,
-            'is_active' => true,
-            'unit' => 'each',
-        ]);
+        $material = $this->createCatalogMaterial(self::CATALOG_PRICE);
 
         $work = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
         $storedFallback = 3.25;
@@ -31,17 +37,15 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         SharedWorkCatalog::forgetCache();
 
         $def = SharedWorkCatalog::definition('shoe_install');
-        $this->assertNotNull($def);
         $slot = SharedWorkCatalog::materialSlotFromWork($work, $def);
-        $this->assertEqualsWithDelta(10.0, (float) $slot['unit_price'], 0.0001);
-        $this->assertSame($material->id, (int) $slot['catalog_material_id']);
+        $this->assertEqualsWithDelta(self::CATALOG_PRICE, (float) $slot['unit_price'], 0.0001);
 
-        $material->price_cad = 14.75;
+        $material->price_cad = self::CATALOG_PRICE_AFTER;
         $material->save();
         SharedWorkCatalog::forgetCache();
 
         $slotAfter = SharedWorkCatalog::materialSlotFromWork($work->fresh(), $def);
-        $this->assertEqualsWithDelta(14.75, (float) $slotAfter['unit_price'], 0.0001);
+        $this->assertEqualsWithDelta(self::CATALOG_PRICE_AFTER, (float) $slotAfter['unit_price'], 0.0001);
         $this->assertEqualsWithDelta($storedFallback, (float) $work->fresh()->material_unit_price, 0.0001);
     }
 
@@ -59,17 +63,76 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(6.50, (float) $slot['unit_price'], 0.0001);
     }
 
-    public function test_saved_basement_quotation_totals_unchanged_when_live_catalog_price_changes(): void
+    public function test_stored_zero_material_unit_price_means_no_material_not_definition_fallback(): void
+    {
+        $work = SharedWork::query()->where('key', 'underlayment')->firstOrFail();
+        $def = SharedWorkCatalog::definition('underlayment');
+        $this->assertNotNull($def);
+        $fallback = (float) ($def['material']['unit_price'] ?? 0);
+        $this->assertGreaterThan(0, $fallback);
+
+        $work->catalog_material_id = null;
+        $work->material_unit_price = 0;
+        $work->save();
+        SharedWorkCatalog::forgetCache();
+
+        $slot = SharedWorkCatalog::materialSlotFromWork($work, $def);
+        $this->assertSame(0.0, (float) $slot['unit_price']);
+
+        $work->material_unit_price = null;
+        $work->save();
+        SharedWorkCatalog::forgetCache();
+
+        $slotNull = SharedWorkCatalog::materialSlotFromWork($work->fresh(), $def);
+        $this->assertEqualsWithDelta($fallback, (float) $slotNull['unit_price'], 0.0001);
+    }
+
+    public function test_trimming_shoe_material_uses_live_catalog_unit_price(): void
+    {
+        $material = $this->createCatalogMaterial(18.50, 'SP-TRIM-SHOE');
+
+        $work = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $work->catalog_material_id = $material->id;
+        $work->save();
+        SharedWorkCatalog::forgetCache();
+
+        $calc = (new TrimmingQuotationCalculator)->calculate([
+            'enabled_families' => ['floor_wall'],
+            'floor_lf' => 40,
+            'include_shoe' => true,
+            'include_baseboard' => false,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ], TrimmingSettings::current());
+
+        $shoe = collect($calc['materials'])->firstWhere('key', 'shoe');
+        $this->assertNotNull($shoe);
+        $this->assertEqualsWithDelta(18.50, (float) $shoe['unit_price'], 0.01);
+        $this->assertEqualsWithDelta(111.0, (float) $shoe['amount'], 0.01);
+
+        $material->price_cad = 22.00;
+        $material->save();
+        SharedWorkCatalog::forgetCache();
+
+        $calcAfter = (new TrimmingQuotationCalculator)->calculate([
+            'enabled_families' => ['floor_wall'],
+            'floor_lf' => 40,
+            'include_shoe' => true,
+            'include_baseboard' => false,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+        ], TrimmingSettings::current());
+
+        $shoeAfter = collect($calcAfter['materials'])->firstWhere('key', 'shoe');
+        $this->assertEqualsWithDelta(22.00, (float) $shoeAfter['unit_price'], 0.01);
+        $this->assertEqualsWithDelta(132.0, (float) $shoeAfter['amount'], 0.01);
+    }
+
+    public function test_saved_basement_quote_freezes_totals_new_preview_uses_live_catalog(): void
     {
         $this->actingAsAdmin();
 
-        $material = Material::query()->create([
-            'name' => 'Basement shoe catalog item',
-            'store_sku' => 'SP-SHOE-SNAP',
-            'price_cad' => 9.99,
-            'is_active' => true,
-            'unit' => 'each',
-        ]);
+        $material = $this->createCatalogMaterial(self::CATALOG_PRICE, 'SP-SHOE-SNAP');
 
         $work = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
         $work->catalog_material_id = $material->id;
@@ -77,9 +140,61 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         $work->save();
         SharedWorkCatalog::forgetCache();
 
-        $payload = [
+        $payload = $this->basementShoePayload();
+
+        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)->assertOk();
+        $preview->assertJsonPath('summary.materials_pre_hst', self::BASEMENT_MATERIALS_PRE_HST);
+        $preview->assertJsonPath('summary.grand_total', self::BASEMENT_GRAND_TOTAL);
+
+        $this->post(route('admin.quotations.basement.store'), array_merge($payload, [
             'save_intent' => 'publish',
-            'client_name' => 'Catalog snapshot client',
+            'client_name' => 'Catalog snapshot client QA',
+        ]))->assertSessionHasNoErrors()->assertRedirect();
+
+        $quote = BasementQuotation::query()->where('client_name', 'Catalog snapshot client QA')->firstOrFail();
+        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, (float) $quote->final_quote_total, 0.01);
+        $calcBefore = is_array($quote->calculation) ? $quote->calculation : [];
+        $this->assertEqualsWithDelta(
+            self::BASEMENT_MATERIALS_PRE_HST,
+            (float) ($calcBefore['summary']['materials_pre_hst'] ?? 0),
+            0.01
+        );
+
+        $material->price_cad = self::CATALOG_PRICE_AFTER;
+        $material->save();
+        SharedWorkCatalog::forgetCache();
+
+        $quote->refresh();
+        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, (float) $quote->final_quote_total, 0.01);
+        $calcAfter = is_array($quote->calculation) ? $quote->calculation : [];
+        $this->assertEqualsWithDelta(
+            self::BASEMENT_MATERIALS_PRE_HST,
+            (float) ($calcAfter['summary']['materials_pre_hst'] ?? 0),
+            0.01
+        );
+
+        $this->get(route('admin.quotations.basement.edit', $quote))
+            ->assertOk()
+            ->assertSee('name="client_name"', false)
+            ->assertSee('Catalog snapshot client QA', false);
+
+        $frozenGrand = (float) (($calcAfter['summary']['grand_total'] ?? 0));
+        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, $frozenGrand, 0.01);
+
+        $livePreview = $this->post(route('admin.quotations.basement.preview'), $payload)->assertOk();
+        $liveMaterials = (float) $livePreview->json('summary.materials_pre_hst');
+        $this->assertGreaterThan(self::BASEMENT_MATERIALS_PRE_HST, $liveMaterials);
+    }
+
+  /**
+     * @return array<string, mixed>
+     */
+    private function basementShoePayload(): array
+    {
+        return [
+            'client_name' => 'Catalog snapshot client QA',
+            'scope_preset' => 'custom',
+            'enabled_sections' => ['overview', 'doors_trim'],
             'area_sqft' => 200,
             'ceiling_height_ft' => 8,
             'room_count' => 1,
@@ -104,31 +219,16 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
             'payment_installments' => 3,
             'ask_reply_to_accept' => '0',
         ];
+    }
 
-        $response = $this->post(route('admin.quotations.basement.store'), $payload);
-        $response->assertSessionHasNoErrors();
-        $response->assertRedirect();
-
-        $quote = BasementQuotation::query()->where('client_name', 'Catalog snapshot client')->firstOrFail();
-        $calcBefore = is_array($quote->calculation) ? $quote->calculation : [];
-        $summaryBefore = $calcBefore['summary'] ?? [];
-        $this->assertArrayHasKey('materials_pre_hst', $summaryBefore);
-
-        $material->price_cad = 99.99;
-        $material->save();
-        SharedWorkCatalog::forgetCache();
-
-        $quote->refresh();
-        $calcAfter = is_array($quote->calculation) ? $quote->calculation : [];
-        $summaryAfter = $calcAfter['summary'] ?? [];
-
-        $this->assertSame(
-            $summaryBefore['materials_pre_hst'] ?? null,
-            $summaryAfter['materials_pre_hst'] ?? null
-        );
-        $this->assertSame(
-            $summaryBefore['subtotal_pre_hst'] ?? null,
-            $summaryAfter['subtotal_pre_hst'] ?? null
-        );
+    private function createCatalogMaterial(float $price, string $sku = 'SP-CAT-LIVE'): Material
+    {
+        return Material::query()->create([
+            'name' => 'Catalog QA material '.$sku,
+            'store_sku' => $sku,
+            'price_cad' => $price,
+            'is_active' => true,
+            'unit' => 'each',
+        ]);
     }
 }

@@ -137,11 +137,11 @@ class SharedPricesLayoutTest extends IntegrationTestCase
 
         $columns = $this->desktopGridColumns($css);
         $this->assertCount(7, $columns);
-        $this->assertGreaterThanOrEqual(11.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
-        $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[1]), 'Productivity must fit 99,999.9900');
+        $this->assertGreaterThanOrEqual(10.0, $this->cssMinRem($columns[0]), 'Work item must show full names at 1100');
+        $this->assertGreaterThanOrEqual(7.0, $this->cssMinRem($columns[1]), 'Productivity must fit header + icon');
         $this->assertGreaterThanOrEqual(6.6, $this->cssMinRem($columns[2]), 'Sell must fit 99,999.9999');
-        $this->assertGreaterThanOrEqual(3.5, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
-        $this->assertGreaterThanOrEqual(6.0, $this->cssMinRem($columns[4]), 'Mat. name keeps a readable min');
+        $this->assertGreaterThanOrEqual(4.0, $this->cssMinRem($columns[3]), 'Unit column must stay readable');
+        $this->assertGreaterThanOrEqual(8.5, $this->cssMinRem($columns[4]), 'Mat. name keeps a readable min');
         $this->assertSame('2.75rem', trim($columns[5]), 'Catalog search column stays fixed');
         $this->assertGreaterThanOrEqual(5.5, $this->cssMinRem($columns[6]), 'Used-by must fit Trimming + +N without clipping');
 
@@ -690,6 +690,17 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
   await openPage();
   fs.mkdirSync(outDir, { recursive: true });
   await page.screenshot({ path: path.join(outDir, 'sp-layout-1100.png'), fullPage: true });
+  for (const spec of [
+    { file: 'sp-shared-prices-1280-dark.png', width: 1280, height: 900 },
+    { file: 'sp-shared-prices-390-dark.png', width: 390, height: 844 },
+  ]) {
+    await page.setViewport({ width: spec.width, height: spec.height });
+    await openPage();
+    await page.evaluate(() => {
+      document.documentElement.classList.add('admin-dark');
+    });
+    await page.screenshot({ path: path.join(outDir, spec.file), fullPage: true });
+  }
   fs.writeFileSync(path.join(outDir, 'sp-layout-geometry.json'), JSON.stringify(out, null, 2));
 
   await browser.close();

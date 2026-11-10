@@ -46,6 +46,32 @@ class SharedPricesCatalogMaterialTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(5.55, (float) $work->material_unit_price, 0.0001);
     }
 
+    public function test_save_persists_zero_material_unit_price_for_unlinked_row(): void
+    {
+        $this->actingAsAdmin();
+
+        $work = SharedWork::query()->whereNull('catalog_material_id')->first()
+            ?? SharedWork::query()->firstOrFail();
+        $work->catalog_material_id = null;
+        $work->material_unit_price = 5.00;
+        $work->save();
+
+        $this->put(route('admin.quotations.shared-prices.update'), [
+            'owner_hourly_rate' => '100.00',
+            'helper_hourly_rate' => '50.00',
+            'hours_per_day' => '8',
+            'works' => [
+                $work->id => [
+                    'id' => $work->id,
+                    'material_unit_price' => '0.0000',
+                ],
+            ],
+        ])->assertRedirect();
+
+        $work->refresh();
+        $this->assertEqualsWithDelta(0.0, (float) $work->material_unit_price, 0.0001);
+    }
+
     public function test_editor_drops_mat_price_column_and_shows_not_linked_hint(): void
     {
         $this->actingAsAdmin();

@@ -1016,7 +1016,7 @@ class SharedWorkCatalog
             }
         }
 
-        if ($work->material_unit_price !== null && (float) $work->material_unit_price > 0) {
+        if ($work->material_unit_price !== null) {
             return round((float) $work->material_unit_price, 4);
         }
 
