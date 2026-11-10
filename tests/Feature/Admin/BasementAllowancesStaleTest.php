@@ -140,8 +140,14 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
             'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
+            'electrical_lines' => [[
+                'description' => 'Electrician',
+                'amount' => '7000',
+                'hst_included' => '0',
+            ]],
         ]);
         $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertSessionHasNoErrors()
             ->assertRedirect(route('admin.quotations.basement.edit', $quote));
 
         $quote->refresh();

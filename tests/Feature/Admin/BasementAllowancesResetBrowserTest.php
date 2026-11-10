@@ -142,7 +142,7 @@ class BasementAllowancesResetBrowserTest extends IntegrationTestCase
         $forcePhp = '';
         foreach ($forced as $key => $value) {
             $forcePhp .= '$_ENV['.var_export($key, true).'] = $_SERVER['.var_export($key, true).'] = '.var_export($value, true).";\n";
-            $forcePhp .= 'putenv('.var_export($key.'='.$value', true).");\n";
+            $forcePhp .= 'putenv('.var_export($key.'='.$value, true).");\n";
         }
         file_put_contents($router, '<?php
 '.$forcePhp.'
