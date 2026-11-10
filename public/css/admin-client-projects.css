@@ -8023,6 +8023,12 @@ body.cp-modal-open {
   font-variant-numeric: tabular-nums;
   color: var(--admin-primary, #024768);
 }
+.br-layout .br-ceiling-drywall-note {
+  width: 100%;
+  margin: -4px 0 0;
+  font-size: 12px;
+  line-height: 1.35;
+}
 .br-layout .br-reconciliation {
   margin-top: 10px;
   padding-top: 8px;

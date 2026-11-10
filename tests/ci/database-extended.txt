@@ -8,6 +8,7 @@ tests/Feature/Admin/BasementClientProvidesBrowserTest.php
 tests/Feature/Admin/BasementClientProvidesTest.php
 tests/Feature/Admin/BasementHeaderLfLivePreviewTest.php
 tests/Feature/Admin/BasementCeilingLegacyBrowserTest.php
+tests/Feature/Admin/BasementCeilingSectionNoteBrowserTest.php
 tests/Feature/Admin/BasementClientScopePersistenceTest.php
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
 tests/Feature/Admin/BasementDemoChoiceTest.php
