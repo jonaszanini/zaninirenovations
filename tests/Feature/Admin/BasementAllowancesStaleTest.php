@@ -140,6 +140,7 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
             'include_demolition' => 0,
             'include_commute' => 0,
             'include_debris_removal' => 0,
+            'client_scope_allowances' => 'No separate cash allowances beyond the priced lines on this quotation.',
             'electrical_lines' => [[
                 'description' => 'Electrician',
                 'amount' => '7000',
