@@ -17,9 +17,14 @@ class BasementClientScope
         'allowances' => 'client_scope_allowances',
     ];
 
-    public static function contractorFeeLabel(float $percent): string
+    public static function contractorFeeLabel(float $percent, ?float $basePreHst = null): string
     {
-        return 'Contractor fee '.self::formatPercent($percent).'%';
+        $label = 'Contractor fee '.self::formatPercent($percent).'%';
+        if ($basePreHst !== null && $basePreHst > 0) {
+            $label .= ' on CA$'.number_format($basePreHst, 2, '.', ',').' pre-HST';
+        }
+
+        return $label;
     }
 
     public static function formatPercent(float $percent): string
@@ -106,27 +111,34 @@ class BasementClientScope
         ];
 
         $allowances = [];
+        $trades = is_array($calc['summary']['trades'] ?? null) ? $calc['summary']['trades'] : [];
         if (BasementQuotationCalculator::sectionEnabled($inputs, 'electrical')) {
-            $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
-            $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
+            $elecTax = round((float) ($trades['electrical']['tax_in'] ?? 0), 2);
+            if ($elecTax <= 0) {
+                $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
+                $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
+            }
             if ($elecTax > 0) {
-                $allowances[] = 'Electrical work allowance CAD$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
+                $allowances[] = 'Electrical work allowance CA$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
             }
         }
         if (BasementQuotationCalculator::sectionEnabled($inputs, 'plumbing')) {
-            $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
-            $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
+            $plumbTax = round((float) ($trades['plumbing']['tax_in'] ?? 0), 2);
+            if ($plumbTax <= 0) {
+                $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
+                $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
+            }
             if ($plumbTax > 0) {
-                $allowances[] = 'Plumbing work allowance CAD$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
+                $allowances[] = 'Plumbing work allowance CA$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
             }
         }
         $permitAmt = $permitOn ? round(max(0, (float) ($inputs['building_permit_amount'] ?? 0)), 2) : 0.0;
         $bcinAmt = $bcinOn ? round(max(0, (float) ($inputs['bcin_drawings_amount'] ?? 0)), 2) : 0.0;
         if ($permitAmt > 0) {
-            $allowances[] = 'City building permit extra-charge CAD$'.number_format($permitAmt, 2, '.', ',').' before HST (municipal fee; no contractor fee).';
+            $allowances[] = 'City building permit extra-charge CA$'.number_format($permitAmt, 2, '.', ',').' before HST (municipal fee; no contractor fee).';
         }
         if ($bcinAmt > 0) {
-            $allowances[] = 'BCIN drawings extra-charge CAD$'.number_format($bcinAmt, 2, '.', ',').' before HST (subcontracted professional service, including engineer signing when required).';
+            $allowances[] = 'BCIN drawings extra-charge CA$'.number_format($bcinAmt, 2, '.', ',').' before HST (subcontracted professional service, including engineer signing when required).';
         }
         if ($allowances === []) {
             $allowances[] = 'No separate cash allowances beyond the priced lines on this quotation.';

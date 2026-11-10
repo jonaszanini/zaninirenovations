@@ -150,7 +150,23 @@ async function floorMatTotal(page) {
 
     report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop);
     report.floorSubDropOk = moneyClose(report.floorSubDrop, expectFloorSubDrop);
-    report.ok = report.grandDropOk && report.floorSubDropOk && clientProvidedMarker;
+    report.ok = report.grandDropOk && report.floorSubDropOk && clientProvidedMarker && reconOk;
+
+    const reconOk = await page.evaluate(() => {
+      const rows = {};
+      document.querySelectorAll('[data-br-recon-key]').forEach((row) => {
+        const key = row.getAttribute('data-br-recon-key') || '';
+        const n = parseFloat(String(row.textContent || '').replace(/[^\d.-]/g, ''));
+        if (key) rows[key] = isFinite(n) ? n : 0;
+      });
+      const inHouse = rows.sections_subtotal_sum || 0;
+      const extra = rows.extra_materials || 0;
+      const fee = rows.contractor_fee || 0;
+      const subtotal = rows.subtotal_pre_hst || 0;
+      const assembled = Math.round((inHouse + extra + fee) * 100) / 100;
+      return Math.abs(assembled - subtotal) <= 0.05;
+    });
+    report.reconciliationAddUp = reconOk;
 
     const shotBase = path.join(shotsDir, 'basement-client-provides-review');
     await page.setViewport({ width: 1280, height: 900 });

@@ -342,6 +342,9 @@ class BasementQuotationController extends Controller
                     unset($previewInputs[$legacyKey]);
                 }
             }
+            if (! array_key_exists('header_lf', $quotation->inputs)) {
+                $previewInputs['header_lf'] = 0.0;
+            }
         }
         $initialPreview = (new BasementQuotationCalculator)->calculate($previewInputs, $settings);
 
@@ -510,7 +513,10 @@ class BasementQuotationController extends Controller
         $rawHeaderLf = $request->input('header_lf');
         $parsedHeaderLf = is_string($rawHeaderLf) ? str_replace([',', '$', ' '], '', $rawHeaderLf) : $rawHeaderLf;
         $postedHeaderLf = is_numeric($parsedHeaderLf) ? (float) $parsedHeaderLf : 0.0;
-        if ($storedHeaderLegacy && $postedHeaderLf <= 0) {
+        if ($request->exists('header_lf')) {
+            $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
+            $out['header_qty'] = 0;
+        } elseif ($storedHeaderLegacy) {
             $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
             unset($out['header_lf']);
         } else {

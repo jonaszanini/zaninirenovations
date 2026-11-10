@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Models\BasementSettings;
 use App\Models\SharedWork;
+use App\Services\BasementClientScope;
 use App\Services\BasementQuotationCalculator;
 use App\Services\SharedWorkCatalog;
 use Tests\TestCase;
@@ -2251,6 +2252,69 @@ class BasementQuotationCalculatorTest extends TestCase
             (float) $recon['checks']['grand_from_subtotal_hst_trades'],
             $grand,
             0.01
+        );
+        $inHouse = $linesByKey['sections_subtotal_sum'];
+        $this->assertEqualsWithDelta(
+            $inHouse + $linesByKey['extra_materials'] + $linesByKey['contractor_fee'],
+            $subtotalPre,
+            0.02
+        );
+    }
+
+    public function test_reconciliation_matches_br0282_style_electrical_allowance_and_fee_base(): void
+    {
+        $inputs = [
+            'area_sqft' => 1200,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 1200,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'paint_wall_sf' => 0,
+            'contractor_fee_percent' => 10,
+            'header_lf' => 0,
+            'header_qty' => 8,
+            'owner_hourly_rate' => 101,
+            'helper_hourly_rate' => 45,
+            'electrical_lines' => [
+                ['description' => "Electrician's quote", 'amount' => 7000, 'hst_included' => false],
+            ],
+        ];
+        $calc = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $summary = $calc['summary'];
+        $headers = collect($calc['labor'])->firstWhere('key', 'framing_headers');
+        $this->assertNull($headers);
+
+        $this->assertEqualsWithDelta(7000.0, (float) $summary['trades']['electrical']['pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(7910.0, (float) $summary['trades']['electrical']['tax_in'], 0.01);
+
+        $scope = BasementClientScope::generatedCopy($inputs, $calc);
+        $this->assertStringContainsString('Electrical work allowance CA$7,910.00', $scope['allowances']);
+        $this->assertStringNotContainsString('9,040.00', $scope['allowances']);
+
+        $recon = $summary['reconciliation'];
+        $byKey = [];
+        foreach ($recon['lines'] as $line) {
+            $byKey[$line['key']] = $line;
+        }
+        $inHouse = (float) $byKey['sections_subtotal_sum']['amount'];
+        $fee = (float) $byKey['contractor_fee']['amount'];
+        $subtotal = (float) $byKey['subtotal_pre_hst']['amount'];
+        $this->assertEqualsWithDelta($inHouse + $fee, $subtotal, 0.05);
+        $this->assertEqualsWithDelta(7000.0, (float) $byKey['qualified_trades_pre_hst']['amount'], 0.01);
+        $feeBase = (float) ($summary['contractor_fee_base_pre_hst'] ?? 0);
+        $this->assertGreaterThan(0, $feeBase);
+        $this->assertEqualsWithDelta($feeBase * 0.1, $fee, 0.02);
+        $this->assertStringContainsString('on CA$', $byKey['contractor_fee']['label']);
+        $this->assertEqualsWithDelta(
+            $subtotal + (float) $summary['hst'] + (float) $summary['trade_lines_tax_in'],
+            (float) $summary['grand_total'],
+            0.05
         );
     }
 
