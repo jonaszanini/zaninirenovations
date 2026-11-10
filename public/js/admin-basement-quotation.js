@@ -1222,9 +1222,12 @@
     btn.addEventListener('click', function () {
       var field = document.getElementById('br-scope-allowances');
       var scope = lastPreviewData && lastPreviewData.client_scope;
-      var synced = scope && scope.allowances;
-      if (!field || synced == null || synced === '') return;
-      field.value = String(synced).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      var resetText = scope && scope.allowances_reset;
+      if (resetText == null || resetText === '') {
+        resetText = scope && scope.generated && scope.generated.allowances;
+      }
+      if (!field || resetText == null || resetText === '') return;
+      field.value = String(resetText).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       field.setAttribute('data-br-scope-dirty', '1');
       var banner = document.getElementById('br-scope-allowances-stale');
       if (banner) banner.remove();

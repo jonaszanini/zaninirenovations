@@ -158,7 +158,7 @@ class BasementClientScope
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $calc
-     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}, allowances_stale?: bool, allowances_ui?: string}
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}, allowances_stale?: bool, allowances_ui?: string, allowances_reset?: string}
      */
     public static function resolveCopy(array $inputs, array $calc = []): array
     {
@@ -170,10 +170,12 @@ class BasementClientScope
                 if ($stored === '') {
                     $out['allowances'] = $generated['allowances'];
                     $out['allowances_ui'] = $generated['allowances'];
+                    $out['allowances_reset'] = $generated['allowances'];
                 } else {
                     $synced = self::syncAllowanceAmounts($stored, $generated['allowances']);
                     $out['allowances'] = $synced;
                     $out['allowances_ui'] = $stored;
+                    $out['allowances_reset'] = self::mergeAllowancesToCurrent($stored, $generated['allowances']);
                     $out['allowances_stale'] = self::allowancesAmountsStale($stored, $generated['allowances']);
                 }
                 continue;
@@ -202,6 +204,19 @@ class BasementClientScope
 
     public static function syncAllowanceAmounts(string $stored, string $generated): string
     {
+        return self::buildAllowanceMerge($stored, $generated, false);
+    }
+
+    /**
+     * Full merge for admin reset: update amounts, add missing generated lines, drop removed trades, keep custom lines.
+     */
+    public static function mergeAllowancesToCurrent(string $stored, string $generated): string
+    {
+        return self::buildAllowanceMerge($stored, $generated, true);
+    }
+
+    private static function buildAllowanceMerge(string $stored, string $generated, bool $appendAllMissingGenerated): string
+    {
         $stored = self::normalizeAllowanceText($stored);
         $generated = self::normalizeAllowanceText($generated);
         if ($stored === '') {
@@ -211,6 +226,7 @@ class BasementClientScope
             return $stored;
         }
         $freshByPrefix = [];
+        $generatedOrder = [];
         foreach (explode("\n", $generated) as $line) {
             $line = trim($line);
             if ($line === '' || self::isPlaceholderAllowanceLine($line)) {
@@ -219,6 +235,7 @@ class BasementClientScope
             $prefix = self::allowanceLinePrefix($line);
             if ($prefix !== '') {
                 $freshByPrefix[$prefix] = $line;
+                $generatedOrder[] = $prefix;
             }
         }
 
@@ -248,10 +265,10 @@ class BasementClientScope
             $out[] = $line;
         }
 
-        if ($storedHadPlaceholder && $freshByPrefix !== []) {
-            foreach ($freshByPrefix as $prefix => $freshLine) {
-                if (! isset($presentPrefixes[$prefix])) {
-                    $out[] = $freshLine;
+        if ($appendAllMissingGenerated || ($storedHadPlaceholder && $freshByPrefix !== [])) {
+            foreach ($generatedOrder as $prefix) {
+                if (! isset($presentPrefixes[$prefix]) && isset($freshByPrefix[$prefix])) {
+                    $out[] = $freshByPrefix[$prefix];
                     $presentPrefixes[$prefix] = true;
                 }
             }

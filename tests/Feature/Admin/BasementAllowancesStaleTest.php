@@ -107,4 +107,48 @@ class BasementAllowancesStaleTest extends IntegrationTestCase
         $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
         $this->assertStringContainsString('Allowance amounts no longer match', $html);
     }
+
+    public function test_publish_stores_synced_allowances_matching_pdf_after_trade_added(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 800,
+            'flooring_sf' => 800,
+            'client_scope_allowances' => 'No separate cash allowances beyond the priced lines on this quotation.',
+            'electrical_lines' => [
+                ['description' => 'Electrician', 'amount' => 7000, 'hst_included' => false],
+            ],
+        ]);
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
+            'client_name' => 'Publish synced allowances',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => (float) $calc['summary']['grand_total'],
+            'version' => 1,
+            'payment_installments' => 3,
+        ]);
+
+        $payload = array_merge($inputs, [
+            'client_name' => $quote->client_name,
+            'save_intent' => 'publish',
+            'ask_reply_to_accept' => '0',
+            'payment_installments' => 3,
+            'include_demolition' => 0,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+        ]);
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+
+        $quote->refresh();
+        $stored = (string) ($quote->inputs['client_scope_allowances'] ?? '');
+        $pdf = $quote->clientScopeCopy()['allowances'];
+        $this->assertStringContainsString('CA$7,910.00', $stored);
+        $this->assertStringNotContainsString('No separate cash allowances', $stored);
+        $this->assertSame(BasementClientScope::normalizeAllowanceText($pdf), BasementClientScope::normalizeAllowanceText($stored));
+    }
 }

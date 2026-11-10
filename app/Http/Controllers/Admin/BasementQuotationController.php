@@ -399,6 +399,17 @@ class BasementQuotationController extends Controller
         }
 
         $calc = (new BasementQuotationCalculator)->calculate($rawInputs);
+        if ($intent !== 'draft') {
+            $storedAllowances = trim((string) ($rawInputs['client_scope_allowances'] ?? ''));
+            $generatedAllowances = (string) ($calc['client_scope']['generated']['allowances'] ?? '');
+            if ($storedAllowances !== '' && $generatedAllowances !== '') {
+                $rawInputs['client_scope_allowances'] = \App\Services\BasementClientScope::syncAllowanceAmounts(
+                    $storedAllowances,
+                    $generatedAllowances
+                );
+                $calc = (new BasementQuotationCalculator)->calculate($rawInputs);
+            }
+        }
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')

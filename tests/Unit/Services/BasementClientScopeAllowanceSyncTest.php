@@ -99,4 +99,30 @@ class BasementClientScopeAllowanceSyncTest extends TestCase
         $this->assertStringContainsString('Client to choose fixtures from a CA$500.00 fixture budget', $synced);
         $this->assertFalse(BasementClientScope::allowancesAmountsStale($synced, $generated));
     }
+
+    public function test_merge_reset_restores_deleted_permit_and_custom_line(): void
+    {
+        $stored = "Electrical work allowance CA$7,910.00 (HST included in the trade line).\n"
+            .'Client to choose fixtures from a CA$500.00 fixture budget.';
+        $generated = "Electrical work allowance CA$7,910.00 (HST included in the trade line).\n"
+            .'City building permit extra-charge CA$600.00 before HST (municipal fee; no contractor fee).';
+
+        $this->assertTrue(BasementClientScope::allowancesAmountsStale($stored, $generated));
+        $merged = BasementClientScope::mergeAllowancesToCurrent($stored, $generated);
+        $this->assertStringContainsString('City building permit extra-charge CA$600.00', $merged);
+        $this->assertStringContainsString('Client to choose fixtures from a CA$500.00 fixture budget', $merged);
+        $this->assertFalse(BasementClientScope::allowancesAmountsStale($merged, $generated));
+        $synced = BasementClientScope::syncAllowanceAmounts($merged, $generated);
+        $this->assertStringContainsString('CA$600.00', $synced);
+    }
+
+    public function test_sync_still_omits_deleted_permit_for_pdf_until_reset(): void
+    {
+        $stored = 'Electrical work allowance CA$7,910.00 (HST included in the trade line).';
+        $generated = "Electrical work allowance CA$7,910.00 (HST included in the trade line).\n"
+            .'City building permit extra-charge CA$600.00 before HST (municipal fee; no contractor fee).';
+
+        $synced = BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        $this->assertStringNotContainsString('City building permit', $synced);
+    }
 }
