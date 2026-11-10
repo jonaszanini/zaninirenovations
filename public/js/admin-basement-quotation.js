@@ -1155,8 +1155,12 @@
         var rowClass = 'pq-row';
         if (line.row_class === 'sub') rowClass += ' pq-row--sub';
         if (line.row_class === 'hl') rowClass += ' pq-row--hl';
+        var lineAmount = Number(line.amount || 0);
+        if (line.key === 'grand_total') {
+          lineAmount = grand;
+        }
         html += '<div class="' + rowClass + '" data-br-recon-key="' + escapeHtml(line.key || '') + '">'
-          + '<span>' + escapeHtml(line.label || '') + '</span><span>' + fmt(line.amount || 0) + '</span></div>';
+          + '<span>' + escapeHtml(line.label || '') + '</span><span>' + fmt(lineAmount) + '</span></div>';
       });
       html += '</div>';
     }

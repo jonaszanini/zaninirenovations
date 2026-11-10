@@ -13,6 +13,13 @@ use Tests\IntegrationTestCase;
 
 class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
 {
+    /**
+     * Pinned literals for basement-wizard-subtotal-browser.js (regressed by test_pinned_wizard_browser_subtotal_literals_match_calculator).
+     */
+    private const PINNED_FLOORING_SECTION_PRE_HST = 6845.0;
+
+    private const PINNED_PAINTING_SECTION_PRE_HST = 2322.4;
+
     /** @var list<string> */
     protected $connectionsToTransact = [];
 
@@ -20,6 +27,36 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     private $serverProcess = null;
 
     private int $serverPort = 8055;
+
+    public function test_pinned_wizard_browser_subtotal_literals_match_calculator(): void
+    {
+        $import = $this->seedPaintLayoutRoom();
+        $settings = BasementSettings::current();
+        $wizard = array_merge(
+            BasementQuotationCalculator::defaultInputs(),
+            array_filter($import['proposed'], fn ($v) => $v !== null),
+            [
+                'area_sqft' => 800,
+                'ceiling_height_ft' => 8,
+                'flooring_type' => 'lvp',
+                'flooring_sf' => 800,
+            ]
+        );
+        $calc = (new BasementQuotationCalculator)->calculate($wizard, $settings);
+        $sections = $calc['summary']['section_subtotals_pre_hst'] ?? [];
+        $this->assertEqualsWithDelta(
+            self::PINNED_FLOORING_SECTION_PRE_HST,
+            (float) ($sections['flooring'] ?? 0),
+            0.05,
+            'Update PINNED_FLOORING_SECTION_PRE_HST when flooring pricing changes'
+        );
+        $this->assertEqualsWithDelta(
+            self::PINNED_PAINTING_SECTION_PRE_HST,
+            (float) ($sections['painting'] ?? 0),
+            0.05,
+            'Update PINNED_PAINTING_SECTION_PRE_HST when paint import pricing changes'
+        );
+    }
 
     public function test_section_subtotals_live_update_and_paint_import_screenshots(): void
     {
@@ -59,6 +96,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'BR_LITERAL_CEILING_SF' => (string) $literals['ceiling_sf'],
             'BR_LITERAL_PAINT_CEILING_SF' => (string) $literals['paint_ceiling_sf'],
             'BR_EXPECT_PAINTING_SECTION' => sprintf('%.2f', $literals['painting_section_pre_hst']),
+            'BR_EXPECT_FLOORING_SECTION' => sprintf('%.2f', $literals['flooring_section_pre_hst']),
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -82,6 +120,10 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->assertFileExists($subdir.'/basement-reconciliation-mobile-390.png');
         $this->assertTrue((bool) ($report['importPaint']['wallSfOk'] ?? false), json_encode($report['importPaint'] ?? []));
         $this->assertTrue((bool) ($report['importPaint']['paintingSectionLiteralOk'] ?? false));
+        $this->assertTrue((bool) ($report['reconciliation']['grandMatchesToolbar'] ?? false), json_encode($report['reconciliation'] ?? []));
+        if (isset($literals['flooring_section_pre_hst'])) {
+            $this->assertTrue((bool) ($report['create']['flooringSectionLiteralOk'] ?? false));
+        }
 
         $artifactDir = '/opt/cursor/artifacts';
         if (! is_dir($artifactDir)) {
@@ -99,24 +141,14 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     private function browserSubtotalLiterals(array $import): array
     {
         $proposed = $import['proposed'];
-        $settings = BasementSettings::current();
-        $wizard = array_merge(
-            BasementQuotationCalculator::defaultInputs(),
-            array_filter($proposed, fn ($v) => $v !== null),
-            [
-                'area_sqft' => 800,
-                'ceiling_height_ft' => 8,
-                'flooring_type' => 'lvp',
-            ]
-        );
-        $calc = (new BasementQuotationCalculator)->calculate($wizard, $settings);
 
         return [
             'wall_sf' => 512.0,
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
             'ceiling_sf' => 240.0,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
-            'painting_section_pre_hst' => (float) ($calc['summary']['section_subtotals_pre_hst']['painting'] ?? 0),
+            'painting_section_pre_hst' => self::PINNED_PAINTING_SECTION_PRE_HST,
+            'flooring_section_pre_hst' => self::PINNED_FLOORING_SECTION_PRE_HST,
         ];
     }
 

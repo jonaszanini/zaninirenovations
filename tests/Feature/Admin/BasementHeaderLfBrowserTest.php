@@ -53,6 +53,7 @@ class BasementHeaderLfBrowserTest extends IntegrationTestCase
 
         $this->assertFileExists($shots.'/basement-header-lf-framing-1280.png');
         $this->assertFileExists($shots.'/basement-header-lf-framing-390.png');
+        $this->assertStringContainsString('4', (string) ($report['labor']['hours'] ?? ''));
     }
 
     /**

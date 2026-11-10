@@ -40,11 +40,38 @@ async function gotoDrywall(page) {
   await btn.click();
   await page.waitForFunction(() => {
     const step = document.querySelector('[data-br-step="drywall"]');
-  if (!step) return false;
-    step.classList.add('is-active');
-    step.setAttribute('open', '');
-    const field = document.getElementById('br-dw-corners');
-    return !!(field && !step.hasAttribute('hidden'));
+    if (!step) return false;
+  return step.classList.contains('is-active')
+      && !!document.getElementById('br-dw-corners');
+  }, { timeout: 45000 });
+  await new Promise((r) => setTimeout(r, 350));
+}
+
+async function typeField(page, selector, value) {
+  await page.waitForSelector(selector, { timeout: 20000 });
+  await page.click(selector, { clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await page.type(selector, String(value), { delay: 20 });
+  await page.evaluate((sel) => {
+    const el = document.querySelector(sel);
+    if (el) {
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+  }, selector);
+}
+
+async function waitCornerBeadInLive(page) {
+  await page.waitForFunction(() => {
+    const rows = document.querySelectorAll('#br-mat-rows tr[data-br-mat-key]');
+    for (const row of rows) {
+      const key = row.getAttribute('data-br-mat-key') || '';
+      const label = String(row.querySelector('td')?.textContent || '').toLowerCase();
+      if (key.includes('corner_bead') || label.includes('corner bead')) {
+        return row.getBoundingClientRect().height > 0;
+      }
+    }
+    return false;
   }, { timeout: 45000 });
 }
 
@@ -55,11 +82,25 @@ async function gotoDrywall(page) {
   await login(page);
   await page.goto(base + createPath, { waitUntil: 'networkidle2', timeout: 60000 });
   await page.waitForSelector('#br-main-form', { timeout: 45000 });
+  await typeField(page, '#br-area', '400');
 
-  const report = { ok: false, labels: {}, shots: {} };
+  const report = { ok: false, labels: {}, shots: {}, live: {} };
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await gotoDrywall(page);
+  await typeField(page, '#br-dw-corners', '4');
+  await waitCornerBeadInLive(page);
+  report.live.desktop = await page.evaluate(() => {
+    let line = '';
+    document.querySelectorAll('#br-mat-rows tr[data-br-mat-key]').forEach((row) => {
+      const key = row.getAttribute('data-br-mat-key') || '';
+      const label = String(row.querySelector('td')?.textContent || '').trim();
+      if (key.includes('corner_bead') || label.toLowerCase().includes('corner bead')) {
+        line = label;
+      }
+    });
+    return { cornerBeadLine: line };
+  });
   report.labels.desktop = await page.evaluate(() => {
     const tip = document.querySelector('label[for="br-dw-corners"]')
       ?.closest('.admin-form-group')
@@ -75,6 +116,7 @@ async function gotoDrywall(page) {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await new Promise((r) => setTimeout(r, 200));
   await gotoDrywall(page);
+  await waitCornerBeadInLive(page);
   report.labels.mobile = await page.evaluate(() => {
     const wrap = document.getElementById('br-dw-corners')?.closest('.admin-form-group');
     const rect = wrap ? wrap.getBoundingClientRect() : null;
@@ -85,7 +127,8 @@ async function gotoDrywall(page) {
 
   report.ok = report.labels.desktop.hasTip
     && report.labels.desktop.subtotal
-    && report.labels.mobile.visible;
+    && report.labels.mobile.visible
+    && (report.live.desktop.cornerBeadLine || '').toLowerCase().includes('corner');
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

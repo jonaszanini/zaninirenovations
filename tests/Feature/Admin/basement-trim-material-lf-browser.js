@@ -92,6 +92,16 @@ async function typeField(page, selector, value) {
 
   await gotoStep(page, 'review');
   await page.waitForSelector('#br-mat-rows', { timeout: 30000 });
+  await page.evaluate(() => {
+    const matCard = document.getElementById('br-mat-rows')?.closest('.admin-card')
+      || document.querySelector('[data-br-review-materials]');
+    if (matCard) {
+      matCard.scrollIntoView({ block: 'center' });
+    }
+    const row = document.querySelector('tr[data-br-mat-key="baseboard"]');
+    if (row) row.scrollIntoView({ block: 'center' });
+  });
+  await new Promise((r) => setTimeout(r, 400));
 
   report.materials = await page.evaluate(() => {
     const row = document.querySelector('tr[data-br-mat-key="baseboard"]');
@@ -101,13 +111,18 @@ async function typeField(page, selector, value) {
     const priceText = String(cells[2]?.textContent || '').trim();
     const amtText = String(cells[3]?.textContent || '').trim();
     const n = (t) => parseFloat(String(t).replace(/[^\d.-]/g, ''));
+    const shoe = document.querySelector('tr[data-br-mat-key="shoe_mould"]')
+      || document.querySelector('tr[data-br-mat-key="shoe"]');
+    const shoeLabel = String(shoe?.querySelector('td')?.textContent || '').trim();
     return {
       label,
       qty: n(qtyText),
       unitPrice: n(priceText),
       amount: n(amtText),
+      shoeLabel,
       subtotal: !!document.querySelector('[data-br-section-subtotal="doors_trim"]'),
       hasRow: !!row,
+      hasShoe: !!shoe,
     };
   });
 
@@ -126,7 +141,9 @@ async function typeField(page, selector, value) {
     && m.label.toLowerCase().includes('per lin. ft')
     && Math.abs(m.qty - 110) < 0.05
     && Math.abs(m.unitPrice - 3) < 0.05
-    && Math.abs(m.amount - 330) < 0.05;
+    && Math.abs(m.amount - 330) < 0.05
+    && m.hasShoe
+    && m.shoeLabel.toLowerCase().includes('per lin. ft');
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

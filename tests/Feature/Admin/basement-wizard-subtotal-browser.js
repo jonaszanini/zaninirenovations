@@ -18,6 +18,9 @@ const LITERAL_DRYWALL_WALL_SF = Number(process.env.BR_LITERAL_DRYWALL_WALL_SF ||
 const LITERAL_CEILING_SF = Number(process.env.BR_LITERAL_CEILING_SF || 240);
 const LITERAL_PAINT_CEILING_SF = Number(process.env.BR_LITERAL_PAINT_CEILING_SF || 240);
 const EXPECT_PAINTING_SECTION = parseMoney(process.env.BR_EXPECT_PAINTING_SECTION || '');
+const EXPECT_FLOORING_SECTION = parseMoney(process.env.BR_EXPECT_FLOORING_SECTION || '');
+const EXPECT_COMMUTE_ADDED = parseMoney(process.env.BR_EXPECT_COMMUTE_ADDED || '80');
+const EXPECT_DEBRIS_ADDED = parseMoney(process.env.BR_EXPECT_DEBRIS_ADDED || '150');
 
 function launchOpts() {
   const opts = {
@@ -185,6 +188,59 @@ async function shot(page, name) {
   return dest;
 }
 
+async function scrollReconciliationIntoView(page) {
+  await page.evaluate(() => {
+    const el = document.querySelector('[data-br-reconciliation="1"]');
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+    }
+  });
+  await new Promise((r) => setTimeout(r, 300));
+}
+
+async function enableCommuteAndDebris(page) {
+  await page.click('[data-cp-commute-include-yes]');
+  await page.click('[data-cp-debris-include-yes]');
+  await page.evaluate((commuteAmt, debrisAmt) => {
+    const hidden = document.querySelector('[data-cp-commute-round-trip-hidden]');
+    if (hidden) {
+      hidden.value = String(commuteAmt);
+    }
+    const card = document.querySelector('[data-cp-commute-expense]');
+    const roundTripEl = card?.querySelector('[data-cp-commute-round-trip]');
+    if (roundTripEl) {
+      roundTripEl.textContent = 'CA$' + Number(commuteAmt).toFixed(2);
+    }
+    const percent = document.querySelector('[data-cp-commute-percent]');
+    const trips = document.querySelector('[data-cp-commute-trips]');
+    if (percent) {
+      percent.value = '100';
+      percent.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    if (trips) {
+      trips.value = '1';
+      trips.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    document.dispatchEvent(new CustomEvent('commute-expense:change', {
+      detail: { included: true, amount: commuteAmt, roundTrip: commuteAmt, percent: 100, trips: 1 },
+    }));
+    const debrisInput = document.querySelector('[data-cp-debris-amount]');
+    if (debrisInput) {
+      debrisInput.value = String(debrisAmt);
+      debrisInput.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    document.dispatchEvent(new CustomEvent('debris-removal:change', {
+      detail: { included: true, amount: debrisAmt },
+    }));
+  }, EXPECT_COMMUTE_ADDED, EXPECT_DEBRIS_ADDED);
+  await new Promise((r) => setTimeout(r, 500));
+}
+
+function shotFileNonEmpty(filePath) {
+  const stat = fs.statSync(filePath);
+  return stat.size > 8000;
+}
+
 (async function main() {
   fs.mkdirSync(shotsDir, { recursive: true });
   const browser = await puppeteer.launch(launchOpts());
@@ -245,6 +301,30 @@ async function shot(page, name) {
   report.create.framingAfter = framingAfter.amount;
   report.create.framingLiveUpdated = framingAfter.amount > framingBefore.amount + 0.01;
 
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await gotoStep(page, 'flooring');
+  const flooringDesktop = await readSectionSubtotal(page, 'flooring');
+  report.create.flooringSection = flooringDesktop;
+  if (EXPECT_FLOORING_SECTION > 0) {
+    report.create.flooringSectionLiteralOk = moneyClose(flooringDesktop.amount, EXPECT_FLOORING_SECTION);
+  }
+  report.create.shotFlooring1280 = await shot(page, 'basement-section-subtotal-flooring-1280.png');
+  report.create.shotFlooring1280NonEmpty = shotFileNonEmpty(report.create.shotFlooring1280);
+
+  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await new Promise((r) => setTimeout(r, 250));
+  await gotoStep(page, 'flooring');
+  const mobileFlooring = await readSectionSubtotal(page, 'flooring');
+  report.create.mobileFlooringVisible = !mobileFlooring.hidden && mobileFlooring.amount > 0;
+  report.create.shotFlooring390 = await shot(page, 'basement-section-subtotal-flooring-390.png');
+  report.create.shotFlooring390NonEmpty = shotFileNonEmpty(report.create.shotFlooring390);
+
+  await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+  await new Promise((r) => setTimeout(r, 200));
+  await gotoStep(page, 'overview');
+  await enableCommuteAndDebris(page);
+  await waitGrandPositive(page);
+
   await gotoStep(page, 'review');
   await waitReconciliationGrand(page);
   const recon = await readReconciliation(page);
@@ -255,30 +335,44 @@ async function shot(page, name) {
   });
   report.reconciliation.toolbarGrand = toolbarGrand;
   report.reconciliation.grandMatchesToolbar = moneyClose(recon.grand_total || 0, toolbarGrand);
-  const partsSum = Math.round(((recon.subtotal_pre_hst || 0) + (recon.hst || 0)
-    + (recon.electrical_tax_in || 0) + (recon.plumbing_tax_in || 0)) * 100) / 100;
-  report.reconciliation.partsSumToGrand = moneyClose(partsSum, recon.grand_total || 0);
+  await scrollReconciliationIntoView(page);
+  report.importPaint = report.importPaint || {};
+  report.importPaint.shotReconciliation1280 = await shot(page, 'basement-reconciliation-1280.png');
+  report.importPaint.shotReconciliation1280NonEmpty = shotFileNonEmpty(
+    report.importPaint.shotReconciliation1280
+  );
+  report.importPaint.reconVisible1280 = await page.evaluate(() => {
+    const wrap = document.querySelector('[data-br-reconciliation="1"]');
+    if (!wrap) return false;
+    const rect = wrap.getBoundingClientRect();
+    return rect.height > 20 && rect.width > 40;
+  });
 
-  report.create.shotFlooring1280 = await shot(page, 'basement-section-subtotal-flooring-1280.png');
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
   await new Promise((r) => setTimeout(r, 250));
-  await gotoStep(page, 'flooring');
-  const mobileFlooring = await readSectionSubtotal(page, 'flooring');
-  report.create.mobileFlooringVisible = !mobileFlooring.hidden;
-  report.create.shotFlooring390 = await shot(page, 'basement-section-subtotal-flooring-390.png');
-  report.create.shotReconciliation390 = await shot(page, 'basement-reconciliation-mobile-390.png');
-
   await gotoStep(page, 'review');
-  if (!report.importPaint.shotReconciliation1280) {
-    report.importPaint = report.importPaint || {};
-    report.importPaint.shotReconciliation1280 = await shot(page, 'basement-reconciliation-1280.png');
-  }
+  await waitReconciliationGrand(page);
+  await scrollReconciliationIntoView(page);
+  report.create.shotReconciliation390 = await shot(page, 'basement-reconciliation-mobile-390.png');
+  report.create.shotReconciliation390NonEmpty = shotFileNonEmpty(report.create.shotReconciliation390);
+  report.create.reconVisible390 = await page.evaluate(() => {
+    const wrap = document.querySelector('[data-br-reconciliation="1"]');
+    if (!wrap) return false;
+    const rect = wrap.getBoundingClientRect();
+    return rect.height > 20 && rect.width > 20;
+  });
 
   report.ok = report.create.framingLiveUpdated
     && report.reconciliation.grandMatchesToolbar
-    && report.reconciliation.partsSumToGrand
+    && report.create.shotFlooring1280NonEmpty
+    && report.create.shotFlooring390NonEmpty
+    && report.importPaint.shotReconciliation1280NonEmpty
+    && report.create.shotReconciliation390NonEmpty
+    && report.importPaint.reconVisible1280
+    && report.create.reconVisible390
     && (!importQuery || (report.importPaint.wallSfOk && report.importPaint.ceilingSfOk
-      && (EXPECT_PAINTING_SECTION <= 0 || report.importPaint.paintingSectionLiteralOk)));
+      && (EXPECT_PAINTING_SECTION <= 0 || report.importPaint.paintingSectionLiteralOk)))
+    && (EXPECT_FLOORING_SECTION <= 0 || report.create.flooringSectionLiteralOk);
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));

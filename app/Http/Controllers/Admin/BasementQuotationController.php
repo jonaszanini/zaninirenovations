@@ -31,6 +31,13 @@ use Illuminate\Validation\ValidationException;
 
 class BasementQuotationController extends Controller
 {
+    /** When absent from stored inputs and from POST, legacy quotes must not get false from defaults. */
+    private const LEGACY_V2_BOOL_FLAGS = [
+        'corner_bead_by_height',
+        'drywall_boxing_v2',
+        'trim_material_lf_v2',
+    ];
+
     use HandlesQuotationAdditionalCosts;
     use HandlesQuotationCommuteExpense;
     use HandlesQuotationDebrisRemoval;
@@ -526,6 +533,9 @@ class BasementQuotationController extends Controller
         $out['drywall_sheet_size'] = BasementQuotationCalculator::normalizeSheetSize($out['drywall_sheet_size'] ?? '4x8');
         foreach ($bools as $key) {
             if ($key === 'include_demolition') {
+                continue;
+            }
+            if (in_array($key, self::LEGACY_V2_BOOL_FLAGS, true) && ! array_key_exists($key, $out)) {
                 continue;
             }
             $raw = $request->input($key);

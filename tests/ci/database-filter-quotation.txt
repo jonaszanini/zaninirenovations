@@ -1,4 +1,5 @@
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
+tests/Feature/Admin/BasementLegacyFlagsHttpTest.php
 tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
 tests/Feature/Admin/BasementPaintManualEditTest.php
 tests/Feature/Admin/BasementHeaderLegacyQuoteTest.php
