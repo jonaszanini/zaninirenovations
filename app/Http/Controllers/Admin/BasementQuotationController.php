@@ -399,17 +399,6 @@ class BasementQuotationController extends Controller
         }
 
         $calc = (new BasementQuotationCalculator)->calculate($rawInputs);
-        if ($intent !== 'draft') {
-            $storedAllowances = trim((string) ($rawInputs['client_scope_allowances'] ?? ''));
-            $generatedAllowances = (string) ($calc['client_scope']['generated']['allowances'] ?? '');
-            if ($storedAllowances !== '' && $generatedAllowances !== '') {
-                $rawInputs['client_scope_allowances'] = \App\Services\BasementClientScope::syncAllowanceAmounts(
-                    $storedAllowances,
-                    $generatedAllowances
-                );
-                $calc = (new BasementQuotationCalculator)->calculate($rawInputs);
-            }
-        }
         $final = (float) ($calc['summary']['final_quote_total'] ?? 0);
         $workDescription = \App\Support\QuotationWorkDescriptionHtml::normalizeForStorage(
             $request->input('work_description')
@@ -430,7 +419,36 @@ class BasementQuotationController extends Controller
         $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
         $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'basement_quotations');
 
-        return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+
+        return $this->syncPublishedClientScopeAllowances($merged, ! $draft);
+    }
+
+    /**
+     * @param  array<string, mixed>  $persistence
+     * @return array<string, mixed>
+     */
+    protected function syncPublishedClientScopeAllowances(array $persistence, bool $publish): array
+    {
+        if (! $publish) {
+            return $persistence;
+        }
+        $inputs = is_array($persistence['inputs'] ?? null) ? $persistence['inputs'] : [];
+        $calculation = is_array($persistence['calculation'] ?? null) ? $persistence['calculation'] : [];
+        $stored = trim((string) ($inputs['client_scope_allowances'] ?? ''));
+        $generated = (string) ($calculation['client_scope']['generated']['allowances'] ?? '');
+        if ($stored === '' || $generated === '') {
+            return $persistence;
+        }
+        $synced = \App\Services\BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        if ($synced === \App\Services\BasementClientScope::normalizeAllowanceText($stored)) {
+            return $persistence;
+        }
+        $inputs['client_scope_allowances'] = $synced;
+        $persistence['inputs'] = $inputs;
+        $persistence['calculation'] = (new BasementQuotationCalculator)->calculate($inputs);
+
+        return $persistence;
     }
 
     /**
