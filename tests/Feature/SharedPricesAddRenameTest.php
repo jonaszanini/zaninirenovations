@@ -1100,7 +1100,7 @@ class SharedPricesAddRenameTest extends IntegrationTestCase
         $blade = file_get_contents(resource_path('views/admin/quotations/shared_prices/edit.blade.php'));
         $this->assertStringContainsString('SharedWorkCatalog::definition($work->key)', $blade);
         $this->assertMatchesRegularExpression(
-            '/\$blankSell\s*=\s*\(float\)\s*\$def\[\'flat_rate\'\]/',
+            '/\$blankSell\s*=\s*\(float\)\s*\$workDef\[\'flat_rate\'\]/',
             $blade
         );
         $this->assertStringContainsString(
