@@ -58,7 +58,10 @@ class BasementHeaderLegacyQuoteTest extends IntegrationTestCase
 
         $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
         $this->assertStringContainsString('Headers / beams (lin. ft)', $editHtml);
-        $this->assertStringContainsString('name="header_qty" value="2"', $editHtml);
+        $this->assertMatchesRegularExpression(
+            '/<input(?=[^>]*\bname="header_qty")(?=[^>]*\btype="hidden")(?=[^>]*\bvalue="2")/',
+            $editHtml
+        );
         $this->assertMatchesRegularExpression('/\bid="br-headers"/', $editHtml);
     }
 }

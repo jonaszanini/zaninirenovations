@@ -18,8 +18,11 @@
   @include('admin.partials.info_tip', ['tipText' => $brInfo['header_lf'], 'tipLabel' => 'Headers / beams (lin. ft)'])
 </span>
     @php
-      $legacyHeaderQty = (!\Illuminate\Support\Arr::has($inputs ?? [], 'header_lf') && (int) ($brVal('header_qty', 0)) > 0)
-        ? (int) $brVal('header_qty', 0)
+      $storedHeaderInputs = (isset($quotation) && is_array($quotation->inputs ?? null))
+        ? $quotation->inputs
+        : (is_array($inputs ?? null) ? $inputs : []);
+      $legacyHeaderQty = (! array_key_exists('header_lf', $storedHeaderInputs) && (int) ($storedHeaderInputs['header_qty'] ?? 0) > 0)
+        ? (int) $storedHeaderInputs['header_qty']
         : 0;
     @endphp
     @if ($legacyHeaderQty > 0)
@@ -27,7 +30,7 @@
     @endif
     <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-headers" name="header_lf"
            value="{{ $brVal('header_lf', 0) }}"
-           @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} opening(s) saved" @endif>
+           @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} openings saved" @endif>
   </div>
   <div class="admin-form-group br-field--phone-wide">
     <span class="admin-label-with-tip">
