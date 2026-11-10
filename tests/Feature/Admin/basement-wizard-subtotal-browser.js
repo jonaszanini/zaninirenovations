@@ -118,12 +118,22 @@ async function typeField(page, selector, value) {
 async function importLayoutViaUi(page, query) {
   await gotoStep(page, 'overview');
   await page.waitForSelector('#br-layout-import-input', { timeout: 20000 });
-  await typeField(page, '#br-layout-import-input', query);
-  await page.waitForSelector('.br-layout-import__picker .admin-search-select__option:not(.admin-search-select__option--action)', {
-    visible: true,
-    timeout: 20000,
-  });
-  await page.click('.br-layout-import__picker .admin-search-select__option:not(.admin-search-select__option--action)');
+  const input = await page.$('#br-layout-import-input');
+  if (!input) throw new Error('Missing #br-layout-import-input');
+  await input.click({ clickCount: 3 });
+  await page.keyboard.press('Backspace');
+  await input.type(query, { delay: 40 });
+  const picked = await page.waitForFunction(() => {
+    const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
+    const opts = list
+      ? list.querySelectorAll('.admin-search-select__option:not(.admin-search-select__option--action)')
+      : [];
+    return opts.length > 0;
+  }, { timeout: 45000 });
+  if (!picked) throw new Error('Layout search returned no options for ' + query);
+  await page.keyboard.press('ArrowDown');
+  await page.keyboard.press('Enter');
+  await new Promise((r) => setTimeout(r, 350));
   const dialogVisible = await page.evaluate(() => {
     const dlg = document.getElementById('admin-dialog');
     return !!(dlg && !dlg.hidden);
