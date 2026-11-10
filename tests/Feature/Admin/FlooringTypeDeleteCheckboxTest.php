@@ -17,6 +17,19 @@ class FlooringTypeDeleteCheckboxTest extends IntegrationTestCase
         $first = FlooringType::query()->orderBy('id')->firstOrFail();
         $second = FlooringType::query()->where('id', '>', $first->id)->orderBy('id')->firstOrFail();
 
+        $html = $this->get(route('admin.quotations.flooring.price-configuration'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/name="delete_flooring_type_ids\[\]"[^>]*value="'.preg_quote((string) $second->id, '/').'"/',
+            $html
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/name="delete_flooring_type_ids\[\]"[^>]*value="1"(?![0-9])/',
+            $html
+        );
+
         $settings = \App\Models\FlooringSettings::current();
 
         $response = $this->post(route('admin.quotations.flooring.database.update'), [

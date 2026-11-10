@@ -12,19 +12,24 @@
     <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-bulkhead" name="bulkhead_lf"
            value="{{ $brVal('bulkhead_lf', 0) }}">
   </div>
+  @php
+    $storedHeaderInputs = (isset($quotation) && is_array($quotation->inputs ?? null))
+      ? $quotation->inputs
+      : (is_array($inputs ?? null) ? $inputs : []);
+    $legacyHeaderQty = (! array_key_exists('header_lf', $storedHeaderInputs) && (int) ($storedHeaderInputs['header_qty'] ?? 0) > 0)
+      ? (int) $storedHeaderInputs['header_qty']
+      : 0;
+  @endphp
   <div class="admin-form-group">
     <span class="admin-label-with-tip">
   <label for="br-headers">Headers / beams (lin. ft)</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['header_lf'], 'tipLabel' => 'Headers / beams (lin. ft)'])
+  @include('admin.partials.info_tip', [
+      'tipText' => $legacyHeaderQty > 0
+          ? $legacyHeaderQty.' openings saved from a previous save. Enter linear feet here to switch to lin. ft pricing, or leave blank to keep the saved opening count. '.$brInfo['header_lf']
+          : $brInfo['header_lf'],
+      'tipLabel' => 'Headers / beams (lin. ft)',
+  ])
 </span>
-    @php
-      $storedHeaderInputs = (isset($quotation) && is_array($quotation->inputs ?? null))
-        ? $quotation->inputs
-        : (is_array($inputs ?? null) ? $inputs : []);
-      $legacyHeaderQty = (! array_key_exists('header_lf', $storedHeaderInputs) && (int) ($storedHeaderInputs['header_qty'] ?? 0) > 0)
-        ? (int) $storedHeaderInputs['header_qty']
-        : 0;
-    @endphp
     @if ($legacyHeaderQty > 0)
       <input type="hidden" name="header_qty" value="{{ $legacyHeaderQty }}">
     @endif
@@ -39,9 +44,6 @@
     <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-headers" name="header_lf"
            value="{{ $headerLfValue }}"
            @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} openings saved; enter lin. ft to replace" data-br-header-legacy="{{ $legacyHeaderQty }}" @endif>
-    @if ($legacyHeaderQty > 0)
-      <p class="admin-form-help" id="br-header-legacy-note">{{ $legacyHeaderQty }} openings saved from a previous save. Enter linear feet here to switch to lin. ft pricing, or leave blank to keep the saved opening count.</p>
-    @endif
   </div>
   <div class="admin-form-group br-field--phone-wide">
     <span class="admin-label-with-tip">

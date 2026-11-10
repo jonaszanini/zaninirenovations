@@ -571,7 +571,11 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($strings as $key) {
-            $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+            $value = trim((string) $request->input($key, $defaults[$key]));
+            if ($key === 'client_scope_allowances') {
+                $value = \App\Services\BasementClientScope::normalizeAllowanceText($value);
+            }
+            $out[$key] = $value;
         }
         if (! in_array($out['lighting_type'], ['fixture', 'spot', 'both'], true)) {
             $out['lighting_type'] = 'spot';

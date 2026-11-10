@@ -137,6 +137,12 @@ async function floorMatTotal(page) {
       }, { timeout: 60000 }, grandBefore, expectGrandDrop);
     }
 
+    await new Promise((r) => setTimeout(r, 1500));
+    const flooringStillChecked = await page.evaluate(() => {
+      const cb = document.querySelector('input[name="client_provides_sections[]"][value="flooring"]');
+      return !!(cb && cb.checked);
+    });
+    report.flooringStillChecked = flooringStillChecked;
     const grandAfter = await readGrand(page);
     report.after = { grand: grandAfter };
     report.grandDrop = grandBefore - grandAfter;
@@ -179,7 +185,7 @@ async function floorMatTotal(page) {
 
     report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop, 3);
     const grandBeforeOk = !report.grandBeforeMismatch;
-    report.ok = report.grandDropOk && clientProvidedMarker && reconOk && grandBeforeOk;
+    report.ok = report.grandDropOk && clientProvidedMarker && reconOk && grandBeforeOk && flooringStillChecked;
 
     const shotBase = path.join(shotsDir, 'basement-client-provides-review');
     await page.setViewport({ width: 1280, height: 900 });

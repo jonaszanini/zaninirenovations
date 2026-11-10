@@ -56,9 +56,9 @@ class BasementClientScope
         foreach ($tradeLabels as $key => $label) {
             if (in_array($key, $enabled, true)) {
                 if ($key === 'electrical') {
-                    $included[] = 'Electrical coordination — Jonas arranges certified electricians for quoted electrical work.';
+                    $included[] = 'Electrical coordination, Jonas arranges certified electricians for quoted electrical work.';
                 } elseif ($key === 'plumbing') {
-                    $included[] = 'Plumbing coordination — Jonas arranges certified plumbers for quoted plumbing work.';
+                    $included[] = 'Plumbing coordination, Jonas arranges certified plumbers for quoted plumbing work.';
                 } elseif ($key === 'flooring') {
                     $type = strtolower(trim((string) ($inputs['flooring_type'] ?? 'lvp')));
                     if ($type !== 'none') {
@@ -88,12 +88,12 @@ class BasementClientScope
         if ($permitOn) {
             $included[] = 'City building permit as an optional extra-charge municipal fee (priced separately; pass-through, no contractor fee).';
         } else {
-            $notIncluded[] = 'City building permit — optional extra-charge municipal fee, not included by default.';
+            $notIncluded[] = 'City building permit, optional extra-charge municipal fee, not included by default.';
         }
         if ($bcinOn) {
             $included[] = 'BCIN drawings as an optional extra-charge service (priced separately). A BCIN qualified designer is not the same credential as a professional engineer; engineer signing or stamping is included only when required.';
         } else {
-            $notIncluded[] = 'BCIN drawings — optional extra-charge service, not included by default.';
+            $notIncluded[] = 'BCIN drawings, optional extra-charge service, not included by default.';
         }
 
         $notIncluded[] = 'Carpet flooring.';
@@ -186,19 +186,19 @@ class BasementClientScope
 
     public static function allowancesAmountsStale(string $stored, string $generated): bool
     {
-        $stored = trim($stored);
-        $generated = trim($generated);
+        $stored = self::normalizeAllowanceText($stored);
+        $generated = self::normalizeAllowanceText($generated);
         if ($stored === '' || $generated === '') {
             return false;
         }
 
-        return self::syncAllowanceAmounts($stored, $generated) !== $stored;
+        return self::normalizeAllowanceText(self::syncAllowanceAmounts($stored, $generated)) !== $stored;
     }
 
     public static function syncAllowanceAmounts(string $stored, string $generated): string
     {
-        $stored = trim($stored);
-        $generated = trim($generated);
+        $stored = self::normalizeAllowanceText($stored);
+        $generated = self::normalizeAllowanceText($generated);
         if ($stored === '') {
             return $generated;
         }
@@ -206,8 +206,8 @@ class BasementClientScope
             return $stored;
         }
         $freshByPrefix = [];
-        foreach (preg_split('/\r\n|\r|\n/', $generated) ?: [] as $line) {
-            $line = trim((string) $line);
+        foreach (explode("\n", $generated) as $line) {
+            $line = trim($line);
             if ($line === '') {
                 continue;
             }
@@ -221,24 +221,34 @@ class BasementClientScope
         }
 
         $out = [];
-        foreach (preg_split('/\r\n|\r|\n/', $stored) ?: [] as $line) {
-            $line = trim((string) $line);
+        foreach (explode("\n", $stored) as $line) {
+            $line = trim($line);
             if ($line === '') {
                 continue;
             }
             $prefix = self::allowanceLinePrefix($line);
             if ($prefix !== '' && isset($freshByPrefix[$prefix])) {
                 $out[] = $freshByPrefix[$prefix];
-                unset($freshByPrefix[$prefix]);
             } else {
                 $out[] = $line;
             }
         }
-        foreach ($freshByPrefix as $line) {
-            $out[] = $line;
-        }
 
         return implode("\n", $out);
+    }
+
+    public static function normalizeAllowanceText(string $text): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", trim($text));
+        $lines = [];
+        foreach (explode("\n", $text) as $line) {
+            $line = rtrim($line);
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+
+        return implode("\n", $lines);
     }
 
     private static function allowanceLinePrefix(string $line): string

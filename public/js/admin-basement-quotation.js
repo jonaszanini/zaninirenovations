@@ -1223,7 +1223,7 @@
       var field = document.getElementById('br-scope-allowances');
       var generated = lastPreviewData && lastPreviewData.client_scope && lastPreviewData.client_scope.generated;
       if (!field || !generated || generated.allowances == null) return;
-      field.value = generated.allowances;
+      field.value = String(generated.allowances || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
       field.setAttribute('data-br-scope-dirty', '1');
       var banner = document.getElementById('br-scope-allowances-stale');
       if (banner) banner.remove();
@@ -1232,13 +1232,44 @@
     });
   }
 
-  function sectionHasClientMaterials(data, sectionKey) {
+  function sectionHasPricedMaterials(data, sectionKey) {
     var mats = (data && data.materials) || [];
     return mats.some(function (row) {
-      return String(row.section || '') === sectionKey
-        && !row.client_provided
-        && Number(row.amount || 0) > 0;
+      return String(row.section || '') === sectionKey && Number(row.amount || 0) > 0;
     });
+  }
+
+  function bathroomSectionEnabled() {
+    var el = form.querySelector('input[name="include_bathroom"]');
+    return el ? !!el.checked : false;
+  }
+
+  function bathItemHasPricedMaterials(data, itemKey) {
+    var mats = (data && data.materials) || [];
+    var keys = {
+      vanity: ['vanity', 'faucet'],
+      pedestal_sink: ['pedestal_sink', 'faucet'],
+      toilet: ['toilet'],
+      shower: ['shower'],
+      tub: ['tub'],
+      exhaust_fan: ['exhaust_fan']
+    };
+    var want = keys[itemKey] || [itemKey];
+    return mats.some(function (row) {
+      var k = String(row.key || '');
+      return want.indexOf(k) !== -1 && Number(row.amount || 0) > 0;
+    });
+  }
+
+  function applyClientProvidesInert(cb, inert, tooltip) {
+    var checked = !!cb.checked;
+    var disable = !checked && inert;
+    cb.disabled = disable;
+    var row = cb.closest('label') || cb.parentElement;
+    if (row) {
+      row.classList.toggle('br-client-provides--inert', disable);
+      row.title = disable ? (tooltip || '') : '';
+    }
   }
 
   function updateClientProvidesSectionState(data) {
@@ -1246,20 +1277,28 @@
     form.querySelectorAll('input[name="client_provides_sections[]"]').forEach(function (cb) {
       var key = cb.value || '';
       var sectionOn = enabled.indexOf(key) !== -1;
-      var hasMats = sectionHasClientMaterials(data, key);
+      var hasMats = sectionHasPricedMaterials(data, key);
       var inert = !sectionOn || !hasMats;
-      cb.disabled = inert;
-      var row = cb.closest('label') || cb.parentElement;
-      if (row) {
-        row.classList.toggle('br-client-provides--inert', inert);
-        row.title = inert
-          ? (!sectionOn ? 'This trade is off for this quotation.' : 'This trade has no priced materials to omit.')
-          : '';
-      }
-      if (inert && cb.checked) {
-        cb.checked = false;
-        schedulePreview();
-      }
+      applyClientProvidesInert(
+        cb,
+        inert,
+        !sectionOn
+          ? 'This trade is off for this quotation.'
+          : 'This trade has no priced materials to omit.'
+      );
+    });
+    var bathOn = bathroomSectionEnabled();
+    form.querySelectorAll('input[name="client_provides_bath_items[]"]').forEach(function (cb) {
+      var key = cb.value || '';
+      var hasMats = bathItemHasPricedMaterials(data, key);
+      var inert = !bathOn || !hasMats;
+      applyClientProvidesInert(
+        cb,
+        inert,
+        !bathOn
+          ? 'Bathroom is off for this quotation.'
+          : 'This item has no priced materials to omit.'
+      );
     });
   }
 

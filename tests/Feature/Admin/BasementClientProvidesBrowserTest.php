@@ -74,6 +74,7 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($grandDrop, (float) ($report['grandDrop'] ?? 0), 2);
         $this->assertTrue((bool) ($report['clientProvidedMarker'] ?? false));
         $this->assertTrue((bool) ($report['reconciliationAddUp'] ?? false), json_encode($report));
+        $this->assertTrue((bool) ($report['flooringStillChecked'] ?? false), json_encode($report));
 
         $this->assertFileExists($shots.'/basement-client-provides-review-1280.png');
         $this->assertFileExists($shots.'/basement-client-provides-review-390.png');

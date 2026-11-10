@@ -88,6 +88,30 @@ class BasementClientProvidesTest extends IntegrationTestCase
         $this->assertEqualsWithDelta($storedTotal, (float) $quote->final_quote_total, 0.01);
     }
 
+    public function test_reopen_with_saved_flooring_client_provides_matches_toolbar_and_checkbox(): void
+    {
+        $this->actingAsAdmin();
+        $quote = $this->seedFlooringQuote();
+        $payload = array_merge($this->publishPayload(), $this->editPayload($quote), [
+            'client_provides_sections' => ['flooring'],
+        ]);
+        $this->put(route('admin.quotations.basement.update', $quote), $payload)
+            ->assertRedirect(route('admin.quotations.basement.edit', $quote));
+
+        $quote->refresh();
+        $stored = (float) $quote->final_quote_total;
+        $previewInputs = array_merge($quote->inputs, $this->editPayload($quote));
+        $live = (new BasementQuotationCalculator)->calculate($previewInputs);
+        $this->assertEqualsWithDelta((float) $live['summary']['grand_total'], $stored, 0.02);
+
+        $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertMatchesRegularExpression(
+            '/name="client_provides_sections\[\]"[^>]*value="flooring"[^>]*checked/',
+            $html
+        );
+        $this->assertStringContainsString(ClientProject::formatMoney($stored), $html);
+    }
+
     public function test_publish_save_persists_client_provides_sections(): void
     {
         $this->actingAsAdmin();
