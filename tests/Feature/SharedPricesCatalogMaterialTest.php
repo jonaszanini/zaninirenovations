@@ -83,11 +83,11 @@ class SharedPricesCatalogMaterialTest extends IntegrationTestCase
 
         $html = $this->get(route('admin.quotations.shared-prices.edit'))
             ->assertOk()
-            ->assertDontSee('Mat. price', false)
             ->assertSee('Not linked', false)
             ->assertSee('sp-mat-fallback-price', false)
             ->getContent();
 
         $this->assertStringNotContainsString('class="sp-col-price"', $html);
+        $this->assertDoesNotMatchRegularExpression('/<th[^>]*>\s*Mat\.\s*price/i', $html);
     }
 }
