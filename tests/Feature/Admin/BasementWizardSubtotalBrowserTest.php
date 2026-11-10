@@ -157,38 +157,61 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
      */
     private function runNode(string $script, array $env, &$output): int
     {
-        $cmd = 'node '.escapeshellarg($script);
-        $descriptors = [
-            0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
-        ];
-        $merged = array_merge($_ENV, $env);
-        $proc = proc_open($cmd, $descriptors, $pipes, base_path(), $merged);
-        $this->assertTrue(is_resource($proc));
+        $procEnv = [];
+        foreach (array_merge($_SERVER, $_ENV) as $key => $value) {
+            if (is_string($key) && (is_string($value) || is_numeric($value))) {
+                $procEnv[$key] = (string) $value;
+            }
+        }
+        foreach ($env as $key => $value) {
+            $procEnv[$key] = (string) $value;
+        }
+        $pipes = [];
+        $proc = proc_open(
+            'node '.escapeshellarg($script),
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes,
+            base_path(),
+            $procEnv
+        );
+        if (! is_resource($proc)) {
+            $output = ['Could not start node'];
+
+            return 1;
+        }
         fclose($pipes[0]);
-        $output = array_filter([
-            stream_get_contents($pipes[1]),
-            stream_get_contents($pipes[2]),
-        ]);
+        $stdout = stream_get_contents($pipes[1]);
+        $stderr = stream_get_contents($pipes[2]);
         fclose($pipes[1]);
         fclose($pipes[2]);
+        $code = proc_close($proc);
+        $output = array_values(array_filter(preg_split("/\r\n|\n|\r/", (string) $stdout."\n".$stderr) ?: []));
 
-        return proc_close($proc);
+        return (int) $code;
     }
 
     private function startServer(): string
     {
         $port = $this->serverPort;
         $base = 'http://127.0.0.1:'.$port;
-        $router = sys_get_temp_dir().'/br-subtotal-browser-router.php';
+        $router = storage_path('app/br-wizard-subtotal-browser-router.php');
         $forced = [
             'APP_ENV' => 'testing',
+            'APP_KEY' => (string) config('app.key'),
             'APP_URL' => $base,
+            'DB_CONNECTION' => (string) config('database.default'),
+            'DB_HOST' => (string) config('database.connections.mysql.host'),
+            'DB_PORT' => (string) config('database.connections.mysql.port'),
+            'DB_DATABASE' => (string) config('database.connections.mysql.database'),
+            'DB_USERNAME' => (string) config('database.connections.mysql.username'),
+            'DB_PASSWORD' => (string) config('database.connections.mysql.password'),
+            'SESSION_DRIVER' => 'file',
+            'CACHE_DRIVER' => 'file',
         ];
         $forcePhp = '';
         foreach ($forced as $key => $value) {
             $forcePhp .= '$_ENV['.var_export($key, true).'] = $_SERVER['.var_export($key, true).'] = '.var_export($value, true).";\n";
+            $forcePhp .= 'putenv('.var_export($key.'='.$value, true).");\n";
         }
         file_put_contents($router, '<?php
 '.$forcePhp.'
@@ -219,6 +242,7 @@ require $public.\'/index.php\';
             2 => ['file', sys_get_temp_dir().'/br-subtotal-serve.err', 'w'],
         ];
         $this->serverProcess = proc_open($cmd, $descriptors, $pipes, base_path(), $env);
+        $this->assertTrue(is_resource($this->serverProcess), 'Could not start PHP server for subtotal browser');
         if (isset($pipes[0]) && is_resource($pipes[0])) {
             fclose($pipes[0]);
         }

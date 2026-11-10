@@ -1176,7 +1176,8 @@
   }
 
   function updateSectionSubtotals(data) {
-    var map = (data.summary && data.summary.section_subtotals_pre_hst) || {};
+    if (!data || !data.summary) return;
+    var map = data.summary.section_subtotals_pre_hst || {};
     var enabled = enabledTradeKeys();
     form.querySelectorAll('[data-br-section-subtotal]').forEach(function (wrap) {
       var key = wrap.getAttribute('data-br-section-subtotal') || '';
