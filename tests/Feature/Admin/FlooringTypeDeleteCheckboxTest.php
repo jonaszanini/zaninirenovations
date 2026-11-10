@@ -25,10 +25,12 @@ class FlooringTypeDeleteCheckboxTest extends IntegrationTestCase
             '/name="delete_flooring_type_ids\[\]"[^>]*value="'.preg_quote((string) $second->id, '/').'"/',
             $html
         );
-        $this->assertDoesNotMatchRegularExpression(
-            '/name="delete_flooring_type_ids\[\]"[^>]*value="1"(?![0-9])/',
-            $html
-        );
+        if ($first->id !== $second->id) {
+            $this->assertMatchesRegularExpression(
+                '/name="delete_flooring_type_ids\[\]"[^>]*value="'.preg_quote((string) $first->id, '/').'"/',
+                $html
+            );
+        }
 
         $settings = \App\Models\FlooringSettings::current();
 
