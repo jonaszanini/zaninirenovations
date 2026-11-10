@@ -216,9 +216,6 @@ class BasementClientScope
                 $freshByPrefix[$prefix] = $line;
             }
         }
-        if ($freshByPrefix === []) {
-            return $stored;
-        }
 
         $out = [];
         foreach (explode("\n", $stored) as $line) {
@@ -227,11 +224,17 @@ class BasementClientScope
                 continue;
             }
             $prefix = self::allowanceLinePrefix($line);
-            if ($prefix !== '' && isset($freshByPrefix[$prefix])) {
-                $out[] = $freshByPrefix[$prefix];
-            } else {
-                $out[] = $line;
+            if ($prefix !== '') {
+                if (isset($freshByPrefix[$prefix])) {
+                    $out[] = $freshByPrefix[$prefix];
+                }
+                continue;
             }
+            $out[] = $line;
+        }
+
+        if ($out === []) {
+            return $generated;
         }
 
         return implode("\n", $out);

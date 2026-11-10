@@ -1240,7 +1240,7 @@
   }
 
   function bathroomSectionEnabled() {
-    var el = form.querySelector('input[name="include_bathroom"]');
+    var el = form.querySelector('input[type="checkbox"][name="include_bathroom"]');
     return el ? !!el.checked : false;
   }
 
@@ -1250,8 +1250,8 @@
       vanity: ['vanity', 'faucet'],
       pedestal_sink: ['pedestal_sink', 'faucet'],
       toilet: ['toilet'],
-      shower: ['shower'],
-      tub: ['tub'],
+      shower_frame: ['shower_kit'],
+      tub: ['tub_kit'],
       exhaust_fan: ['exhaust_fan']
     };
     var want = keys[itemKey] || [itemKey];

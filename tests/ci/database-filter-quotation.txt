@@ -3,6 +3,7 @@ tests/Feature/Admin/BasementToolbarFirstPaintTest.php
 tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/FlooringTypeDeleteCheckboxTest.php
 tests/Feature/Admin/BasementClientProvidesBrowserTest.php
+tests/Feature/Admin/BasementClientProvidesBathBrowserTest.php
 tests/Feature/Admin/BasementClientProvidesTest.php
 tests/Feature/Admin/BasementHeaderLfLivePreviewTest.php
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php

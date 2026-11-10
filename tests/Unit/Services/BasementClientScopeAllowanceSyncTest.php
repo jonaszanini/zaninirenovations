@@ -36,4 +36,32 @@ class BasementClientScopeAllowanceSyncTest extends TestCase
         $this->assertStringNotContainsString('City building permit', $synced);
         $this->assertStringContainsString('CA$7,910.00', $synced);
     }
+
+    public function test_sync_drops_stale_electrical_when_trade_removed_from_generated(): void
+    {
+        $stored = "Electrical work allowance CA$7,910.00 (HST included in the trade line).\n"
+            .'Custom site allowance CA$500.00 before HST.';
+        $generated = 'No separate cash allowances beyond the priced lines on this quotation.';
+
+        $synced = BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        $this->assertStringNotContainsString('Electrical work allowance', $synced);
+        $this->assertStringNotContainsString('7,910.00', $synced);
+        $this->assertStringContainsString('Custom site allowance', $synced);
+        $this->assertTrue(BasementClientScope::allowancesAmountsStale($stored, $generated));
+    }
+
+    public function test_resolve_copy_pdf_allowances_omits_removed_electrical(): void
+    {
+        $inputs = [
+            'enabled_sections' => ['overview', 'demolition', 'framing', 'drywall', 'painting', 'finishing'],
+            'electrical_lines' => [],
+            'include_building_permit' => false,
+            'include_bcin_drawings' => false,
+            'client_scope_allowances' => 'Electrical work allowance CA$7,910.00 (HST included in the trade line).',
+        ];
+        $copy = BasementClientScope::resolveCopy($inputs, ['summary' => ['trades' => []]]);
+        $this->assertStringNotContainsString('7,910.00', $copy['allowances']);
+        $this->assertStringNotContainsString('Electrical work allowance', $copy['allowances']);
+        $this->assertTrue($copy['allowances_stale'] ?? false);
+    }
 }
