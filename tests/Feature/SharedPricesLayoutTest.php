@@ -474,6 +474,37 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
             fieldset: !!document.querySelector('fieldset.sp-add__consumers legend'),
           };
         })(),
+        addUnitSelect: (() => {
+          const sel = document.querySelector('.sp-add__field--unit select');
+          if (!sel) return { ok: false, reason: 'missing' };
+          const opt = sel.options[sel.selectedIndex];
+          const text = opt ? String(opt.textContent || '').trim() : '';
+          const textW = (() => {
+            const m = document.createElement('span');
+            m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;font:' + getComputedStyle(sel).font;
+            m.textContent = text || 'opening';
+            document.body.appendChild(m);
+            const w = m.getBoundingClientRect().width;
+            m.remove();
+            return w;
+          })();
+          const clipped = sel.scrollWidth > sel.clientWidth + 1 || textW + 28 > sel.clientWidth;
+          return {
+            ok: !clipped,
+            text,
+            sw: sel.scrollWidth,
+            cw: sel.clientWidth,
+          };
+        })(),
+        bsmTipRow: (() => {
+          const btn = document.querySelector('[data-bsm-material-sync]');
+          const tip = btn && btn.parentElement && btn.parentElement.querySelector('.admin-info-tip');
+          if (!btn || !tip) return { ok: true, skip: true };
+          const b = btn.getBoundingClientRect();
+          const t = tip.getBoundingClientRect();
+          const sameRow = Math.abs(b.top - t.top) < 28 && t.left >= b.left - 2;
+          return { ok: sameRow, btnTop: Math.round(b.top), tipTop: Math.round(t.top) };
+        })(),
       };
     }, w);
 
@@ -696,6 +727,10 @@ const outDir = process.env.SP_GEO_OUT || path.join(process.cwd(), 'storage/app')
   await openPage();
   fs.mkdirSync(outDir, { recursive: true });
   await page.screenshot({ path: path.join(outDir, 'sp-layout-1100.png'), fullPage: true });
+  const addUnitSel = await page.$('.sp-add__field--unit select');
+  if (addUnitSel) {
+    await addUnitSel.screenshot({ path: path.join(outDir, 'sp-add-unit-1100.png') });
+  }
   for (const spec of [
     { file: 'sp-shared-prices-1280-dark.png', width: 1280, height: 900 },
     { file: 'sp-shared-prices-390-dark.png', width: 390, height: 844 },
@@ -759,6 +794,24 @@ JS
                 $this->assertGreaterThanOrEqual(16, (int) ($check['mark'] ?? 0), "Add-item checkbox mark must be a real box at {$w}");
                 $this->assertFalse($check['overlap'] ?? true, "Add-item checkbox tick must not sit on the label text at {$w}");
                 $this->assertTrue($check['fieldset'] ?? false, "Add-item quote types must be a fieldset with a legend at {$w}");
+            }
+
+            if (in_array($w, [390, 1100, 1280], true)) {
+                $unit = $row['addUnitSelect'] ?? [];
+                $this->assertTrue(
+                    $unit['ok'] ?? false,
+                    "Add item Unit select must not clip its label at {$w}: ".json_encode($unit)
+                );
+            }
+
+            if ($w === 390) {
+                $bsm = $row['bsmTipRow'] ?? [];
+                if (! ($bsm['skip'] ?? false)) {
+                    $this->assertTrue(
+                        $bsm['ok'] ?? false,
+                        'Basement sync info icon must stay on the same row as its button at 390: '.json_encode($bsm)
+                    );
+                }
             }
 
             if ($w <= 1099) {

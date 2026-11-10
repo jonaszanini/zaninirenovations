@@ -118,13 +118,13 @@ class SteppedMaterialPriceSync
                     $newPrice = (float) $material->price_cad;
                     if ($this->priceUnchanged($oldPrice, $newPrice)) {
                         $state['unchanged'] = (int) ($state['unchanged'] ?? 0) + 1;
-                        $message = 'Unchanged '.$material->name.' — '.$material->formattedPrice();
+                        $message = 'Unchanged '.$material->name.', '.$material->formattedPrice();
                     } else {
                         $state['updated'] = (int) ($state['updated'] ?? 0) + 1;
-                        $message = 'Updated '.$material->name.' — '.$material->formattedPrice();
+                        $message = 'Updated '.$material->name.', '.$material->formattedPrice();
                     }
                 } else {
-                    $message = 'Synced '.$material->name.' — '.$material->formattedPrice();
+                    $message = 'Synced '.$material->name.', '.$material->formattedPrice();
                 }
             } elseif ($result['status'] === Material::SCRAPE_SKIPPED) {
                 $state['skipped']++;

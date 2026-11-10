@@ -37,7 +37,7 @@
     minmax(10.5rem, 2.3fr)
     minmax(7.25rem, 1.2fr)
     minmax(6.6rem, 1fr)
-    minmax(4.25rem, 0.85fr)
+    minmax(5.5rem, 1fr)
     minmax(9rem, 1.45fr)
     2.75rem
     minmax(5.5rem, 1fr);
@@ -297,8 +297,11 @@ details.sp-group.admin-card {
   line-height: 1.2;
 }
 .sp-add__field--unit .admin-input,
-.sp-add__field--unit .sp-input {
-  min-width: 4.25rem;
+.sp-add__field--unit .sp-input,
+.sp-col-unit .admin-input,
+.sp-col-unit .sp-input {
+  min-width: 5.5rem;
+  padding-right: 1.75rem;
 }
 .sp-col-name { position: relative; }
 .sp-col-name:focus-within {
@@ -1078,7 +1081,7 @@ details.sp-group.admin-card {
                 <th class="sp-col-label">
                   <span class="sp-th-sell">
                     Work item
-                    <x-admin.info-tip text="Rename here — saved quotes keep using a hidden key, not this name. Names must be unique inside this group. Custom items are reference-only." label="work item name" />
+                    <x-admin.info-tip text="Rename here: saved quotes keep using a hidden key, not this name. Names must be unique inside this group. Custom items are reference-only." label="work item name" />
                   </span>
                 </th>
                 <th class="sp-col-rate">
@@ -1149,7 +1152,7 @@ details.sp-group.admin-card {
                              aria-label="Name for {{ $work->label }}">{{ old('works.'.$work->id.'.label', $work->label) }}</textarea>
                       <span class="sp-work-extra">
                         @if ($isCustom)
-                          <span class="sp-ref-badge" title="Reference only — quote calculators do not use this item.">Reference</span>
+                          <span class="sp-ref-badge" title="Reference only: quote calculators do not use this item.">Reference</span>
                         @endif
                       </span>
                     </span>
@@ -1179,13 +1182,13 @@ details.sp-group.admin-card {
                     <input type="text" class="sp-input sp-input--sm" id="sp-mat-unit-{{ $work->id }}"
                            name="works[{{ $work->id }}][material_unit]"
                            value="{{ old('works.'.$work->id.'.material_unit', $work->material_unit) }}"
-                           placeholder="—">
+                           placeholder="">
                   </td>
                   <td class="sp-col-name" data-label="Mat. name">
                     <div class="sp-mat-slot" data-sp-mat-slot>
                       <textarea rows="1" class="sp-input sp-mat-name-input sp-auto-grow-textarea" id="sp-mat-name-{{ $work->id }}"
                              name="works[{{ $work->id }}][material_name]"
-                             placeholder="—">{{ $matNameVal }}</textarea>
+                             placeholder="">{{ $matNameVal }}</textarea>
                       @if (in_array('basement', $consumers, true) && $catalogId > 0)
                         @php $spSyncMat = ($basementCatalogSyncById ?? collect())->get($catalogId); @endphp
                         <x-admin.material-price-sync-age :material="$spSyncMat" class="sp-mat-sync-age" />

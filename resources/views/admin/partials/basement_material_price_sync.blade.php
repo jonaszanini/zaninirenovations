@@ -8,27 +8,29 @@
     $showProgress = in_array($mode, ['progress', 'both'], true);
 @endphp
 @if ($showButton)
-<button type="button"
-        id="{{ $prefix }}-prices-btn"
-        class="{{ $buttonClass }}"
-        data-bsm-material-sync
-        data-progress-prefix="{{ $prefix }}"
-        data-start-url="{{ route('admin.quotations.basement.materials.sync.start') }}"
-        data-step-url="{{ route('admin.quotations.basement.materials.sync.step') }}"
-        data-step-delay-ms="{{ (int) config('materials.scraper.admin_step_delay_ms', 800) }}"
-        data-label-idle="Update basement material prices"
-        data-label-running="Syncing…"
-        @disabled($syncableCount === 0)>
-  <i class="fa fa-refresh"></i> Update basement material prices
-</button>
-<x-admin.info-tip label="Update basement material prices">
-  Refreshes catalog prices for materials linked from <strong>Basement price configuration</strong> and <strong>Shared prices</strong> rows used by basement ({{ number_format($syncableCount) }} syncable).
-  @if ($usesSerpApi)
-    Uses SerpApi for Home Depot product URLs and Amazon Canada ASINs. Saved quotations keep their stored prices.
-  @else
-    Uses the store price API on this server. Saved quotations keep their stored prices.
-  @endif
-</x-admin.info-tip>
+<span class="bsm-sync-toolbar-item">
+  <button type="button"
+          id="{{ $prefix }}-prices-btn"
+          class="{{ $buttonClass }}"
+          data-bsm-material-sync
+          data-progress-prefix="{{ $prefix }}"
+          data-start-url="{{ route('admin.quotations.basement.materials.sync.start') }}"
+          data-step-url="{{ route('admin.quotations.basement.materials.sync.step') }}"
+          data-step-delay-ms="{{ (int) config('materials.scraper.admin_step_delay_ms', 800) }}"
+          data-label-idle="Update basement material prices"
+          data-label-running="Syncing…"
+          @disabled($syncableCount === 0)>
+    <i class="fa fa-refresh"></i> Update basement material prices
+  </button>
+  <x-admin.info-tip label="Update basement material prices">
+    Refreshes catalog prices for materials linked from <strong>Basement price configuration</strong> and <strong>Shared prices</strong> rows used by basement ({{ number_format($syncableCount) }} syncable).
+    @if ($usesSerpApi)
+      Uses SerpApi for Home Depot product URLs and Amazon Canada ASINs. Saved quotations keep their stored prices.
+    @else
+      Uses the store price API on this server. Saved quotations keep their stored prices.
+    @endif
+  </x-admin.info-tip>
+</span>
 @endif
 @if ($showProgress)
   <div id="{{ $prefix }}-progress" class="admin-card admin-card--narrow mat-bulk-progress mat-sync-all-progress bsm-sync-progress" hidden aria-live="polite" style="margin-top:16px;">

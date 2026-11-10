@@ -417,6 +417,7 @@ jobs:
           path: |
             storage/app/sp-layout-geometry.json
             storage/app/sp-layout-1100.png
+            storage/app/sp-add-unit-1100.png
             storage/app/sp-shared-prices-1280-dark.png
             storage/app/sp-shared-prices-390-dark.png
           if-no-files-found: warn

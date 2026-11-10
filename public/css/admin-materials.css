@@ -1026,6 +1026,14 @@
   max-width: 100%;
 }
 
+.bsm-sync-toolbar-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 0 1 auto;
+  max-width: 100%;
+}
+
 .fq-list-toolbar .admin-toolbar-actions [data-bsm-material-sync] {
   max-width: 100%;
   white-space: normal;
@@ -1042,7 +1050,21 @@
     align-items: stretch;
     width: 100%;
   }
-  .fq-list-toolbar .admin-toolbar-actions .admin-btn {
+  .fq-list-toolbar .admin-toolbar-actions .bsm-sync-toolbar-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    flex-wrap: nowrap;
+  }
+  .fq-list-toolbar .admin-toolbar-actions .bsm-sync-toolbar-item [data-bsm-material-sync] {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: none;
+    box-sizing: border-box;
+    justify-content: center;
+  }
+  .fq-list-toolbar .admin-toolbar-actions > .admin-btn.admin-btn--primary {
     width: 100%;
     box-sizing: border-box;
     justify-content: center;
