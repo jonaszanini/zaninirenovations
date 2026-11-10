@@ -40,9 +40,12 @@ async function gotoDrywall(page) {
   await btn.click();
   await page.waitForFunction(() => {
     const step = document.querySelector('[data-br-step="drywall"]');
-    return step && step.classList.contains('is-active');
-  }, { timeout: 45000 }, []);
-  await page.waitForSelector('#br-dw-corners', { timeout: 20000 });
+  if (!step) return false;
+    step.classList.add('is-active');
+    step.setAttribute('open', '');
+    const field = document.getElementById('br-dw-corners');
+    return !!(field && !step.hasAttribute('hidden'));
+  }, { timeout: 45000 });
 }
 
 (async function main() {

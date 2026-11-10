@@ -787,12 +787,19 @@
       </div>
       <input type="hidden" id="br-import-bh-dw" name="import_bulkhead_drywall_sqft" value="{{ $brVal('import_bulkhead_drywall_sqft', 0) }}">
       <input type="hidden" id="br-import-bh-bead" name="import_bulkhead_corner_bead_lf" value="{{ $brVal('import_bulkhead_corner_bead_lf', 0) }}">
-      @if ($isEdit && filled($quotation) && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'corner_bead_by_height'))
-      @else
+      @php
+        $quoteInputsForFlags = (isset($quotation) && is_array($quotation->inputs ?? null)) ? $quotation->inputs : [];
+        $emitCornerBeadByHeight = ! ($isEdit ?? false)
+          || ! isset($quotation)
+          || \Illuminate\Support\Arr::has($quoteInputsForFlags, 'corner_bead_by_height');
+        $emitDrywallBoxingV2 = ! ($isEdit ?? false)
+          || ! isset($quotation)
+          || \Illuminate\Support\Arr::has($quoteInputsForFlags, 'drywall_boxing_v2');
+      @endphp
+      @if ($emitCornerBeadByHeight)
         <input type="hidden" name="corner_bead_by_height" value="1">
       @endif
-      @if ($isEdit && filled($quotation) && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'drywall_boxing_v2'))
-      @else
+      @if ($emitDrywallBoxingV2)
         <input type="hidden" name="drywall_boxing_v2" value="1">
       @endif
       <div class="admin-form-group">
