@@ -711,6 +711,9 @@
       @endif
     </div>
     @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'ceiling'])
+    <p class="admin-form-help br-ceiling-drywall-note" id="br-ceiling-drywall-priced-note" hidden>
+      Hang, tape and mud for this ceiling are priced in Drywall / Mud / Tape / Sand.
+    </p>
   </div>
 </details>
 

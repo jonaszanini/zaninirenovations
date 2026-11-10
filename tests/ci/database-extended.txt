@@ -5,6 +5,7 @@ tests/Feature/Admin/AdminOnceSubmitReplayTest.php
 tests/Feature/Admin/AdminProjectCalendarSwipeTest.php
 tests/Feature/Admin/BasementCeilingAreaTest.php
 tests/Feature/Admin/BasementCeilingLegacyBrowserTest.php
+tests/Feature/Admin/BasementCeilingSectionNoteBrowserTest.php
 tests/Feature/Admin/BasementClientScopePersistenceTest.php
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
 tests/Feature/Admin/BasementDemoChoiceTest.php

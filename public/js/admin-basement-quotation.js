@@ -1170,6 +1170,21 @@
     updateSectionSubtotals(data);
   }
 
+  function ceilingHangPricedInDrywallSection() {
+    var el = document.getElementById('br-ceil-type');
+    if (!el) return false;
+    var v = el.value;
+    return v === 'drywall' || v === 'paint';
+  }
+
+  function updateCeilingDrywallPricedNote() {
+    var note = document.getElementById('br-ceiling-drywall-priced-note');
+    if (!note) return;
+    var wrap = form.querySelector('[data-br-section-subtotal="ceiling"]');
+    var show = !!wrap && !wrap.hidden && ceilingHangPricedInDrywallSection();
+    note.hidden = !show;
+  }
+
   function updateSectionSubtotals(data) {
     if (!data || !data.summary) return;
     var map = data.summary.section_subtotals_pre_hst || {};
@@ -1184,6 +1199,7 @@
       }
       wrap.hidden = !on;
     });
+    updateCeilingDrywallPricedNote();
   }
 
   function updateDrywallNetHint(scope) {
@@ -1375,6 +1391,10 @@
   if (floorTypeEl) {
     floorTypeEl.addEventListener('change', syncHardwoodCaution);
     syncHardwoodCaution();
+  }
+  var ceilTypeEl = document.getElementById('br-ceil-type');
+  if (ceilTypeEl) {
+    ceilTypeEl.addEventListener('change', updateCeilingDrywallPricedNote);
   }
   initTileAreas();
   initExclusiveChecks();
