@@ -57,10 +57,11 @@ class BasementQuotationWizardViewTest extends TestCase
             'Hang, tape and mud for this ceiling are priced in Drywall / Mud / Tape / Sand.',
             $html
         );
-        $this->assertMatchesRegularExpression(
-            '/data-br-step="ceiling"[\s\S]{0,2500}id="br-ceiling-drywall-priced-note"/',
-            $html
-        );
+        if (preg_match('/<details class="br-acc admin-card" data-br-step="ceiling"[\s\S]*?<\/details>/', $html, $m)) {
+            $this->assertStringContainsString('id="br-ceiling-drywall-priced-note"', $m[0]);
+        } else {
+            $this->fail('Ceiling step details block not found in wizard markup');
+        }
 
         $js = file_get_contents(public_path('js/admin-basement-quotation.js'));
         $this->assertStringContainsString('updateCeilingDrywallPricedNote', $js);
