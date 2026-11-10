@@ -1006,6 +1006,15 @@
         ])
       </div>
     </div>
+    @php
+      $quoteInputsForTrimFlags = (isset($quotation) && is_array($quotation->inputs ?? null)) ? $quotation->inputs : [];
+      $emitTrimMaterialLfV2 = ! ($isEdit ?? false)
+        || ! isset($quotation)
+        || \Illuminate\Support\Arr::has($quoteInputsForTrimFlags, 'trim_material_lf_v2');
+    @endphp
+    @if ($emitTrimMaterialLfV2)
+      <input type="hidden" name="trim_material_lf_v2" value="1">
+    @endif
     @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'doors_trim'])
   </div>
 </details>

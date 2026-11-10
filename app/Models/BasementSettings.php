@@ -204,8 +204,8 @@ class BasementSettings extends Model
             'subfloor_panel' => $row('Subfloor 4x8 panel (sheet)', 'sheet', round(2.80 * self::PANEL_SF, 4)),
             'transition' => $row('Floor transition strip (each)', 'each', 18.00),
             'interior_door' => $row('Prehung interior door (each)', 'each', 280.00),
-            'baseboard' => $row('8 ft baseboard (each)', 'each', round(2.10 * self::BASEBOARD_FEET_PER_STICK, 4)),
-            'shoe' => $row('8 ft shoe moulding (each)', 'each', round(0.95 * self::BASEBOARD_FEET_PER_STICK, 4)),
+            'baseboard' => $row('Baseboard (per lin. ft)', 'lf', 3.00),
+            'shoe' => $row('Shoe moulding (per lin. ft)', 'lf', 1.50),
             'casing' => $row('Door casing set (per opening)', 'opening', 32.00),
             'window_trim' => $row('Window trim kit (per window)', 'each', 45.00),
             'paint_5gal' => $row('Interior paint, 5 gal / 18.9 L pail (each)', 'pail', 240.00),
@@ -335,6 +335,30 @@ class BasementSettings extends Model
             ? round($studPrice / self::PLATE_FEET_PER_BOARD, 4)
             : 0.0;
         $rows[self::MATERIAL_PLATE_2X4] = $plate;
+
+        foreach ([
+            'baseboard' => 'Baseboard (per lin. ft)',
+            'shoe' => 'Shoe moulding (per lin. ft)',
+        ] as $key => $label) {
+            if (! isset($rows[$key])) {
+                continue;
+            }
+            $row = $rows[$key];
+            $unit = strtolower((string) ($row['unit'] ?? ''));
+            $price = (float) ($row['unit_price'] ?? 0);
+            if ($unit === 'lf') {
+                $row['name'] = $label;
+                $rows[$key] = $row;
+
+                continue;
+            }
+            $stick = \App\Models\Material::stickLengthFeetFromLabel((string) ($row['name'] ?? ''))
+                ?? self::BASEBOARD_FEET_PER_STICK;
+            $row['unit'] = 'lf';
+            $row['name'] = $label;
+            $row['unit_price'] = $stick > 0 ? round($price / $stick, 4) : $price;
+            $rows[$key] = $row;
+        }
 
         return $rows;
     }

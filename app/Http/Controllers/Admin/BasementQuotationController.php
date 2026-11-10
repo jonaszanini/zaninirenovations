@@ -330,7 +330,7 @@ class BasementQuotationController extends Controller
             foreach ($quotation->inputs as $key => $value) {
                 $previewInputs[$key] = $value;
             }
-            foreach (['header_lf', 'corner_bead_by_height', 'drywall_boxing_v2'] as $legacyKey) {
+            foreach (['header_lf', 'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2'] as $legacyKey) {
                 if (! array_key_exists($legacyKey, $quotation->inputs)) {
                     unset($previewInputs[$legacyKey]);
                 }
@@ -463,7 +463,7 @@ class BasementQuotationController extends Controller
             'include_bcin_drawings',
             'ceiling_hang_unified',
             'client_provides_all', 'include_helper',
-            'corner_bead_by_height', 'drywall_boxing_v2',
+            'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2',
         ];
         $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
@@ -516,6 +516,9 @@ class BasementQuotationController extends Controller
             }
             if (! array_key_exists('drywall_boxing_v2', $storedInputs)) {
                 unset($out['drywall_boxing_v2']);
+            }
+            if (! array_key_exists('trim_material_lf_v2', $storedInputs)) {
+                unset($out['trim_material_lf_v2']);
             }
         }
         $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);

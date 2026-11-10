@@ -667,6 +667,7 @@ class BasementQuotationCalculator
             'drywall_boxing_v2' => true,
             'import_bulkhead_drywall_sqft' => 0,
             'import_bulkhead_corner_bead_lf' => 0,
+            'trim_material_lf_v2' => true,
             'drywall_inside_corners' => 0,
             'drywall_openings' => 0,
             'drywall_door_openings' => 0,
@@ -845,6 +846,26 @@ class BasementQuotationCalculator
      * @param  array<string, mixed>  $storedInputs
      * @return array{bulkhead_sf: float, header_sf: float, total_sf: float}
      */
+    /** @deprecated Legacy saved quotes priced trim as 8 ft sticks (each). */
+    private const LEGACY_BASEBOARD_EACH_PRICE = 16.8;
+
+    private const LEGACY_SHOE_EACH_PRICE = 7.6;
+
+    public static function usesLegacyTrimMaterialSticks(array $storedInputs): bool
+    {
+        return ! array_key_exists('trim_material_lf_v2', $storedInputs);
+    }
+
+    public static function trimStickLengthFt(array $matCatalog, string $catalogKey): float
+    {
+        $name = (string) ($matCatalog[$catalogKey]['name'] ?? '');
+
+        return max(
+            0.001,
+            Material::stickLengthFeetFromLabel($name) ?? BasementSettings::BASEBOARD_FEET_PER_STICK
+        );
+    }
+
     public static function drywallBoxingSf(
         float $bulkheadLf,
         float $headerLf,
@@ -1185,7 +1206,9 @@ class BasementQuotationCalculator
             string $section,
             float $qty,
             ?string $catalogKey = null,
-            ?string $labelOverride = null
+            ?string $labelOverride = null,
+            ?string $unitOverride = null,
+            ?float $unitPriceOverride = null
         ) use (&$materials, $inputs, $matCatalog, $clientProvidedMat): void {
             $qty = round(max(0, $qty), 2);
             if ($qty <= 0) {
@@ -1218,6 +1241,9 @@ class BasementQuotationCalculator
                     ? round($studPrice / BasementSettings::PLATE_FEET_PER_BOARD, 4)
                     : 0.0;
             }
+            if ($unitPriceOverride !== null) {
+                $unitPrice = round(max(0, $unitPriceOverride), 4);
+            }
             $clientProvided = $clientProvidedMat($section, $catalogKey, $key);
             $amount = $clientProvided ? 0.0 : round($qty * $unitPrice, 2);
             $derivedPlate = $key === BasementSettings::MATERIAL_PLATE_2X4;
@@ -1226,7 +1252,7 @@ class BasementQuotationCalculator
                 'section' => $section,
                 'label' => ($labelOverride !== null && $labelOverride !== '') ? $labelOverride : $def['name'],
                 'qty' => $qty,
-                'unit' => $derivedPlate ? 'lf' : $def['unit'],
+                'unit' => $derivedPlate ? 'lf' : ($unitOverride ?? $def['unit']),
                 'unit_price' => $unitPrice,
                 'amount' => $amount,
                 'catalog_material_id' => $derivedPlate ? null : $def['catalog_material_id'],
@@ -1484,11 +1510,58 @@ class BasementQuotationCalculator
             $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
             $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
             $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
-            $addMat('baseboard', 'doors_trim', $this->packages($this->withMaterialWaste($baseLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'baseboard');
+            $legacyTrimSticks = self::usesLegacyTrimMaterialSticks($originalInputs);
+            if ($legacyTrimSticks) {
+                $stick = self::trimStickLengthFt($matCatalog, 'baseboard');
+                $wasteLf = $this->withMaterialWaste($baseLf, $inputs);
+                $stickQty = $this->packages($wasteLf, $stick);
+                $def = $matCatalog['baseboard'] ?? [];
+                $catalogUnit = strtolower((string) ($def['unit'] ?? ''));
+                $catalogPrice = (float) ($def['unit_price'] ?? 0);
+                if ($catalogUnit === 'each' && $catalogPrice > 0) {
+                    $eachPrice = $catalogPrice;
+                } else {
+                    $eachPrice = self::LEGACY_BASEBOARD_EACH_PRICE;
+                }
+                $addMat(
+                    'baseboard',
+                    'doors_trim',
+                    $stickQty,
+                    'baseboard',
+                    '8 ft baseboard (each)',
+                    'each',
+                    $eachPrice
+                );
+            } else {
+                $addMat('baseboard', 'doors_trim', round($this->withMaterialWaste($baseLf, $inputs), 2), 'baseboard');
+            }
             if (! empty($inputs['include_shoe'])) {
                 $shoeLf = $this->qtyOr($inputs['shoe_lf'] ?? null, $baseLf);
                 $addLabor('trim_shoe', 'doors_trim', 'Shoe moulding', number_format($shoeLf, 0).' lf', $perHr($shoeLf, (float) ($prod['shoe_lf_per_hr'] ?? 30)));
-                $addMat('shoe', 'doors_trim', $this->packages($this->withMaterialWaste($shoeLf, $inputs), BasementSettings::BASEBOARD_FEET_PER_STICK), 'shoe');
+                if ($legacyTrimSticks) {
+                    $stick = self::trimStickLengthFt($matCatalog, 'shoe');
+                    $wasteLf = $this->withMaterialWaste($shoeLf, $inputs);
+                    $stickQty = $this->packages($wasteLf, $stick);
+                    $def = $matCatalog['shoe'] ?? [];
+                    $catalogUnit = strtolower((string) ($def['unit'] ?? ''));
+                    $catalogPrice = (float) ($def['unit_price'] ?? 0);
+                    if ($catalogUnit === 'each' && $catalogPrice > 0) {
+                        $eachPrice = $catalogPrice;
+                    } else {
+                        $eachPrice = self::LEGACY_SHOE_EACH_PRICE;
+                    }
+                    $addMat(
+                        'shoe',
+                        'doors_trim',
+                        $stickQty,
+                        'shoe',
+                        '8 ft shoe moulding (each)',
+                        'each',
+                        $eachPrice
+                    );
+                } else {
+                    $addMat('shoe', 'doors_trim', round($this->withMaterialWaste($shoeLf, $inputs), 2), 'shoe');
+                }
             }
             $addMat('casing', 'doors_trim', $casing, 'casing');
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');

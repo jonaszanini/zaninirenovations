@@ -568,6 +568,7 @@ class BasementQuotationCalculatorTest extends TestCase
             'paint_ceiling_sf' => 0,
             'paint_trim_lf' => 0,
             'baseboard_lf' => 40,
+            'trim_material_lf_v2' => true,
             'owner_hourly_rate' => 80,
         ], $this->settings());
 
@@ -591,8 +592,9 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $base = collect($calc['materials'])->firstWhere('key', 'baseboard');
         $this->assertNotNull($base);
-        $this->assertSame('each', $base['unit']);
-        $this->assertSame(6.0, $base['qty']);
+        $this->assertSame('lf', $base['unit']);
+        $this->assertSame(44.0, (float) $base['qty']);
+        $this->assertStringContainsString('per lin. ft', strtolower((string) $base['label']));
 
         $mud = collect($calc['materials'])->firstWhere('key', 'joint_compound');
         $this->assertNotNull($mud);
