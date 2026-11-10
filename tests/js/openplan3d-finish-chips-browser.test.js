@@ -190,7 +190,7 @@ async function main() {
     assert.strictEqual(live.finish_paint_sqft.toFixed(2), baselineMetrics.finish_paint_sqft.toFixed(2));
 
     const toggles = [
-      { key: 'baseboard', delta: 23 },
+      { key: 'baseboard', delta: 11.5 },
       { key: 'drywall', delta: 184 },
       { key: 'insulation', delta: 184 },
       { key: 'studs', delta: 11.5 },
