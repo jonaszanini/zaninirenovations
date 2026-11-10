@@ -137,12 +137,15 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'paint_wall_sf' => null,
         ], array_filter($proposed, fn ($v) => $v !== null));
         $calc = (new BasementQuotationCalculator)->calculate($inputs);
-        $quote = BasementQuotation::query()->create([
+        $quote = BasementQuotation::create([
+            'quote_number' => BasementQuotation::generateNumber(),
             'client_name' => 'Browser Paint Fill Quote',
             'inputs' => $inputs,
             'calculation' => $calc,
             'final_quote_total' => $calc['summary']['final_quote_total'],
             'is_draft' => true,
+            'version' => 1,
+            'payment_installments' => 3,
         ]);
 
         return ['quote' => $quote, 'query' => 'Browser paint fill room'];
