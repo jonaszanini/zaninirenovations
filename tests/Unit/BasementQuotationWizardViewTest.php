@@ -45,6 +45,29 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringNotContainsString('data-br-section-subtotal="overview"', $html);
     }
 
+    public function test_ceiling_step_includes_drywall_hang_priced_note_markup(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('id="br-ceiling-drywall-priced-note"', $html);
+        $this->assertStringContainsString('br-ceiling-drywall-note', $html);
+        $this->assertStringContainsString(
+            'Hang, tape and mud for this ceiling are priced in Drywall / Mud / Tape / Sand.',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/data-br-step="ceiling"[\s\S]{0,2500}id="br-ceiling-drywall-priced-note"/',
+            $html
+        );
+
+        $js = file_get_contents(public_path('js/admin-basement-quotation.js'));
+        $this->assertStringContainsString('updateCeilingDrywallPricedNote', $js);
+        $this->assertStringContainsString('ceilingHangPricedInDrywallSection', $js);
+        $this->assertStringContainsString("v === 'drywall' || v === 'paint'", $js);
+    }
+
     public function test_full_preset_section_nums_match_footer_denominator_including_client_scope(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
