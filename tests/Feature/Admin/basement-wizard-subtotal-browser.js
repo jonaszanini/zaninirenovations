@@ -10,7 +10,6 @@ const base = process.env.BR_SUBTOTAL_BASE;
 const outPath = process.env.BR_SUBTOTAL_OUT;
 const shotsDir = process.env.BR_SUBTOTAL_SHOTS || path.join(process.cwd(), 'storage/app/qa-screenshots');
 const createPath = process.env.BR_SUBTOTAL_CREATE_PATH || '/admin/quotations/basement/create';
-const importPath = process.env.BR_SUBTOTAL_IMPORT_PATH || '';
 const importQuery = process.env.BR_SUBTOTAL_IMPORT_LAYOUT_Q || '';
 
 const LITERAL_WALL_SF = Number(process.env.BR_LITERAL_WALL_SF || 512);
@@ -123,17 +122,24 @@ async function importLayoutViaUi(page, query) {
   await input.click({ clickCount: 3 });
   await page.keyboard.press('Backspace');
   await input.type(query, { delay: 40 });
-  const picked = await page.waitForFunction(() => {
+  const picked =   await page.waitForFunction(() => {
     const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
     const opts = list
       ? list.querySelectorAll('.admin-search-select__option:not(.admin-search-select__option--action)')
       : [];
     return opts.length > 0;
   }, { timeout: 45000 });
-  if (!picked) throw new Error('Layout search returned no options for ' + query);
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await new Promise((r) => setTimeout(r, 350));
+  const clicked = await page.evaluate(() => {
+    const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
+    const opt = list
+      ? list.querySelector('.admin-search-select__option:not(.admin-search-select__option--action)')
+      : null;
+    if (!opt) return false;
+    opt.click();
+    return true;
+  });
+  if (!clicked) throw new Error('Layout search returned no options for ' + query);
+  await new Promise((r) => setTimeout(r, 400));
   const dialogVisible = await page.evaluate(() => {
     const dlg = document.getElementById('admin-dialog');
     return !!(dlg && !dlg.hidden);
@@ -169,6 +175,36 @@ async function shot(page, name) {
   await page.waitForSelector('#br-main-form', { timeout: 45000 });
 
   await typeField(page, '[name="client_name"]', 'Subtotal Browser Client');
+
+  if (importQuery) {
+    await importLayoutViaUi(page, importQuery);
+    report.importPaint = report.importPaint || {};
+    report.importPaint.fields = await page.evaluate(() => ({
+      paintWall: parseFloat((document.getElementById('br-p-wall') || {}).value || '0'),
+      paintCeil: parseFloat((document.getElementById('br-p-ceil') || {}).value || '0'),
+      drywallWall: parseFloat((document.getElementById('br-dw-wall') || {}).value || '0'),
+    }));
+    report.importPaint.wallSfOk = moneyClose(report.importPaint.fields.paintWall, LITERAL_WALL_SF, 0.5)
+      && moneyClose(report.importPaint.fields.drywallWall, LITERAL_DRYWALL_WALL_SF, 0.5);
+    report.importPaint.ceilingSfOk = moneyClose(report.importPaint.fields.paintCeil, LITERAL_PAINT_CEILING_SF, 0.5);
+    await gotoStep(page, 'painting');
+    await waitGrandPositive(page);
+    report.importPaint.paintingSection = await readSectionSubtotal(page, 'painting');
+    if (EXPECT_PAINTING_SECTION > 0) {
+      report.importPaint.paintingSectionLiteralOk = moneyClose(
+        report.importPaint.paintingSection.amount,
+        EXPECT_PAINTING_SECTION
+      );
+    }
+    report.importPaint.shot1280 = await shot(page, 'basement-painting-after-import-1280.png');
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await new Promise((r) => setTimeout(r, 250));
+    await gotoStep(page, 'painting');
+    report.importPaint.shot390 = await shot(page, 'basement-painting-after-import-390.png');
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await gotoStep(page, 'overview');
+  }
+
   await typeField(page, '#br-area', '800');
   await waitGrandPositive(page);
   await new Promise((r) => setTimeout(r, 500));
@@ -213,38 +249,9 @@ async function shot(page, name) {
   report.create.shotFlooring390 = await shot(page, 'basement-section-subtotal-flooring-390.png');
   report.create.shotReconciliation390 = await shot(page, 'basement-reconciliation-mobile-390.png');
 
-  if (importPath && importQuery) {
-    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
-    await page.goto(base + importPath, { waitUntil: 'networkidle2', timeout: 60000 });
-    await page.waitForSelector('#br-main-form', { timeout: 45000 });
-    await importLayoutViaUi(page, importQuery);
-
-    const fields = await page.evaluate(() => ({
-      paintWall: parseFloat((document.getElementById('br-p-wall') || {}).value || '0'),
-      paintCeil: parseFloat((document.getElementById('br-p-ceil') || {}).value || '0'),
-      drywallWall: parseFloat((document.getElementById('br-dw-wall') || {}).value || '0'),
-    }));
-    report.importPaint.fields = fields;
-    report.importPaint.wallSfOk = moneyClose(fields.paintWall, LITERAL_WALL_SF, 0.5)
-      && moneyClose(fields.drywallWall, LITERAL_DRYWALL_WALL_SF, 0.5);
-    report.importPaint.ceilingSfOk = moneyClose(fields.paintCeil, LITERAL_PAINT_CEILING_SF, 0.5);
-
-    await gotoStep(page, 'painting');
-    await waitGrandPositive(page);
-    const paintingSection = await readSectionSubtotal(page, 'painting');
-    report.importPaint.paintingSection = paintingSection;
-    if (EXPECT_PAINTING_SECTION > 0) {
-      report.importPaint.paintingSectionLiteralOk = moneyClose(
-        paintingSection.amount,
-        EXPECT_PAINTING_SECTION
-      );
-    }
-    report.importPaint.shot1280 = await shot(page, 'basement-painting-after-import-1280.png');
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-    await new Promise((r) => setTimeout(r, 250));
-    await gotoStep(page, 'painting');
-    report.importPaint.shot390 = await shot(page, 'basement-painting-after-import-390.png');
-    await gotoStep(page, 'review');
+  await gotoStep(page, 'review');
+  if (!report.importPaint.shotReconciliation1280) {
+    report.importPaint = report.importPaint || {};
     report.importPaint.shotReconciliation1280 = await shot(page, 'basement-reconciliation-1280.png');
   }
 
@@ -252,7 +259,7 @@ async function shot(page, name) {
     && report.reconciliation.grandMatchesToolbar
     && report.reconciliation.partsSumToGrand
     && (EXPECT_FLOORING_SECTION <= 0 || report.create.flooringMatchesLiteral)
-    && (!importPath || (report.importPaint.wallSfOk && report.importPaint.ceilingSfOk
+    && (!importQuery || (report.importPaint.wallSfOk && report.importPaint.ceilingSfOk
       && (EXPECT_PAINTING_SECTION <= 0 || report.importPaint.paintingSectionLiteralOk)));
 
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
