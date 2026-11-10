@@ -96,9 +96,10 @@ async function typeField(page, selector, value) {
   report.materials = await page.evaluate(() => {
     const row = document.querySelector('tr[data-br-mat-key="baseboard"]');
     const label = String(row?.querySelector('td')?.textContent || '').trim();
-    const qtyText = String(row?.querySelector('[data-br-mat-qty]')?.textContent || '').trim();
-    const priceText = String(row?.querySelector('[data-br-mat-price]')?.textContent || '').trim();
-    const amtText = String(row?.querySelector('[data-br-mat-amt]')?.textContent || '').trim();
+    const cells = row ? row.querySelectorAll('td') : [];
+    const qtyText = String(cells[1]?.textContent || '').trim();
+    const priceText = String(cells[2]?.textContent || '').trim();
+    const amtText = String(cells[3]?.textContent || '').trim();
     const n = (t) => parseFloat(String(t).replace(/[^\d.-]/g, ''));
     return {
       label,
