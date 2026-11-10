@@ -328,9 +328,9 @@ trait PublishesLinkedQuotations
                 'publishQty' => 850.0,
                 'publishTotal' => 31434.49,
                 'httpEditQty' => 400.0,
-                'httpEditTotal' => 17862.36,
+                'httpEditTotal' => 17951.86,
                 'browserEditQty' => 400.0,
-                'browserEditTotal' => 17862.36,
+                'browserEditTotal' => 17951.86,
                 'scopeWord' => 'basement',
             ],
             'millwork' => [
@@ -353,7 +353,7 @@ trait PublishesLinkedQuotations
             ],
             'trimming' => [
                 'publishQty' => 80.0,
-                'publishTotal' => 700.49,
+                'publishTotal' => 789.99,
                 'httpEditQty' => 40.0,
                 'httpEditTotal' => 403.98,
                 'browserEditQty' => 40.0,

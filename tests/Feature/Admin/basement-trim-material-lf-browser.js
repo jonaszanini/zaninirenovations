@@ -93,9 +93,18 @@ async function waitBaseboardMaterial(page) {
   await typeField(page, '#br-material-waste', '0');
   await waitGrandPositive(page);
 
+  await page.evaluate(() => {
+    const cb = document.querySelector('input[data-br-enabled-section="doors_trim"]');
+    if (cb && !cb.checked) {
+      cb.click();
+    }
+  });
   await gotoStep(page, 'doors_trim');
   await typeField(page, '#br-base', '100');
+  await new Promise((r) => setTimeout(r, 1200));
   await waitBaseboardMaterial(page);
+
+  await gotoStep(page, 'review');
 
   report.materials = await page.evaluate(() => {
     const row = document.querySelector('tr[data-br-mat-key="baseboard"]');

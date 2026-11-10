@@ -198,6 +198,15 @@
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Project Overview</summary>
   <div class="br-acc__body">
+    @php
+      $quoteInputsForTrimFlags = (isset($quotation) && is_array($quotation->inputs ?? null)) ? $quotation->inputs : [];
+      $emitTrimMaterialLfV2 = ! ($isEdit ?? false)
+        || ! isset($quotation)
+        || \Illuminate\Support\Arr::has($quoteInputsForTrimFlags, 'trim_material_lf_v2');
+    @endphp
+    @if ($emitTrimMaterialLfV2)
+      <input type="hidden" name="trim_material_lf_v2" value="1">
+    @endif
     <fieldset class="br-scope-presets">
       <legend>
         <span class="admin-label-with-tip">
@@ -1006,15 +1015,6 @@
         ])
       </div>
     </div>
-    @php
-      $quoteInputsForTrimFlags = (isset($quotation) && is_array($quotation->inputs ?? null)) ? $quotation->inputs : [];
-      $emitTrimMaterialLfV2 = ! ($isEdit ?? false)
-        || ! isset($quotation)
-        || \Illuminate\Support\Arr::has($quoteInputsForTrimFlags, 'trim_material_lf_v2');
-    @endphp
-    @if ($emitTrimMaterialLfV2)
-      <input type="hidden" name="trim_material_lf_v2" value="1">
-    @endif
     @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'doors_trim'])
   </div>
 </details>
