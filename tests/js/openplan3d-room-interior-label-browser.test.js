@@ -110,9 +110,8 @@ async function main() {
     await new Promise((r) => setTimeout(r, 2000));
 
     const labelHit = await page.evaluate(
-      async ({ storeChunk, vendorPrefix, expectedM2, centerM2 }) => {
-        var proj = window.__openPlan3D.getProject();
-        var floor = (proj.floors && proj.floors[0]) || proj.floor;
+      async ({ storeChunk, vendorPrefix, expectedM2, centerM2, seedPlan }) => {
+        var floor = (seedPlan.floors && seedPlan.floors[0]) || seedPlan.floor;
         var vendorAreas = [];
         try {
           var mod = await import(vendorPrefix + '/_app/immutable/chunks/' + storeChunk);
@@ -180,6 +179,7 @@ async function main() {
         vendorPrefix: VENDOR,
         expectedM2,
         centerM2,
+        seedPlan: plan,
       }
     );
 
