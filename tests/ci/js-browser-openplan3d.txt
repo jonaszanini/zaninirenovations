@@ -1,6 +1,7 @@
 tests/js/openplan3d-kr-ortho-drag.test.js
 tests/js/openplan3d-browser.test.js
 tests/js/openplan3d-room-area-blade-browser.test.js
+tests/js/openplan3d-takeoffs-panel-browser.test.js
 tests/js/room-area-main-thread-responsive.test.js
 tests/js/openplan3d-editor-browser.test.js
 tests/js/openplan3d-editor-index-mount.test.js

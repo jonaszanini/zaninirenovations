@@ -11,6 +11,14 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
+  var interiorGeom = (function () {
+    try {
+      return require('./room-area-interior-geometry.js');
+    } catch (e) { /* browser bundle */ }
+    if (typeof RoomAreaInteriorGeometry !== 'undefined') return RoomAreaInteriorGeometry;
+    return null;
+  })();
+
   var CM_PER_INCH = 2.54;
   var CM_PER_FOOT = 30.48;
   var DEFAULT_WALL_HEIGHT_FT = 8.0;
@@ -1093,12 +1101,22 @@
         'Room geometry could not be measured.');
     }
 
-    // Convert polygon vertices to feet
+    var allWallsList = Object.values(walls);
+    var boundaryIds = (boundaryWallIds && boundaryWallIds.length)
+      ? boundaryWallIds.slice()
+      : ((selectedRoom && selectedRoom.boundary_wall_ids) || (selectedRoom && selectedRoom.walls) || []);
+    var alreadyInterior = interiorGeom && interiorGeom.roomUsesInteriorPolygonDirectly(selectedRoom);
+    var interiorRingCm = polyVertices;
+    if (interiorGeom && !alreadyInterior) {
+      interiorRingCm = interiorGeom.interiorPolygonCm(polyVertices, boundaryIds, walls, cmPerUnit);
+      if (!interiorRingCm || interiorRingCm.length < 3) interiorRingCm = polyVertices;
+    }
+
     var verticesFt = [];
-    for (var i = 0; i < polyVertices.length; i++) {
+    for (var i = 0; i < interiorRingCm.length; i++) {
       verticesFt.push({
-        x: (polyVertices[i].x * cmPerUnit) / CM_PER_FOOT,
-        y: (polyVertices[i].y * cmPerUnit) / CM_PER_FOOT
+        x: (interiorRingCm[i].x * cmPerUnit) / CM_PER_FOOT,
+        y: (interiorRingCm[i].y * cmPerUnit) / CM_PER_FOOT
       });
     }
 
@@ -1149,13 +1167,15 @@
       for (var i = 0; i < bWallIds.length; i++) {
         var w = walls[String(bWallIds[i])];
         if (!w) continue;
-        var dx = (w.end.x - w.start.x) * cmPerUnit;
-        var dy = (w.end.y - w.start.y) * cmPerUnit;
-        var lenCm = hypot(dx, dy);
+        var lenCm = interiorGeom
+          ? interiorGeom.wallPlanEdgeLengthCm(w, allWallsList, cmPerUnit)
+          : hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
         boundaryWalls.push({
           id: String(w.id),
           length_ft: lenCm / CM_PER_FOOT,
-          thickness_cm: (Number(w.thickness || 11.43)) * cmPerUnit
+          thickness_cm: interiorGeom
+            ? interiorGeom.wallThicknessCm(w.thickness, cmPerUnit)
+            : (Number(w.thickness || 11.43)) * cmPerUnit
         });
       }
     } else {
@@ -1311,9 +1331,10 @@
     for (var i = 0; i < partitionWalls.length; i++) {
       var pw = partitionWalls[i];
       var pwId = String(pw.id);
-      var dx = (pw.end.x - pw.start.x) * cmPerUnit;
-      var dy = (pw.end.y - pw.start.y) * cmPerUnit;
-      var wLenFt = hypot(dx, dy) / CM_PER_FOOT;
+      var lenCm = interiorGeom
+        ? interiorGeom.wallPlanEdgeLengthCm(pw, allWallsList, cmPerUnit)
+        : hypot((pw.end.x - pw.start.x) * cmPerUnit, (pw.end.y - pw.start.y) * cmPerUnit);
+      var wLenFt = lenCm / CM_PER_FOOT;
       partitionLf += wLenFt;
       var wLenIn = wLenFt * 12.0;
       var wOpenings = openingsByWall[pwId] || [];
@@ -1374,13 +1395,22 @@
       }
       for (var sId in sharedIds) {
         var sw = walls[sId];
-        if (sw) sharedLf += hypot((sw.end.x - sw.start.x) * cmPerUnit, (sw.end.y - sw.start.y) * cmPerUnit) / CM_PER_FOOT;
+        if (sw) {
+          var sharedLenCm = interiorGeom
+            ? interiorGeom.wallPlanEdgeLengthCm(sw, allWallsList, cmPerUnit)
+            : hypot((sw.end.x - sw.start.x) * cmPerUnit, (sw.end.y - sw.start.y) * cmPerUnit);
+          sharedLf += sharedLenCm / CM_PER_FOOT;
+        }
       }
       sharedLf = roundTo(sharedLf, 2);
     }
     var framingLf = Math.max(0.0, roundTo(perimeter - sharedLf, 2));
-    var exteriorLf = Math.max(0.0, roundTo(perimeter - 2.0 * sharedLf, 2));
-    var outsideAreaSqFt = roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (exteriorLf * thicknessFt)), 2);
+  var outsideAreaSqFt = interiorGeom
+      ? roundTo(interiorGeom.exteriorFloorAreaSqFt(interiorRingCm, boundaryIds, walls, cmPerUnit), 2)
+      : roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (Math.max(0, perimeter - 2 * sharedLf) * thicknessFt)), 2);
+    if (outsideAreaSqFt <= insideAreaSqFt) {
+      outsideAreaSqFt = roundTo(Math.max(insideAreaSqFt, insideAreaSqFt + (Math.max(0, perimeter - 2 * sharedLf) * thicknessFt)), 2);
+    }
 
     // Furniture / Cabinets / Stairs
     var lib = resolveLibraryMetrics(floor, cmPerUnit);
@@ -1913,6 +1943,17 @@
     isSimplePolygon: isSimplePolygon,
     syncEditorRoomBoundariesForCanvasFill: syncEditorRoomBoundariesForCanvasFill,
     canvasFillRoomEntries: canvasFillRoomEntries,
-    editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom
+    editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom,
+    interiorRoomLabelAreaSqFt: function (floor, polygonCm, boundaryWallIds, wallsById) {
+      if (!interiorGeom) return 0;
+      var all = [];
+      if (wallsById) {
+        Object.keys(wallsById).forEach(function (k) { all.push(wallsById[k]); });
+      } else if (floor && floor.walls) {
+        for (var i = 0; i < floor.walls.length; i++) all.push(floor.walls[i]);
+      }
+      var cmPerUnit = 1.0;
+      return interiorGeom.interiorFloorAreaSqFt(polygonCm, boundaryWallIds || [], wallsById || {}, all, cmPerUnit, false);
+    }
   };
 }));

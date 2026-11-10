@@ -298,6 +298,27 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
+  const thickOld = 'thickness:15,height:280';
+  const thickNew = 'thickness:11.43,height:280';
+  const thickCount = countMatches(s, thickOld);
+  if (thickCount > 0) {
+    s = replaceAllExpected(s, thickOld, thickNew, 'store chunk: default new wall thickness 4.5 in', thickCount);
+  } else if (!s.includes(thickNew)) {
+    console.error('patch-openplan3d: store chunk: new wall thickness pattern not found');
+    process.exit(1);
+  }
+
+  const areaShoelaceOld =
+    'let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniRoomUse={...__zaniniRoom,area:Math.round(Math.abs(__zaniniPt)/100)/100,floorTexture:__zaniniRoom.floorTexture||"hardwood"};';
+  const areaInteriorNew =
+    'let __zaniniArea=0;if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt==="function"){const __zaniniWalls={};for(const __zw of e.walls||[]){if(__zw&&__zw.id)__zaniniWalls[String(__zw.id)]=__zw}__zaniniArea=window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt(e,__zaniniPoly,__zaniniRoom.boundary_wall_ids||__zaniniRoom.walls||[],__zaniniWalls)}else{let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniArea=Math.round(Math.abs(__zaniniPt)/100)/100}__zaniniRoomUse={...__zaniniRoom,area:__zaniniArea,floorTexture:__zaniniRoom.floorTexture||"hardwood"};';
+  if (s.includes(areaShoelaceOld)) {
+    s = replaceExpected(s, areaShoelaceOld, areaInteriorNew, 'store chunk: va() interior room label area', 1);
+  } else if (!s.includes('interiorRoomLabelAreaSqFt')) {
+    console.error('patch-openplan3d: store chunk: va() interior area pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,

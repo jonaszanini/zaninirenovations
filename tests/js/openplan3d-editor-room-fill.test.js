@@ -112,7 +112,10 @@ assert.strictEqual(splitSync.plan.floors[0].rooms.length, 2, 'must not collapse 
 const areas = splitSync.plan.floors[0].rooms.map((r) =>
   bridge.layoutMetrics(splitSync.plan, r.id, { wall_height_ft: 8.0 }).area_sqft
 );
-assert.ok(Math.abs(areas[0] - 800) < 2 && Math.abs(areas[1] - 800) < 2, 'each closed half ~800 sf');
+assert.ok(
+  Math.abs(areas[0] - 777.64) < 2 && Math.abs(areas[1] - 777.64) < 2,
+  'each closed half uses interior floor face (~777.64 sf for 40 ft centerline halves with 4.5″ walls), got ' + areas.join(', ')
+);
 
 const syncedPerim = bridge.syncEditorRoomBoundariesForCanvasFill(perimeterOnly).plan;
 const openPlan = JSON.parse(JSON.stringify(syncedPerim));

@@ -34,11 +34,13 @@ class OpenPlan3DMeasurementBridge
         private ?PolygonAreaService $polygonArea = null,
         private ?RoomAreaCanvasData $canvasData = null,
         private ?RoomAreaOpenPlan3DExtensions $extensions = null,
+        private ?RoomAreaInteriorGeometry $interiorGeometry = null,
     ) {
         $this->finishMath = $finishMath ?? app(RoomAreaFinishMath::class);
         $this->polygonArea = $polygonArea ?? app(PolygonAreaService::class);
         $this->canvasData = $canvasData ?? app(RoomAreaCanvasData::class);
         $this->extensions = $extensions ?? app(RoomAreaOpenPlan3DExtensions::class);
+        $this->interiorGeometry = $interiorGeometry ?? app(RoomAreaInteriorGeometry::class);
     }
 
     /**
@@ -247,9 +249,22 @@ class OpenPlan3DMeasurementBridge
             ?? $wallHeightFt;
         $ceilingHeightFt = $this->finishMath->ceilingHeightFt($rawCeilingHeight, $wallHeightFt);
 
-        // Convert polygon vertices to feet
+        $boundaryWallIds = array_values(array_map(
+            'strval',
+            $selectedRoom['boundary_wall_ids'] ?? $selectedRoom['walls'] ?? []
+        ));
+        $allWallsList = array_values($walls);
+        $alreadyInterior = $this->interiorGeometry->roomUsesInteriorPolygonDirectly($selectedRoom);
+
+        $interiorRingCm = $alreadyInterior
+            ? $polygonVertices
+            : $this->interiorGeometry->interiorPolygonCm($polygonVertices, $boundaryWallIds, $walls, $cmPerUnit);
+        if (! $alreadyInterior && count($interiorRingCm) < 3) {
+            $interiorRingCm = $polygonVertices;
+        }
+
         $verticesFt = [];
-        foreach ($polygonVertices as $pt) {
+        foreach ($interiorRingCm as $pt) {
             $xCm = (float) ($pt['x'] ?? 0) * $cmPerUnit;
             $yCm = (float) ($pt['y'] ?? 0) * $cmPerUnit;
             $verticesFt[] = [
@@ -258,7 +273,6 @@ class OpenPlan3DMeasurementBridge
             ];
         }
 
-        // Floor area via Shoelace in feet
         $areaValidation = $this->polygonArea->validateRoom($verticesFt, 1.0);
         if (! $areaValidation['valid']) {
             throw new InvalidArgumentException($areaValidation['message'] ?? 'Room geometry could not be measured.');
@@ -272,17 +286,15 @@ class OpenPlan3DMeasurementBridge
             }
         }
 
-        // Ceiling area
         $ceilingAreaSqFt = $this->finishMath->ceilingAreaSqFt($insideAreaSqFt);
 
-        // Corners
         $corners = $this->polygonArea->cornerCounts($verticesFt);
         $insideCorners = $corners['inside'];
         $outsideCorners = $corners['outside'];
 
         // Room walls and perimeter
         $roomWallIds = $selectedRoom['walls'] ?? [];
-        $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit);
+        $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit, $allWallsList);
         $partitionWalls = $selectedRoom['partition_walls'] ?? [];
 
         $perimeter = 0.0;
@@ -388,9 +400,7 @@ class OpenPlan3DMeasurementBridge
         $partitionLf = 0.0;
         foreach ($partitionWalls as $pw) {
             $wId = (string) $pw['id'];
-            $dx = ((float) $pw['end']['x'] - (float) $pw['start']['x']) * $cmPerUnit;
-            $dy = ((float) $pw['end']['y'] - (float) $pw['start']['y']) * $cmPerUnit;
-            $lengthFt = hypot($dx, $dy) / self::CM_PER_FOOT;
+            $lengthFt = $this->interiorGeometry->wallPlanEdgeLengthCm($pw, $allWallsList, $cmPerUnit) / self::CM_PER_FOOT;
             $partitionLf += $lengthFt;
             $wallLengthIn = $lengthFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
@@ -447,17 +457,18 @@ class OpenPlan3DMeasurementBridge
         $thicknessIn = $this->canvasData->normalizeWallThickness($rawThicknessIn);
 
         // Shared walls & outside area
-        $sharedLf = $this->detectSharedWallLf($floor, $selectedRoom, $walls, $cmPerUnit);
+        $sharedLf = $this->detectSharedWallLf($floor, $selectedRoom, $walls, $cmPerUnit, $allWallsList);
         $framingLf = max(0.0, $this->roundTo($perimeter - $sharedLf, 2));
-        $outsideAreaSqFt = $this->canvasData->outsideAreaSqFt($insideAreaSqFt, $perimeter, $sharedLf, $thicknessIn);
+        $outsideAreaSqFt = $this->roundTo(
+            $this->interiorGeometry->exteriorFloorAreaSqFt($interiorRingCm, $boundaryWallIds, $walls, $cmPerUnit),
+            2
+        );
+        if ($outsideAreaSqFt <= $insideAreaSqFt) {
+            $outsideAreaSqFt = max($insideAreaSqFt, $this->canvasData->outsideAreaSqFt($insideAreaSqFt, $perimeter, $sharedLf, $thicknessIn));
+        }
 
         // Library items (cabinets, stairs)
         $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
-
-        $boundaryWallIds = array_values(array_map(
-            'strval',
-            $selectedRoom['boundary_wall_ids'] ?? array_column($boundaryWalls, 'id')
-        ));
 
         $metrics = [
             'area_sqft' => $insideAreaSqFt,
@@ -670,6 +681,7 @@ class OpenPlan3DMeasurementBridge
                         'flooring_waste_percent' => $finish['flooring_waste_percent'] ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT,
                         'flooring_direction' => $finish['flooring_direction'] ?? RoomAreaFinishMath::DIRECTION_LENGTH,
                         'flooring_box_sqft' => $finish['flooring_box_sqft'] ?? RoomAreaFinishMath::DEFAULT_BOX_SQFT,
+                        'floor_polygon_mode' => RoomAreaInteriorGeometry::INTERIOR_FACE_MODE,
                     ],
                 ];
                 $roomIndex++;
@@ -1732,10 +1744,13 @@ class OpenPlan3DMeasurementBridge
      * @param  array<string, array<string, mixed>>  $walls
      * @return list<array{id: string, length_ft: float, thickness_cm: float, height_cm: float}>
      */
-    private function resolveBoundaryWalls(array $room, array $walls, float $cmPerUnit): array
+    private function resolveBoundaryWalls(array $room, array $walls, float $cmPerUnit, array $allWallsList = []): array
     {
         $out = [];
         $wallIds = $room['boundary_wall_ids'] ?? $room['walls'] ?? [];
+        if ($allWallsList === []) {
+            $allWallsList = array_values($walls);
+        }
 
         if (is_array($wallIds) && count($wallIds) > 0) {
             foreach ($wallIds as $wid) {
@@ -1743,13 +1758,11 @@ class OpenPlan3DMeasurementBridge
                 if ($w === null) {
                     continue;
                 }
-                $dx = ((float) $w['end']['x'] - (float) $w['start']['x']) * $cmPerUnit;
-                $dy = ((float) $w['end']['y'] - (float) $w['start']['y']) * $cmPerUnit;
-                $lenCm = hypot($dx, $dy);
+                $lenCm = $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit);
                 $out[] = [
                     'id' => (string) $w['id'],
                     'length_ft' => $lenCm / self::CM_PER_FOOT,
-                    'thickness_cm' => ((float) ($w['thickness'] ?? 11.43)) * $cmPerUnit,
+                    'thickness_cm' => $this->interiorGeometry->wallThicknessCm($w['thickness'] ?? null, $cmPerUnit),
                     'height_cm' => ((float) ($w['height'] ?? 243.84)) * $cmPerUnit,
                 ];
             }
@@ -1897,8 +1910,11 @@ class OpenPlan3DMeasurementBridge
      * @param  array<string, mixed>  $selectedRoom
      * @param  array<string, array<string, mixed>>  $walls
      */
-    private function detectSharedWallLf(array $floor, array $selectedRoom, array $walls, float $cmPerUnit): float
+    private function detectSharedWallLf(array $floor, array $selectedRoom, array $walls, float $cmPerUnit, array $allWallsList = []): float
     {
+        if ($allWallsList === []) {
+            $allWallsList = array_values($walls);
+        }
         $allRooms = $floor['rooms'] ?? [];
         if (! is_array($allRooms) || count($allRooms) < 2) {
             return 0.0;
@@ -1924,12 +1940,36 @@ class OpenPlan3DMeasurementBridge
             if ($w === null) {
                 continue;
             }
-            $dx = ((float) $w['end']['x'] - (float) $w['start']['x']) * $cmPerUnit;
-            $dy = ((float) $w['end']['y'] - (float) $w['start']['y']) * $cmPerUnit;
-            $sharedLf += hypot($dx, $dy) / self::CM_PER_FOOT;
+            $sharedLf += $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit) / self::CM_PER_FOOT;
         }
 
         return $this->roundTo($sharedLf, 2);
+    }
+
+    /**
+     * Interior floor area in sq ft (for hosted room labels and imports).
+     *
+     * @param  list<array{x: float|int, y: float|int}>  $centerlinePolygonCm
+     * @param  list<string>  $boundaryWallIds
+     * @param  array<string, array<string, mixed>>  $wallsById
+     * @param  list<array<string, mixed>>  $allWallsList
+     */
+    public function interiorFloorAreaSqFtForLabel(
+        array $centerlinePolygonCm,
+        array $boundaryWallIds,
+        array $wallsById,
+        array $allWallsList,
+        float $cmPerUnit = 1.0,
+        bool $polygonAlreadyInterior = false,
+    ): float {
+        return $this->interiorGeometry->interiorFloorAreaSqFt(
+            $centerlinePolygonCm,
+            $boundaryWallIds,
+            $wallsById,
+            $allWallsList,
+            $cmPerUnit,
+            $polygonAlreadyInterior
+        );
     }
 
     /**

@@ -171,12 +171,11 @@
         <span>Takeoffs</span>
         <i class="fa fa-chevron-up openplan3d-takeoffs-chevron" aria-hidden="true"></i>
       </button>
-      <span class="openplan3d-takeoffs-summary" id="openplan3d-takeoffs-summary" aria-live="polite"></span>
-    </div>
-    <div class="openplan3d-takeoffs-body" id="openplan3d-takeoffs-body">
-
-  {{-- Live Metric Cards Ribbon --}}
-  <div class="openplan3d-metrics-ribbon" id="openplan3d-metrics-ribbon">
+      <div class="openplan3d-takeoffs-summary" id="openplan3d-takeoffs-summary" aria-live="polite">
+        <span class="openplan3d-takeoffs-summary__floor" id="openplan3d-takeoffs-summary-floor"></span>
+        <span class="openplan3d-takeoffs-summary__zones" id="openplan3d-takeoffs-summary-zones"></span>
+      </div>
+      <div class="openplan3d-metrics-ribbon" id="openplan3d-metrics-ribbon">
     <div class="openplan3d-metric-card">
       <span class="openplan3d-metric-label">Floor Area</span>
       <span class="openplan3d-metric-val" id="metric-area">0.00</span>
@@ -276,21 +275,22 @@
       <span class="openplan3d-metric-val" id="metric-bulkhead-bead">0.00</span>
       <span class="openplan3d-metric-unit">lf</span>
     </div>
-  </div>
-
-  <aside class="openplan3d-zones-panel openplan3d-zones-panel--compact" id="openplan3d-zones-panel" aria-label="Area zones">
-    <div class="openplan3d-zones-panel__head">
-      <span class="openplan3d-zones-panel__title openplan3d-metric-label--tip">
-        Area zones
-        @include('admin.partials.info_tip', [
-          'tipLabel' => 'Area zones',
-          'tipText' => 'Rectangles drawn on the plan. Measure-only zones are labeled only; turn on Exclude to subtract floor and ceiling area (clipped to the room).',
-        ])
-      </span>
+      </div>
     </div>
-    <ul class="openplan3d-zones-list" id="openplan3d-zones-list"></ul>
-  </aside>
-
+    <div class="openplan3d-takeoffs-body" id="openplan3d-takeoffs-body">
+      <aside class="openplan3d-zones-panel openplan3d-zones-panel--compact" id="openplan3d-zones-panel" aria-label="Area zones">
+        <div class="openplan3d-zones-panel__head">
+          <span class="openplan3d-zones-panel__title openplan3d-metric-label--tip">
+            Area zones
+            @include('admin.partials.info_tip', [
+              'tipLabel' => 'Area zones',
+              'tipText' => 'Rectangles drawn on the plan. Measure-only zones are labeled only; turn on Exclude to subtract floor and ceiling area (clipped to the room).',
+            ])
+          </span>
+          <span class="openplan3d-zones-empty-hint" id="openplan3d-zones-empty-hint">No area zones yet. Use Zone in the editor toolbar.</span>
+        </div>
+        <ul class="openplan3d-zones-list" id="openplan3d-zones-list"></ul>
+      </aside>
     </div>
   </div>
 
@@ -544,20 +544,32 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 .openplan3d-takeoffs-strip__bar {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.2rem 0.75rem;
-  min-height: 40px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem 0.5rem;
+  padding: 0.2rem 0.65rem 0.25rem;
+  min-height: 0;
 }
 
 .openplan3d-takeoffs-summary {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  gap: 0.05rem;
+  line-height: 1.25;
   font-size: 0.75rem;
   color: var(--admin-muted, #64748b);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-  flex: 1;
+  min-width: 5.5rem;
+  max-width: 9rem;
+}
+
+.openplan3d-takeoffs-summary__floor {
+  font-weight: 600;
+  color: var(--admin-text, #1e293b);
+}
+
+.openplan3d-takeoffs-summary__zones {
+  font-size: 0.72rem;
 }
 
 .openplan3d-takeoffs-toggle .openplan3d-takeoffs-chevron {
@@ -570,7 +582,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   transform: rotate(180deg);
 }
 
-.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-body {
+.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-body,
+.openplan3d-takeoffs-strip.is-collapsed .openplan3d-metrics-ribbon {
   display: none;
 }
 
@@ -579,17 +592,19 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-zones-panel--compact {
-  padding: 0.25rem 0.75rem 0.45rem;
+  padding: 0.1rem 0.65rem 0.2rem;
+  background: transparent;
+  border-bottom: none;
 }
 
 .openplan3d-zones-panel--compact .openplan3d-zones-list {
-  max-height: 88px;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  gap: 0.4rem;
-  padding-bottom: 0.15rem;
+  max-height: 96px;
+  flex-direction: column;
+  flex-wrap: wrap;
+  overflow-x: hidden;
+  overflow-y: auto;
+  gap: 0.3rem;
+  padding: 0;
 }
 
 .openplan3d-zones-panel--compact .openplan3d-zones-item {
@@ -796,17 +811,18 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 /* Live Metrics Ribbon */
 .openplan3d-metrics-ribbon {
+  flex: 1 1 18rem;
+  min-width: 0;
   display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.25rem 0.75rem 0.3rem;
+  gap: 0.22rem 0.32rem;
+  padding: 0;
   background: transparent;
   border-bottom: none;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scroll-snap-type: x proximity;
-  scrollbar-width: thin;
+  overflow: visible;
+  max-width: 100%;
 }
 
 .openplan3d-metric-label--tip {
@@ -817,9 +833,9 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-zones-panel {
-  padding: 0.45rem 1rem 0.55rem;
-  background: var(--admin-surface, #f8fafc);
-  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  padding: 0.15rem 0.65rem 0.2rem;
+  background: transparent;
+  border-bottom: none;
 }
 
 .openplan3d-zones-panel[hidden] {
@@ -827,7 +843,26 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-zones-panel__head {
-  margin-bottom: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  margin-bottom: 0;
+}
+
+.openplan3d-zones-empty-hint {
+  font-size: 0.74rem;
+  font-weight: 400;
+  color: var(--admin-muted, #94a3b8);
+  line-height: 1.35;
+}
+
+.openplan3d-zones-panel--has-zones .openplan3d-zones-empty-hint {
+  display: none;
+}
+
+.openplan3d-zones-panel--has-zones .openplan3d-zones-panel__head {
+  margin-bottom: 0.2rem;
 }
 
 .openplan3d-zones-panel__title {
@@ -965,9 +1000,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-zones-empty {
-  font-size: 0.8rem;
-  color: var(--admin-muted, #64748b);
-  padding: 0.25rem 0;
+  display: none;
 }
 
 @media (max-width: 640px) {

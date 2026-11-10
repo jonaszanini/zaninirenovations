@@ -360,9 +360,12 @@
     var deleteProjectBtn = doc.getElementById('openplan3d-delete-project-btn');
     var zonesPanel = doc.getElementById('openplan3d-zones-panel');
     var zonesListEl = doc.getElementById('openplan3d-zones-list');
+    var zonesEmptyHint = doc.getElementById('openplan3d-zones-empty-hint');
     var takeoffsStrip = doc.getElementById('openplan3d-takeoffs-strip');
     var takeoffsToggle = doc.getElementById('openplan3d-takeoffs-toggle');
     var takeoffsSummary = doc.getElementById('openplan3d-takeoffs-summary');
+    var takeoffsSummaryFloor = doc.getElementById('openplan3d-takeoffs-summary-floor');
+    var takeoffsSummaryZones = doc.getElementById('openplan3d-takeoffs-summary-zones');
 
     var csrfToken = (doc.getElementById('openplan3d-csrf') || {}).value || '';
     var projects = [];
@@ -894,9 +897,10 @@
     }
 
     function updateTakeoffsSummary() {
-      if (!takeoffsSummary) return;
+      if (!takeoffsSummary && !takeoffsSummaryFloor && !takeoffsSummaryZones) return;
       if (!metricArea) {
-        takeoffsSummary.textContent = '';
+        if (takeoffsSummaryFloor) takeoffsSummaryFloor.textContent = '';
+        if (takeoffsSummaryZones) takeoffsSummaryZones.textContent = '';
         return;
       }
       var area = metricArea.textContent || '0.00';
@@ -904,7 +908,13 @@
       if (currentPlan && currentPlan.zanini && Array.isArray(currentPlan.zanini.zones)) {
         zonesCount = currentPlan.zanini.zones.filter(function (z) { return z && !z.mergedInto; }).length;
       }
-      takeoffsSummary.textContent = area + ' sf floor · ' + zonesCount + ' zone' + (zonesCount === 1 ? '' : 's');
+      var floorLine = area + ' sf floor';
+      var zonesLine = zonesCount + ' zone' + (zonesCount === 1 ? '' : 's');
+      if (takeoffsSummaryFloor) takeoffsSummaryFloor.textContent = floorLine;
+      if (takeoffsSummaryZones) takeoffsSummaryZones.textContent = zonesLine;
+      if (takeoffsSummary && !takeoffsSummaryFloor && !takeoffsSummaryZones) {
+        takeoffsSummary.textContent = floorLine + ' · ' + zonesLine;
+      }
     }
 
     function syncTakeoffsCollapsed(collapsed) {
@@ -923,11 +933,13 @@
         return z && !z.mergedInto;
       }) : [];
       if (zonesPanel) zonesPanel.hidden = false;
+      if (zonesPanel) {
+        zonesPanel.classList.toggle('openplan3d-zones-panel--has-zones', zones.length > 0);
+      }
+      if (zonesEmptyHint) {
+        zonesEmptyHint.hidden = zones.length > 0;
+      }
       if (zones.length === 0) {
-        var empty = doc.createElement('li');
-        empty.className = 'openplan3d-zones-empty';
-        empty.textContent = 'No area zones yet. Use Zone in the editor toolbar.';
-        zonesListEl.appendChild(empty);
         updateTakeoffsSummary();
         return;
       }

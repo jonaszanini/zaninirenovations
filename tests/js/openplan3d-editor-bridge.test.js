@@ -172,6 +172,18 @@ assert.doesNotMatch(bladePartial, /flex:\s*1\s+1\s+220px/, 'header must not use 
 assert.doesNotMatch(bladePartial, /flex-direction:\s*column[\s\S]{0,120}flex:\s*1\s+1/, 'column header rows must not grow with flex-basis heights');
 assert.match(bladePartial, /util-ra-openplan3d-frame-container[\s\S]{0,200}min-height:\s*0/, 'editor frame must shrink inside flex column layout');
 assert.match(bladePartial, /aria-label="Show or hide takeoff metrics and area zones"/, 'takeoffs toggle needs aria-label');
+assert.match(bladePartial, /openplan3d-takeoffs-summary__floor/, 'takeoffs summary must stack floor line');
+assert.match(bladePartial, /openplan3d-zones-empty-hint/, 'zones empty hint must sit beside Area zones label');
+assert.match(
+  bladePartial,
+  /openplan3d-takeoffs-strip__bar[\s\S]*id="openplan3d-metrics-ribbon"/,
+  'metric chips must live in the takeoffs top bar'
+);
+assert.doesNotMatch(
+  bladePartial,
+  /overflow-x:\s*auto[\s\S]{0,40}openplan3d-metrics-ribbon|openplan3d-metrics-ribbon[\s\S]{0,120}overflow-x:\s*auto/,
+  'metrics ribbon must not use horizontal scroll'
+);
 assert.doesNotMatch(hostSrc, /\bwin\.confirm\b|\bwindow\.confirm\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.alert\b|\bwindow\.alert\s*\(/);
 assert.doesNotMatch(hostSrc, /\bwin\.prompt\b|\bwindow\.prompt\s*\(/);
@@ -484,9 +496,15 @@ assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, null), null, 'whole
 
 const metricsAll = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, null, measurement);
 const metricsFirst = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, 'r1', measurement);
-assert.ok(metricsAll && metricsAll.area_sqft === 200, 'whole-plan area is 200 sq ft, got ' + (metricsAll && metricsAll.area_sqft));
-assert.ok(metricsFirst && metricsFirst.area_sqft === 100, 'selected openPlan3D room area is 100');
-assert.notStrictEqual(metricsAll.area_sqft, metricsFirst.area_sqft);
+assert.ok(
+  metricsAll && Math.abs(metricsAll.area_sqft - 185.28) < 0.15,
+  'whole-plan interior area sums rooms without double-counting partition, got ' + (metricsAll && metricsAll.area_sqft)
+);
+assert.ok(
+  metricsFirst && Math.abs(metricsFirst.area_sqft - 92.64) < 0.15,
+  'selected openPlan3D room interior area is ~92.64 sf, got ' + (metricsFirst && metricsFirst.area_sqft)
+);
+assert.ok(Math.abs(metricsAll.area_sqft - metricsFirst.area_sqft * 2) < 0.2);
 
 // Verify hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first
 const queryLog = [];
