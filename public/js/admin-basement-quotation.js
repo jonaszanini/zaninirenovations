@@ -20,6 +20,10 @@
   var lastAdditionalLaborHst = 0;
   var lastAdditionalTaxIn = 0;
   var lastPreviewData = null;
+  var initialExpenseTotals = cfg.initialExpenseTotals || {};
+  lastCommuteAmount = Number(initialExpenseTotals.commute || 0);
+  lastDebrisAmount = Number(initialExpenseTotals.debris || 0);
+  lastAdditionalTaxIn = Number(initialExpenseTotals.additionalTaxIn || 0);
   var currentIndex = 0;
 
   var fmt = function (n) {
@@ -1164,6 +1168,10 @@
     if (reconLines.length) {
       html += '<div class="br-reconciliation" data-br-reconciliation="1">';
       reconLines.forEach(function (line) {
+        if (line.key === 'grand_total' && lastAdditionalTaxIn > 0) {
+          html += '<div class="pq-row" data-br-recon-key="additional_costs_tax_in">'
+            + '<span>Additional costs (incl. HST)</span><span>' + fmt(lastAdditionalTaxIn) + '</span></div>';
+        }
         var rowClass = 'pq-row';
         if (line.row_class === 'sub') rowClass += ' pq-row--sub';
         if (line.row_class === 'hl') rowClass += ' pq-row--hl';
@@ -1179,7 +1187,80 @@
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
     updateClientScopeFromPreview(data);
+    updateClientScopeAllowanceStale(data);
     updateSectionSubtotals(data);
+    updateClientProvidesSectionState(data);
+  }
+
+  function updateClientScopeAllowanceStale(data) {
+    var field = document.getElementById('br-scope-allowances');
+    if (!field || !clientScopeFieldLocked(field)) return;
+    var scope = data && data.client_scope;
+    if (!scope) return;
+    var stale = !!scope.allowances_stale;
+    var banner = document.getElementById('br-scope-allowances-stale');
+    if (stale && !banner) {
+      var help = document.createElement('p');
+      help.className = 'admin-form-help br-scope-stale';
+      help.id = 'br-scope-allowances-stale';
+      help.setAttribute('role', 'status');
+      help.innerHTML = 'Allowance amounts no longer match live electrical, plumbing, or permit lines. '
+        + '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-scope-allowances-reset">Reset to current amounts</button>';
+      field.parentNode.insertBefore(help, field);
+      bindAllowancesReset(help.querySelector('#br-scope-allowances-reset'));
+    } else if (!stale && banner) {
+      banner.remove();
+      field.removeAttribute('data-br-scope-allowances-stale');
+    } else if (stale) {
+      field.setAttribute('data-br-scope-allowances-stale', '1');
+    }
+  }
+
+  function bindAllowancesReset(btn) {
+    if (!btn || btn.dataset.brBound === '1') return;
+    btn.dataset.brBound = '1';
+    btn.addEventListener('click', function () {
+      var field = document.getElementById('br-scope-allowances');
+      var generated = lastPreviewData && lastPreviewData.client_scope && lastPreviewData.client_scope.generated;
+      if (!field || !generated || generated.allowances == null) return;
+      field.value = generated.allowances;
+      field.setAttribute('data-br-scope-dirty', '1');
+      var banner = document.getElementById('br-scope-allowances-stale');
+      if (banner) banner.remove();
+      field.removeAttribute('data-br-scope-allowances-stale');
+      schedulePreview();
+    });
+  }
+
+  function sectionHasClientMaterials(data, sectionKey) {
+    var mats = (data && data.materials) || [];
+    return mats.some(function (row) {
+      return String(row.section || '') === sectionKey
+        && !row.client_provided
+        && Number(row.amount || 0) > 0;
+    });
+  }
+
+  function updateClientProvidesSectionState(data) {
+    var enabled = enabledTradeKeys();
+    form.querySelectorAll('input[name="client_provides_sections[]"]').forEach(function (cb) {
+      var key = cb.value || '';
+      var sectionOn = enabled.indexOf(key) !== -1;
+      var hasMats = sectionHasClientMaterials(data, key);
+      var inert = !sectionOn || !hasMats;
+      cb.disabled = inert;
+      var row = cb.closest('label') || cb.parentElement;
+      if (row) {
+        row.classList.toggle('br-client-provides--inert', inert);
+        row.title = inert
+          ? (!sectionOn ? 'This trade is off for this quotation.' : 'This trade has no priced materials to omit.')
+          : '';
+      }
+      if (inert && cb.checked) {
+        cb.checked = false;
+        schedulePreview();
+      }
+    });
   }
 
   function ceilingHangPricedInDrywallSection() {
@@ -1554,6 +1635,7 @@
   syncUnifiedCeilingArea();
 
   hydratePersistedClientScope();
+  bindAllowancesReset(document.getElementById('br-scope-allowances-reset'));
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);
   }

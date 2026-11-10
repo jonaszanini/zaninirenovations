@@ -1,3 +1,7 @@
+tests/Feature/Admin/BasementAllowancesStaleTest.php
+tests/Feature/Admin/BasementToolbarFirstPaintTest.php
+tests/Feature/Admin/BasementQuotationPagesTest.php
+tests/Feature/Admin/FlooringTypeDeleteCheckboxTest.php
 tests/Feature/Admin/BasementClientProvidesBrowserTest.php
 tests/Feature/Admin/BasementClientProvidesTest.php
 tests/Feature/Admin/BasementHeaderLfLivePreviewTest.php
@@ -8,6 +12,7 @@ tests/Feature/Admin/BasementCeilingSectionNoteBrowserTest.php
 tests/Feature/Admin/BasementPaintManualEditTest.php
 tests/Feature/Admin/BasementHeaderLegacyQuoteTest.php
 tests/Feature/Admin/BasementHeaderLfBrowserTest.php
+tests/Unit/Services/BasementQuotationFeeWasteScopeTest.php
 tests/Unit/Services/BasementHeaderLfTest.php
 tests/Unit/Services/BasementCornerBeadTest.php
 tests/Feature/Admin/BasementCornerBeadLegacyQuoteTest.php

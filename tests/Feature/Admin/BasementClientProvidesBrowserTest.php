@@ -118,6 +118,9 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
             'include_touchups' => false,
             'detector_qty' => 0,
             'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+            'electrical_lines' => [
+                ['description' => 'Licensed electrician', 'amount' => 7000, 'hst_included' => false],
+            ],
         ]);
         $calc = (new BasementQuotationCalculator)->calculate($inputs);
 

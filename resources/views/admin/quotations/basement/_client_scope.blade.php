@@ -1,5 +1,13 @@
 @php
-  $scopeCopy = \App\Services\BasementClientScope::resolveCopy(is_array($inputs ?? null) ? $inputs : []);
+  $scopeCalc = [];
+  if (is_array($initialPreview ?? null)) {
+      $scopeCalc = $initialPreview;
+  } elseif (isset($quotation) && is_array($quotation->calculation ?? null)) {
+      $scopeCalc = $quotation->calculation;
+  }
+  $scopeCopy = \App\Services\BasementClientScope::resolveCopy(is_array($inputs ?? null) ? $inputs : [], $scopeCalc);
+  $allowancesStale = ! empty($scopeCopy['allowances_stale']);
+  $allowancesDisplay = (string) ($scopeCopy['allowances_ui'] ?? $scopeCopy['allowances']);
   $feeDefault = 10;
   if (! empty($isEdit) && is_array($inputs ?? null) && ! array_key_exists('contractor_fee_percent', $inputs)) {
       $feeDefault = 0;
@@ -73,8 +81,14 @@
               'tipLabel' => 'Allowances',
             ])
           </span>
+          @if ($allowancesStale)
+            <p class="admin-form-help br-scope-stale" id="br-scope-allowances-stale" role="status">
+              Allowance amounts no longer match live electrical, plumbing, or permit lines.
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-scope-allowances-reset">Reset to current amounts</button>
+            </p>
+          @endif
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-allowances" name="client_scope_allowances" rows="6"
-                    data-br-scope-field="allowances"@if($scopeFieldLocked('client_scope_allowances')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_allowances', $inputs['client_scope_allowances'] ?? $scopeCopy['allowances']) }}</textarea>
+                    data-br-scope-field="allowances"@if($scopeFieldLocked('client_scope_allowances')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif @if($allowancesStale) data-br-scope-allowances-stale="1"@endif>{{ old('client_scope_allowances', $inputs['client_scope_allowances'] ?? $allowancesDisplay) }}</textarea>
         </div>
       </div>
     </div>

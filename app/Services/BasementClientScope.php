@@ -154,10 +154,11 @@ class BasementClientScope
 
     /**
      * Stored copy when the admin edited it; otherwise generated defaults.
+     * Allowances amounts always sync to live trade / permit lines for PDF output.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $calc
-     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}}
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}, allowances_stale?: bool, allowances_ui?: string}
      */
     public static function resolveCopy(array $inputs, array $calc = []): array
     {
@@ -165,10 +166,98 @@ class BasementClientScope
         $out = ['generated' => $generated];
         foreach (self::COPY_KEYS as $short => $inputKey) {
             $stored = trim((string) ($inputs[$inputKey] ?? ''));
+            if ($short === 'allowances') {
+                if ($stored === '') {
+                    $out['allowances'] = $generated['allowances'];
+                    $out['allowances_ui'] = $generated['allowances'];
+                } else {
+                    $synced = self::syncAllowanceAmounts($stored, $generated['allowances']);
+                    $out['allowances'] = $synced;
+                    $out['allowances_ui'] = $stored;
+                    $out['allowances_stale'] = self::allowancesAmountsStale($stored, $generated['allowances']);
+                }
+                continue;
+            }
             $out[$short] = $stored !== '' ? $stored : $generated[$short];
         }
 
         return $out;
+    }
+
+    public static function allowancesAmountsStale(string $stored, string $generated): bool
+    {
+        $stored = trim($stored);
+        $generated = trim($generated);
+        if ($stored === '' || $generated === '') {
+            return false;
+        }
+
+        return self::syncAllowanceAmounts($stored, $generated) !== $stored;
+    }
+
+    public static function syncAllowanceAmounts(string $stored, string $generated): string
+    {
+        $stored = trim($stored);
+        $generated = trim($generated);
+        if ($stored === '') {
+            return $generated;
+        }
+        if ($generated === '') {
+            return $stored;
+        }
+        $freshByPrefix = [];
+        foreach (preg_split('/\r\n|\r|\n/', $generated) ?: [] as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '') {
+                $freshByPrefix[$prefix] = $line;
+            }
+        }
+        if ($freshByPrefix === []) {
+            return $stored;
+        }
+
+        $out = [];
+        foreach (preg_split('/\r\n|\r|\n/', $stored) ?: [] as $line) {
+            $line = trim((string) $line);
+            if ($line === '') {
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '' && isset($freshByPrefix[$prefix])) {
+                $out[] = $freshByPrefix[$prefix];
+                unset($freshByPrefix[$prefix]);
+            } else {
+                $out[] = $line;
+            }
+        }
+        foreach ($freshByPrefix as $line) {
+            $out[] = $line;
+        }
+
+        return implode("\n", $out);
+    }
+
+    private static function allowanceLinePrefix(string $line): string
+    {
+        $line = trim($line);
+        if (str_starts_with($line, 'Electrical work allowance')) {
+            return 'electrical';
+        }
+        if (str_starts_with($line, 'Plumbing work allowance')) {
+            return 'plumbing';
+        }
+        if (str_starts_with($line, 'City building permit extra-charge')) {
+            return 'permit';
+        }
+        if (str_starts_with($line, 'BCIN drawings extra-charge')) {
+            return 'bcin';
+        }
+
+        return '';
     }
 
     /**

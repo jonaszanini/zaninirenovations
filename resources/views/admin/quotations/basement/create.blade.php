@@ -2,6 +2,7 @@
 
 @php
   use App\Services\BasementQuotationCalculator;
+  use App\Support\BasementQuotationLiveGrandTotal;
 
   $isEdit = filled($quotation);
   $returnToProject = request('return') === 'project' && $isEdit && $quotation->project;
@@ -110,7 +111,11 @@
     'clientId' => optional($linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject ?? null) : null))->client_id,
   ])
   @php
-    $toolbarGrand = (float) (($initialPreview['summary']['grand_total'] ?? 0));
+    $toolbarGrand = BasementQuotationLiveGrandTotal::fromQuotation(
+        $isEdit ? $quotation : null,
+        is_array($initialPreview['summary'] ?? null) ? $initialPreview['summary'] : null
+    );
+    $initialExpenseTotals = BasementQuotationLiveGrandTotal::expensePayload($isEdit ? $quotation : null);
     $linkedCpq = $linkedCpq ?? null;
     $sendProject = $isEdit ? ($quotation->project ?? null) : null;
     $hasPdfContent = $linkedCpq && $linkedCpq->hasContent();
@@ -245,6 +250,8 @@
             'inputs' => $inputs,
             'settings' => $settings,
             'isEdit' => $isEdit,
+            'initialPreview' => $initialPreview ?? null,
+            'quotation' => $quotation ?? null,
             'scopePreset' => $scopePreset,
             'enabledNow' => $enabledNow,
             'enabledCount' => $enabledCount,
@@ -257,7 +264,7 @@
         <details class="br-acc admin-card" data-br-step="review" @if ($isEdit) open @endif>
           <summary class="br-acc__summary">
             Review, materials &amp; live edits
-            <x-admin.info-tip label="Review, materials & live edits">Edit hours, quantities, or unit prices below. Totals recalculate as you type. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</x-admin.info-tip>
+            <x-admin.info-tip label="Review, materials & live edits">Live totals and trade breakdown update as you change inputs on earlier steps. Labour and material tables here are read-only summaries. Enter 0 on an auto-filled quantity in a previous section to skip that trade.</x-admin.info-tip>
           </summary>
           <div class="br-acc__body">
             @include('admin.partials.checkbox', [
@@ -265,7 +272,7 @@
               'hiddenFallback' => true,
               'checked' => (bool) old('client_provides_all', $inputs['client_provides_all'] ?? false),
               'label' => '<strong>Client provides all materials</strong> for the entire project',
-              'info' => 'Labour only — you do not supply materials. Material cost drops out of the total.',
+              'info' => 'Labour only, you do not supply materials. Material cost drops out of the total.',
               'inputClass' => 'admin-checkbox__input br-preview',
               'id' => 'br-client-all',
             ])
@@ -389,7 +396,7 @@
             @include('admin.quotations._commute_debris_row')
             @include('admin.quotations._additional_costs', [
                 'quotation' => $quotation,
-                'intro' => 'Optional extras (rentals, extra labour, etc.). Choose whether each line is <strong>materials</strong> or <strong>labour</strong>. Hidden from the client PDF — folded into that subtotal.',
+                'intro' => 'Optional extras (rentals, extra labour, etc.). Choose whether each line is <strong>materials</strong> or <strong>labour</strong>. Hidden from the client PDF, folded into that subtotal.',
                 'placeholder' => 'e.g. Dumpster',
             ])
 
@@ -478,6 +485,7 @@
       sectionKeys: @json(array_keys($sectionList)),
       presetSections: @json($presetSections),
       electricalByPreset: @json($electricalByPreset),
+      initialExpenseTotals: @json($initialExpenseTotals ?? ['commute' => 0, 'debris' => 0, 'additionalTaxIn' => 0]),
     };
   </script>
   <script src="{{ asset('js/admin-basement-layout-import.js') }}?v={{ @filemtime(public_path('js/admin-basement-layout-import.js')) ?: time() }}"></script>

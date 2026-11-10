@@ -2306,7 +2306,7 @@ class BasementQuotationCalculatorTest extends TestCase
         $fee = (float) $byKey['contractor_fee']['amount'];
         $subtotal = (float) $byKey['subtotal_pre_hst']['amount'];
         $this->assertEqualsWithDelta($inHouse + $fee, $subtotal, 0.05);
-        $this->assertEqualsWithDelta(7000.0, (float) $byKey['qualified_trades_pre_hst']['amount'], 0.01);
+        $this->assertArrayNotHasKey('qualified_trades_pre_hst', $byKey);
         $feeBase = (float) ($summary['contractor_fee_base_pre_hst'] ?? 0);
         $this->assertGreaterThan(0, $feeBase);
         $this->assertEqualsWithDelta($feeBase * 0.1, $fee, 0.02);

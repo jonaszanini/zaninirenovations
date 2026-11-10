@@ -16,6 +16,8 @@ tests/Unit/Models/StandardQuotationPdfLineItemsTest.php
 tests/Unit/Services/BasementCeilingQuantitiesTest.php
 tests/Unit/Services/BasementClientScopeGeneratedCopyTest.php
 tests/Unit/Services/BasementQuotationCalculatorTest.php
+tests/Unit/Services/BasementQuotationFeeWasteScopeTest.php
+tests/Unit/Services/BasementClientScopeGeneratedCopyTest.php
 tests/Unit/Services/BasementRoomAreaImportMapperTest.php
 tests/Unit/Services/BlogPostQualityTest.php
 tests/Unit/Services/CutOptimizerEngineTest.php

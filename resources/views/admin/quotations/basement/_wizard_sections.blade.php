@@ -174,7 +174,7 @@
       'bcin_drawings_amount' => 'BCIN drawings extra-charge in CAD$ before HST. Treated as a subcontracted professional service for the contractor fee, including engineer signing when required. Not the municipal permit fee.',
       'flooring_waste_percent' => 'Ordering buffer for finish flooring only. Defaults: vinyl (LVP) 7%, wood (hardwood / engineered / laminate) 8%, tile 10%. Drywall sheets, batt bags, and studs at 16 inch centres still use the global material waste below. No carpet.',
       'material_waste_percent' => 'Ordering buffer on bulk materials other than finish flooring (drywall sheets, lumber, paint, insulation batts, trim). Doors and toilets stay exact. Default 10%. Finish flooring has its own waste on the Flooring step.',
-      'client_provides_all' => 'Labour only — you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
+      'client_provides_all' => 'Labour only, you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
   ];
 @endphp
 

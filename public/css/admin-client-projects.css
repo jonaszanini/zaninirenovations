@@ -8399,6 +8399,10 @@ html.admin-dark .br-hardwood-caution {
   min-width: 0;
   max-width: 100%;
 }
+.br-provide-grid .admin-checkbox.br-client-provides--inert {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .br-bath-provide {
   margin: 0 0 16px;
   padding: 12px 14px;

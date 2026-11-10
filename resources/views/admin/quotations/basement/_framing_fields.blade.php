@@ -28,9 +28,20 @@
     @if ($legacyHeaderQty > 0)
       <input type="hidden" name="header_qty" value="{{ $legacyHeaderQty }}">
     @endif
+    @php
+      $headerLfValue = old('header_lf');
+      if ($headerLfValue === null) {
+          $headerLfValue = array_key_exists('header_lf', $storedHeaderInputs)
+            ? $storedHeaderInputs['header_lf']
+            : ($legacyHeaderQty > 0 ? '' : 0);
+      }
+    @endphp
     <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-headers" name="header_lf"
-           value="{{ $brVal('header_lf', 0) }}"
-           @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} openings saved" @endif>
+           value="{{ $headerLfValue }}"
+           @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} openings saved; enter lin. ft to replace" data-br-header-legacy="{{ $legacyHeaderQty }}" @endif>
+    @if ($legacyHeaderQty > 0)
+      <p class="admin-form-help" id="br-header-legacy-note">{{ $legacyHeaderQty }} openings saved from a previous save. Enter linear feet here to switch to lin. ft pricing, or leave blank to keep the saved opening count.</p>
+    @endif
   </div>
   <div class="admin-form-group br-field--phone-wide">
     <span class="admin-label-with-tip">
