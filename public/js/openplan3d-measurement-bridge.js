@@ -11,13 +11,17 @@
 }(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
-  var interiorGeom = (function () {
+  function resolveInteriorGeom() {
     try {
       return require('./room-area-interior-geometry.js');
     } catch (e) { /* browser bundle */ }
     if (typeof RoomAreaInteriorGeometry !== 'undefined') return RoomAreaInteriorGeometry;
     return null;
-  })();
+  }
+  var interiorGeom = resolveInteriorGeom();
+  function interiorGeomRuntime() {
+    return interiorGeom || resolveInteriorGeom();
+  }
 
   var CM_PER_INCH = 2.54;
   var CM_PER_FOOT = 30.48;
@@ -403,13 +407,13 @@
     var sum = 0.0;
     for (var i = 0; i < n; i++) {
       var j = (i + 1) % n;
-      var ax = roundToSixteenthFoot(vertices[i].x);
-      var ay = roundToSixteenthFoot(vertices[i].y);
-      var bx = roundToSixteenthFoot(vertices[j].x);
-      var by = roundToSixteenthFoot(vertices[j].y);
+      var ax = Number(vertices[i].x) || 0;
+      var ay = Number(vertices[i].y) || 0;
+      var bx = Number(vertices[j].x) || 0;
+      var by = Number(vertices[j].y) || 0;
       sum += (ax * by) - (bx * ay);
     }
-    return Math.round(Math.abs(sum) * 0.5 * 100) / 100;
+    return roundTo(Math.abs(sum) * 0.5, 2);
   }
 
   function cornerCounts(vertices) {
@@ -975,6 +979,7 @@
   }
 
   function layoutMetrics(plan, roomId, finish, options) {
+    var interiorGeom = interiorGeomRuntime();
     finish = finish || {};
     options = options || {};
     var floor = resolveFloor(plan);
@@ -1171,12 +1176,13 @@
       ? boundaryWallIds
       : ((selectedRoom && selectedRoom.boundary_wall_ids) || (selectedRoom && selectedRoom.walls) || []);
 
+    var trimBoundaryCorners = !alreadyInterior;
     if (bWallIds.length > 0) {
       for (var i = 0; i < bWallIds.length; i++) {
         var w = walls[String(bWallIds[i])];
         if (!w) continue;
         var lenCm = interiorGeom
-          ? interiorGeom.wallPlanEdgeLengthCm(w, allWallsList, cmPerUnit)
+          ? interiorGeom.wallPlanEdgeLengthCm(w, allWallsList, cmPerUnit, trimBoundaryCorners)
           : hypot((w.end.x - w.start.x) * cmPerUnit, (w.end.y - w.start.y) * cmPerUnit);
         boundaryWalls.push({
           id: String(w.id),
@@ -1225,7 +1231,22 @@
       var d = rawDoors[i];
       if (!d || !wallIdMap[String(d.wallId)]) continue;
       var wObj = walls[String(d.wallId)];
-      var wLenIn = wObj ? (hypot((wObj.end.x - wObj.start.x) * cmPerUnit, (wObj.end.y - wObj.start.y) * cmPerUnit) / CM_PER_INCH) : 0;
+      var wLenFt = 0;
+      if (wObj) {
+        for (var bwi = 0; bwi < boundaryWalls.length; bwi++) {
+          if (String(boundaryWalls[bwi].id) === String(d.wallId)) {
+            wLenFt = boundaryWalls[bwi].length_ft;
+            break;
+          }
+        }
+        if (!wLenFt) {
+          var lenCm = interiorGeom
+            ? interiorGeom.wallPlanEdgeLengthCm(wObj, allWallsList, cmPerUnit)
+            : hypot((wObj.end.x - wObj.start.x) * cmPerUnit, (wObj.end.y - wObj.start.y) * cmPerUnit);
+          wLenFt = lenCm / CM_PER_FOOT;
+        }
+      }
+      var wLenIn = wLenFt * 12.0;
       var rawType = String(d.type || 'single').toLowerCase();
       var isOpening = rawType === 'opening' || rawType === 'archway';
       var wIn = ((d.width || 81.28) * cmPerUnit) / CM_PER_INCH;
@@ -1775,6 +1796,7 @@
     }
   }
 
+  /** Wall x/y are already in plan units (cm when unit is cm); only ft/m/mm need scaling to cm. */
   function cmPerUnitForPlan(plan) {
     if (!plan || typeof plan !== 'object') return 1.0;
     var floor = plan.floor || (plan.floors && plan.floors[0]) || plan;
@@ -1962,7 +1984,9 @@
     syncEditorRoomBoundariesForCanvasFill: syncEditorRoomBoundariesForCanvasFill,
     canvasFillRoomEntries: canvasFillRoomEntries,
     editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom,
+    cmPerUnitForPlan: cmPerUnitForPlan,
     interiorRoomLabelAreaSqFt: function (floor, polygonCm, boundaryWallIds, wallsById) {
+      var interiorGeom = interiorGeomRuntime();
       if (!interiorGeom) return 0;
       var all = [];
       if (wallsById) {

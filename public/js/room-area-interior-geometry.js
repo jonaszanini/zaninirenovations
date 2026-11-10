@@ -229,7 +229,7 @@
     var ring = normalizeRing(ringVertsCm);
     if (ring.length < 3) return 0;
     var unit = Math.max(cmPerUnit, 1e-9);
-    var outwardFactor = polygonIsInteriorFace ? 1.5 : 1.0;
+    var outwardFactor = 0.5;
     var offsets = wallThicknessPerEdgePlan(ring, boundaryWallIds, wallsById, cmPerUnit, outwardFactor);
     var outer = offsetPolygonByEdgeOffsetsCm(ring, offsets, false);
     if (outer.length < 3) return 0;
@@ -246,7 +246,8 @@
     return hypot(dx, dy);
   }
 
-  function wallEndpointTrimCm(wall, allWalls, cmPerUnit) {
+  function wallEndpointTrimCm(wall, allWalls, cmPerUnit, trimCornersAtJoints) {
+    if (trimCornersAtJoints === undefined) trimCornersAtJoints = true;
     var dx = (wall.end.x - wall.start.x) * cmPerUnit;
     var dy = (wall.end.y - wall.start.y) * cmPerUnit;
     var len = hypot(dx, dy) || 1;
@@ -267,15 +268,19 @@
         var olen = hypot(ox, oy) || 1;
         var atStart = hypot(sx - px, sy - py) < eps;
         var atEnd = hypot(ex - px, ey - py) < eps;
-        var t = ((px - sx) * ox + (py - sy) * oy) / (olen * olen);
-        var onInterior = !atStart && !atEnd && t > eps / olen && t < 1 - eps / olen;
-        if (!onInterior) {
+        var cross = (dx / len) * (oy / olen) - (dy / len) * (ox / olen);
+        if (atStart || atEnd) {
+          if (!trimCornersAtJoints || Math.abs(cross) < 0.1) continue;
+          trim = Math.max(trim, wallThicknessCm(wall.thickness, cmPerUnit) / 2);
           continue;
         }
+        var t = ((px - sx) * ox + (py - sy) * oy) / (olen * olen);
+        var onInterior = t > eps / olen && t < 1 - eps / olen;
+        if (!onInterior) continue;
         var projX = sx + t * ox;
         var projY = sy + t * oy;
         if (hypot(px - projX, py - projY) >= eps) continue;
-        if (Math.abs((dx / len) * (oy / olen) - (dy / len) * (ox / olen)) < 0.1) continue;
+        if (Math.abs(cross) < 0.1) continue;
         var thick = wallThicknessCm(other.thickness, cmPerUnit);
         trim = Math.max(trim, thick / 2);
       }
@@ -284,10 +289,11 @@
     return { start: trimAt(wall.start), end: trimAt(wall.end) };
   }
 
-  function wallPlanEdgeLengthCm(wall, allWalls, cmPerUnit) {
+  function wallPlanEdgeLengthCm(wall, allWalls, cmPerUnit, trimCornersAtJoints) {
+    if (trimCornersAtJoints === undefined) trimCornersAtJoints = true;
     var center = wallCenterlineLengthCm(wall, cmPerUnit);
     if (!wall || wall.curvePoint) return center;
-    var trim = wallEndpointTrimCm(wall, allWalls, cmPerUnit);
+    var trim = wallEndpointTrimCm(wall, allWalls, cmPerUnit, trimCornersAtJoints);
     return Math.max(0, center - trim.start - trim.end);
   }
 

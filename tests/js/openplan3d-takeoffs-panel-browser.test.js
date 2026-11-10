@@ -51,6 +51,7 @@ echo '<script src="/js/admin-theme.js?v='.$v.'"></script>';
 echo '<script src="/js/admin-info-tip.js?v='.$v.'"></script>';
 echo '<script src="/js/room-area-interior-geometry.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-measurement-bridge.js?v='.$v.'"></script>';
+echo '<script src="/js/openplan3d-zanini-extensions.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-host.js?v='.$v.'"></script>';
 echo '</body></html>';
 `;
@@ -112,7 +113,7 @@ async function captureTakeoffsPanel(width, height, filename) {
   const hand0Plan = JSON.parse(
     fs.readFileSync(path.join(ROOT, 'tests/fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8')
   );
-  const measuredArea = await page.evaluate((plan) => {
+  const chipState = await page.evaluate((plan) => {
     var strip = document.getElementById('openplan3d-takeoffs-strip');
     var toggle = document.getElementById('openplan3d-takeoffs-toggle');
     if (strip) {
@@ -121,22 +122,62 @@ async function captureTakeoffsPanel(width, height, filename) {
     if (toggle) {
       toggle.setAttribute('aria-expanded', 'true');
     }
+    plan = JSON.parse(JSON.stringify(plan));
+    plan.zanini = plan.zanini || { version: 1, zones: [], bulkheads: [] };
+    plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
+  var floor = plan.floors && plan.floors[0];
+  if (floor && floor.walls) {
+    for (var wi = 0; wi < floor.walls.length; wi++) {
+      var wid = String(floor.walls[wi].id);
+      plan.zanini.wallFinishes[wid] = {
+        drywall: true,
+        paint: true,
+        insulation: true,
+        studs: true,
+        baseboard: true,
+        drywallFaces: 'both',
+        baseboardSides: 1,
+      };
+    }
+  }
     var HostLib = window.OpenPlan3DHostLib;
     var bridge = window.OpenPlan3DMeasurementBridge;
     var metrics = HostLib && bridge
-      ? HostLib.computeMetrics(plan, { wall_height_ft: 8.0 }, null, bridge)
+      ? HostLib.computeMetrics(plan, { wall_height_ft: 8.0, ceiling_height_ft: 8.0 }, null, bridge)
       : null;
+    var set = function (id, val, dec) {
+      var el = document.getElementById(id);
+      if (el && val != null) el.textContent = Number(val).toFixed(dec == null ? 2 : dec);
+    };
+    if (metrics) {
+      set('metric-area', metrics.area_sqft);
+      set('metric-perimeter', metrics.perimeter_lf);
+      set('metric-baseboard', metrics.finish_baseboard_lf != null ? metrics.finish_baseboard_lf : metrics.baseboard_lf);
+      set('metric-wall-area', metrics.wall_area_sqft);
+      set('metric-finish-drywall', metrics.finish_drywall_sqft);
+      set('metric-finish-paint', metrics.finish_paint_sqft);
+      set('metric-finish-insulation', metrics.finish_insulation_sqft);
+      set('metric-finish-studs', metrics.finish_stud_lf);
+      var openEl = document.getElementById('metric-openings');
+      if (openEl) openEl.textContent = metrics.door_count + '·' + metrics.window_count;
+      set('metric-casing', metrics.casing_lf);
+      set('metric-boxes', metrics.flooring_boxes, 0);
+    }
     var areaSqft = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 0;
     var areaText = areaSqft.toFixed(2);
-    var area = document.getElementById('metric-area');
-    if (area) area.textContent = areaText;
-    var floor = document.getElementById('openplan3d-takeoffs-summary-floor');
+    var floorSummary = document.getElementById('openplan3d-takeoffs-summary-floor');
     var zones = document.getElementById('openplan3d-takeoffs-summary-zones');
-    if (floor) floor.textContent = areaText + ' sf floor';
+    if (floorSummary) floorSummary.textContent = areaText + ' sf floor';
     if (zones) zones.textContent = '0 zones';
-    return areaSqft;
+    return {
+      areaSqft: areaSqft,
+      finishDrywall: metrics ? Number(metrics.finish_drywall_sqft) : 0,
+      finishInsulation: metrics ? Number(metrics.finish_insulation_sqft) : 0,
+    };
   }, hand0Plan);
-  assert.strictEqual(measuredArea, 1305.98, 'takeoffs ribbon must show measured hand0 interior floor area');
+  assert.strictEqual(chipState.areaSqft, 1307.52, 'takeoffs ribbon must show measured hand0 interior floor area');
+  assert.ok(chipState.finishDrywall > 0, 'drywall finish chip must be non-zero on measured hand0 plan');
+  assert.ok(chipState.finishInsulation > 0, 'insulation finish chip must be non-zero on measured hand0 plan');
 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');
@@ -153,8 +194,17 @@ async function captureTakeoffsPanel(width, height, filename) {
     const ribbonClientW = ribbon ? ribbon.clientWidth : 0;
     const hintRect = hint ? hint.getBoundingClientRect() : null;
     const titleRect = title ? title.getBoundingClientRect() : null;
+    let ribbonRowCount = 0;
+    if (ribbon) {
+      const tops = new Set();
+      ribbon.querySelectorAll('.openplan3d-metric-card').forEach((card) => {
+        tops.add(Math.round(card.getBoundingClientRect().top));
+      });
+      ribbonRowCount = tops.size;
+    }
     return {
       chipsInBar,
+      ribbonRowCount,
       ribbonOverflows: ribbonScrollW > ribbonClientW + 2,
       hintVisible: !!(
         hint
@@ -179,10 +229,11 @@ async function captureTakeoffsPanel(width, height, filename) {
   assert.strictEqual(layout.ribbonOverflows, false, `${width}px: metrics ribbon must not scroll horizontally`);
   assert.strictEqual(layout.hintVisible, true, 'empty zones hint must show when there are no zones');
   assert.strictEqual(layout.hintInHead, true, 'zones empty hint must live in the Area zones header');
-  if (width >= 600) {
-    assert.strictEqual(layout.hintBesideTitle, true, 'zones empty hint must sit beside the Area zones label at desktop widths');
-  }
+  assert.strictEqual(layout.hintBesideTitle, true, 'zones empty hint must sit beside the Area zones label');
   assert.strictEqual(layout.ribbonInTopBand, true, 'metrics ribbon must stay in the compact top band');
+  if (width === 1280) {
+    assert.ok(layout.ribbonRowCount <= 2, `1280px ribbon must fit in at most 2 rows (got ${layout.ribbonRowCount})`);
+  }
 
   const strip = await page.$('#openplan3d-takeoffs-strip');
   assert.ok(strip, 'takeoffs strip must exist for screenshot');

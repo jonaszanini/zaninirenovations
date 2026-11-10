@@ -227,11 +227,11 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         );
 
         $response->assertOk();
-        $this->assertEquals(185.28, $response->json('room.area_sqft'));
+        $this->assertEquals(187.1, $response->json('room.area_sqft'));
         $this->assertDatabaseHas('room_area_rooms', [
             'name' => 'Whole Floor',
             'room_area_project_id' => $this->project->id,
-            'area_sqft' => 185.28,
+            'area_sqft' => 187.1,
         ]);
     }
 
@@ -910,9 +910,9 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         // 1. Verify bridge layoutMetrics directly
         $metrics = $this->bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
         $this->assertFalse(!empty($metrics['geometry_unmeasurable']), 'Should not be marked geometry_unmeasurable');
-        $this->assertEquals(285.14, $metrics['area_sqft'], 'Interior L floor area (was 300 centerline)');
+        $this->assertEquals(286.98, $metrics['area_sqft'], 'Interior L floor area (was 300 centerline)');
         $this->assertEquals(78.69, $metrics['perimeter_lf'], 'Perimeter walks inset outer loop');
-        $this->assertEquals(826.76, $metrics['net_wall_area_sqft'], 'Net wall area includes both faces of partitions');
+        $this->assertEquals(811.04, $metrics['net_wall_area_sqft'], 'Net wall area includes both faces of partitions (interior-face spans)');
 
         // 2. Post to store room endpoint and verify save succeeds
         $response = $this->actingAs($this->user)->postJson(
@@ -926,8 +926,8 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('ok', true);
-        $this->assertEquals(285.14, $response->json('room.area_sqft'));
-        $this->assertEquals(826.76, $response->json('room.metrics.net_wall_area_sqft'));
+        $this->assertEquals(286.98, $response->json('room.area_sqft'));
+        $this->assertEquals(811.04, $response->json('room.metrics.net_wall_area_sqft'));
     }
 
     public function test_update_room_detects_conflict_when_server_has_newer_revision(): void

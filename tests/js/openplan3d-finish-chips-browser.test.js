@@ -21,7 +21,7 @@ const baseFinishes = {
   w2: { drywall: true, baseboard: true, insulation: true, studs: false, paint: true },
   w3: { drywall: true, baseboard: true, insulation: true, studs: false, paint: true },
   w4: { drywall: true, baseboard: true, insulation: true, studs: false, paint: true },
-  w5: { drywall: true, baseboard: true, insulation: false, studs: true, paint: true, baseboardSides: 2 },
+  w5: { drywall: true, baseboard: true, insulation: true, studs: true, paint: true, baseboardSides: 2 },
 };
 
 function chipPlan(wallFinishes) {
@@ -123,6 +123,7 @@ async function main() {
     const toggles = [
       { key: 'baseboard', chip: '#metric-baseboard', delta: 23 },
       { key: 'drywall', chip: '#metric-finish-drywall', delta: 184 },
+      { key: 'insulation', chip: '#metric-finish-insulation', delta: 184, metricKey: 'finish_insulation_sqft' },
       { key: 'studs', chip: '#metric-finish-studs', delta: 11.5 },
       { key: 'paint', chip: '#metric-finish-paint', delta: 184 },
     ];
@@ -132,22 +133,24 @@ async function main() {
       offFinishes.w5[spec.key] = false;
       const offPlan = chipPlan(offFinishes);
       const offMetrics = host.computeMetrics(offPlan, finishSettings, null, bridge);
-      assert.strictEqual(
-        baselineMetrics[spec.key === 'baseboard' ? 'finish_baseboard_lf' : spec.key === 'drywall' ? 'finish_drywall_sqft' : spec.key === 'studs' ? 'finish_stud_lf' : 'finish_paint_sqft'] -
-          offMetrics[spec.key === 'baseboard' ? 'finish_baseboard_lf' : spec.key === 'drywall' ? 'finish_drywall_sqft' : spec.key === 'studs' ? 'finish_stud_lf' : 'finish_paint_sqft'],
-        spec.delta,
-        spec.key + ' hand delta'
-      );
+      function metricField(key) {
+        if (key === 'baseboard') return 'finish_baseboard_lf';
+        if (key === 'drywall') return 'finish_drywall_sqft';
+        if (key === 'insulation') return 'finish_insulation_sqft';
+        if (key === 'studs') return 'finish_stud_lf';
+        return 'finish_paint_sqft';
+      }
+      assert.strictEqual(baselineMetrics[metricField(spec.key)] - offMetrics[metricField(spec.key)], spec.delta, spec.key + ' hand delta');
 
       await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: offPlan });
       await new Promise((r) => setTimeout(r, 80));
       const offChip = parseFloat(await readChip(page, spec.chip));
-      assert.strictEqual(offChip, parseFloat(offMetrics[spec.key === 'baseboard' ? 'finish_baseboard_lf' : spec.key === 'drywall' ? 'finish_drywall_sqft' : spec.key === 'studs' ? 'finish_stud_lf' : 'finish_paint_sqft'].toFixed(2)));
+      assert.strictEqual(offChip, parseFloat(offMetrics[metricField(spec.key)].toFixed(2)));
 
       await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: testPlan });
       await new Promise((r) => setTimeout(r, 80));
       const backChip = parseFloat(await readChip(page, spec.chip));
-      assert.strictEqual(backChip, parseFloat(baselineMetrics[spec.key === 'baseboard' ? 'finish_baseboard_lf' : spec.key === 'drywall' ? 'finish_drywall_sqft' : spec.key === 'studs' ? 'finish_stud_lf' : 'finish_paint_sqft'].toFixed(2)));
+      assert.strictEqual(backChip, parseFloat(baselineMetrics[metricField(spec.key)].toFixed(2)));
     }
 
     const oneFaceFinishes = JSON.parse(JSON.stringify(baseFinishes));

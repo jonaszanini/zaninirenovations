@@ -961,13 +961,19 @@
     var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds);
     var floor = activeFloor(plan);
     var wallLenLf = 0;
+    var interiorGeom = typeof RoomAreaInteriorGeometry !== 'undefined' ? RoomAreaInteriorGeometry : null;
     if (floor && Array.isArray(floor.walls)) {
+      var cmPerUnit = 1.0;
+      var unit = String(plan.unit || plan.units || (floor && floor.units) || (floor && floor.unit) || 'cm').toLowerCase();
+      if (unit === 'ft' || unit === 'feet' || unit === 'foot') cmPerUnit = CM_PER_FOOT;
       for (var wi = 0; wi < floor.walls.length; wi++) {
         if (String(floor.walls[wi].id) === String(primary)) {
-          wallLenLf = Math.hypot(
-            floor.walls[wi].end.x - floor.walls[wi].start.x,
-            floor.walls[wi].end.y - floor.walls[wi].start.y
-          ) / CM_PER_FOOT;
+          var wObj = floor.walls[wi];
+          if (interiorGeom && typeof interiorGeom.wallPlanEdgeLengthCm === 'function') {
+            wallLenLf = interiorGeom.wallPlanEdgeLengthCm(wObj, floor.walls, cmPerUnit, true) / CM_PER_FOOT;
+          } else {
+            wallLenLf = Math.hypot(wObj.end.x - wObj.start.x, wObj.end.y - wObj.start.y) / CM_PER_FOOT;
+          }
           break;
         }
       }
@@ -1071,11 +1077,39 @@
       var drywallLabel = sidesEligible.length === wallIds.length
         ? 'Drywall faces'
         : ('Drywall faces (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
+      var sideWall = null;
+      for (var swi = 0; floor && swi < floor.walls.length; swi++) {
+        if (String(floor.walls[swi].id) === String(sidesEligible[0])) {
+          sideWall = floor.walls[swi];
+          break;
+        }
+      }
+      var sideLabels = { a: 'Side A (left along wall)', b: 'Side B (right along wall)' };
       drywallRow.innerHTML =
         '<span>' + drywallLabel + '</span>' +
-        '<button type="button" class="openplan3d-finish-tip" data-finish-drywall-tip aria-label="Drywall faces help" title="Partition walls default to both faces. Choose Side A or Side B for one face only. Exterior walls stay interior face only.">&#9432;</button>' +
-        '<select data-finish-drywall-faces style="min-height:44px;flex:1;"><option value="both">Both sides</option><option value="a">Side A</option><option value="b">Side B</option></select>';
+        '<span class="admin-info-tip-wrap" data-finish-drywall-tip-wrap>' +
+        '<button type="button" class="admin-info-tip" data-finish-drywall-tip aria-label="Drywall faces help" style="min-width:44px;min-height:44px;">&#9432;</button>' +
+        '<span class="admin-info-tip__bubble" hidden>Partition walls default to both faces (interior ×2). ' +
+        'Side A is on your left when standing at the wall start facing the wall end; Side B is on your right. ' +
+        'Exterior perimeter walls count the interior face only.</span></span>' +
+        '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
+        '<option value="both">Both sides</option>' +
+        '<option value="a">' + sideLabels.a + '</option>' +
+        '<option value="b">' + sideLabels.b + '</option></select>';
       host.appendChild(drywallRow);
+      var tipWrap = host.querySelector('[data-finish-drywall-tip-wrap]');
+      if (tipWrap) {
+        var tipBtn = tipWrap.querySelector('.admin-info-tip');
+        var tipBubble = tipWrap.querySelector('.admin-info-tip__bubble');
+        if (tipBtn && tipBubble) {
+          tipBtn.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var open = tipWrap.classList.toggle('is-open');
+            tipBubble.hidden = !open;
+          });
+        }
+      }
       var drywallSel = host.querySelector('[data-finish-drywall-faces]');
       if (drywallSel) {
         if (drywallMixed) {

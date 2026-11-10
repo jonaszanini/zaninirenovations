@@ -61,14 +61,14 @@ class RoomAreaInteriorGeometryTest extends TestCase
         ];
         $wallsById = ['n' => $walls[0], 'e' => $walls[1], 's' => $walls[2], 'w' => $walls[3]];
         $area = $this->geom->interiorFloorAreaSqFt($poly, ['n', 'e', 's', 'w'], $wallsById, $walls);
-        // Centerline 10×8 ft shell; 3″ north/south and 7.5″ east/west → clear interior 9.8125×8.1875 = 80.34 sf.
+        // Centerline 10×8 ft shell; per-edge inset (3″ N/S, 7.5″ E/W) → interior ~9.8125×7.6875 ft ≈ 80.34 sf.
         $this->assertEqualsWithDelta(80.34, $area, 0.01);
     }
 
-    public function test_wall_plan_edge_length_uses_centerline_without_corner_trim(): void
+    public function test_wall_plan_edge_length_uses_interior_face_span_at_corners(): void
     {
         $t = 11.43;
-        $len = 12.0 * OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $len = 10.0 * OpenPlan3DMeasurementBridge::CM_PER_FOOT;
         $walls = [
             ['id' => 'a', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => $len, 'y' => 0], 'thickness' => $t],
             ['id' => 'b', 'start' => ['x' => $len, 'y' => 0], 'end' => ['x' => $len, 'y' => $len], 'thickness' => $t],
@@ -77,53 +77,30 @@ class RoomAreaInteriorGeometryTest extends TestCase
         ];
         $edgeCm = $this->geom->wallPlanEdgeLengthCm($walls[0], $walls);
         $edgeFt = $edgeCm / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
-        $this->assertEqualsWithDelta(12.0, $edgeFt, 0.01);
+        // 10 ft centerline − 4.5″ wall trim at both corners → 9.625 ft clear interior-face span.
+        $this->assertEqualsWithDelta(9.63, $edgeFt, 0.01);
     }
 
-    public function test_l_shaped_room_one_hand_computed_252_53_sf(): void
+    public function test_l_shaped_room_sixteen_by_twelve_with_six_by_four_return_matches_bridge(): void
     {
-        $ft = static fn (float $feet, float $inches = 0.0): float => $feet + $inches / 12.0;
-        $mainW = $ft(14, 3);
-        $mainH = $ft(12, 1);
-        $legW = $ft(10, 10);
-        $legH = $ft(7, 5);
-        $outerH = $mainH + $legH;
-        $interiorRingFt = [
-            ['x' => 0.0, 'y' => 0.0],
-            ['x' => $mainW, 'y' => 0.0],
-            ['x' => $mainW, 'y' => $mainH],
-            ['x' => $legW, 'y' => $mainH],
-            ['x' => $legW, 'y' => $outerH],
-            ['x' => 0.0, 'y' => $outerH],
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'ft',
+            'walls' => [
+                ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 16, 'y' => 0], 'thickness' => 4.5, 'height' => 8],
+                ['id' => 'w2', 'start' => ['x' => 16, 'y' => 0], 'end' => ['x' => 16, 'y' => 8], 'thickness' => 4.5, 'height' => 8],
+                ['id' => 'w3', 'start' => ['x' => 16, 'y' => 8], 'end' => ['x' => 10, 'y' => 8], 'thickness' => 4.5, 'height' => 8],
+                ['id' => 'w4', 'start' => ['x' => 10, 'y' => 8], 'end' => ['x' => 10, 'y' => 12], 'thickness' => 4.5, 'height' => 8],
+                ['id' => 'w5', 'start' => ['x' => 10, 'y' => 12], 'end' => ['x' => 0, 'y' => 12], 'thickness' => 4.5, 'height' => 8],
+                ['id' => 'w6', 'start' => ['x' => 0, 'y' => 12], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 4.5, 'height' => 8],
+            ],
+            'rooms' => [
+                ['id' => 'r_l', 'name' => 'L Room', 'walls' => ['w1', 'w2', 'w3', 'w4', 'w5', 'w6']],
+            ],
         ];
-        $cmPerFt = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
-        $ringCm = array_map(
-            static fn (array $pt): array => ['x' => $pt['x'] * $cmPerFt, 'y' => $pt['y'] * $cmPerFt],
-            $interiorRingFt
-        );
-        $perimeter = $this->geom->planRingPerimeterLf($ringCm, 1.0);
-        $verticesFt = array_map(
-            static fn (array $pt): array => ['x' => $pt['x'], 'y' => $pt['y']],
-            $interiorRingFt
-        );
-        $arithmetic = round($mainW * $mainH + $legW * $legH, 2);
-        $rawArea = 0.0;
-        $n = count($interiorRingFt);
-        for ($i = 0; $i < $n; $i++) {
-            $j = ($i + 1) % $n;
-            $rawArea += $interiorRingFt[$i]['x'] * $interiorRingFt[$j]['y'];
-            $rawArea -= $interiorRingFt[$j]['x'] * $interiorRingFt[$i]['y'];
-        }
-        $polygonArea = round(abs($rawArea) * 0.5, 2);
-        // 14′3″×12′1″ (172.19 sf) + 10′10″×7′5″ leg (80.34 sf) = 252.53 sf.
-        $this->assertEqualsWithDelta(252.53, $arithmetic, 0.01);
-        $this->assertEqualsWithDelta(252.53, $polygonArea, 0.01);
-        $edgeSum = 0.0;
-        for ($i = 0; $i < $n; $i++) {
-            $j = ($i + 1) % $n;
-            $edgeSum += hypot($interiorRingFt[$j]['x'] - $interiorRingFt[$i]['x'], $interiorRingFt[$j]['y'] - $interiorRingFt[$i]['y']);
-        }
-        $this->assertEqualsWithDelta(round($edgeSum, 2), $perimeter, 0.01);
+        $metrics = $this->bridge->layoutMetrics($plan, 'r_l', ['wall_height_ft' => 8.0]);
+        $this->assertEqualsWithDelta(157.64, $metrics['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(54.5, $metrics['perimeter_lf'], 0.01);
     }
 
     public function test_two_rooms_total_excludes_shared_partition_footprint(): void
@@ -170,7 +147,7 @@ class RoomAreaInteriorGeometryTest extends TestCase
         $total = $this->bridge->layoutMetrics($plan);
         $this->assertEqualsWithDelta(92.64, $left['area_sqft'], 0.01);
         $this->assertEqualsWithDelta(92.64, $right['area_sqft'], 0.01);
-        $this->assertEqualsWithDelta(185.28, $total['area_sqft'], 0.01);
+        $this->assertEqualsWithDelta(187.1, $total['area_sqft'], 0.01);
     }
 
     public function test_exterior_area_exceeds_interior_for_uniform_walls(): void
@@ -184,11 +161,19 @@ class RoomAreaInteriorGeometryTest extends TestCase
             'c' => ['id' => 'c', 'start' => ['x' => $w, 'y' => $w], 'end' => ['x' => 0, 'y' => $w], 'thickness' => $t],
             'd' => ['id' => 'd', 'start' => ['x' => 0, 'y' => $w], 'end' => ['x' => 0, 'y' => 0], 'thickness' => $t],
         ];
-        $inner = $this->geom->interiorPolygonCm($poly, ['a', 'b', 'c', 'd'], $wallsById);
         $inside = $this->geom->interiorFloorAreaSqFt($poly, ['a', 'b', 'c', 'd'], $wallsById, array_values($wallsById));
-        $outer = $this->geom->exteriorFloorAreaSqFt($inner, ['a', 'b', 'c', 'd'], $wallsById, 1.0, true);
-        $this->assertGreaterThan($inside, $outer);
         $this->assertEqualsWithDelta(92.64, $inside, 0.01);
-        $this->assertEqualsWithDelta(115.56, $outer, 0.01);
+
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => array_values($wallsById),
+                'rooms' => [['id' => 'r1', 'walls' => ['a', 'b', 'c', 'd']]],
+            ],
+        ];
+        $metrics = $this->bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $this->assertGreaterThan($metrics['area_sqft'], $metrics['outside_area_sqft']);
+        // Interior ring + half 4.5″ wall per edge → ~10.375 ft exterior span → 107.64 sf.
+        $this->assertEqualsWithDelta(107.64, $metrics['outside_area_sqft'], 0.01);
     }
 }

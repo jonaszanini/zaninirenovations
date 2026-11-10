@@ -200,7 +200,7 @@ async function run() {
     assert.strictEqual(quoteHref, '/admin/quotations?layout=room:10', 'Quote button should link to room 10');
 
     const initialArea = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(initialArea, '140.95', 'Initial area should match live interior floor area for saved room');
+    assert.strictEqual(initialArea, '142.07', 'Initial area should match live interior floor area for saved room');
 
     const initialOpenings = await page.$eval('#metric-openings', (el) => el.textContent.trim());
     assert.strictEqual(initialOpenings, '0 doors · 0 windows', 'Initial openings should be 0');
@@ -221,7 +221,7 @@ async function run() {
     await new Promise((r) => setTimeout(r, 80));
 
     const areaBeforeAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(areaBeforeAck, '140.95', 'Boot Untitled Project must not overwrite loaded metrics before LOAD_ACK');
+    assert.strictEqual(areaBeforeAck, '142.07', 'Boot Untitled Project must not overwrite loaded metrics before LOAD_ACK');
     const dirtyBeforeAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
     assert.strictEqual(dirtyBeforeAck, false, 'Boot store writes must not mark the room Unsaved');
 
@@ -229,7 +229,7 @@ async function run() {
     await new Promise((r) => setTimeout(r, 50));
 
     const areaAfterFailedAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(areaAfterFailedAck, '140.95', 'ACK ok:false must not adopt the editor current plan');
+    assert.strictEqual(areaAfterFailedAck, '142.07', 'ACK ok:false must not adopt the editor current plan');
     const saveDisabledOnFail = await page.$eval('#openplan3d-save-btn', (el) => el.disabled);
     assert.strictEqual(saveDisabledOnFail, true, 'ACK ok:false must keep Save disabled');
     const failedAckFeedback = await page.$eval('#openplan3d-feedback', (el) => ({
@@ -252,7 +252,7 @@ async function run() {
     await new Promise((r) => setTimeout(r, 50));
 
     const areaAfterAck = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(areaAfterAck, '140.95', 'LOAD_ACK must keep the saved geometry metrics');
+    assert.strictEqual(areaAfterAck, '142.07', 'LOAD_ACK must keep the saved geometry metrics');
     const dirtyAfterAck = await page.$eval('#openplan3d-dirty-badge', (el) => !el.hidden);
     assert.strictEqual(dirtyAfterAck, false, 'LOAD_ACK must leave the Unsaved badge hidden');
 
@@ -265,7 +265,7 @@ async function run() {
     }));
     assert.strictEqual(dirtySamePlan.hidden, true, 'Re-emitting the loaded plan after ACK must not mark Unsaved');
     assert.strictEqual(dirtySamePlan.display, 'none', 'Unsaved stays visually hidden when the plan matches');
-    const areaDelta = Math.abs(parseFloat(areaAfterAck) - 140.95);
+    const areaDelta = Math.abs(parseFloat(areaAfterAck) - 142.07);
     assert.ok(areaDelta <= 0.01, 'Opened metrics must match live interior area within 0.01');
 
     async function postPlan(plan) {
@@ -432,7 +432,7 @@ async function run() {
 
     // Assert live metrics updated
     const newArea = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(newArea, '170.02', 'Area should update to interior floor area sq ft');
+    assert.strictEqual(newArea, '171.25', 'Area should update to interior floor area sq ft');
 
     const newOpenings = await page.$eval('#metric-openings', (el) => el.textContent.trim());
     assert.strictEqual(newOpenings, '1 doors · 1 windows', 'Openings count should update to 1 doors · 1 windows');
@@ -499,17 +499,11 @@ async function run() {
             id: 'r1',
             name: 'Kitchen',
             walls: ['w1', 'w2', 'w3', 'w4'],
-            polygon: [
-              { x: 0, y: 0 }, { x: 304.8, y: 0 }, { x: 304.8, y: 304.8 }, { x: 0, y: 304.8 },
-            ],
           },
           {
             id: 'r2',
             name: 'Bath',
             walls: ['w5', 'w6', 'w7', 'w2'],
-            polygon: [
-              { x: 304.8, y: 0 }, { x: 609.6, y: 0 }, { x: 609.6, y: 304.8 }, { x: 304.8, y: 304.8 },
-            ],
           },
         ],
       },
@@ -517,12 +511,12 @@ async function run() {
     await postFromEditor({ type: 'OPENPLAN3D_PLAN_CHANGED', plan: twoRoomPlan });
     await new Promise((r) => setTimeout(r, 80));
     const twoRoomStrip = await page.$eval('#metric-area', (el) => el.textContent.trim());
-    assert.strictEqual(twoRoomStrip, '185.28', 'Metrics strip must use whole-plan interior area, not database room id 10');
+    assert.strictEqual(twoRoomStrip, '187.10', 'Metrics strip must use whole-plan interior area (two 10×10 ft cells, 10 cm walls)');
     lastSavedBody = null;
     await postFromEditor({ type: 'OPENPLAN3D_TRIGGER_SAVE' });
     await new Promise((r) => setTimeout(r, 200));
     assert.ok(lastSavedBody, 'Two-room save should post');
-    assert.strictEqual(twoRoomStrip, '185.28');
+    assert.strictEqual(twoRoomStrip, '187.10');
     assert.ok(lastSavedBody.plan.floor.rooms.length === 2, 'Saved plan must keep both openPlan3D rooms');
 
     // 6. Save Plan never sends 0 metrics for a >0 room without in-app confirm

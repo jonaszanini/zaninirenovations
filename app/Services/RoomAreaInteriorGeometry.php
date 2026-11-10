@@ -103,7 +103,7 @@ class RoomAreaInteriorGeometry
 
         $ring = $this->normalizeCmRing($ringVertsCm);
         $unit = max($cmPerUnit, 1e-9);
-        $outwardFactor = $polygonIsInteriorFace ? 1.5 : 1.0;
+        $outwardFactor = 0.5;
         $offsets = $this->wallThicknessPerEdgePlan($ring, $boundaryWallIds, $wallsById, $cmPerUnit, $outwardFactor);
         $outer = $this->offsetPolygonByEdgeOffsetsCm($ring, $offsets, false);
         if (count($outer) < 3) {
@@ -174,14 +174,18 @@ class RoomAreaInteriorGeometry
         return round($lf, 2);
     }
 
-    public function wallPlanEdgeLengthCm(array $wall, array $allWalls, float $cmPerUnit = 1.0): float
-    {
+    public function wallPlanEdgeLengthCm(
+        array $wall,
+        array $allWalls,
+        float $cmPerUnit = 1.0,
+        bool $trimCornersAtJoints = true
+    ): float {
         $center = $this->wallCenterlineLengthCm($wall, $cmPerUnit);
         if (isset($wall['curvePoint']) && is_array($wall['curvePoint'])) {
             return $center;
         }
 
-        $trim = $this->wallEndpointTrimCm($wall, $allWalls, $cmPerUnit);
+        $trim = $this->wallEndpointTrimCm($wall, $allWalls, $cmPerUnit, $trimCornersAtJoints);
 
         return max(0.0, $center - $trim['start'] - $trim['end']);
     }
@@ -205,14 +209,18 @@ class RoomAreaInteriorGeometry
      * @param  list<array<string, mixed>>  $allWalls
      * @return array{start: float, end: float}
      */
-    public function wallEndpointTrimCm(array $wall, array $allWalls, float $cmPerUnit = 1.0): array
-    {
+    public function wallEndpointTrimCm(
+        array $wall,
+        array $allWalls,
+        float $cmPerUnit = 1.0,
+        bool $trimCornersAtJoints = true
+    ): array {
         $dx = ((float) $wall['end']['x'] - (float) $wall['start']['x']) * $cmPerUnit;
         $dy = ((float) $wall['end']['y'] - (float) $wall['start']['y']) * $cmPerUnit;
         $len = hypot($dx, $dy) ?: 1.0;
         $eps = self::WALL_JOIN_TOLERANCE_CM;
 
-        $trimAt = function (array $point) use ($wall, $allWalls, $dx, $dy, $len, $cmPerUnit, $eps): float {
+        $trimAt = function (array $point) use ($wall, $allWalls, $dx, $dy, $len, $cmPerUnit, $eps, $trimCornersAtJoints): float {
             $trim = 0.0;
             foreach ($allWalls as $other) {
                 if (! is_array($other) || ($other['id'] ?? null) === ($wall['id'] ?? null)) {
@@ -232,8 +240,18 @@ class RoomAreaInteriorGeometry
                 $olen = hypot($ox, $oy) ?: 1.0;
                 $atStart = hypot($sx - $px, $sy - $py) < $eps;
                 $atEnd = hypot($ex - $px, $ey - $py) < $eps;
+                $cross = ($dx / $len) * ($oy / $olen) - ($dy / $len) * ($ox / $olen);
+                if ($atStart || $atEnd) {
+                    if (! $trimCornersAtJoints || abs($cross) < 0.1) {
+                        continue;
+                    }
+                    $selfThick = $this->wallThicknessCm($wall['thickness'] ?? null, $cmPerUnit);
+                    $trim = max($trim, $selfThick / 2.0);
+
+                    continue;
+                }
                 $t = (($px - $sx) * $ox + ($py - $sy) * $oy) / ($olen * $olen);
-                $onInterior = ! $atStart && ! $atEnd && $t > $eps / $olen && $t < 1 - $eps / $olen;
+                $onInterior = $t > $eps / $olen && $t < 1 - $eps / $olen;
                 if (! $onInterior) {
                     continue;
                 }
@@ -242,7 +260,7 @@ class RoomAreaInteriorGeometry
                 if (hypot($px - $projX, $py - $projY) >= $eps) {
                     continue;
                 }
-                if (abs(($dx / $len) * ($oy / $olen) - ($dy / $len) * ($ox / $olen)) < 0.1) {
+                if (abs($cross) < 0.1) {
                     continue;
                 }
                 $thick = $this->wallThicknessCm($other['thickness'] ?? null, $cmPerUnit);

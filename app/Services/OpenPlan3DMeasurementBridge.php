@@ -294,7 +294,8 @@ class OpenPlan3DMeasurementBridge
 
         // Room walls and perimeter
         $roomWallIds = $selectedRoom['walls'] ?? [];
-        $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit, $allWallsList);
+        $trimBoundaryCorners = ! $alreadyInterior;
+        $boundaryWalls = $this->resolveBoundaryWalls($selectedRoom, $walls, $cmPerUnit, $allWallsList, $trimBoundaryCorners);
         $partitionWalls = $selectedRoom['partition_walls'] ?? [];
 
         $perimeter = $this->interiorGeometry->planRingPerimeterLf($interiorRingCm, $cmPerUnit);
@@ -1753,8 +1754,13 @@ class OpenPlan3DMeasurementBridge
      * @param  array<string, array<string, mixed>>  $walls
      * @return list<array{id: string, length_ft: float, thickness_cm: float, height_cm: float}>
      */
-    private function resolveBoundaryWalls(array $room, array $walls, float $cmPerUnit, array $allWallsList = []): array
-    {
+    private function resolveBoundaryWalls(
+        array $room,
+        array $walls,
+        float $cmPerUnit,
+        array $allWallsList = [],
+        bool $trimCornersAtJoints = true
+    ): array {
         $out = [];
         $wallIds = $room['boundary_wall_ids'] ?? $room['walls'] ?? [];
         if ($allWallsList === []) {
@@ -1767,7 +1773,7 @@ class OpenPlan3DMeasurementBridge
                 if ($w === null) {
                     continue;
                 }
-                $lenCm = $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit);
+                $lenCm = $this->interiorGeometry->wallPlanEdgeLengthCm($w, $allWallsList, $cmPerUnit, $trimCornersAtJoints);
                 $out[] = [
                     'id' => (string) $w['id'],
                     'length_ft' => $lenCm / self::CM_PER_FOOT,

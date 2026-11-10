@@ -496,15 +496,9 @@ assert.strictEqual(host.resolveOpenPlan3DRoomId(twoRoomPlan, null), null, 'whole
 
 const metricsAll = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, null, measurement);
 const metricsFirst = host.computeMetrics(twoRoomPlan, { wall_height_ft: 8 }, 'r1', measurement);
-assert.ok(
-  metricsAll && Math.abs(metricsAll.area_sqft - 185.28) < 0.15,
-  'whole-plan interior area sums rooms without double-counting partition, got ' + (metricsAll && metricsAll.area_sqft)
-);
-assert.ok(
-  metricsFirst && Math.abs(metricsFirst.area_sqft - 92.64) < 0.15,
-  'selected openPlan3D room interior area is ~92.64 sf, got ' + (metricsFirst && metricsFirst.area_sqft)
-);
-assert.ok(Math.abs(metricsAll.area_sqft - metricsFirst.area_sqft * 2) < 0.2);
+assert.strictEqual(metricsAll.area_sqft, 187.1, 'whole-plan interior area sums rooms without double-counting partition (10 cm walls)');
+assert.strictEqual(metricsFirst.area_sqft, 92.64, 'selected openPlan3D room interior area');
+assert.ok(Math.abs(metricsAll.area_sqft - metricsFirst.area_sqft * 2) < 0.01);
 
 // Verify hideNativeSaveUi targets div.bg-gradient-to-r.from-slate-800 first
 const queryLog = [];

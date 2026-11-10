@@ -348,8 +348,8 @@ class PolygonAreaService
         }
 
         $footVertices = array_map(fn (array $vertex) => [
-            'x' => $this->roundToSixteenthFoot((float) $vertex['x'] / $pixelsPerFoot),
-            'y' => $this->roundToSixteenthFoot((float) $vertex['y'] / $pixelsPerFoot),
+            'x' => (float) $vertex['x'] / $pixelsPerFoot,
+            'y' => (float) $vertex['y'] / $pixelsPerFoot,
         ], $pixelVertices);
 
         return round($this->shoelaceArea($footVertices), 2);
