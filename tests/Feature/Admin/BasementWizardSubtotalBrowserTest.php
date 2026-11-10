@@ -6,6 +6,7 @@ use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\User;
 use App\Models\BasementSettings;
+use Tests\Support\ActsAsAdmin;
 use App\Services\BasementQuotationCalculator;
 use App\Services\BasementRoomAreaImportMapper;
 use Illuminate\Support\Facades\Hash;
@@ -13,6 +14,7 @@ use Tests\IntegrationTestCase;
 
 class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
 {
+    use ActsAsAdmin;
     /**
      * Pinned literals for basement-wizard-subtotal-browser.js (regressed by test_pinned_wizard_browser_subtotal_literals_match_calculator).
      */
@@ -30,6 +32,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
 
     public function test_pinned_wizard_browser_subtotal_literals_match_calculator(): void
     {
+        $this->actingAsAdmin();
         $import = $this->seedPaintLayoutRoom();
         $settings = BasementSettings::current();
         $wizard = array_merge(

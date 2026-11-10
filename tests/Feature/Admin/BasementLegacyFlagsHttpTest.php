@@ -98,7 +98,7 @@ class BasementLegacyFlagsHttpTest extends IntegrationTestCase
     private function assertPostOmitsV2FlagsPreservesTotal(BasementQuotation $quote, float $grand): void
     {
         $payload = $this->legacyEditPayload($quote);
-        $preview = $this->post(route('admin.quotations.basement.preview', $quote), $payload)
+        $preview = $this->post(route('admin.quotations.basement.calculate-existing', $quote), $payload)
             ->assertOk()
             ->json();
         $this->assertEqualsWithDelta($grand, (float) ($preview['summary']['grand_total'] ?? 0), 0.02);

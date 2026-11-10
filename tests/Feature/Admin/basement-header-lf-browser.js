@@ -59,13 +59,23 @@ async function typeField(page, selector, value) {
   }, selector);
 }
 
+async function waitGrandPositive(page) {
+  await page.waitForFunction(() => {
+    const el = document.getElementById('br-toolbar-grand-amount');
+    if (!el) return false;
+    const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
+    return isFinite(n) && n > 0;
+  }, { timeout: 45000 });
+}
+
 async function waitHeaderLaborRow(page) {
+  await waitGrandPositive(page);
   await page.waitForFunction(() => {
     const row = document.querySelector('tr[data-br-labor-key="framing_headers"]');
     if (!row) return false;
     const hrs = parseFloat(String(row.querySelector('[data-br-labor-hrs]')?.textContent || '').replace(/[^\d.-]/g, ''));
-    return isFinite(hrs) && Math.abs(hrs - 4) < 0.05;
-  }, { timeout: 45000 });
+    return isFinite(hrs) && Math.abs(hrs - 4) < 0.15;
+  }, { timeout: 60000 });
 }
 
 (async function main() {

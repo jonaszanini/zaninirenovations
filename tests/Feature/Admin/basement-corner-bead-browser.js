@@ -61,18 +61,29 @@ async function typeField(page, selector, value) {
   }, selector);
 }
 
+async function waitGrandPositive(page) {
+  await page.waitForFunction(() => {
+    const el = document.getElementById('br-toolbar-grand-amount');
+    if (!el) return false;
+    const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
+    return isFinite(n) && n > 0;
+  }, { timeout: 45000 });
+}
+
 async function waitCornerBeadInLive(page) {
+  await waitGrandPositive(page);
   await page.waitForFunction(() => {
     const rows = document.querySelectorAll('#br-mat-rows tr[data-br-mat-key]');
     for (const row of rows) {
       const key = row.getAttribute('data-br-mat-key') || '';
       const label = String(row.querySelector('td')?.textContent || '').toLowerCase();
       if (key.includes('corner_bead') || label.includes('corner bead')) {
-        return row.getBoundingClientRect().height > 0;
+        const qty = parseFloat(String(row.querySelectorAll('td')[1]?.textContent || '').replace(/[^\d.-]/g, ''));
+        return row.getBoundingClientRect().height > 0 && isFinite(qty) && qty > 0;
       }
     }
     return false;
-  }, { timeout: 45000 });
+  }, { timeout: 60000 });
 }
 
 (async function main() {

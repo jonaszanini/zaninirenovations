@@ -86,6 +86,12 @@ async function typeField(page, selector, value) {
   await waitGrandPositive(page);
 
   await gotoStep(page, 'doors_trim');
+  await page.evaluate(() => {
+    const box = document.querySelector('input[name="include_shoe"]');
+    if (box && !box.checked) {
+      box.click();
+    }
+  });
   await typeField(page, '#br-base', '100');
   await waitGrandPositive(page);
   await new Promise((r) => setTimeout(r, 800));

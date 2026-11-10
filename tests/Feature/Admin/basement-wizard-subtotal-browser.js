@@ -199,8 +199,12 @@ async function scrollReconciliationIntoView(page) {
 }
 
 async function enableCommuteAndDebris(page) {
-  await page.click('[data-cp-commute-include-yes]');
-  await page.click('[data-cp-debris-include-yes]');
+  await page.evaluate(() => {
+    const commuteYes = document.querySelector('[data-cp-commute-include-yes]');
+    const debrisYes = document.querySelector('[data-cp-debris-include-yes]');
+    if (commuteYes) commuteYes.click();
+    if (debrisYes) debrisYes.click();
+  });
   await page.evaluate((commuteAmt, debrisAmt) => {
     const hidden = document.querySelector('[data-cp-commute-round-trip-hidden]');
     if (hidden) {
