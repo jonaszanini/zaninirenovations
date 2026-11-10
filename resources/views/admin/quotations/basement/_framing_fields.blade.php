@@ -14,11 +14,20 @@
   </div>
   <div class="admin-form-group">
     <span class="admin-label-with-tip">
-  <label for="br-headers">Headers / beams</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['header_qty'], 'tipLabel' => 'Headers / beams'])
+  <label for="br-headers">Headers / beams (lin. ft)</label>
+  @include('admin.partials.info_tip', ['tipText' => $brInfo['header_lf'], 'tipLabel' => 'Headers / beams (lin. ft)'])
 </span>
-    <input type="number" step="1" min="0" class="admin-input br-preview br-input--narrow" id="br-headers" name="header_qty"
-           value="{{ $brVal('header_qty', 0) }}">
+    @php
+      $legacyHeaderQty = (!\Illuminate\Support\Arr::has($inputs ?? [], 'header_lf') && (int) ($brVal('header_qty', 0)) > 0)
+        ? (int) $brVal('header_qty', 0)
+        : 0;
+    @endphp
+    @if ($legacyHeaderQty > 0)
+      <input type="hidden" name="header_qty" value="{{ $legacyHeaderQty }}">
+    @endif
+    <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-headers" name="header_lf"
+           value="{{ $brVal('header_lf', 0) }}"
+           @if ($legacyHeaderQty > 0) placeholder="{{ $legacyHeaderQty }} opening(s) saved" @endif>
   </div>
   <div class="admin-form-group br-field--phone-wide">
     <span class="admin-label-with-tip">

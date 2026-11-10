@@ -25,6 +25,7 @@ class BasementRoomAreaImportMapper
         'perimeter_lf' => 'br-perimeter-lf',
         'partition_lf' => 'br-partition',
         'bulkhead_lf' => 'br-bulkhead',
+        'header_lf' => 'br-headers',
         'framing_door_openings' => 'br-frame-doors',
         'insulation_wall_sf' => 'br-ins-wall-sf',
         'insulation_ceiling_sf' => 'br-ins-ceil-sf',
@@ -428,6 +429,15 @@ class BasementRoomAreaImportMapper
             $bulkhead = (float) $opt['bulkhead_framing_lf'];
         }
 
+        $headerLf = null;
+        if (self::present($opt, 'finish_header_lf')) {
+            $headerLf = (float) $opt['finish_header_lf'];
+        } elseif (self::present($opt, 'header_lf')) {
+            $headerLf = (float) $opt['header_lf'];
+        } elseif (self::present($opt, 'header_beam_lf')) {
+            $headerLf = (float) $opt['header_beam_lf'];
+        }
+
         $doors = self::present($opt, 'door_count') ? max(0, (int) $opt['door_count']) : null;
         $windows = self::present($opt, 'window_count') ? max(0, (int) $opt['window_count']) : null;
         $openings = self::present($opt, 'opening_count') ? max(0, (int) $opt['opening_count']) : null;
@@ -467,6 +477,7 @@ class BasementRoomAreaImportMapper
             'perimeter_lf' => $peri,
             'partition_lf' => $partition,
             'bulkhead_lf' => $bulkhead,
+            'header_lf' => $headerLf,
             'framing_door_openings' => $doors,
             'insulation_wall_sf' => $insWall,
             'insulation_ceiling_sf' => $ceilingArea,

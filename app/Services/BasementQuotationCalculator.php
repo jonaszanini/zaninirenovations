@@ -625,6 +625,7 @@ class BasementQuotationCalculator
             'demo_bin_qty' => 1,
             'partition_lf' => 0,
             'bulkhead_lf' => 0,
+            'header_lf' => 0,
             'header_qty' => 0,
             'framing_door_openings' => 0,
             'stud_spacing_in' => BasementSettings::STUD_SPACING_DEFAULT,
@@ -716,6 +717,40 @@ class BasementQuotationCalculator
             'labor_override' => [],
             'materials_override' => [],
         ];
+    }
+
+    /**
+     * Saved quotes without a header_lf key used header_qty as an opening count.
+     */
+    public static function usesLegacyHeaderCount(array $inputs): bool
+    {
+        if (array_key_exists('header_lf', $inputs)) {
+            return false;
+        }
+
+        return (int) ($inputs['header_qty'] ?? 0) > 0;
+    }
+
+    /**
+     * @param  array<string, float>  $prod
+     * @return array{0: float, 1: string}
+     */
+    public static function headerFramingLabor(array $inputs, array $prod): array
+    {
+        if (self::usesLegacyHeaderCount($inputs)) {
+            $qty = max(0, (int) ($inputs['header_qty'] ?? 0));
+            $hours = $qty * (float) ($prod['header_hours_each'] ?? 2);
+
+            return [$hours, $qty.' opening(s)'];
+        }
+
+        $lf = max(0, (float) ($inputs['header_lf'] ?? 0));
+        if ($lf <= 0) {
+            return [0.0, '0 lf'];
+        }
+        $rate = max(0.001, (float) ($prod['header_lf_per_hr'] ?? 4));
+
+        return [$lf / $rate, number_format($lf, 0).' lf'];
     }
 
     /**
@@ -1110,14 +1145,14 @@ class BasementQuotationCalculator
         }
 
         // --- Framing ---
-        $headers = max(0, (int) $inputs['header_qty']);
         $frameDoors = max(0, (int) $inputs['framing_door_openings']);
         $studSpacing = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
         $inputs['stud_spacing_in'] = $studSpacing;
         if ($on('framing')) {
             $addLabor('framing_walls', 'framing', 'Partition wall framing', number_format($partitionLf, 0).' lf × '.$height.' ft, '.$studSpacing.'" o.c.', $perHr($partitionLf, (float) $prod['framing_lf_per_hr']));
             $addLabor('framing_bulkheads', 'framing', 'Bulkheads / duct boxing', number_format($bulkheadLf, 0).' lf', $perHr($bulkheadLf, (float) $prod['bulkhead_lf_per_hr']));
-            $addLabor('framing_headers', 'framing', 'Headers / beams', $headers.' opening(s)', $headers * (float) $prod['header_hours_each']);
+            [$headerHours, $headerDetail] = self::headerFramingLabor($inputs, $prod);
+            $addLabor('framing_headers', 'framing', 'Headers / beams', $headerDetail, $headerHours);
             $addLabor('framing_doors', 'framing', 'Door openings', $frameDoors.' opening(s)', $frameDoors * (float) $prod['door_opening_hours_each']);
             if ($partitionLf > 0) {
                 $studs = max(1, (int) ceil($this->withMaterialWaste(($partitionLf * 12 / $studSpacing) + 2, $inputs)));

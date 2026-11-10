@@ -419,7 +419,7 @@ class BasementQuotationController extends Controller
         $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'area_sqft', 'ceiling_height_ft',
-            'partition_lf', 'bulkhead_lf',
+            'partition_lf', 'bulkhead_lf', 'header_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
             'building_permit_amount',
@@ -485,7 +485,23 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($ints as $key) {
+            if ($key === 'header_qty') {
+                continue;
+            }
             $out[$key] = max(0, (int) $request->input($key, $defaults[$key]));
+        }
+        $storedHeaderLegacy = is_array($storedInputs)
+            && ! array_key_exists('header_lf', $storedInputs)
+            && (int) ($storedInputs['header_qty'] ?? 0) > 0;
+        $rawHeaderLf = $request->input('header_lf');
+        $parsedHeaderLf = is_string($rawHeaderLf) ? str_replace([',', '$', ' '], '', $rawHeaderLf) : $rawHeaderLf;
+        $postedHeaderLf = is_numeric($parsedHeaderLf) ? (float) $parsedHeaderLf : 0.0;
+        if ($storedHeaderLegacy && $postedHeaderLf <= 0) {
+            $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
+            unset($out['header_lf']);
+        } else {
+            $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
+            $out['header_qty'] = 0;
         }
         $out['finish_level'] = BasementQuotationCalculator::normalizeFinishLevel($out['finish_level']);
         $out['stud_spacing_in'] = BasementQuotationCalculator::normalizeStudSpacing($out['stud_spacing_in'] ?? 16);

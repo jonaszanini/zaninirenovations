@@ -111,6 +111,7 @@ class BasementSettings extends Model
             'bin_hours_each' => 0.75,
             'framing_lf_per_hr' => 8,
             'bulkhead_lf_per_hr' => 6,
+            'header_lf_per_hr' => 4,
             'header_hours_each' => 2,
             'door_opening_hours_each' => 1.5,
             'insulation_wall_sf_per_hr' => 40,
@@ -354,7 +355,7 @@ class BasementSettings extends Model
             'Framing' => [
                 'framing_lf_per_hr' => 'Partition walls (linear ft / hour)',
                 'bulkhead_lf_per_hr' => 'Bulkheads / duct boxing (linear ft / hour)',
-                'header_hours_each' => 'Header / beam (hours each)',
+                'header_lf_per_hr' => 'Headers / beams (linear ft / hour)',
                 'door_opening_hours_each' => 'Door opening framing (hours each)',
             ],
             'Insulation' => [

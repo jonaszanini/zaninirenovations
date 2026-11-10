@@ -14,6 +14,7 @@
     perimeter_lf: 'br-perimeter-lf',
     partition_lf: 'br-partition',
     bulkhead_lf: 'br-bulkhead',
+    header_lf: 'br-headers',
     framing_door_openings: 'br-frame-doors',
     insulation_wall_sf: 'br-ins-wall-sf',
     insulation_ceiling_sf: 'br-ins-ceil-sf',

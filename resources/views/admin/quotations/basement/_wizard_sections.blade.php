@@ -98,7 +98,7 @@
       'stud_spacing_in' => 'On-centre stud spacing. 16″ o.c. is the Ontario default for basement partitions. 24″ uses fewer studs; 12″ is for tile-ready or extra-stiff walls.',
       'wall_include_door' => 'Adds one rough opening to frame and one interior door to hang. Change the door count later on the Doors step if needed.',
       'bulkhead_lf' => 'Length of boxed-in ducts or beams (soffits) to work around, not a full-height wall. Use 0 if none.',
-      'header_qty' => 'Load-bearing or wide openings that need a header or beam, counted each.',
+      'header_lf' => 'Linear feet of wood headers or boxing around steel beams. Wider openings and built up headers add length. Older quotes may still count openings until you enter a length here.',
       'framing_door_openings' => 'Rough openings to frame in new or existing walls, before hanging the door.',
       'outlet_qty' => 'New receptacles to install (GFCI at wet locations). Count each device, not each gang box if you prefer. Typical bathroom: 1 at the sink, 2 on the wall. Change the count if this job differs. Used as electrician scope, not Zanini labour.',
       'switch_qty' => 'New wall switches, including 3-way and exhaust-fan switches. Typical bathroom: 1 for the light, 1 for the exhaust. Used as electrician scope, not Zanini labour.',

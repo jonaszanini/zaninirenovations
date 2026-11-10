@@ -1,6 +1,9 @@
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
 tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
 tests/Feature/Admin/BasementPaintManualEditTest.php
+tests/Feature/Admin/BasementHeaderLegacyQuoteTest.php
+tests/Feature/Admin/BasementHeaderLfBrowserTest.php
+tests/Unit/Services/BasementHeaderLfTest.php
 tests/Feature/Admin/PavingMarbleBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php

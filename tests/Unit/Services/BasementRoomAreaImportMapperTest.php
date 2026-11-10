@@ -336,6 +336,15 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertSame(500.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'drywall')['paint_ceiling_sf']);
     }
 
+    public function test_import_maps_header_lf_when_layout_provides_it(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 240,
+            'finish_header_lf' => 14.5,
+        ], 8, 'drywall');
+        $this->assertSame(14.5, $proposed['header_lf']);
+    }
+
     public function test_legacy_perimeter_paint_deducts_door_opening_when_no_measured_wall(): void
     {
         $proposed = BasementRoomAreaImportMapper::proposedQuantities([
