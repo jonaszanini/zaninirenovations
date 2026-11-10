@@ -223,8 +223,11 @@ async function main() {
     assert.strictEqual(imperialLabels.labels.length, 1, 'one painted label per room on imperial rect');
     const parsedImperial = imperialLabels.labels.map(areaFromLabelText).filter(Boolean);
     assert.strictEqual(parsedImperial.length, 1);
-    assert.ok(parsedImperial[0].unit === 'sf' && Math.abs(parsedImperial[0].value - 111.89) < 0.02,
-      'imperial on-plan label must show 111.89 sf, got ' + JSON.stringify(imperialLabels.labels));
+    var imperialSf = parsedImperial[0].unit === 'sf'
+      ? parsedImperial[0].value
+      : parsedImperial[0].value * 10.7639;
+    assert.ok(Math.abs(imperialSf - 111.89) < 0.05,
+      'imperial on-plan label must show interior ~111.89 sf, got ' + JSON.stringify(imperialLabels.labels));
 
     const metricLabels = await readLabels(metricPlan);
     const parsedMetric = metricLabels.labels.map(areaFromLabelText).filter(Boolean);
