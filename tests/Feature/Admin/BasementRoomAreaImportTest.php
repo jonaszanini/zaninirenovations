@@ -160,7 +160,7 @@ class BasementRoomAreaImportTest extends IntegrationTestCase
             ->assertOk()
             ->assertJsonFragment([
                 'id' => 'room:'.$room->id,
-                'partition_lf' => 20,
+                'partition_lf' => 19.67,
                 'bulkhead_lf' => 27,
                 'bulkhead_framing_lf' => 27,
                 'bulkhead_drywall_sqft' => 30,

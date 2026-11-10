@@ -49,6 +49,7 @@ echo $partial;
 echo '</div></main></div>';
 echo '<script src="/js/admin-theme.js?v='.$v.'"></script>';
 echo '<script src="/js/admin-info-tip.js?v='.$v.'"></script>';
+echo '<script src="/js/room-area-interior-geometry.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-measurement-bridge.js?v='.$v.'"></script>';
 echo '<script src="/js/openplan3d-host.js?v='.$v.'"></script>';
 echo '</body></html>';
