@@ -48,13 +48,16 @@ class SharedPricesLayoutTest extends IntegrationTestCase
         }
         SharedWorkCatalog::forgetCache();
 
-        Material::query()->create([
+        $linkedCatalog = Material::query()->create([
             'name' => '8 ft shoe moulding',
             'store_sku' => 'SHOE-8',
             'price_cad' => 12.99,
             'is_active' => true,
             'unit' => 'each',
+            'last_price_synced_at' => now()->subDays(3),
         ]);
+        $work->catalog_material_id = $linkedCatalog->id;
+        $work->save();
         Material::query()->create([
             'name' => 'MDF casing 8 ft',
             'store_sku' => 'CASE-8',
