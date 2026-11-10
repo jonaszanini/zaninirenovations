@@ -44,8 +44,8 @@ class BasementClientScopeGeneratedCopyTest extends TestCase
             ],
         ]);
 
-        $this->assertStringContainsString('Electrical work allowance CAD$', $copy['allowances']);
-        $this->assertStringContainsString('Plumbing work allowance CAD$', $copy['allowances']);
+        $this->assertStringContainsString('Electrical work allowance CA$', $copy['allowances']);
+        $this->assertStringContainsString('Plumbing work allowance CA$', $copy['allowances']);
         $this->assertStringNotContainsString(
             BasementQuotationCalculator::SECTIONS['electrical'],
             $copy['not_included']

@@ -510,7 +510,16 @@ class BasementQuotationController extends Controller
         $rawHeaderLf = $request->input('header_lf');
         $parsedHeaderLf = is_string($rawHeaderLf) ? str_replace([',', '$', ' '], '', $rawHeaderLf) : $rawHeaderLf;
         $postedHeaderLf = is_numeric($parsedHeaderLf) ? (float) $parsedHeaderLf : 0.0;
-        if ($storedHeaderLegacy && $postedHeaderLf <= 0) {
+        if ($request->exists('header_lf')) {
+            $rawHeaderTrim = trim((string) $request->input('header_lf', ''));
+            if ($storedHeaderLegacy && $rawHeaderTrim === '') {
+                $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
+                unset($out['header_lf']);
+            } else {
+                $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
+                $out['header_qty'] = 0;
+            }
+        } elseif ($storedHeaderLegacy) {
             $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
             unset($out['header_lf']);
         } else {
@@ -562,7 +571,11 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($strings as $key) {
-            $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+            $value = trim((string) $request->input($key, $defaults[$key]));
+            if ($key === 'client_scope_allowances') {
+                $value = \App\Services\BasementClientScope::normalizeAllowanceText($value);
+            }
+            $out[$key] = $value;
         }
         if (! in_array($out['lighting_type'], ['fixture', 'spot', 'both'], true)) {
             $out['lighting_type'] = 'spot';

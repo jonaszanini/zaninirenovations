@@ -4,6 +4,7 @@ namespace Tests\Unit\Services;
 
 use App\Models\BasementSettings;
 use App\Models\SharedWork;
+use App\Services\BasementClientScope;
 use App\Services\BasementQuotationCalculator;
 use App\Services\SharedWorkCatalog;
 use Tests\TestCase;
@@ -243,6 +244,116 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $this->assertSame(0.0, $calc['summary']['materials_pre_hst']);
         $this->assertGreaterThan(0, $calc['summary']['labor_pre_hst']);
+    }
+
+    /** Hand-computed: 800 sq ft LVP with underlayment at default DB rates and 10% contractor fee. */
+    private const LITERAL_FLOORING_MATERIALS_PRE_HST = 3485.0;
+
+    private const LITERAL_FLOORING_GRAND_DROP_WITH_HST = 4331.85;
+
+    public function test_client_provides_flooring_section_zeros_materials_not_labor(): void
+    {
+        $common = [
+            'area_sqft' => 800,
+            'include_demolition' => false,
+            'owner_hourly_rate' => 80,
+            'flooring_sf' => 800,
+            'flooring_type' => 'lvp',
+            'underlayment' => true,
+            'contractor_fee_percent' => 10,
+            'insulate_walls' => false,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+        ];
+
+        $base = (new BasementQuotationCalculator)->calculate($common, $this->settings());
+        $with = (new BasementQuotationCalculator)->calculate(array_merge($common, [
+            'client_provides_sections' => ['flooring'],
+        ]), $this->settings());
+
+        $floorMatBase = collect($base['materials'])->where('section', 'flooring')->sum('amount');
+        $floorMatWith = collect($with['materials'])->where('section', 'flooring')->sum('amount');
+        $floorLabBase = collect($base['labor'])->where('section', 'flooring')->sum('amount');
+        $floorLabWith = collect($with['labor'])->where('section', 'flooring')->sum('amount');
+
+        $this->assertEqualsWithDelta(self::LITERAL_FLOORING_MATERIALS_PRE_HST, $floorMatBase, 0.01);
+        $this->assertSame(0.0, $floorMatWith);
+        $this->assertEqualsWithDelta($floorLabBase, $floorLabWith, 0.01);
+        $this->assertGreaterThan(0, $floorLabWith);
+
+        foreach ($with['materials'] as $row) {
+            if (($row['section'] ?? '') !== 'flooring') {
+                continue;
+            }
+            $this->assertTrue($row['client_provided']);
+            $this->assertSame(0.0, $row['amount']);
+        }
+
+        $subDrop = (float) $base['summary']['section_subtotals_pre_hst']['flooring']
+            - (float) $with['summary']['section_subtotals_pre_hst']['flooring'];
+        $this->assertEqualsWithDelta(self::LITERAL_FLOORING_MATERIALS_PRE_HST, $subDrop, 0.01);
+
+        $grandDrop = (float) $base['summary']['grand_total'] - (float) $with['summary']['grand_total'];
+        $this->assertEqualsWithDelta(self::LITERAL_FLOORING_GRAND_DROP_WITH_HST, $grandDrop, 0.02);
+    }
+
+    public function test_each_client_provides_section_toggle_zeros_that_section_materials_only(): void
+    {
+        $common = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 600,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => true,
+            'demo_include_flooring' => true,
+            'demo_bin_qty' => 1,
+            'partition_lf' => 20,
+            'insulate_walls' => true,
+            'insulation_wall_sf' => 400,
+            'ceiling_type' => 'drop',
+            'ceiling_sf' => 600,
+            'drywall_wall_sf' => 400,
+            'drywall_ceiling_sf' => 600,
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 600,
+            'underlayment' => true,
+            'baseboard_lf' => 80,
+            'paint_wall_sf' => 400,
+            'paint_ceiling_sf' => 600,
+            'paint_trim_lf' => 80,
+            'include_cleaning' => true,
+            'owner_hourly_rate' => 80,
+            'contractor_fee_percent' => 10,
+            'detector_qty' => 1,
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+        ]);
+
+        $base = (new BasementQuotationCalculator)->calculate($common, $this->settings());
+        $sections = [
+            'demolition', 'framing', 'electrical', 'plumbing', 'insulation', 'ceiling',
+            'drywall', 'flooring', 'doors_trim', 'painting', 'finishing',
+        ];
+
+        foreach ($sections as $section) {
+            $with = (new BasementQuotationCalculator)->calculate(array_merge($common, [
+                'client_provides_sections' => [$section],
+            ]), $this->settings());
+
+            $matBase = collect($base['materials'])->where('section', $section)->sum('amount');
+            $matWith = collect($with['materials'])->where('section', $section)->sum('amount');
+            if ($matBase <= 0) {
+                continue;
+            }
+            $this->assertSame(0.0, $matWith, 'Materials for '.$section.' should zero when client provides that section');
+
+            $labBase = collect($base['labor'])->where('section', $section)->sum('amount');
+            $labWith = collect($with['labor'])->where('section', $section)->sum('amount');
+            $this->assertEqualsWithDelta($labBase, $labWith, 0.02, 'Labour for '.$section.' must not drop when client provides materials');
+            $this->assertLessThan(
+                (float) $base['summary']['grand_total'],
+                (float) $with['summary']['grand_total'],
+                'Grand total should fall for '.$section
+            );
+        }
     }
 
     public function test_client_provides_individual_bathroom_items(): void
@@ -2141,6 +2252,69 @@ class BasementQuotationCalculatorTest extends TestCase
             (float) $recon['checks']['grand_from_subtotal_hst_trades'],
             $grand,
             0.01
+        );
+        $inHouse = $linesByKey['sections_subtotal_sum'];
+        $this->assertEqualsWithDelta(
+            $inHouse + $linesByKey['extra_materials'] + $linesByKey['contractor_fee'],
+            $subtotalPre,
+            0.02
+        );
+    }
+
+    public function test_reconciliation_matches_br0282_style_electrical_allowance_and_fee_base(): void
+    {
+        $inputs = [
+            'area_sqft' => 1200,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 1200,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'paint_wall_sf' => 0,
+            'contractor_fee_percent' => 10,
+            'header_lf' => 0,
+            'header_qty' => 8,
+            'owner_hourly_rate' => 101,
+            'helper_hourly_rate' => 45,
+            'electrical_lines' => [
+                ['description' => "Electrician's quote", 'amount' => 7000, 'hst_included' => false],
+            ],
+        ];
+        $calc = (new BasementQuotationCalculator)->calculate($inputs, $this->settings());
+        $summary = $calc['summary'];
+        $headers = collect($calc['labor'])->firstWhere('key', 'framing_headers');
+        $this->assertNull($headers);
+
+        $this->assertEqualsWithDelta(7000.0, (float) $summary['trades']['electrical']['pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(7910.0, (float) $summary['trades']['electrical']['tax_in'], 0.01);
+
+        $scope = BasementClientScope::generatedCopy($inputs, $calc);
+        $this->assertStringContainsString('Electrical work allowance CA$7,910.00', $scope['allowances']);
+        $this->assertStringNotContainsString('9,040.00', $scope['allowances']);
+
+        $recon = $summary['reconciliation'];
+        $byKey = [];
+        foreach ($recon['lines'] as $line) {
+            $byKey[$line['key']] = $line;
+        }
+        $inHouse = (float) $byKey['sections_subtotal_sum']['amount'];
+        $fee = (float) $byKey['contractor_fee']['amount'];
+        $subtotal = (float) $byKey['subtotal_pre_hst']['amount'];
+        $this->assertEqualsWithDelta($inHouse + $fee, $subtotal, 0.05);
+        $this->assertArrayNotHasKey('qualified_trades_pre_hst', $byKey);
+        $feeBase = (float) ($summary['contractor_fee_base_pre_hst'] ?? 0);
+        $this->assertGreaterThan(0, $feeBase);
+        $this->assertEqualsWithDelta($feeBase * 0.1, $fee, 0.02);
+        $this->assertStringContainsString('on CA$', $byKey['contractor_fee']['label']);
+        $this->assertEqualsWithDelta(
+            $subtotal + (float) $summary['hst'] + (float) $summary['trade_lines_tax_in'],
+            (float) $summary['grand_total'],
+            0.05
         );
     }
 

@@ -33,6 +33,23 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="bulkhead_lf"', $html);
     }
 
+    public function test_client_provides_section_checkbox_posts_trade_key_not_literal_one(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'client_provides_sections[]',
+            'checkboxValue' => 'flooring',
+            'checked' => false,
+            'label' => 'Flooring',
+            'inputClass' => 'admin-checkbox__input br-preview',
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/type="checkbox"[^>]*name="client_provides_sections\[\]"[^>]*value="flooring"/',
+            $html
+        );
+        $this->assertStringNotContainsString('value="1"', $html);
+    }
+
     public function test_wizard_trade_steps_include_live_section_subtotal_markup(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();

@@ -20,6 +20,10 @@
   var lastAdditionalLaborHst = 0;
   var lastAdditionalTaxIn = 0;
   var lastPreviewData = null;
+  var initialExpenseTotals = cfg.initialExpenseTotals || {};
+  lastCommuteAmount = Number(initialExpenseTotals.commute || 0);
+  lastDebrisAmount = Number(initialExpenseTotals.debris || 0);
+  lastAdditionalTaxIn = Number(initialExpenseTotals.additionalTaxIn || 0);
   var currentIndex = 0;
 
   var fmt = function (n) {
@@ -1083,6 +1087,17 @@
     debounceTimer = setTimeout(runPreview, 280);
   }
 
+  function syncClientProvidesFormData(fd) {
+    ['client_provides_sections[]', 'client_provides_bath_items[]'].forEach(function (fieldName) {
+      fd.delete(fieldName);
+      form.querySelectorAll('input.admin-checkbox__input[name="' + fieldName + '"]').forEach(function (cb) {
+        if (cb.checked && !cb.disabled) {
+          fd.append(fieldName, cb.value || '');
+        }
+      });
+    });
+  }
+
   function runPreview() {
     if (!previewUrl) return;
     var fd = new FormData(form);
@@ -1091,6 +1106,7 @@
       if (!name || name.indexOf('[') !== -1) return;
       fd.set(name, cb.checked ? (cb.value || '1') : '0');
     });
+    syncClientProvidesFormData(fd);
     form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
       fd.set(input.name, (input.value || '').replace(/,/g, ''));
     });
@@ -1152,6 +1168,10 @@
     if (reconLines.length) {
       html += '<div class="br-reconciliation" data-br-reconciliation="1">';
       reconLines.forEach(function (line) {
+        if (line.key === 'grand_total' && lastAdditionalTaxIn > 0) {
+          html += '<div class="pq-row" data-br-recon-key="additional_costs_tax_in">'
+            + '<span>Additional costs (incl. HST)</span><span>' + fmt(lastAdditionalTaxIn) + '</span></div>';
+        }
         var rowClass = 'pq-row';
         if (line.row_class === 'sub') rowClass += ' pq-row--sub';
         if (line.row_class === 'hl') rowClass += ' pq-row--hl';
@@ -1167,7 +1187,120 @@
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
     updateClientScopeFromPreview(data);
+    updateClientScopeAllowanceStale(data);
     updateSectionSubtotals(data);
+    updateClientProvidesSectionState(data);
+  }
+
+  function updateClientScopeAllowanceStale(data) {
+    var field = document.getElementById('br-scope-allowances');
+    if (!field || !clientScopeFieldLocked(field)) return;
+    var scope = data && data.client_scope;
+    if (!scope) return;
+    var stale = !!scope.allowances_stale;
+    var banner = document.getElementById('br-scope-allowances-stale');
+    if (stale && !banner) {
+      var help = document.createElement('p');
+      help.className = 'admin-form-help br-scope-stale';
+      help.id = 'br-scope-allowances-stale';
+      help.setAttribute('role', 'status');
+      help.innerHTML = 'Allowance amounts no longer match live electrical, plumbing, or permit lines. '
+        + '<button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-scope-allowances-reset">Reset to current amounts</button>';
+      field.parentNode.insertBefore(help, field);
+      bindAllowancesReset(help.querySelector('#br-scope-allowances-reset'));
+    } else if (!stale && banner) {
+      banner.remove();
+      field.removeAttribute('data-br-scope-allowances-stale');
+    } else if (stale) {
+      field.setAttribute('data-br-scope-allowances-stale', '1');
+    }
+  }
+
+  function bindAllowancesReset(btn) {
+    if (!btn || btn.dataset.brBound === '1') return;
+    btn.dataset.brBound = '1';
+    btn.addEventListener('click', function () {
+      var field = document.getElementById('br-scope-allowances');
+      var scope = lastPreviewData && lastPreviewData.client_scope;
+      var synced = scope && scope.allowances;
+      if (!field || synced == null || synced === '') return;
+      field.value = String(synced).replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      field.setAttribute('data-br-scope-dirty', '1');
+      var banner = document.getElementById('br-scope-allowances-stale');
+      if (banner) banner.remove();
+      field.removeAttribute('data-br-scope-allowances-stale');
+      schedulePreview();
+    });
+  }
+
+  function sectionHasPricedMaterials(data, sectionKey) {
+    var mats = (data && data.materials) || [];
+    return mats.some(function (row) {
+      return String(row.section || '') === sectionKey && Number(row.amount || 0) > 0;
+    });
+  }
+
+  function bathroomSectionEnabled() {
+    var el = form.querySelector('input[type="checkbox"][name="include_bathroom"]');
+    return el ? !!el.checked : false;
+  }
+
+  function bathItemHasPricedMaterials(data, itemKey) {
+    var mats = (data && data.materials) || [];
+    var keys = {
+      vanity: ['vanity'],
+      pedestal_sink: ['pedestal_sink'],
+      toilet: ['toilet'],
+      shower_frame: ['shower_kit'],
+      tub: ['tub_kit'],
+      exhaust_fan: ['exhaust_fan']
+    };
+    var want = keys[itemKey] || [itemKey];
+    return mats.some(function (row) {
+      var k = String(row.key || '');
+      return want.indexOf(k) !== -1 && Number(row.amount || 0) > 0;
+    });
+  }
+
+  function applyClientProvidesInert(cb, inert, tooltip) {
+    var checked = !!cb.checked;
+    var disable = !checked && inert;
+    cb.disabled = disable;
+    var row = cb.closest('label') || cb.parentElement;
+    if (row) {
+      row.classList.toggle('br-client-provides--inert', disable);
+      row.title = disable ? (tooltip || '') : '';
+    }
+  }
+
+  function updateClientProvidesSectionState(data) {
+    var enabled = enabledTradeKeys();
+    form.querySelectorAll('input[name="client_provides_sections[]"]').forEach(function (cb) {
+      var key = cb.value || '';
+      var sectionOn = enabled.indexOf(key) !== -1;
+      var hasMats = sectionHasPricedMaterials(data, key);
+      var inert = !sectionOn || !hasMats;
+      applyClientProvidesInert(
+        cb,
+        inert,
+        !sectionOn
+          ? 'This trade is off for this quotation.'
+          : 'This trade has no priced materials to omit.'
+      );
+    });
+    var bathOn = bathroomSectionEnabled();
+    form.querySelectorAll('input[name="client_provides_bath_items[]"]').forEach(function (cb) {
+      var key = cb.value || '';
+      var hasMats = bathItemHasPricedMaterials(data, key);
+      var inert = !bathOn || !hasMats;
+      applyClientProvidesInert(
+        cb,
+        inert,
+        !bathOn
+          ? 'Bathroom is off for this quotation.'
+          : 'This item has no priced materials to omit.'
+      );
+    });
   }
 
   function ceilingHangPricedInDrywallSection() {
@@ -1542,6 +1675,7 @@
   syncUnifiedCeilingArea();
 
   hydratePersistedClientScope();
+  bindAllowancesReset(document.getElementById('br-scope-allowances-reset'));
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);
   }

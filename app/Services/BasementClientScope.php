@@ -17,9 +17,14 @@ class BasementClientScope
         'allowances' => 'client_scope_allowances',
     ];
 
-    public static function contractorFeeLabel(float $percent): string
+    public static function contractorFeeLabel(float $percent, ?float $basePreHst = null): string
     {
-        return 'Contractor fee '.self::formatPercent($percent).'%';
+        $label = 'Contractor fee '.self::formatPercent($percent).'%';
+        if ($basePreHst !== null && $basePreHst > 0) {
+            $label .= ' on CA$'.number_format($basePreHst, 2, '.', ',').' pre-HST';
+        }
+
+        return $label;
     }
 
     public static function formatPercent(float $percent): string
@@ -51,9 +56,9 @@ class BasementClientScope
         foreach ($tradeLabels as $key => $label) {
             if (in_array($key, $enabled, true)) {
                 if ($key === 'electrical') {
-                    $included[] = 'Electrical coordination — Jonas arranges certified electricians for quoted electrical work.';
+                    $included[] = 'Electrical coordination, Jonas arranges certified electricians for quoted electrical work.';
                 } elseif ($key === 'plumbing') {
-                    $included[] = 'Plumbing coordination — Jonas arranges certified plumbers for quoted plumbing work.';
+                    $included[] = 'Plumbing coordination, Jonas arranges certified plumbers for quoted plumbing work.';
                 } elseif ($key === 'flooring') {
                     $type = strtolower(trim((string) ($inputs['flooring_type'] ?? 'lvp')));
                     if ($type !== 'none') {
@@ -83,12 +88,12 @@ class BasementClientScope
         if ($permitOn) {
             $included[] = 'City building permit as an optional extra-charge municipal fee (priced separately; pass-through, no contractor fee).';
         } else {
-            $notIncluded[] = 'City building permit — optional extra-charge municipal fee, not included by default.';
+            $notIncluded[] = 'City building permit, optional extra-charge municipal fee, not included by default.';
         }
         if ($bcinOn) {
             $included[] = 'BCIN drawings as an optional extra-charge service (priced separately). A BCIN qualified designer is not the same credential as a professional engineer; engineer signing or stamping is included only when required.';
         } else {
-            $notIncluded[] = 'BCIN drawings — optional extra-charge service, not included by default.';
+            $notIncluded[] = 'BCIN drawings, optional extra-charge service, not included by default.';
         }
 
         $notIncluded[] = 'Carpet flooring.';
@@ -106,27 +111,34 @@ class BasementClientScope
         ];
 
         $allowances = [];
+        $trades = is_array($calc['summary']['trades'] ?? null) ? $calc['summary']['trades'] : [];
         if (BasementQuotationCalculator::sectionEnabled($inputs, 'electrical')) {
-            $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
-            $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
+            $elecTax = round((float) ($trades['electrical']['tax_in'] ?? 0), 2);
+            if ($elecTax <= 0) {
+                $elec = AdditionalCostsService::normalizeRows($inputs['electrical_lines'] ?? [], 'Electrical work');
+                $elecTax = AdditionalCostsService::taxInclusiveTotal($elec);
+            }
             if ($elecTax > 0) {
-                $allowances[] = 'Electrical work allowance CAD$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
+                $allowances[] = 'Electrical work allowance CA$'.number_format($elecTax, 2, '.', ',').' (HST included in the trade line).';
             }
         }
         if (BasementQuotationCalculator::sectionEnabled($inputs, 'plumbing')) {
-            $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
-            $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
+            $plumbTax = round((float) ($trades['plumbing']['tax_in'] ?? 0), 2);
+            if ($plumbTax <= 0) {
+                $plumb = AdditionalCostsService::normalizeRows($inputs['plumbing_lines'] ?? [], 'Plumbing work');
+                $plumbTax = AdditionalCostsService::taxInclusiveTotal($plumb);
+            }
             if ($plumbTax > 0) {
-                $allowances[] = 'Plumbing work allowance CAD$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
+                $allowances[] = 'Plumbing work allowance CA$'.number_format($plumbTax, 2, '.', ',').' (HST included in the trade line).';
             }
         }
         $permitAmt = $permitOn ? round(max(0, (float) ($inputs['building_permit_amount'] ?? 0)), 2) : 0.0;
         $bcinAmt = $bcinOn ? round(max(0, (float) ($inputs['bcin_drawings_amount'] ?? 0)), 2) : 0.0;
         if ($permitAmt > 0) {
-            $allowances[] = 'City building permit extra-charge CAD$'.number_format($permitAmt, 2, '.', ',').' before HST (municipal fee; no contractor fee).';
+            $allowances[] = 'City building permit extra-charge CA$'.number_format($permitAmt, 2, '.', ',').' before HST (municipal fee; no contractor fee).';
         }
         if ($bcinAmt > 0) {
-            $allowances[] = 'BCIN drawings extra-charge CAD$'.number_format($bcinAmt, 2, '.', ',').' before HST (subcontracted professional service, including engineer signing when required).';
+            $allowances[] = 'BCIN drawings extra-charge CA$'.number_format($bcinAmt, 2, '.', ',').' before HST (subcontracted professional service, including engineer signing when required).';
         }
         if ($allowances === []) {
             $allowances[] = 'No separate cash allowances beyond the priced lines on this quotation.';
@@ -142,10 +154,11 @@ class BasementClientScope
 
     /**
      * Stored copy when the admin edited it; otherwise generated defaults.
+     * Allowances amounts always sync to live trade / permit lines for PDF output.
      *
      * @param  array<string, mixed>  $inputs
      * @param  array<string, mixed>  $calc
-     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}}
+     * @return array{included: string, not_included: string, assumptions: string, allowances: string, generated: array{included: string, not_included: string, assumptions: string, allowances: string}, allowances_stale?: bool, allowances_ui?: string}
      */
     public static function resolveCopy(array $inputs, array $calc = []): array
     {
@@ -153,10 +166,164 @@ class BasementClientScope
         $out = ['generated' => $generated];
         foreach (self::COPY_KEYS as $short => $inputKey) {
             $stored = trim((string) ($inputs[$inputKey] ?? ''));
+            if ($short === 'allowances') {
+                if ($stored === '') {
+                    $out['allowances'] = $generated['allowances'];
+                    $out['allowances_ui'] = $generated['allowances'];
+                } else {
+                    $synced = self::syncAllowanceAmounts($stored, $generated['allowances']);
+                    $out['allowances'] = $synced;
+                    $out['allowances_ui'] = $stored;
+                    $out['allowances_stale'] = self::allowancesAmountsStale($stored, $generated['allowances']);
+                }
+                continue;
+            }
             $out[$short] = $stored !== '' ? $stored : $generated[$short];
         }
 
         return $out;
+    }
+
+    public static function allowancesAmountsStale(string $stored, string $generated): bool
+    {
+        $stored = self::normalizeAllowanceText($stored);
+        $generated = self::normalizeAllowanceText($generated);
+        if ($stored === '' || $generated === '') {
+            return false;
+        }
+
+        $synced = self::normalizeAllowanceText(self::syncAllowanceAmounts($stored, $generated));
+        if ($synced !== $stored) {
+            return true;
+        }
+
+        return self::generatedAllowancePrefixesMissingFromStored($stored, $generated);
+    }
+
+    public static function syncAllowanceAmounts(string $stored, string $generated): string
+    {
+        $stored = self::normalizeAllowanceText($stored);
+        $generated = self::normalizeAllowanceText($generated);
+        if ($stored === '') {
+            return $generated;
+        }
+        if ($generated === '') {
+            return $stored;
+        }
+        $freshByPrefix = [];
+        foreach (explode("\n", $generated) as $line) {
+            $line = trim($line);
+            if ($line === '' || self::isPlaceholderAllowanceLine($line)) {
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '') {
+                $freshByPrefix[$prefix] = $line;
+            }
+        }
+
+        $storedHadPlaceholder = false;
+        $out = [];
+        $presentPrefixes = [];
+        foreach (explode("\n", $stored) as $line) {
+            $line = trim($line);
+            if ($line === '') {
+                continue;
+            }
+            if (self::isPlaceholderAllowanceLine($line)) {
+                $storedHadPlaceholder = true;
+                if ($freshByPrefix === []) {
+                    $out[] = $line;
+                }
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '') {
+                if (isset($freshByPrefix[$prefix])) {
+                    $out[] = $freshByPrefix[$prefix];
+                    $presentPrefixes[$prefix] = true;
+                }
+                continue;
+            }
+            $out[] = $line;
+        }
+
+        if ($storedHadPlaceholder && $freshByPrefix !== []) {
+            foreach ($freshByPrefix as $prefix => $freshLine) {
+                if (! isset($presentPrefixes[$prefix])) {
+                    $out[] = $freshLine;
+                    $presentPrefixes[$prefix] = true;
+                }
+            }
+        }
+
+        if ($out === []) {
+            return $generated;
+        }
+
+        return implode("\n", $out);
+    }
+
+    public static function isPlaceholderAllowanceLine(string $line): bool
+    {
+        return trim($line) === 'No separate cash allowances beyond the priced lines on this quotation.';
+    }
+
+    private static function generatedAllowancePrefixesMissingFromStored(string $stored, string $generated): bool
+    {
+        $storedPrefixes = [];
+        foreach (explode("\n", $stored) as $line) {
+            $prefix = self::allowanceLinePrefix(trim($line));
+            if ($prefix !== '') {
+                $storedPrefixes[$prefix] = true;
+            }
+        }
+
+        foreach (explode("\n", $generated) as $line) {
+            $line = trim($line);
+            if ($line === '' || self::isPlaceholderAllowanceLine($line)) {
+                continue;
+            }
+            $prefix = self::allowanceLinePrefix($line);
+            if ($prefix !== '' && empty($storedPrefixes[$prefix])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function normalizeAllowanceText(string $text): string
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", trim($text));
+        $lines = [];
+        foreach (explode("\n", $text) as $line) {
+            $line = rtrim($line);
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    private static function allowanceLinePrefix(string $line): string
+    {
+        $line = trim($line);
+        if (str_starts_with($line, 'Electrical work allowance')) {
+            return 'electrical';
+        }
+        if (str_starts_with($line, 'Plumbing work allowance')) {
+            return 'plumbing';
+        }
+        if (str_starts_with($line, 'City building permit extra-charge')) {
+            return 'permit';
+        }
+        if (str_starts_with($line, 'BCIN drawings extra-charge')) {
+            return 'bcin';
+        }
+
+        return '';
     }
 
     /**

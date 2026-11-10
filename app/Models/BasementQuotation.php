@@ -477,13 +477,16 @@ class BasementQuotation extends Model
         $calc = is_array($this->calculation) ? $this->calculation : [];
         $stored = is_array($calc['client_scope'] ?? null) ? $calc['client_scope'] : [];
         $inputs = is_array($this->inputs) ? $this->inputs : [];
+        if ($calc === [] && $inputs !== []) {
+            $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        }
         $resolved = \App\Services\BasementClientScope::resolveCopy($inputs, $calc);
 
         return [
             'included' => (string) ($stored['included'] ?? $resolved['included']),
             'not_included' => (string) ($stored['not_included'] ?? $resolved['not_included']),
             'assumptions' => (string) ($stored['assumptions'] ?? $resolved['assumptions']),
-            'allowances' => (string) ($stored['allowances'] ?? $resolved['allowances']),
+            'allowances' => (string) $resolved['allowances'],
         ];
     }
 
