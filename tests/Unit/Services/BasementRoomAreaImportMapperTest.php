@@ -328,6 +328,26 @@ class BasementRoomAreaImportMapperTest extends TestCase
         );
     }
 
+    public function test_paint_ceiling_import_zero_when_ceiling_type_is_drop_or_none(): void
+    {
+        $opt = ['area_sqft' => 500, 'ceiling_area_sqft' => 500, 'perimeter_lf' => 90];
+        $this->assertSame(0.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'drop')['paint_ceiling_sf']);
+        $this->assertSame(0.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'none')['paint_ceiling_sf']);
+        $this->assertSame(500.0, BasementRoomAreaImportMapper::proposedQuantities($opt, 8, 'drywall')['paint_ceiling_sf']);
+    }
+
+    public function test_legacy_perimeter_paint_deducts_door_opening_when_no_measured_wall(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities([
+            'area_sqft' => 240,
+            'perimeter_lf' => 64,
+            'door_count' => 1,
+            'ceiling_area_sqft' => 240,
+        ], 8, 'drywall');
+        $this->assertSame(512.0, $proposed['drywall_wall_sf']);
+        $this->assertSame(491.0, $proposed['paint_wall_sf']);
+    }
+
     public function test_mixed_legacy_paint_confirm_names_counts_and_previous_quantity(): void
     {
         $opt = [

@@ -351,10 +351,23 @@ class BasementRoomAreaImportMapper
     }
 
     /**
+     * Drop ceiling and skip-ceiling types do not get ceiling paint on import (matches live Auto rule).
+     */
+    public static function resolveImportedPaintCeilingSf(?float $ceilingArea, ?string $formCeilingType): ?float
+    {
+        $type = strtolower(trim((string) $formCeilingType));
+        if (in_array($type, ['drop', 'none'], true)) {
+            return 0.0;
+        }
+
+        return $ceilingArea;
+    }
+
+    /**
      * @param  array<string, mixed>  $opt
      * @return array<string, float|int|null>
      */
-    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null): array
+    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null, ?string $formCeilingType = null): array
     {
         $height = 8.0;
         if (self::present($opt, 'ceiling_height_ft') && (float) $opt['ceiling_height_ft'] > 0) {
@@ -437,6 +450,16 @@ class BasementRoomAreaImportMapper
 
         $openingSf = $measuredNet ? 0.0 : null;
 
+        $paintWallBasis = $wallSf;
+        if ($wallSf !== null && ! self::present($opt, 'finish_paint_sqft') && ! $measuredNet) {
+            $openingDeduction = BasementQuotationCalculator::drywallOpeningSf([
+                'drywall_door_openings' => $doors ?? 0,
+                'drywall_window_openings' => $windows ?? 0,
+                'drywall_openings' => $openings ?? 0,
+            ]);
+            $paintWallBasis = max(0.0, $wallSf - $openingDeduction);
+        }
+
         return [
             'area_sqft' => $area,
             'ceiling_height_ft' => self::present($opt, 'ceiling_height_ft') ? $height : null,
@@ -461,8 +484,8 @@ class BasementRoomAreaImportMapper
             'baseboard_lf' => $baseboard,
             'casing_openings' => $casingOpenings,
             'window_trim_qty' => $windows,
-            'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $wallSf),
-            'paint_ceiling_sf' => $ceilingArea,
+            'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $paintWallBasis),
+            'paint_ceiling_sf' => self::resolveImportedPaintCeilingSf($ceilingArea, $formCeilingType),
             'paint_trim_lf' => $paintTrim,
         ];
     }

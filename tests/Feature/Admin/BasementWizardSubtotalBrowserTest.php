@@ -6,6 +6,7 @@ use App\Models\BasementQuotation;
 use App\Models\RoomAreaProject;
 use App\Models\RoomAreaRoom;
 use App\Models\User;
+use App\Models\BasementSettings;
 use App\Services\BasementQuotationCalculator;
 use App\Services\BasementRoomAreaImportMapper;
 use Illuminate\Support\Facades\Hash;
@@ -33,6 +34,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->actingAs($user);
 
         $import = $this->seedLegacyPaintQuote();
+        $literals = $this->browserSubtotalLiterals($import);
 
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/basement-wizard-subtotal-browser.js');
@@ -54,6 +56,12 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'BR_SUBTOTAL_IMPORT_PATH' => route('admin.quotations.basement.edit', $import['quote'], false),
             'BR_SUBTOTAL_IMPORT_LAYOUT_Q' => $import['query'],
             'BR_SUBTOTAL_LAYOUTS_PATH' => route('admin.utilities.room-area.layouts', [], false),
+            'BR_LITERAL_WALL_SF' => (string) $literals['wall_sf'],
+            'BR_LITERAL_DRYWALL_WALL_SF' => (string) $literals['drywall_wall_sf'],
+            'BR_LITERAL_CEILING_SF' => (string) $literals['ceiling_sf'],
+            'BR_LITERAL_PAINT_CEILING_SF' => (string) $literals['paint_ceiling_sf'],
+            'BR_EXPECT_FLOORING_SECTION' => sprintf('%.2f', $literals['flooring_section_pre_hst']),
+            'BR_EXPECT_PAINTING_SECTION' => sprintf('%.2f', $literals['painting_section_pre_hst']),
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -69,19 +77,66 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->assertFileExists($subdir.'/basement-section-subtotal-flooring-390.png');
         $this->assertFileExists($subdir.'/basement-painting-after-import-1280.png');
         $this->assertFileExists($subdir.'/basement-painting-after-import-390.png');
+        $this->assertFileExists($subdir.'/basement-reconciliation-1280.png');
+        $this->assertFileExists($subdir.'/basement-reconciliation-mobile-390.png');
+        $this->assertTrue((bool) ($report['importPaint']['wallSfOk'] ?? false), json_encode($report['importPaint'] ?? []));
+        $this->assertTrue((bool) ($report['importPaint']['paintingSectionLiteralOk'] ?? false));
 
         $artifactDir = '/opt/cursor/artifacts';
         if (! is_dir($artifactDir)) {
             mkdir($artifactDir, 0777, true);
         }
-        foreach ([
-            'basement-section-subtotal-flooring-1280.png',
-            'basement-section-subtotal-flooring-390.png',
-            'basement-painting-after-import-1280.png',
-            'basement-painting-after-import-390.png',
-        ] as $name) {
-            @copy($subdir.'/'.$name, $artifactDir.'/'.$name);
+        foreach (glob($subdir.'/basement-*.png') ?: [] as $file) {
+            @copy($file, $artifactDir.'/'.basename($file));
         }
+    }
+
+    /**
+     * @param  array{quote: BasementQuotation, query: string, proposed: array<string, mixed>}  $import
+     * @return array{wall_sf: float, drywall_wall_sf: float, ceiling_sf: float, paint_ceiling_sf: float, flooring_section_pre_hst: float, painting_section_pre_hst: float}
+     */
+    private function browserSubtotalLiterals(array $import): array
+    {
+        $proposed = $import['proposed'];
+        $settings = new BasementSettings([
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'hours_per_day' => 8,
+            'productivity' => BasementSettings::defaultProductivity(),
+            'materials' => BasementSettings::defaultMaterials(),
+        ]);
+        $enabled = array_merge(['overview'], array_keys(BasementQuotationCalculator::tradeSections()));
+        $paintInputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 240,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'finish_level' => 4,
+            'enabled_sections' => $enabled,
+        ], array_filter($proposed, fn ($v) => $v !== null));
+        $paintCalc = (new BasementQuotationCalculator)->calculate($paintInputs, $settings);
+
+        $floorInputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
+            'area_sqft' => 800,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 800,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'finish_level' => 4,
+            'enabled_sections' => $enabled,
+        ]);
+        $floorCalc = (new BasementQuotationCalculator)->calculate($floorInputs, $settings);
+
+        return [
+            'wall_sf' => 512.0,
+            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
+            'ceiling_sf' => 240.0,
+            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
+            'flooring_section_pre_hst' => (float) ($floorCalc['summary']['section_subtotals_pre_hst']['flooring'] ?? 0),
+            'painting_section_pre_hst' => (float) ($paintCalc['summary']['section_subtotals_pre_hst']['painting'] ?? 0),
+        ];
     }
 
     /**
@@ -98,7 +153,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'room_area_project_id' => $project->id,
             'name' => 'Browser paint fill room',
             'scale_pixels_per_foot' => 12,
-            'area_sqft' => 80,
+            'area_sqft' => 240,
             'wall_height_ft' => 8,
             'vertices' => [
                 'format' => 'openplan3d',
@@ -130,10 +185,12 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $opt = collect($this->get(route('admin.utilities.room-area.layouts', ['q' => 'Browser paint fill room']))
             ->assertOk()
             ->json())->firstWhere('id', 'room:'.$room->id);
-        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8);
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8, 'drywall');
+        $this->assertEqualsWithDelta(512.0, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.5);
+        $this->assertEqualsWithDelta(512.0, (float) ($proposed['paint_wall_sf'] ?? 0), 0.5);
         $inputs = array_merge(BasementQuotationCalculator::defaultInputs(), [
             'client_name' => 'Browser Paint Fill Quote',
-            'area_sqft' => 80,
+            'area_sqft' => 240,
             'paint_wall_sf' => null,
         ], array_filter($proposed, fn ($v) => $v !== null));
         $calc = (new BasementQuotationCalculator)->calculate($inputs);
@@ -148,7 +205,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'payment_installments' => 3,
         ]);
 
-        return ['quote' => $quote, 'query' => 'Browser paint fill room'];
+        return ['quote' => $quote, 'query' => 'Browser paint fill room', 'proposed' => $proposed];
     }
 
     /**

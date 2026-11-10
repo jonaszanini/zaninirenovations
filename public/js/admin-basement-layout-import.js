@@ -132,13 +132,29 @@
     return null;
   }
 
+  function resolveImportedPaintCeilingSf(ceilingArea, ceilingType) {
+    var type = String(ceilingType || '').toLowerCase();
+    if (type === 'drop' || type === 'none') {
+      return 0;
+    }
+    return ceilingArea;
+  }
+
+  function drywallOpeningSfFromLayout(doors, windows, openings) {
+    var d = Math.max(0, parseInt(doors, 10) || 0);
+    var w = Math.max(0, parseInt(windows, 10) || 0);
+    var listed = Math.max(0, parseInt(openings, 10) || 0);
+    var extra = Math.max(0, listed - d - w);
+    return Math.round((d * 21 + w * 12 + extra * 21) * 100) / 100;
+  }
+
   function readFieldNumber(el) {
     if (!el) return 0;
     var n = parseFloat(el.value);
     return isFinite(n) ? n : 0;
   }
 
-  function proposedQuantities(opt, ceilingHeightFt) {
+  function proposedQuantities(opt, ceilingHeightFt, ceilingType) {
     opt = opt || {};
     var height = 8;
     if (present(opt, 'ceiling_height_ft') && num(opt.ceiling_height_ft) > 0) {
@@ -202,6 +218,11 @@
       paintTrim = Math.max(0, (baseboard || 0) + (casingLf || 0));
     }
 
+    var paintWallBasis = wallSf;
+    if (wallSf !== null && !present(opt, 'finish_paint_sqft') && !measuredNet) {
+      paintWallBasis = Math.max(0, wallSf - drywallOpeningSfFromLayout(doors, windows, openings));
+    }
+
     return {
       area_sqft: area,
       ceiling_height_ft: present(opt, 'ceiling_height_ft') ? height : null,
@@ -226,8 +247,8 @@
       baseboard_lf: baseboard,
       casing_openings: casingOpenings,
       window_trim_qty: windows,
-      paint_wall_sf: resolveImportedPaintWallSf(opt, wallSf),
-      paint_ceiling_sf: ceilingArea,
+      paint_wall_sf: resolveImportedPaintWallSf(opt, paintWallBasis),
+      paint_ceiling_sf: resolveImportedPaintCeilingSf(ceilingArea, ceilingType),
       paint_trim_lf: paintTrim
     };
   }
@@ -364,6 +385,7 @@
     present: present,
     ceilingTakeoffAvailable: ceilingTakeoffAvailable,
     resolveImportedCeilingArea: resolveImportedCeilingArea,
+    resolveImportedPaintCeilingSf: resolveImportedPaintCeilingSf,
     proposedQuantities: proposedQuantities,
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,

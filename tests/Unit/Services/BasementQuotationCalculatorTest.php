@@ -2061,15 +2061,85 @@ class BasementQuotationCalculatorTest extends TestCase
 
         $sections = $calc['summary']['section_subtotals_pre_hst'] ?? [];
         $this->assertIsArray($sections);
-        $sectionSum = 0.0;
-        foreach ($sections as $amount) {
-            $sectionSum += (float) $amount;
-        }
-        $feePre = (float) ($calc['summary']['contractor_fee_pre_hst'] ?? 0);
-        $subtotalPre = (float) ($calc['summary']['subtotal_pre_hst'] ?? 0);
-        $this->assertEqualsWithDelta($subtotalPre - $feePre, $sectionSum, 0.05);
+        $recon = $calc['summary']['reconciliation'] ?? [];
+        $checks = $recon['checks'] ?? [];
+        $this->assertEqualsWithDelta(
+            (float) ($calc['summary']['subtotal_pre_hst'] ?? 0),
+            (float) ($checks['subtotal_pre_hst'] ?? -1),
+            0.01
+        );
+        $this->assertEqualsWithDelta(
+            (float) ($calc['summary']['subtotal_pre_hst'] ?? 0),
+            (float) ($checks['sections_plus_extra_plus_fee_minus_trade_pre'] ?? -1),
+            0.05
+        );
         $this->assertGreaterThan(0, (float) ($sections['flooring'] ?? 0));
         $this->assertGreaterThan(0, (float) ($sections['drywall'] ?? 0));
+    }
+
+    public function test_reconciliation_lines_sum_to_grand_with_electrical_plumbing_and_extra_materials(): void
+    {
+        $calc = (new BasementQuotationCalculator)->calculate([
+            'area_sqft' => 350,
+            'ceiling_height_ft' => 8,
+            'include_demolition' => false,
+            'insulate_walls' => false,
+            'underlayment' => false,
+            'flooring_type' => 'lvp',
+            'flooring_sf' => 350,
+            'include_cleaning' => false,
+            'include_touchups' => false,
+            'detector_qty' => 0,
+            'drywall_wall_sf' => 0,
+            'drywall_ceiling_sf' => 0,
+            'paint_wall_sf' => 0,
+            'paint_ceiling_sf' => 0,
+            'paint_trim_lf' => 0,
+            'baseboard_lf' => 0,
+            'owner_hourly_rate' => 80,
+            'helper_hourly_rate' => 40,
+            'electrical_lines' => [
+                ['description' => 'Licensed electrician', 'amount' => 1130, 'hst_included' => true],
+            ],
+            'plumbing_lines' => [
+                ['description' => 'Licensed plumber', 'amount' => 1000, 'hst_included' => false],
+            ],
+            'extra_materials' => [
+                ['name' => 'Custom tile', 'quantity' => 4, 'unit_price' => 62.5],
+            ],
+        ], $this->settings());
+
+        $summary = $calc['summary'];
+        $recon = $summary['reconciliation'];
+        $this->assertIsArray($recon);
+        $linesByKey = [];
+        foreach ($recon['lines'] as $line) {
+            $linesByKey[$line['key']] = (float) $line['amount'];
+        }
+        $this->assertEqualsWithDelta(250.0, (float) ($summary['extra_materials_pre_hst'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta(250.0, $linesByKey['extra_materials'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, $linesByKey['electrical_tax_in'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, (float) $summary['trades']['electrical']['tax_in'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, $linesByKey['plumbing_tax_in'], 0.01);
+        $this->assertEqualsWithDelta(1130.0, (float) $summary['trades']['plumbing']['tax_in'], 0.01);
+
+        $subtotalPre = (float) $summary['subtotal_pre_hst'];
+        $hst = (float) $summary['hst'];
+        $grand = (float) $summary['grand_total'];
+        $tradeTaxIn = (float) ($summary['trade_lines_tax_in'] ?? 0);
+        $this->assertEqualsWithDelta($subtotalPre + $hst + $tradeTaxIn, $grand, 0.01);
+        $this->assertEqualsWithDelta(
+            $linesByKey['subtotal_pre_hst'] + $linesByKey['hst']
+                + $linesByKey['electrical_tax_in'] + $linesByKey['plumbing_tax_in'],
+            $grand,
+            0.01
+        );
+        $this->assertEqualsWithDelta($grand, $linesByKey['grand_total'], 0.01);
+        $this->assertEqualsWithDelta(
+            (float) $recon['checks']['grand_from_subtotal_hst_trades'],
+            $grand,
+            0.01
+        );
     }
 
     private function settings(?array $materials = null): BasementSettings

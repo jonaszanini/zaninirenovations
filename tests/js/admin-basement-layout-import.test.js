@@ -47,6 +47,19 @@ assert.strictEqual(proposed.casing_openings, 1);
 assert.strictEqual(proposed.ceiling_sf, 500);
 assert.strictEqual(proposed.drywall_ceiling_sf, 500);
 assert.strictEqual(proposed.paint_ceiling_sf, 500);
+
+const dropCeil = layout.proposedQuantities(Object.assign({}, opt, { ceiling_area_sqft: 500 }), 8, 'drop');
+assert.strictEqual(dropCeil.paint_ceiling_sf, 0);
+assert.strictEqual(dropCeil.drywall_ceiling_sf, 500);
+
+const legacyDoor = layout.proposedQuantities({
+  area_sqft: 240,
+  perimeter_lf: 64,
+  door_count: 1,
+  ceiling_area_sqft: 240,
+}, 8, 'drywall');
+assert.strictEqual(legacyDoor.drywall_wall_sf, 512);
+assert.strictEqual(legacyDoor.paint_wall_sf, 491);
 assert.strictEqual(proposed.insulation_ceiling_sf, 500);
 assert.strictEqual(proposed.paint_trim_lf, 131);
 assert.strictEqual(proposed.drywall_opening_sf, 0);

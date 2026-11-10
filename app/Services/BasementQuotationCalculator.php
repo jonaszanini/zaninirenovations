@@ -1548,6 +1548,12 @@ class BasementQuotationCalculator
         $matPre = round($matAll - $permitPre - $bcinPre, 2);
         $trade = $this->tradeLineSummary($inputs);
         $sectionSubtotalsPre = self::sectionSubtotalsPreHst($labor, $materials, $extraMaterials, $trade);
+        $extraMaterialsPre = 0.0;
+        foreach ($extraMaterials as $row) {
+            $extraMaterialsPre += (float) ($row['amount'] ?? 0);
+        }
+        $extraMaterialsPre = round($extraMaterialsPre, 2);
+        $sectionsSubtotalSum = round(array_sum($sectionSubtotalsPre), 2);
         $fee = self::contractorFeeBreakdown($feePercent, $matPre, $trade['pre_hst'], $bcinPre, $laborPre);
         $feePre = $fee['amount'];
         $matHst = round($matPre * BasementQuotation::HST_RATE, 2);
@@ -1559,6 +1565,17 @@ class BasementQuotationCalculator
         $hst = round($laborHst + $matHst + $permitHst + $bcinHst + $feeHst, 2);
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
         $wastePercent = $this->materialWastePercent($inputs);
+        $feeLabel = BasementClientScope::contractorFeeLabel($feePercent);
+        $reconciliation = self::buildSummaryReconciliation(
+            $sectionsSubtotalSum,
+            $extraMaterialsPre,
+            $feePre,
+            $subtotal,
+            $hst,
+            $grand,
+            $trade,
+            $feeLabel
+        );
 
         $eta = $this->etaScenarios($totalHours, $hoursPerDay, $ownerRate, $helperRate);
 
@@ -1642,7 +1659,7 @@ class BasementQuotationCalculator
                 'contractor_fee_hst' => $feeHst,
                 'contractor_fee_after_hst' => round($feePre + $feeHst, 2),
                 'contractor_fee_base_pre_hst' => $fee['base'],
-                'contractor_fee_label' => BasementClientScope::contractorFeeLabel($feePercent),
+                'contractor_fee_label' => $feeLabel,
                 'material_waste_percent' => $wastePercent,
                 'flooring_waste_percent' => $flooringWastePercent,
                 'subtotal_pre_hst' => $subtotal,
@@ -1658,6 +1675,9 @@ class BasementQuotationCalculator
                     'plumbing' => $trade['plumbing'],
                 ],
                 'section_subtotals_pre_hst' => $sectionSubtotalsPre,
+                'sections_subtotal_sum' => $sectionsSubtotalSum,
+                'extra_materials_pre_hst' => $extraMaterialsPre,
+                'reconciliation' => $reconciliation,
             ],
         ];
 
@@ -1824,6 +1844,56 @@ class BasementQuotationCalculator
         }
 
         return $out;
+    }
+
+    /**
+     * Sidebar reconciliation: section subtotals + extra materials + fee = subtotal_pre_hst
+     * (qualified-trade pre-HST is included in section subtotals, not in subtotal_pre_hst).
+     * Grand total = subtotal_pre_hst + HST + qualified-trade tax-inclusive amounts.
+     *
+     * @param  array{pre_hst: float, tax_in: float, electrical: array{tax_in: float}, plumbing: array{tax_in: float}}  $trade
+     * @return array{lines: list<array{key: string, label: string, amount: float, row_class?: string}>, checks: array<string, float>}
+     */
+    public static function buildSummaryReconciliation(
+        float $sectionsSubtotalSum,
+        float $extraMaterialsPre,
+        float $feePre,
+        float $subtotalPre,
+        float $hst,
+        float $grandTotal,
+        array $trade,
+        string $feeLabel,
+    ): array {
+        $tradePre = round((float) ($trade['pre_hst'] ?? 0), 2);
+        $lines = [
+            ['key' => 'sections_subtotal_sum', 'label' => 'Section subtotals', 'amount' => round($sectionsSubtotalSum, 2)],
+            ['key' => 'extra_materials', 'label' => 'Extra materials', 'amount' => round($extraMaterialsPre, 2)],
+            ['key' => 'contractor_fee', 'label' => $feeLabel, 'amount' => round($feePre, 2)],
+            ['key' => 'subtotal_pre_hst', 'label' => 'Subtotal (pre-HST)', 'amount' => round($subtotalPre, 2), 'row_class' => 'sub'],
+        ];
+        $elecTaxIn = round((float) ($trade['electrical']['tax_in'] ?? 0), 2);
+        if ($elecTaxIn > 0) {
+            $lines[] = ['key' => 'electrical_tax_in', 'label' => 'Electrical (incl. HST)', 'amount' => $elecTaxIn];
+        }
+        $plumbTaxIn = round((float) ($trade['plumbing']['tax_in'] ?? 0), 2);
+        if ($plumbTaxIn > 0) {
+            $lines[] = ['key' => 'plumbing_tax_in', 'label' => 'Plumbing (incl. HST)', 'amount' => $plumbTaxIn];
+        }
+        $lines[] = ['key' => 'hst', 'label' => 'HST 13%', 'amount' => round($hst, 2)];
+        $lines[] = ['key' => 'grand_total', 'label' => 'Grand total', 'amount' => round($grandTotal, 2), 'row_class' => 'hl'];
+
+        $subtotalFromSections = round($sectionsSubtotalSum + $extraMaterialsPre + $feePre - $tradePre, 2);
+        $grandFromParts = round($subtotalPre + $hst + (float) ($trade['tax_in'] ?? 0), 2);
+
+        return [
+            'lines' => $lines,
+            'checks' => [
+                'sections_plus_extra_plus_fee_minus_trade_pre' => $subtotalFromSections,
+                'subtotal_pre_hst' => round($subtotalPre, 2),
+                'grand_from_subtotal_hst_trades' => $grandFromParts,
+                'trade_lines_pre_hst' => $tradePre,
+            ],
+        ];
     }
 
     /**
@@ -2059,6 +2129,19 @@ class BasementQuotationCalculator
         $subtotal = $feePre;
         $hst = $feeHst;
         $grand = round($subtotal + $hst + $trade['tax_in'], 2);
+        $sectionSubtotalsPre = self::sectionSubtotalsPreHst([], [], [], $trade);
+        $sectionsSubtotalSum = round(array_sum($sectionSubtotalsPre), 2);
+        $feeLabel = BasementClientScope::contractorFeeLabel($feePercent);
+        $reconciliation = self::buildSummaryReconciliation(
+            $sectionsSubtotalSum,
+            0.0,
+            $feePre,
+            $subtotal,
+            $hst,
+            $grand,
+            $trade,
+            $feeLabel
+        );
 
         $result = [
             'scope' => [
@@ -2113,7 +2196,10 @@ class BasementQuotationCalculator
                     'electrical' => $trade['electrical'],
                     'plumbing' => $trade['plumbing'],
                 ],
-                'section_subtotals_pre_hst' => self::sectionSubtotalsPreHst([], [], [], $trade),
+                'section_subtotals_pre_hst' => $sectionSubtotalsPre,
+                'sections_subtotal_sum' => $sectionsSubtotalSum,
+                'extra_materials_pre_hst' => 0.0,
+                'reconciliation' => $reconciliation,
             ],
         ];
 

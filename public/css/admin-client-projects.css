@@ -8023,6 +8023,14 @@ body.cp-modal-open {
   font-variant-numeric: tabular-nums;
   color: var(--admin-primary, #024768);
 }
+.br-layout .br-reconciliation {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--admin-border, #d8dee4);
+}
+.br-layout .br-reconciliation .pq-row {
+  font-size: 13px;
+}
 .br-layout .pq-sidebar-actions {
   display: flex;
   flex-direction: row;

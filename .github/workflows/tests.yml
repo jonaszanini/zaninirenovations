@@ -393,6 +393,14 @@ jobs:
           CI_MYSQL_FILTER_ROUTES_SMOKE: ${{ needs.changes.outputs.filter_routes_smoke }}
         run: tests/ci/run-database-suite.sh
 
+      - name: Upload basement wizard QA screenshots
+        if: success() && needs.changes.outputs.filter_quotation == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: basement-wizard-qa-screenshots
+          path: storage/app/qa-screenshots/basement-*.png
+          if-no-files-found: warn
+
       - name: Upload Shared prices geometry
         if: success() && needs.changes.outputs.run_shared_prices_geometry == 'true'
         uses: actions/upload-artifact@v4
