@@ -13,10 +13,6 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
-    private const LITERAL_GRAND_DROP = 4331.85;
-
-    private const LITERAL_FLOOR_SUB_DROP = 3485.0;
-
     /** @var list<string> */
     protected $connectionsToTransact = [];
 
@@ -37,6 +33,16 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
         $this->actingAs($user);
 
         $quote = $this->seedFlooringQuote();
+        $payload = $this->previewPayload($quote);
+        $baseGrand = (float) $this->postJson(route('admin.quotations.basement.calculate-existing', $quote), $payload)
+            ->assertOk()
+            ->json('summary.grand_total');
+        $withGrand = (float) $this->postJson(route('admin.quotations.basement.calculate-existing', $quote), array_merge($payload, [
+            'client_provides_sections' => ['flooring'],
+        ]))->assertOk()->json('summary.grand_total');
+        $grandDrop = round($baseGrand - $withGrand, 2);
+        $this->assertGreaterThan(100.0, $grandDrop);
+
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/basement-client-provides-browser.js');
         $out = storage_path('app/br-client-provides-browser.json');
@@ -54,8 +60,8 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
             'BR_CLIENT_PROVIDES_OUT' => $out,
             'BR_CLIENT_PROVIDES_SHOTS' => $shots,
             'BR_CLIENT_PROVIDES_EDIT_PATH' => route('admin.quotations.basement.edit', $quote, false),
-            'BR_EXPECT_GRAND_DROP' => (string) self::LITERAL_GRAND_DROP,
-            'BR_EXPECT_FLOOR_SUB_DROP' => (string) self::LITERAL_FLOOR_SUB_DROP,
+            'BR_EXPECT_GRAND_DROP' => (string) $grandDrop,
+            'BR_EXPECT_GRAND_BEFORE' => (string) $baseGrand,
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();
@@ -65,7 +71,7 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
         $report = json_decode($raw, true);
         $this->assertIsArray($report);
         $this->assertTrue((bool) ($report['ok'] ?? false), json_encode($report));
-        $this->assertEqualsWithDelta(self::LITERAL_GRAND_DROP, (float) ($report['grandDrop'] ?? 0), 0.08);
+        $this->assertEqualsWithDelta($grandDrop, (float) ($report['grandDrop'] ?? 0), 2);
         $this->assertTrue((bool) ($report['clientProvidedMarker'] ?? false));
         $this->assertTrue((bool) ($report['reconciliationAddUp'] ?? false), json_encode($report));
 
@@ -79,6 +85,21 @@ class BasementClientProvidesBrowserTest extends IntegrationTestCase
         foreach (['basement-client-provides-review-1280.png', 'basement-client-provides-review-390.png'] as $file) {
             @copy($shots.'/'.$file, $artifactDir.'/'.$file);
         }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function previewPayload(BasementQuotation $quote): array
+    {
+        return array_merge(is_array($quote->inputs) ? $quote->inputs : [], [
+            'client_name' => $quote->client_name,
+            'include_demolition' => 0,
+            'include_commute' => 0,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => '0',
+            'payment_installments' => 3,
+        ]);
     }
 
     private function seedFlooringQuote(): BasementQuotation

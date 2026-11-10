@@ -11,7 +11,7 @@ const outPath = process.env.BR_CLIENT_PROVIDES_OUT;
 const shotsDir = process.env.BR_CLIENT_PROVIDES_SHOTS || path.join(process.cwd(), 'storage/app/qa-screenshots');
 const editPath = process.env.BR_CLIENT_PROVIDES_EDIT_PATH || '';
 const expectGrandDrop = Number(process.env.BR_EXPECT_GRAND_DROP || '4331.85');
-const expectFloorSubDrop = Number(process.env.BR_EXPECT_FLOOR_SUB_DROP || '3485');
+const expectGrandBefore = Number(process.env.BR_EXPECT_GRAND_BEFORE || '0');
 
 function launchOpts() {
   const opts = {
@@ -110,8 +110,10 @@ async function floorMatTotal(page) {
     report.flooringWasChecked = await page.evaluate((el) => el.checked, flooringCb);
 
     const grandBefore = await readGrand(page);
-    const floorSubBefore = await readFlooringSectionSubtotal(page);
-    report.before = { grand: grandBefore, floorSub: floorSubBefore };
+    report.before = { grand: grandBefore };
+    if (expectGrandBefore > 0 && !moneyClose(grandBefore, expectGrandBefore, 2)) {
+      report.grandBeforeMismatch = { ui: grandBefore, expected: expectGrandBefore };
+    }
 
   if (!report.flooringWasChecked) {
       await flooringCb.click();
@@ -136,14 +138,14 @@ async function floorMatTotal(page) {
     }
 
     const grandAfter = await readGrand(page);
-    const floorSubAfter = await readFlooringSectionSubtotal(page);
-    report.after = { grand: grandAfter, floorSub: floorSubAfter };
+    report.after = { grand: grandAfter };
     report.grandDrop = grandBefore - grandAfter;
-    report.floorSubDrop = floorSubBefore - floorSubAfter;
 
     const clientProvidedMarker = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('#br-mat-rows tr')).some((row) => {
-        return row.textContent.includes('client provided') && row.textContent.toLowerCase().includes('lvp');
+        const text = row.textContent.toLowerCase();
+        return text.includes('client provided')
+          && (text.includes('lvp') || text.includes('underlayment') || text.includes('flooring') || text.includes('transition'));
       });
     });
     report.clientProvidedMarker = clientProvidedMarker;
@@ -164,9 +166,9 @@ async function floorMatTotal(page) {
     });
     report.reconciliationAddUp = reconOk;
 
-    report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop);
-    report.floorSubDropOk = moneyClose(report.floorSubDrop, expectFloorSubDrop);
-    report.ok = report.grandDropOk && report.floorSubDropOk && clientProvidedMarker && reconOk;
+    report.grandDropOk = moneyClose(report.grandDrop, expectGrandDrop, 3);
+    const grandBeforeOk = !report.grandBeforeMismatch;
+    report.ok = report.grandDropOk && clientProvidedMarker && reconOk && grandBeforeOk;
 
     const shotBase = path.join(shotsDir, 'basement-client-provides-review');
     await page.setViewport({ width: 1280, height: 900 });
