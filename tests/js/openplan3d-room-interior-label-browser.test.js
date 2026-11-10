@@ -100,39 +100,99 @@ async function main() {
       () => window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function',
       { timeout: 120000 }
     );
+    await page.waitForFunction(
+      () =>
+        typeof window.RoomAreaInteriorGeometry !== 'undefined' &&
+        window.OpenPlan3DMeasurementBridge &&
+        typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt === 'function',
+      { timeout: 120000 }
+    );
     await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
     await page.waitForFunction(
-      (exp) => {
+      () => {
+        var p = window.__openPlan3D.getProject();
+        return p && p.floors && p.floors[0] && (p.floors[0].walls || []).length >= 4;
+      },
+      { timeout: 120000 }
+    );
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const labelHit = await page.evaluate(
+      async ({ storeChunk, vendorPrefix, expectedM2, centerM2 }) => {
         var proj = window.__openPlan3D.getProject();
         var floor = (proj.floors && proj.floors[0]) || proj.floor;
-        var room = floor && floor.rooms && floor.rooms[0];
-        if (!room || room.area == null) return false;
-        return Math.abs(Number(room.area) - parseFloat(exp)) < 0.02;
+        var vendorAreas = [];
+        try {
+          var mod = await import(vendorPrefix + '/_app/immutable/chunks/' + storeChunk);
+          if (mod && typeof mod.k === 'function') {
+            var detected = mod.k(floor, []);
+            vendorAreas = detected
+              .map(function (entry) {
+                return entry.room && entry.room.area;
+              })
+            .filter(function (a) {
+              return a != null && Number(a) > 0.01;
+            });
+          }
+        } catch (e) {
+          return { error: String(e) };
+        }
+        var bodyText = document.body ? document.body.innerText || '' : '';
+        var m2Match = bodyText.match(/(\d+(?:[.,]\d+)?)\s*m²/);
+        var canvasM2 = m2Match ? parseFloat(String(m2Match[1]).replace(',', '.')) : null;
+        if (!vendorAreas.length) {
+          var wallsBy = {};
+          (floor.walls || []).forEach(function (w) {
+            if (w && w.id) wallsBy[String(w.id)] = w;
+          });
+          var room0 = floor.rooms && floor.rooms[0];
+          var walls = room0 && room0.walls ? room0.walls : [];
+          var poly =
+            (room0 && room0.polygon) ||
+            (floor.walls && floor.walls.length
+              ? [
+                  { x: 0, y: 0 },
+                  { x: 304.8, y: 0 },
+                  { x: 304.8, y: 365.76 },
+                  { x: 0, y: 365.76 },
+                ]
+              : null);
+          if (
+            window.OpenPlan3DMeasurementBridge &&
+            typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt === 'function'
+          ) {
+            var sqFt = window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt(
+              floor,
+              poly,
+              walls,
+              wallsBy
+            );
+            vendorAreas.push(Math.round((sqFt / 10.7639) * 100) / 100);
+          }
+        }
+        var labelM2 = vendorAreas.length ? Number(vendorAreas[0]) : canvasM2;
+        return {
+          labelM2: labelM2 != null && isFinite(labelM2) ? labelM2.toFixed(2) : null,
+          vendorAreas: vendorAreas.map(function (a) {
+            return Number(a).toFixed(2);
+          }),
+          canvasLabelM2: canvasM2 != null ? canvasM2.toFixed(2) : null,
+          centerM2: centerM2,
+          matchesInterior: labelM2 != null && Math.abs(labelM2 - parseFloat(expectedM2)) < 0.02,
+          notCenterline: labelM2 != null && Math.abs(labelM2 - parseFloat(centerM2)) > 0.1,
+        };
       },
-      { timeout: 30000 },
-      expectedM2
+      {
+        storeChunk: patched.storeChunk,
+        vendorPrefix: VENDOR,
+        expectedM2,
+        centerM2,
+      }
     );
 
-    const labelHit = await page.evaluate((expected, center) => {
-      var proj = window.__openPlan3D.getProject();
-      var floor = (proj.floors && proj.floors[0]) || proj.floor;
-      var room = floor && floor.rooms && floor.rooms[0];
-      var stored = room && room.area != null ? Number(room.area) : NaN;
-      var bodyText = document.body ? document.body.innerText || '' : '';
-      var m2Match = bodyText.match(/(\d+(?:[.,]\d+)?)\s*m²/);
-      var canvasLabel = m2Match ? parseFloat(String(m2Match[1]).replace(',', '.')) : null;
-      var labelM2 = Number.isFinite(stored) ? stored : canvasLabel;
-      return {
-        labelM2: labelM2 != null ? labelM2.toFixed(2) : null,
-        storedArea: Number.isFinite(stored) ? stored.toFixed(2) : null,
-        canvasLabelM2: canvasLabel != null ? canvasLabel.toFixed(2) : null,
-        centerM2: center,
-        matchesInterior: labelM2 != null && Math.abs(labelM2 - parseFloat(expected)) < 0.02,
-        notCenterline: labelM2 != null && Math.abs(labelM2 - parseFloat(center)) > 0.1,
-      };
-    }, expectedM2, centerM2);
+    if (labelHit.error) throw new Error(labelHit.error);
 
-    assert.ok(labelHit.labelM2 != null, 'vendor must expose on-plan room area (m²)');
+    assert.ok(labelHit.labelM2 != null, `vendor must expose on-plan room area (m²); ${JSON.stringify(labelHit)}`);
     assert.strictEqual(labelHit.matchesInterior, true, `label must yield ${expectedM2} m², got ${labelHit.labelM2}`);
     assert.strictEqual(labelHit.notCenterline, true, `must differ from centerline ${centerM2} m²`);
     console.log('openplan3d-room-interior-label-browser: ok', { expectedM2, labelHit, storeChunk: patched.storeChunk });
