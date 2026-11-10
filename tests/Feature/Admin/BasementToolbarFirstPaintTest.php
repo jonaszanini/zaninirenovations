@@ -58,11 +58,14 @@ class BasementToolbarFirstPaintTest extends IntegrationTestCase
         );
 
         $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
-        $this->assertStringContainsString(\App\Models\ClientProject::formatMoney($expected), $html);
-        $addTax = round(AdditionalCostsService::taxInclusiveTotal($quote->additional_costs), 2);
+        $formatted = \App\Models\ClientProject::formatMoney($expected);
         $this->assertMatchesRegularExpression(
-            '/"additionalTaxIn":\s*'.preg_quote(number_format($addTax, 2, '.', ''), '/').'/',
+            '/id="br-toolbar-grand-amount"[^>]*>\s*'.preg_quote($formatted, '/').'/s',
             $html
+        );
+        $this->assertStringContainsString(
+            '"initialExpenseTotals":'.json_encode(BasementQuotationLiveGrandTotal::expensePayload($quote)),
+            preg_replace('/\s+/', '', $html)
         );
     }
 }
