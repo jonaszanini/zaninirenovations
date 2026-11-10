@@ -71,4 +71,10 @@ const batchSides = ext.mergeWallFinishes(
 assert.strictEqual(batchSides.p1.baseboardSides, 1);
 assert.strictEqual(batchSides.p2.baseboardSides, 1);
 
+const drywallFacesMerge = ext.mergeWallFinishes(
+  { p1: { drywallFaces: 'both' } },
+  { p1: { drywallFaces: 'a' } }
+);
+assert.strictEqual(drywallFacesMerge.p1.drywallFaces, 'a');
+
 console.log('openplan3d-wall-finishes-persist: ok');

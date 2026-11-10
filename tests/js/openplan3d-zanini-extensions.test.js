@@ -104,6 +104,26 @@ const measureOnly = ext.applyToMetrics(Object.assign({}, metrics), {
 assert.strictEqual(measureOnly.area_sqft, metrics.area_sqft);
 assert.strictEqual(measureOnly.excluded_area_sqft, 0);
 
+const partitionOneFace = ext.applyToMetrics(Object.assign({}, {
+  area_sqft: 200,
+  casing_lf: 0,
+  boundary_wall_ids: ['w1', 'w2'],
+  walls: [
+    { id: 'w1', length_lf: 10, net_area_sqft: 80 },
+    { id: 'w2', length_lf: 10, net_area_sqft: 80 },
+    { id: 'w3', length_lf: 8, net_area_sqft: 128 },
+  ],
+}), {
+  format: 'openplan3d',
+  units: 'cm',
+  zanini: {
+    wallFinishes: { w3: { drywallFaces: 'b' } },
+  },
+}, {}, 1.0);
+assert.strictEqual(partitionOneFace.finish_drywall_sqft, 224);
+assert.strictEqual(ext.drywallFinishAreaSqFt(128, { drywallFaces: 'a' }, false), 64);
+assert.strictEqual(ext.drywallFinishAreaSqFt(80, { drywallFaces: 'a' }, true), 80);
+
 const partitionBb = ext.applyToMetrics(Object.assign({}, {
   area_sqft: 96.88,
   casing_lf: 12.5,

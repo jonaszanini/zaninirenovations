@@ -543,6 +543,21 @@
     return sides;
   }
 
+  function resolveDrywallFaces(flags, isBoundaryWall) {
+    if (isBoundaryWall) return 'both';
+    var faces = flags && flags.drywallFaces != null ? String(flags.drywallFaces).toLowerCase() : 'both';
+    if (faces === 'a' || faces === 'b') return faces;
+    return 'both';
+  }
+
+  function drywallFinishAreaSqFt(netSqFt, flags, isBoundaryWall) {
+    netSqFt = Number(netSqFt) || 0;
+    if (isBoundaryWall) return netSqFt;
+    var faces = resolveDrywallFaces(flags, false);
+    if (faces === 'a' || faces === 'b') return netSqFt / 2;
+    return netSqFt;
+  }
+
   function applyWallFinishMetrics(metrics, zanini) {
     var walls = metrics.walls || [];
     var boundaryIds = metrics.boundary_wall_ids || [];
@@ -579,12 +594,13 @@
         var len = Number(w.length_lf || 0);
         var net = Number(w.net_area_sqft || 0);
         var flags = finishes[id] || {};
-        if (flagEnabled(flags, 'drywall', true)) drywall += net;
+        var finishNet = drywallFinishAreaSqFt(net, flags, isB);
+        if (flagEnabled(flags, 'drywall', true)) drywall += finishNet;
         if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
           paintSeen = true;
           if (flagEnabled(flags, 'paint', false)) {
             paintMarked += 1;
-            paint += net;
+            paint += finishNet;
           } else {
             paintOff += 1;
           }
@@ -646,6 +662,8 @@
     mergeWallFinishes: mergeWallFinishes,
     mergeZaniniSnapshots: mergeZaniniSnapshots,
     resolveBaseboardSides: resolveBaseboardSides,
+    resolveDrywallFaces: resolveDrywallFaces,
+    drywallFinishAreaSqFt: drywallFinishAreaSqFt,
     normalizeZanini: normalizeZanini,
     applyToMetrics: applyToMetrics,
     bulkheadTakeoff: bulkheadTakeoff,

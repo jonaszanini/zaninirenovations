@@ -145,6 +145,37 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(0.0, $out['excluded_area_sqft']);
     }
 
+    public function test_partition_drywall_one_face_side_a(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => ['w1', 'w2'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w2', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w3', 'length_lf' => 8.0, 'net_area_sqft' => 128.0],
+            ],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w3' => ['drywallFaces' => 'a'],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(224.0, $out['finish_drywall_sqft']);
+        $this->assertSame(64.0, $this->extensions->drywallFinishAreaSqFt(128.0, ['drywallFaces' => 'a'], false));
+        $this->assertSame(80.0, $this->extensions->drywallFinishAreaSqFt(80.0, ['drywallFaces' => 'a'], true));
+    }
+
     public function test_explicit_partition_baseboard_counts_two_sides(): void
     {
         $metrics = [

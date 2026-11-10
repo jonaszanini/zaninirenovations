@@ -97,6 +97,13 @@
     return bridge.layoutMetrics(plan, roomId, finish || {});
   }
 
+  function ribbonBaseboardLf(metrics) {
+    if (!metrics || typeof metrics !== 'object') return 0;
+    if (metrics.finish_baseboard_lf != null) return Number(metrics.finish_baseboard_lf);
+    if (metrics.baseboard_lf != null) return Number(metrics.baseboard_lf);
+    return Number(metrics.baseboard_ft || 0);
+  }
+
   function collectPlanWalls(plan) {
     var walls = [];
     function addFrom(obj) {
@@ -483,8 +490,7 @@
         metricPerimeter.textContent = (stored.perimeter_lf != null ? stored.perimeter_lf : 0).toFixed(2);
       }
       if (metricBaseboard) {
-        var bb = stored.baseboard_lf;
-        metricBaseboard.textContent = (bb != null ? bb : 0).toFixed(2);
+        metricBaseboard.textContent = ribbonBaseboardLf(stored).toFixed(2);
       }
       if (metricWallArea) {
         metricWallArea.textContent = (stored.net_wall_area_sqft || stored.wall_area_sqft || 0).toFixed(2);
@@ -1191,8 +1197,7 @@
           metricPerimeter.textContent = (metrics.perimeter_lf != null ? metrics.perimeter_lf : (metrics.perimeter_ft || 0)).toFixed(2);
         }
         if (metricBaseboard) {
-          var liveBb = metrics.baseboard_lf;
-          metricBaseboard.textContent = (liveBb != null ? liveBb : (metrics.baseboard_ft || 0)).toFixed(2);
+          metricBaseboard.textContent = ribbonBaseboardLf(metrics).toFixed(2);
         }
         if (metricWallArea) {
           metricWallArea.textContent = (metrics.net_wall_area_sqft || metrics.net_wall_sqft || metrics.wall_area_sqft || 0).toFixed(2);

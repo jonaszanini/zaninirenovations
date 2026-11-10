@@ -866,6 +866,16 @@
     return wallIsBoundary(wallId) ? 1 : (flags.baseboardSides != null ? Number(flags.baseboardSides) : 2);
   }
 
+  function readDrywallFacesForWall(wallFinishes, wallId) {
+    var flags = (wallFinishes && wallFinishes[wallId]) || {};
+    var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
+    if (ext && typeof ext.resolveDrywallFaces === 'function') {
+      return ext.resolveDrywallFaces(flags, wallIsBoundary(wallId));
+    }
+    var faces = flags.drywallFaces != null ? String(flags.drywallFaces).toLowerCase() : 'both';
+    return faces === 'a' || faces === 'b' ? faces : 'both';
+  }
+
   function renderFinishPanel() {
     state.sidebarObserverPaused = true;
     if (state.sidebarObserver) state.sidebarObserver.disconnect();
@@ -1046,6 +1056,46 @@
       host.appendChild(perimeterNote);
     }
     if (sidesEligible.length > 0) {
+      var drywallPrimary = readDrywallFacesForWall(wallFinishes, sidesEligible[0]);
+      var drywallMixed = false;
+      if (sidesEligible.length > 1) {
+        for (var di = 1; di < sidesEligible.length; di++) {
+          if (readDrywallFacesForWall(wallFinishes, sidesEligible[di]) !== drywallPrimary) {
+            drywallMixed = true;
+            break;
+          }
+        }
+      }
+      var drywallRow = document.createElement('div');
+      drywallRow.style.cssText = 'display:flex;align-items:center;gap:6px;min-height:44px;margin-top:4px;font-size:12px;flex-wrap:wrap;';
+      var drywallLabel = sidesEligible.length === wallIds.length
+        ? 'Drywall faces'
+        : ('Drywall faces (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
+      drywallRow.innerHTML =
+        '<span>' + drywallLabel + '</span>' +
+        '<button type="button" class="openplan3d-finish-tip" data-finish-drywall-tip aria-label="Drywall faces help" title="Partition walls default to both faces. Choose Side A or Side B for one face only. Exterior walls stay interior face only.">&#9432;</button>' +
+        '<select data-finish-drywall-faces style="min-height:44px;flex:1;"><option value="both">Both sides</option><option value="a">Side A</option><option value="b">Side B</option></select>';
+      host.appendChild(drywallRow);
+      var drywallSel = host.querySelector('[data-finish-drywall-faces]');
+      if (drywallSel) {
+        if (drywallMixed) {
+          drywallSel.value = 'both';
+          drywallSel.selectedIndex = -1;
+        } else {
+          drywallSel.value = drywallPrimary === 'a' || drywallPrimary === 'b' ? drywallPrimary : 'both';
+        }
+        drywallSel.addEventListener('change', function () {
+          var faceVal = String(drywallSel.value || 'both').toLowerCase();
+          if (faceVal !== 'a' && faceVal !== 'b') faceVal = 'both';
+          writePlan(function (plan) {
+            plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
+            sidesEligible.forEach(function (wallId) {
+              plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
+              plan.zanini.wallFinishes[wallId].drywallFaces = faceVal;
+            });
+          });
+        });
+      }
       var sidesRow = document.createElement('label');
       sidesRow.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:12px;';
       var sidesPrimary = readBaseboardSidesForWall(wallFinishes, sidesEligible[0]);

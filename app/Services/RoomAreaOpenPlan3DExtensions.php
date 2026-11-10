@@ -270,6 +270,38 @@ class RoomAreaOpenPlan3DExtensions
     }
 
     /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function resolveDrywallFaces(array $flags, bool $isBoundaryWall): string
+    {
+        if ($isBoundaryWall) {
+            return 'both';
+        }
+        $faces = isset($flags['drywallFaces']) ? strtolower((string) $flags['drywallFaces']) : 'both';
+        if ($faces === 'a' || $faces === 'b') {
+            return $faces;
+        }
+
+        return 'both';
+    }
+
+    /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function drywallFinishAreaSqFt(float $netSqFt, array $flags, bool $isBoundaryWall): float
+    {
+        if ($isBoundaryWall) {
+            return $netSqFt;
+        }
+        $faces = $this->resolveDrywallFaces($flags, false);
+        if ($faces === 'a' || $faces === 'b') {
+            return $netSqFt / 2.0;
+        }
+
+        return $netSqFt;
+    }
+
+    /**
      * @param  array<string, mixed>  $metrics
      * @param  array<string, mixed>  $zanini
      */
@@ -319,14 +351,15 @@ class RoomAreaOpenPlan3DExtensions
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
 
+                $finishNetSqFt = $this->drywallFinishAreaSqFt($netSqFt, $flags, $isBoundary);
                 if ($this->flagEnabled($flags, 'drywall', true)) {
-                    $drywall += $netSqFt;
+                    $drywall += $finishNetSqFt;
                 }
                 if (array_key_exists('paint', $flags)) {
                     $paintSeen = true;
                     if ($this->flagEnabled($flags, 'paint', false)) {
                         $paintMarked++;
-                        $paint += $netSqFt;
+                        $paint += $finishNetSqFt;
                     } else {
                         $paintOff++;
                     }

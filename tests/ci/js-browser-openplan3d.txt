@@ -8,4 +8,5 @@ tests/js/openplan3d-editor-index-mount.test.js
 tests/js/openplan3d-room-canvas-fill-browser.test.js
 tests/js/openplan3d-cache-store-singleton-browser.test.js
 tests/js/openplan3d-wall-finish-browser.test.js
+tests/js/openplan3d-finish-chips-browser.test.js
 tests/js/openplan3d-zone-coords.test.js
