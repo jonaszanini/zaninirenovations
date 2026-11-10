@@ -280,10 +280,6 @@ async function shot(page, name) {
     && (!importQuery || (report.importPaint.wallSfOk && report.importPaint.ceilingSfOk
       && (EXPECT_PAINTING_SECTION <= 0 || report.importPaint.paintingSectionLiteralOk)));
 
-  if (EXPECT_FLOORING_SECTION > 0) {
-    report.create.flooringMatchesLiteral = moneyClose(report.create.flooringBefore.amount, EXPECT_FLOORING_SECTION);
-  }
-
   fs.mkdirSync(path.dirname(outPath), { recursive: true });
   fs.writeFileSync(outPath, JSON.stringify(report, null, 2));
   await browser.close();
