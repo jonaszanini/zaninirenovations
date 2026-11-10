@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\BasementSettings;
+use App\Models\Material;
+use App\Services\BasementMaterialPriceSyncScope;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Support\MaterialCatalogPickerOptions;
 use App\Support\QuotationAfterSaveRedirect;
 use Illuminate\Http\Request;
@@ -14,6 +17,14 @@ class BasementDatabaseController extends Controller
     {
         $settings = BasementSettings::current();
         $qpid = $request->filled('project') ? (int) $request->query('project') : null;
+        $syncScope = app(BasementMaterialPriceSyncScope::class);
+        $linkedIds = $syncScope->linkedCatalogMaterialIds();
+        $basementCatalogSyncById = $linkedIds === []
+            ? collect()
+            : Material::query()
+                ->whereIn('id', $linkedIds)
+                ->get(['id', 'last_price_synced_at'])
+                ->keyBy('id');
 
         return view('admin.quotations.basement.price_configuration', [
             'settings' => $settings,
@@ -22,6 +33,9 @@ class BasementDatabaseController extends Controller
             'productivityGroups' => BasementSettings::productivityGroups(),
             'materials' => $settings->resolvedMaterials(),
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
+            'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
+            'basementSyncableCount' => $syncScope->syncableLinkedCount(),
+            'basementCatalogSyncById' => $basementCatalogSyncById,
         ]);
     }
 

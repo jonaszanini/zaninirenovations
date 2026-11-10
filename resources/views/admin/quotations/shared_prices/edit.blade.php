@@ -3,6 +3,7 @@
 @section('heading', 'Shared prices')
 
 @push('head')
+  <link rel="stylesheet" href="{{ asset('css/admin-materials.css') }}?v={{ @filemtime(public_path('css/admin-materials.css')) ?: time() }}">
 <style>
 /* Crew rates: compact inline row */
 .sp-crew { margin-bottom: 1.5rem; }
@@ -1007,11 +1008,24 @@ details.sp-group.admin-card {
       </a>
     </div>
     <div class="admin-toolbar-group admin-toolbar-actions">
+      @include('admin.partials.basement_material_price_sync', [
+        'prefix' => 'sp-bsm',
+        'syncableCount' => $basementSyncableCount ?? 0,
+        'usesSerpApi' => $usesSerpApi ?? false,
+        'mode' => 'button',
+      ])
       <button type="submit" form="sp-lib-form" class="admin-btn admin-btn--primary admin-btn--sm" data-hotkey-save>
         <i class="fa fa-save"></i> Save shared prices
       </button>
     </div>
   </div>
+
+  @include('admin.partials.basement_material_price_sync', [
+    'prefix' => 'sp-bsm',
+    'syncableCount' => $basementSyncableCount ?? 0,
+    'usesSerpApi' => $usesSerpApi ?? false,
+    'mode' => 'progress',
+  ])
 
   <script type="application/json" id="admin-ss-catalog-options">@json($catalogPickerOptions ?? [])</script>
 
@@ -1172,6 +1186,10 @@ details.sp-group.admin-card {
                       <textarea rows="1" class="sp-input sp-mat-name-input sp-auto-grow-textarea" id="sp-mat-name-{{ $work->id }}"
                              name="works[{{ $work->id }}][material_name]"
                              placeholder="—">{{ $matNameVal }}</textarea>
+                      @if (in_array('basement', $consumers, true) && $catalogId > 0)
+                        @php $spSyncMat = ($basementCatalogSyncById ?? collect())->get($catalogId); @endphp
+                        <x-admin.material-price-sync-age :material="$spSyncMat" class="sp-mat-sync-age" />
+                      @endif
                       @if ($hasMaterialRow && $catalogId <= 0)
                         <span class="sp-mat-unlinked" data-sp-mat-unlinked>
                           Not linked
@@ -1311,6 +1329,7 @@ details.sp-group.admin-card {
     @endforeach
   </form>
 
+  <script src="{{ asset('js/admin-basement-material-sync.js') }}?v={{ @filemtime(public_path('js/admin-basement-material-sync.js')) ?: time() }}"></script>
   <script src="{{ asset('js/shared-prices-effective.js') }}?v={{ @filemtime(public_path('js/shared-prices-effective.js')) ?: time() }}"></script>
   <script>
     (function() {

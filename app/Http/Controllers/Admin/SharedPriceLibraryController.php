@@ -3,8 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Material;
 use App\Models\SharedCrewRate;
 use App\Models\SharedWork;
+use App\Services\BasementMaterialPriceSyncScope;
+use App\Services\MaterialScraping\HomeDepotCaLocalizedPriceFetcher;
 use App\Services\SharedWorkCatalog;
 use App\Support\CadMoney;
 use App\Support\MaterialCatalogPickerOptions;
@@ -18,11 +21,23 @@ class SharedPriceLibraryController extends Controller
 {
     public function edit()
     {
+        $syncScope = app(BasementMaterialPriceSyncScope::class);
+        $linkedIds = $syncScope->linkedCatalogMaterialIds();
+        $basementCatalogSyncById = $linkedIds === []
+            ? collect()
+            : Material::query()
+                ->whereIn('id', $linkedIds)
+                ->get(['id', 'last_price_synced_at'])
+                ->keyBy('id');
+
         return view('admin.quotations.shared_prices.edit', [
             'crew' => SharedCrewRate::current(),
             'works' => SharedWorkCatalog::allWorks(),
             'groups' => SharedWorkCatalog::GROUPS,
             'catalogPickerOptions' => MaterialCatalogPickerOptions::activeCatalog(),
+            'usesSerpApi' => (new HomeDepotCaLocalizedPriceFetcher)->usesSerpApi(),
+            'basementSyncableCount' => $syncScope->syncableLinkedCount(),
+            'basementCatalogSyncById' => $basementCatalogSyncById,
         ]);
     }
 

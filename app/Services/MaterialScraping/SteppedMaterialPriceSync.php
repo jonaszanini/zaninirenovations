@@ -20,8 +20,13 @@ class SteppedMaterialPriceSync
     /**
      * @param  list<int>  $materialIds
      */
-    public function start(Request $request, array $materialIds, string $sessionPrefix, string $emptyMessage): JsonResponse
-    {
+    public function start(
+        Request $request,
+        array $materialIds,
+        string $sessionPrefix,
+        string $emptyMessage,
+        bool $trackPriceChangeStats = false,
+    ): JsonResponse {
         $materialIds = array_values(array_unique(array_map('intval', $materialIds)));
 
         if ($materialIds === []) {
@@ -38,8 +43,11 @@ class SteppedMaterialPriceSync
             'material_ids' => $materialIds,
             'index' => 0,
             'ok' => 0,
+            'updated' => 0,
+            'unchanged' => 0,
             'failed' => 0,
             'skipped' => 0,
+            'track_price_changes' => $trackPriceChangeStats,
             'log' => [],
         ]);
 
@@ -53,7 +61,13 @@ class SteppedMaterialPriceSync
             'phase_total' => $total,
             'remaining' => $total,
             'message' => 'Starting sync of '.$total.' material(s) via '.$via.'.',
-            'stats' => $this->stats(['ok' => 0, 'failed' => 0, 'skipped' => 0]),
+            'stats' => $this->stats([
+                'ok' => 0,
+                'updated' => 0,
+                'unchanged' => 0,
+                'failed' => 0,
+                'skipped' => 0,
+            ]),
             'log' => [],
             'done' => false,
         ]);
@@ -99,7 +113,19 @@ class SteppedMaterialPriceSync
 
             if ($result['status'] === Material::SCRAPE_OK) {
                 $state['ok']++;
-                $message = 'Synced '.$material->name.' — '.$material->formattedPrice();
+                if ($this->tracksPriceChanges($state)) {
+                    $oldPrice = (float) ($result['old_price'] ?? 0);
+                    $newPrice = (float) $material->price_cad;
+                    if ($this->priceUnchanged($oldPrice, $newPrice)) {
+                        $state['unchanged'] = (int) ($state['unchanged'] ?? 0) + 1;
+                        $message = 'Unchanged '.$material->name.' — '.$material->formattedPrice();
+                    } else {
+                        $state['updated'] = (int) ($state['updated'] ?? 0) + 1;
+                        $message = 'Updated '.$material->name.' — '.$material->formattedPrice();
+                    }
+                } else {
+                    $message = 'Synced '.$material->name.' — '.$material->formattedPrice();
+                }
             } elseif ($result['status'] === Material::SCRAPE_SKIPPED) {
                 $state['skipped']++;
                 $message = 'Skipped '.$material->name.': '.($result['error'] ?? 'no product URL');
@@ -142,16 +168,57 @@ class SteppedMaterialPriceSync
      */
     private function stats(array $state): array
     {
-        return [
+        $stats = [
             'ok' => (int) ($state['ok'] ?? 0),
             'failed' => (int) ($state['failed'] ?? 0),
             'skipped' => (int) ($state['skipped'] ?? 0),
         ];
+
+        if ($this->tracksPriceChanges($state)) {
+            $stats['updated'] = (int) ($state['updated'] ?? 0);
+            $stats['unchanged'] = (int) ($state['unchanged'] ?? 0);
+        }
+
+        return $stats;
+    }
+
+    private function tracksPriceChanges(array $state): bool
+    {
+        return (bool) ($state['track_price_changes'] ?? false);
+    }
+
+    private function priceUnchanged(float $oldPrice, float $newPrice): bool
+    {
+        return abs($oldPrice - $newPrice) < 0.005;
     }
 
     /**
      * @param  array<string, mixed>  $state
      */
+    private function doneSummary(array $state, int $current, int $total): string
+    {
+        if ($this->tracksPriceChanges($state)) {
+            return sprintf(
+                '%d updated, %d unchanged, %d failed, %d skipped. %d of %d complete.',
+                (int) ($state['updated'] ?? 0),
+                (int) ($state['unchanged'] ?? 0),
+                (int) ($state['failed'] ?? 0),
+                (int) ($state['skipped'] ?? 0),
+                $current,
+                $total,
+            );
+        }
+
+        return sprintf(
+            '%d synced, %d failed, %d skipped. %d of %d complete.',
+            (int) ($state['ok'] ?? 0),
+            (int) ($state['failed'] ?? 0),
+            (int) ($state['skipped'] ?? 0),
+            $current,
+            $total,
+        );
+    }
+
     private function progressResponse(array $state, string $message, bool $done): JsonResponse
     {
         $total = count($state['material_ids'] ?? []);
@@ -168,14 +235,7 @@ class SteppedMaterialPriceSync
             'message' => $message,
             'stats' => $this->stats($state),
             'log' => $state['log'] ?? [],
-            'summary' => $done ? sprintf(
-                '%d synced, %d failed, %d skipped. %d of %d complete.',
-                (int) ($state['ok'] ?? 0),
-                (int) ($state['failed'] ?? 0),
-                (int) ($state['skipped'] ?? 0),
-                $current,
-                $total,
-            ) : null,
+            'summary' => $done ? $this->doneSummary($state, $current, $total) : null,
         ]);
     }
 }

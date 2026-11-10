@@ -74,6 +74,9 @@ class SharedPricesLayoutTest extends IntegrationTestCase
             ->assertSee('class="sp-th-sell"', false)
             ->assertSee('class="sp-sell-phone-label"', false)
             ->assertSee('cp-money-input', false)
+            ->assertSee('Update basement material prices', false)
+            ->assertSee('mat-price-sync-age', false)
+            ->assertSee('data-bsm-material-sync', false)
             ->getContent();
 
         $this->assertStringContainsString('99999.9900', $html);

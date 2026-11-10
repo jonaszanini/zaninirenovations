@@ -993,3 +993,27 @@
   font-size: 1.05rem;
   background: var(--admin-surface-hover, #f4f6f8);
 }
+
+.mat-price-sync-age {
+  display: inline-block;
+  margin-left: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--admin-muted, #5a6570);
+  white-space: nowrap;
+}
+
+.mat-price-sync-age--stale {
+  color: #b45309;
+}
+
+.br-config-sync-age,
+.sp-mat-sync-age {
+  display: block;
+  margin: 0.2rem 0 0;
+  margin-left: 0;
+}
+
+.sp-mat-sync-age {
+  font-size: 0.7rem;
+}
