@@ -1016,4 +1016,35 @@
 
 .sp-mat-sync-age {
   font-size: 0.7rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fq-list-toolbar .admin-toolbar-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+
+.fq-list-toolbar .admin-toolbar-actions [data-bsm-material-sync] {
+  max-width: 100%;
+  white-space: normal;
+  text-align: left;
+  line-height: 1.25;
+}
+
+@media (max-width: 24.5em) {
+  .fq-list-toolbar {
+    align-items: stretch;
+  }
+  .fq-list-toolbar .admin-toolbar-actions {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+  .fq-list-toolbar .admin-toolbar-actions .admin-btn {
+    width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+  }
 }
