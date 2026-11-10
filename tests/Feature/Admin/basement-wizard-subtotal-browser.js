@@ -122,7 +122,7 @@ async function importLayoutViaUi(page, query) {
   await input.click({ clickCount: 3 });
   await page.keyboard.press('Backspace');
   await input.type(query, { delay: 40 });
-  const picked =   await page.waitForFunction(() => {
+  await page.waitForFunction(() => {
     const list = document.querySelector('.br-layout-import__picker .admin-search-select__list');
     const opts = list
       ? list.querySelectorAll('.admin-search-select__option:not(.admin-search-select__option--action)')
