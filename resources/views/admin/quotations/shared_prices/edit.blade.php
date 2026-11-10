@@ -37,7 +37,7 @@
     minmax(10.5rem, 2.3fr)
     minmax(7.25rem, 1.2fr)
     minmax(6.6rem, 1fr)
-    minmax(5.5rem, 1fr)
+    minmax(5.4rem, 1fr)
     minmax(9rem, 1.45fr)
     2.75rem
     minmax(5.5rem, 1fr);
@@ -300,7 +300,7 @@ details.sp-group.admin-card {
 .sp-add__field--unit .sp-input,
 .sp-col-unit .admin-input,
 .sp-col-unit .sp-input {
-  min-width: 5.5rem;
+  min-width: 5.4rem;
   padding-right: 1.75rem;
 }
 .sp-col-name { position: relative; }
