@@ -1083,6 +1083,17 @@
     debounceTimer = setTimeout(runPreview, 280);
   }
 
+  function syncClientProvidesFormData(fd) {
+    ['client_provides_sections[]', 'client_provides_bath_items[]'].forEach(function (fieldName) {
+      fd.delete(fieldName);
+      form.querySelectorAll('input.admin-checkbox__input[name="' + fieldName + '"]').forEach(function (cb) {
+        if (cb.checked && !cb.disabled) {
+          fd.append(fieldName, cb.value || '');
+        }
+      });
+    });
+  }
+
   function runPreview() {
     if (!previewUrl) return;
     var fd = new FormData(form);
@@ -1091,6 +1102,7 @@
       if (!name || name.indexOf('[') !== -1) return;
       fd.set(name, cb.checked ? (cb.value || '1') : '0');
     });
+    syncClientProvidesFormData(fd);
     form.querySelectorAll('.cp-money-input[name]').forEach(function (input) {
       fd.set(input.name, (input.value || '').replace(/,/g, ''));
     });

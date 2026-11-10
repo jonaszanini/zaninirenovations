@@ -283,7 +283,7 @@
                 @endif
                 @include('admin.partials.checkbox', [
                   'name' => 'client_provides_sections[]',
-                  'value' => $key,
+                  'checkboxValue' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
                   'inputClass' => 'admin-checkbox__input br-preview',
@@ -302,7 +302,7 @@
                 @foreach (\App\Services\BasementQuotationCalculator::clientProvidesBathItemLabels() as $itemKey => $itemLabel)
                   @include('admin.partials.checkbox', [
                     'name' => 'client_provides_bath_items[]',
-                    'value' => $itemKey,
+                    'checkboxValue' => $itemKey,
                     'checked' => in_array($itemKey, $provideBathItems, true),
                     'label' => $itemLabel,
                     'inputClass' => 'admin-checkbox__input br-preview',

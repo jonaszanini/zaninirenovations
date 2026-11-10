@@ -1,3 +1,5 @@
+tests/Feature/Admin/BasementClientProvidesBrowserTest.php
+tests/Feature/Admin/BasementClientProvidesTest.php
 tests/Feature/Admin/BasementDemoChoiceBrowserTest.php
 tests/Feature/Admin/BasementLegacyFlagsHttpTest.php
 tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
