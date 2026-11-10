@@ -582,7 +582,11 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($strings as $key) {
-            $value = trim((string) $request->input($key, $defaults[$key]));
+            $fallback = $defaults[$key] ?? '';
+            if ($storedInputs !== null && array_key_exists($key, $storedInputs) && ! $request->exists($key)) {
+                $fallback = $storedInputs[$key];
+            }
+            $value = trim((string) $request->input($key, $fallback));
             if ($key === 'client_scope_allowances') {
                 $value = \App\Services\BasementClientScope::normalizeAllowanceText($value);
             }
