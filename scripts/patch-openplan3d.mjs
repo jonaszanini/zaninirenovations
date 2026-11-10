@@ -342,6 +342,27 @@ function patchStoreChunk(source) {
     s = replaceExpected(s, ooSigOld, ooSigNew, 'store chunk: Oo(e,floor) floor arg', 1);
   }
 
+  const roomLabelOverlayOld =
+    'const y=p.measureText(`${u.name} (${Ao(u.area,t.units??"metric")})`);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
+  const roomLabelOverlayNew =
+    'const __zaniniLbl=(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?(`${u.name} (${window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(u,f,d[h],e,{units:e.units||e.unit||t.units||"metric"})})`):`${u.name} (${Ao(u.area,t.units??"metric")})`);const y=p.measureText(__zaniniLbl);p.fillStyle="#9ca3af",p.fillText(__zaniniLbl,g.x,g.y);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
+  if (s.includes(roomLabelOverlayOld)) {
+    s = replaceExpected(s, roomLabelOverlayOld, roomLabelOverlayNew, 'store chunk: room label overlay draw + interior area', 1);
+  } else if (!s.includes('__zaniniLbl')) {
+    console.error('patch-openplan3d: store chunk: room label overlay pattern not found');
+    process.exit(1);
+  }
+
+  const planAreaLabelOld = 'l.fillText(`${f.name} (${Ao(f.area,s.units)})`,T.x,T.y)';
+  const planAreaLabelNew =
+    'l.fillText(`${f.name} (${typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(f,g,h[u],t,s):Ao(f.area,s.units)})`,T.x,T.y)';
+  if (s.includes(planAreaLabelOld)) {
+    s = replaceExpected(s, planAreaLabelOld, planAreaLabelNew, 'store chunk: on-plan interior area label', 1);
+  } else if (!s.includes('formatOnPlanRoomArea')) {
+    console.error('patch-openplan3d: store chunk: on-plan area label pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,

@@ -301,6 +301,7 @@ class OpenPlan3DMeasurementBridge
             $cmPerUnit,
             $allWallsList,
             $trimBoundaryCorners,
+            $polygonVertices,
             $interiorRingCm,
             $boundaryWallIds
         );
@@ -1768,6 +1769,7 @@ class OpenPlan3DMeasurementBridge
         float $cmPerUnit,
         array $allWallsList = [],
         bool $trimCornersAtJoints = true,
+        array $centerlineRingCm = [],
         array $interiorRingCm = [],
         array $boundaryWallIds = [],
     ): array {
@@ -1777,6 +1779,16 @@ class OpenPlan3DMeasurementBridge
             $allWallsList = array_values($walls);
         }
         $useRingEdges = count($interiorRingCm) >= 3 && count($wallIds) === count($interiorRingCm);
+        $distributedFt = [];
+        if (count($interiorRingCm) >= 3 && count($wallIds) > 0 && count($wallIds) !== count($interiorRingCm)) {
+            $distributedFt = $this->interiorGeometry->distributeBoundaryLengthsFt(
+                $centerlineRingCm !== [] ? $centerlineRingCm : $interiorRingCm,
+                $interiorRingCm,
+                $wallIds,
+                $walls,
+                $cmPerUnit
+            );
+        }
 
         if (is_array($wallIds) && count($wallIds) > 0) {
             foreach ($wallIds as $idx => $wid) {
@@ -1784,7 +1796,9 @@ class OpenPlan3DMeasurementBridge
                 if ($w === null) {
                     continue;
                 }
-                if ($useRingEdges) {
+                if (isset($distributedFt[(string) $wid])) {
+                    $lenFt = (float) $distributedFt[(string) $wid];
+                } elseif ($useRingEdges) {
                     $j = ($idx + 1) % count($interiorRingCm);
                     $dx = ((float) $interiorRingCm[$j]['x'] - (float) $interiorRingCm[$idx]['x']) * $cmPerUnit;
                     $dy = ((float) $interiorRingCm[$j]['y'] - (float) $interiorRingCm[$idx]['y']) * $cmPerUnit;

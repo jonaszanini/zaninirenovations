@@ -163,6 +163,98 @@ async function main() {
 
     const shotsDir = path.join(ROOT, 'storage/app/qa-screenshots');
     fs.mkdirSync(shotsDir, { recursive: true });
+
+    const partitionPlan = (() => {
+      const cm = 30.48;
+      const t = 11.43;
+      const W = 20 * cm;
+      const H = 10 * cm;
+      const M = 10 * cm;
+      return {
+        id: 'p-rooms',
+        activeFloorId: 'f1',
+        floors: [
+          {
+            id: 'f1',
+            walls: [
+              { id: 'w1', start: { x: 0, y: 0 }, end: { x: W, y: 0 }, thickness: t, height: 243.84 },
+              { id: 'w2', start: { x: W, y: 0 }, end: { x: W, y: H }, thickness: t, height: 243.84 },
+              { id: 'w3', start: { x: W, y: H }, end: { x: 0, y: H }, thickness: t, height: 243.84 },
+              { id: 'w4', start: { x: 0, y: H }, end: { x: 0, y: 0 }, thickness: t, height: 243.84 },
+              { id: 'p1', start: { x: M, y: 0 }, end: { x: M, y: H }, thickness: t, height: 243.84 },
+            ],
+            rooms: [
+              { id: 'r-bed', name: 'Bedroom', walls: ['w4', 'w1', 'p1', 'w3'] },
+              { id: 'r-off', name: 'Office', walls: ['p1', 'w2', 'w3', 'w1'] },
+            ],
+          },
+        ],
+        zanini: { version: 1, zones: [], bulkheads: [], wallFinishes: {} },
+      };
+    })();
+
+    await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), partitionPlan);
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('p1');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['p1']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('[data-finish-drywall-faces]', { timeout: 15000 });
+    const drywallPanel = await page.evaluate(() => {
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      const heading = host ? (host.querySelector('div')?.textContent || '') : '';
+      const sel = host ? host.querySelector('[data-finish-drywall-faces]') : null;
+      return {
+        heading,
+        hasDrywallFaces: !!sel,
+        options: sel ? [...sel.options].map((o) => o.textContent) : [],
+      };
+    });
+    assert.ok(drywallPanel.hasDrywallFaces, 'partition between two rooms must show Drywall faces control');
+    assert.ok(!/Wall finishes · p1/i.test(drywallPanel.heading), 'heading must not show raw wall id');
+    assert.ok(drywallPanel.options.some((o) => /Bedroom side/i.test(o)), 'drywall face options name adjacent room');
+
+    const finishHost = await page.$('#openplan3d-zanini-finish-host');
+    assert.ok(finishHost, 'finish host for drywall screenshot');
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png') });
+    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png') });
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    try {
+      fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
+      fs.copyFileSync(
+        path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png'),
+        '/opt/cursor/artifacts/room-area-wall-finishes-drywall-1280.png'
+      );
+      fs.copyFileSync(
+        path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png'),
+        '/opt/cursor/artifacts/room-area-wall-finishes-drywall-390.png'
+      );
+    } catch (e) { /* optional artifacts dir */ }
+
+    await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(true));
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-1280.png') });
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });

@@ -166,6 +166,105 @@ class RoomAreaInteriorGeometry
         return round($lf, 2);
     }
 
+    /**
+     * @param  list<array{x: float|int, y: float|int}>  $interiorRingCm
+     * @param  list<string>  $boundaryWallIds
+     * @param  array<string, array<string, mixed>>  $wallsById
+     * @return array<string, float>
+     */
+    public function distributeBoundaryLengthsFt(
+        array $centerlineRingCm,
+        array $interiorRingCm,
+        array $boundaryWallIds,
+        array $wallsById,
+        float $cmPerUnit = 1.0
+    ): array {
+        $out = [];
+        $matchRing = count($centerlineRingCm) >= 3 ? $centerlineRingCm : $interiorRingCm;
+        $lenRing = count($interiorRingCm) >= 3 ? $interiorRingCm : $matchRing;
+        $n = count($matchRing);
+        if ($n < 3 || $boundaryWallIds === []) {
+            return $out;
+        }
+        $unit = max($cmPerUnit, 1e-9);
+        $ln = count($lenRing);
+        for ($ei = 0; $ei < $n; $ei++) {
+            $ax = (float) $matchRing[$ei]['x'] * $unit;
+            $ay = (float) $matchRing[$ei]['y'] * $unit;
+            $bx = (float) $matchRing[($ei + 1) % $n]['x'] * $unit;
+            $by = (float) $matchRing[($ei + 1) % $n]['y'] * $unit;
+            $li = $ei % $ln;
+            $lj = ($ei + 1) % $ln;
+            $ix0 = (float) $lenRing[$li]['x'] * $unit;
+            $iy0 = (float) $lenRing[$li]['y'] * $unit;
+            $ix1 = (float) $lenRing[$lj]['x'] * $unit;
+            $iy1 = (float) $lenRing[$lj]['y'] * $unit;
+            $edgeLenFt = hypot($ix1 - $ix0, $iy1 - $iy0) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+            $matched = [];
+            foreach ($boundaryWallIds as $wid) {
+                $w = $wallsById[(string) $wid] ?? null;
+                if (! is_array($w)) {
+                    continue;
+                }
+                if ($this->wallOverlapsRingEdge($w, $ax, $ay, $bx, $by, $cmPerUnit)) {
+                    $matched[] = $w;
+                }
+            }
+            if ($matched === []) {
+                continue;
+            }
+            $totalCenterCm = 0.0;
+            foreach ($matched as $mw) {
+                $totalCenterCm += $this->wallCenterlineLengthCm($mw, $cmPerUnit);
+            }
+            if ($totalCenterCm <= 0) {
+                continue;
+            }
+            foreach ($matched as $mw) {
+                $frac = $this->wallCenterlineLengthCm($mw, $cmPerUnit) / $totalCenterCm;
+                $out[(string) ($mw['id'] ?? '')] = $edgeLenFt * $frac;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array<string, mixed>  $wall
+     */
+    private function wallOverlapsRingEdge(
+        array $wall,
+        float $ax,
+        float $ay,
+        float $bx,
+        float $by,
+        float $cmPerUnit
+    ): bool {
+        if (! isset($wall['start'], $wall['end'])) {
+            return false;
+        }
+        $eps = self::WALL_JOIN_TOLERANCE_CM;
+        $unit = max($cmPerUnit, 1e-9);
+        $sx = (float) $wall['start']['x'] * $unit;
+        $sy = (float) $wall['start']['y'] * $unit;
+        $ex = (float) $wall['end']['x'] * $unit;
+        $ey = (float) $wall['end']['y'] * $unit;
+        $edx = $bx - $ax;
+        $edy = $by - $ay;
+        $elen = hypot($edx, $edy) ?: 1.0;
+        $cross1 = abs($edx * ($sy - $ay) - $edy * ($sx - $ax)) / $elen;
+        $cross2 = abs($edx * ($ey - $ay) - $edy * ($ex - $ax)) / $elen;
+        if ($cross1 > $eps || $cross2 > $eps) {
+            return false;
+        }
+        $t1 = (($sx - $ax) * $edx + ($sy - $ay) * $edy) / ($elen * $elen);
+        $t2 = (($ex - $ax) * $edx + ($ey - $ay) * $edy) / ($elen * $elen);
+        $lo = max(0.0, min($t1, $t2));
+        $hi = min(1.0, max($t1, $t2));
+
+        return ($hi - $lo) > $eps / $elen;
+    }
+
     public function wallPlanEdgeLengthCm(
         array $wall,
         array $allWalls,

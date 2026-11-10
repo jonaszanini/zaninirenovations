@@ -543,12 +543,16 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 .openplan3d-takeoffs-strip__bar {
-  display: grid;
-  grid-template-columns: auto minmax(5.5rem, 9rem) minmax(0, 1fr);
-  align-items: start;
-  gap: 0.2rem 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.25rem 0.55rem;
   padding: 0.2rem 0.65rem 0.25rem;
   min-height: 0;
+}
+
+.openplan3d-takeoffs-toggle {
+  flex: 0 0 auto;
 }
 
 .openplan3d-takeoffs-summary {
@@ -558,7 +562,9 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   line-height: 1.25;
   font-size: max(0.6875rem, 11px);
   color: var(--admin-muted, #64748b);
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: max-content;
+  max-width: 100%;
 }
 
 .openplan3d-takeoffs-summary__floor {
@@ -809,12 +815,13 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 /* Live Metrics Ribbon */
 .openplan3d-metrics-ribbon {
-  grid-column: 1 / -1;
-  min-width: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(8.25rem, 1fr));
-  align-content: start;
-  gap: 0.12rem 0.2rem;
+  flex: 1 1 18rem;
+  min-width: min(100%, 12rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: stretch;
+  gap: 0.14rem 0.22rem;
   padding: 0;
   background: transparent;
   border-bottom: none;
@@ -824,23 +831,10 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 @media (min-width: 901px) {
   .openplan3d-takeoffs-strip__bar {
-    grid-template-columns: auto minmax(5.5rem, 9rem) minmax(0, 1fr);
-    align-items: center;
-  }
-  .openplan3d-takeoffs-toggle {
-    grid-column: 1;
-    grid-row: 1;
-  }
-  .openplan3d-takeoffs-summary {
-    grid-column: 2;
-    grid-row: 1;
+    align-items: flex-start;
   }
   .openplan3d-metrics-ribbon {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    width: 100%;
-    max-width: 100%;
-    overflow-x: hidden;
+    margin-left: auto;
   }
 }
 
@@ -1037,15 +1031,22 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .openplan3d-metric-card {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.12rem;
-  padding: 0.06rem 0.28rem;
+  flex-wrap: wrap;
+  gap: 0.12rem 0.18rem;
+  padding: 0.08rem 0.32rem;
   background: var(--admin-card-bg, #ffffff);
   border: 1px solid var(--admin-border, #cbd5e1);
   border-radius: 5px;
-  white-space: nowrap;
+  white-space: normal;
   font-size: max(0.6875rem, 11px);
   line-height: 1.25;
-  min-width: 0;
+  min-width: max-content;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.openplan3d-finish-drywall-tip-wrap .admin-info-tip__bubble {
+  max-width: min(16rem, 76vw);
 }
 
 .openplan3d-metric-label {

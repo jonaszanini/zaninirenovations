@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Vendor on-plan room label must show interior floor area (m²), not centerline shoelace.
- * 10×12 ft centerline, 4.5″ walls → 111.89 sf ≈ 10.39 m².
+ * On-plan room labels must match interior floor area as drawn on the vendor canvas (fillText),
+ * including imperial plans without rounding through m² and canvas-fill when Ro finds no room.
  */
 
 const assert = require('assert');
@@ -14,6 +14,7 @@ const ROOT = path.resolve(__dirname, '../..');
 const publicDir = path.join(ROOT, 'public');
 const VENDOR = '/vendor/openplan3d-h1';
 const patched = JSON.parse(fs.readFileSync(path.join(ROOT, 'scripts/openplan3d-h1.json'), 'utf8'));
+const HAND0 = path.join(ROOT, 'tests/fixtures/openplan3d-hand0-drawn-plan.json');
 
 const types = {
   '.js': 'text/javascript',
@@ -22,7 +23,7 @@ const types = {
   '.json': 'application/json',
 };
 
-function rect10x12Plan() {
+function rect10x12Plan(imperial) {
   const t = 11.43;
   const walls = [
     { id: 'w1', start: { x: 0, y: 0 }, end: { x: 304.8, y: 0 }, thickness: t, height: 243.84 },
@@ -30,18 +31,68 @@ function rect10x12Plan() {
     { id: 'w3', start: { x: 304.8, y: 365.76 }, end: { x: 0, y: 365.76 }, thickness: t, height: 243.84 },
     { id: 'w4', start: { x: 0, y: 365.76 }, end: { x: 0, y: 0 }, thickness: t, height: 243.84 },
   ];
-  const rooms = [{ id: 'r1', name: 'Room 1', walls: ['w1', 'w2', 'w3', 'w4'] }];
+  const floor = {
+    id: 'f1',
+    walls,
+    units: imperial ? 'imperial' : 'cm',
+    unit: 'cm',
+    rooms: [{ id: 'r1', name: 'Room 1', walls: ['w1', 'w2', 'w3', 'w4'] }],
+  };
   return {
     id: 'label-rect',
     name: '10x12',
     activeFloorId: 'f1',
     unit: 'cm',
     format: 'openplan3d',
-    units: 'cm',
+    units: imperial ? 'imperial' : 'cm',
     walls,
-    rooms,
-    floors: [{ id: 'f1', walls, rooms }],
+    rooms: floor.rooms,
+    floors: [floor],
   };
+}
+
+function lPartitionsPlan() {
+  const cm = 30.48;
+  const floor = {
+    id: 'f1',
+    walls: [
+      { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 10, height: 8 * cm },
+      { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 10, height: 8 * cm },
+      { id: 'w3', start: { x: 20 * cm, y: 10 * cm }, end: { x: 10 * cm, y: 10 * cm }, thickness: 10, height: 8 * cm },
+      { id: 'w4', start: { x: 10 * cm, y: 10 * cm }, end: { x: 10 * cm, y: 20 * cm }, thickness: 10, height: 8 * cm },
+      { id: 'w5', start: { x: 10 * cm, y: 20 * cm }, end: { x: 0, y: 20 * cm }, thickness: 10, height: 8 * cm },
+      { id: 'w6', start: { x: 0, y: 20 * cm }, end: { x: 0, y: 0 }, thickness: 10, height: 8 * cm },
+      { id: 'p1', start: { x: 5 * cm, y: 0 }, end: { x: 5 * cm, y: 6 * cm }, thickness: 10, height: 8 * cm },
+      { id: 'p2', start: { x: 5 * cm, y: 3 * cm }, end: { x: 11 * cm, y: 3 * cm }, thickness: 10, height: 8 * cm },
+    ],
+    rooms: [],
+  };
+  return {
+    id: 'label-l',
+    activeFloorId: 'f1',
+    unit: 'cm',
+    units: 'metric',
+    format: 'openplan3d',
+    floors: [floor],
+  };
+}
+
+function hand0NoRoomsPlan() {
+  const hand0 = JSON.parse(fs.readFileSync(HAND0, 'utf8'));
+  const plan = JSON.parse(JSON.stringify(hand0));
+  plan.units = 'imperial';
+  plan.unit = 'cm';
+  if (plan.floors && plan.floors[0]) {
+    plan.floors[0].rooms = [];
+    plan.floors[0].units = 'imperial';
+    plan.floors[0].unit = 'cm';
+  }
+  if (plan.floor) {
+    plan.floor.rooms = [];
+    plan.floor.units = 'imperial';
+    plan.floor.unit = 'cm';
+  }
+  return plan;
 }
 
 function startServer() {
@@ -75,13 +126,57 @@ function startServer() {
   });
 }
 
+async function loadPlan(page, plan) {
+  await page.waitForFunction(
+    () => window.__openPlan3D && typeof window.__openPlan3D.getProject === 'function',
+    { timeout: 120000 }
+  );
+  await page.evaluate((p) => {
+    window.postMessage({ type: 'OPENPLAN3D_LOAD_PLAN', plan: p }, window.location.origin);
+  }, plan);
+  await page.waitForSelector('canvas', { timeout: 120000 });
+  await new Promise((r) => setTimeout(r, 3500));
+}
+
+async function newLabeledPage(browser, port) {
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1280, height: 900 });
+  await page.evaluateOnNewDocument(() => {
+    window.__zaniniCanvasFillTexts = [];
+    const origFill = CanvasRenderingContext2D.prototype.fillText;
+    const origMeasure = CanvasRenderingContext2D.prototype.measureText;
+  function capture(text) {
+    if (typeof text === 'string' && /\(\s*\d/.test(text) && (text.includes('ft') || text.includes('m²') || text.includes('m\u00b2'))) {
+      window.__zaniniCanvasFillTexts.push(text);
+    }
+  }
+    CanvasRenderingContext2D.prototype.fillText = function (text) {
+      capture(text);
+      return origFill.apply(this, arguments);
+    };
+    CanvasRenderingContext2D.prototype.measureText = function (text) {
+      capture(text);
+      return origMeasure.apply(this, arguments);
+    };
+  });
+  await page.goto(`http://127.0.0.1:${port}${VENDOR}/editor/index.html`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 120000,
+  });
+  return page;
+}
+
+function areaFromLabelText(text) {
+  const m = String(text).match(/(\d+(?:\.\d+)?)\s*(?:m²|m\u00b2|ft²|ft\u00b2)/);
+  return m ? { value: parseFloat(m[1]), unit: text.includes('ft') ? 'sf' : 'm2' } : null;
+}
+
 async function main() {
   const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
-  const plan = rect10x12Plan();
-  const metrics = bridge.layoutMetrics(plan, 'r1', { wall_height_ft: 8.0 });
-  assert.strictEqual(metrics.area_sqft, 111.89, 'bridge interior area pin');
-  const expectedM2 = (metrics.area_sqft * 0.09290304).toFixed(2);
-  const centerM2 = ((10 * 12) * 0.09290304).toFixed(2);
+  const imperialPlan = rect10x12Plan(true);
+  const metricPlan = rect10x12Plan(false);
+  const metricsImperial = bridge.layoutMetrics(imperialPlan, 'r1', { wall_height_ft: 8.0 });
+  assert.strictEqual(metricsImperial.area_sqft, 111.89, 'bridge interior 10×12 sf pin');
 
   const puppeteer = require('puppeteer');
   const { server, port } = await startServer();
@@ -90,105 +185,77 @@ async function main() {
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
   try {
-    const page = await browser.newPage();
-    await page.setViewport({ width: 1280, height: 900 });
-    await page.goto(`http://127.0.0.1:${port}${VENDOR}/editor/index.html`, {
-      waitUntil: 'domcontentloaded',
-      timeout: 120000,
-    });
-    await page.waitForFunction(
-      () => window.__openPlan3D && typeof window.__openPlan3D.setProject === 'function',
-      { timeout: 120000 }
-    );
-    await page.waitForFunction(
-      () =>
-        window.OpenPlan3DMeasurementBridge &&
-        typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt === 'function',
-      { timeout: 60000 }
-    );
-    await page.evaluate((p) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(p))), plan);
-    await new Promise((r) => setTimeout(r, 2000));
-
-    const labelHit = await page.evaluate(
-      async ({ storeChunk, vendorPrefix, expectedM2, centerM2, seedPlan }) => {
-        var floor = (seedPlan.floors && seedPlan.floors[0]) || seedPlan.floor;
-        var vendorAreas = [];
-        try {
-          var mod = await import(vendorPrefix + '/_app/immutable/chunks/' + storeChunk);
-          if (mod && typeof mod.k === 'function') {
-            var detected = mod.k(floor, []);
-            vendorAreas = detected
-              .map(function (entry) {
-                return entry.room && entry.room.area;
-              })
-            .filter(function (a) {
-              return a != null && Number(a) > 0.01;
-            });
-          }
-        } catch (e) {
-          return { error: String(e) };
-        }
-        var bodyText = document.body ? document.body.innerText || '' : '';
-        var m2Match = bodyText.match(/(\d+(?:[.,]\d+)?)\s*m²/);
-        var canvasM2 = m2Match ? parseFloat(String(m2Match[1]).replace(',', '.')) : null;
-        if (!vendorAreas.length) {
-          var wallsBy = {};
-          (floor.walls || []).forEach(function (w) {
-            if (w && w.id) wallsBy[String(w.id)] = w;
-          });
-          var room0 = floor.rooms && floor.rooms[0];
-          var walls = room0 && room0.walls ? room0.walls : [];
-          var poly =
-            (room0 && room0.polygon) ||
-            (floor.walls && floor.walls.length
-              ? [
-                  { x: 0, y: 0 },
-                  { x: 304.8, y: 0 },
-                  { x: 304.8, y: 365.76 },
-                  { x: 0, y: 365.76 },
-                ]
-              : null);
-          var sqFt = 0;
-          if (
+    async function readLabels(plan) {
+      const page = await newLabeledPage(browser, port);
+      try {
+        await page.waitForFunction(
+          () =>
             window.OpenPlan3DMeasurementBridge &&
-            typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt === 'function'
-          ) {
-            sqFt = window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt(floor, poly, walls, wallsBy);
-          }
-          if ((!sqFt || sqFt <= 0) && window.RoomAreaInteriorGeometry) {
-            sqFt = window.RoomAreaInteriorGeometry.interiorFloorAreaSqFt(poly, walls, wallsBy, floor.walls || [], 1);
-          }
-          if (sqFt > 0) {
-            vendorAreas.push(Math.round((sqFt / 10.7639) * 100) / 100);
-          }
-        }
-        var labelM2 = vendorAreas.length ? Number(vendorAreas[0]) : canvasM2;
-        return {
-          labelM2: labelM2 != null && isFinite(labelM2) ? labelM2.toFixed(2) : null,
-          vendorAreas: vendorAreas.map(function (a) {
-            return Number(a).toFixed(2);
-          }),
-          canvasLabelM2: canvasM2 != null ? canvasM2.toFixed(2) : null,
-          centerM2: centerM2,
-          matchesInterior: labelM2 != null && Math.abs(labelM2 - parseFloat(expectedM2)) < 0.02,
-          notCenterline: labelM2 != null && Math.abs(labelM2 - parseFloat(centerM2)) > 0.1,
-        };
-      },
-      {
-        storeChunk: patched.storeChunk,
-        vendorPrefix: VENDOR,
-        expectedM2,
-        centerM2,
-        seedPlan: plan,
+            typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea === 'function',
+          { timeout: 60000 }
+        );
+        await loadPlan(page, plan);
+        await page.waitForFunction(
+          () => {
+            const canvasTexts = (window.__zaniniCanvasFillTexts || []).length;
+            const body = document.body.innerText || '';
+            return canvasTexts > 0 || /(\d+\.\d+)\s*(?:ft²|ft\u00b2|m²|m\u00b2)/.test(body);
+          },
+          { timeout: 90000 }
+        );
+        return page.evaluate(() => {
+          const body = document.body.innerText || '';
+          const bodyLines = body
+            .split('\n')
+            .map((line) => line.trim())
+            .filter((line) => /\(\s*\d/.test(line) && (line.includes('ft') || line.includes('m²') || line.includes('m\u00b2')));
+          const merged = (window.__zaniniCanvasFillTexts || []).slice();
+          for (const line of bodyLines) merged.push(line);
+          const labels = [...new Set(merged)];
+          return { labels };
+        });
+      } finally {
+        await page.close();
       }
+    }
+
+    const imperialLabels = await readLabels(imperialPlan);
+    assert.ok(imperialLabels.labels.length > 0, 'canvas must draw at least one room area label');
+    const parsedImperial = imperialLabels.labels.map(areaFromLabelText).filter(Boolean);
+    assert.ok(parsedImperial.some((p) => p.unit === 'sf' && Math.abs(p.value - 111.89) < 0.02),
+      'imperial on-plan label must show 111.89 sf, got ' + JSON.stringify(imperialLabels.labels));
+
+    const metricLabels = await readLabels(metricPlan);
+    const parsedMetric = metricLabels.labels.map(areaFromLabelText).filter(Boolean);
+    const expectedM2 = Math.round((111.89 / 10.7639) * 100) / 100;
+    assert.ok(parsedMetric.some((p) => p.unit === 'm2' && Math.abs(p.value - expectedM2) < 0.02),
+      'metric label must show interior m² ~10.39, got ' + JSON.stringify(metricLabels.labels));
+
+    const hand0Plan = hand0NoRoomsPlan();
+    const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0 });
+    const hand0Labels = await readLabels(hand0Plan);
+    const parsedHand0 = hand0Labels.labels.map(areaFromLabelText).filter(Boolean);
+    assert.ok(
+      parsedHand0.some((p) => p.unit === 'sf' && Math.abs(p.value - hand0Metrics.area_sqft) < 0.5),
+      'hand0 canvas-fill label must show interior sf ~1307.52, got ' + JSON.stringify(hand0Labels.labels)
     );
 
-    if (labelHit.error) throw new Error(labelHit.error);
+    const lPlan = lPartitionsPlan();
+    const lExpectedM2 = bridge.canvasFillRoomEntries(lPlan)[0].room.area;
+    assert.ok(Math.abs(lExpectedM2 - 26.66) < 0.02, 'L partitions interior m² pin');
+    const lLabels = await readLabels(lPlan);
+    const parsedL = lLabels.labels.map(areaFromLabelText).filter(Boolean);
+    assert.ok(
+      parsedL.some((p) => p.unit === 'm2' && Math.abs(p.value - lExpectedM2) < 0.05),
+      'L+partitions label must match canvas-fill interior m², got ' + JSON.stringify(lLabels.labels)
+    );
 
-    assert.ok(labelHit.labelM2 != null, 'vendor must expose on-plan room area (m²)');
-    assert.strictEqual(labelHit.matchesInterior, true, `label must yield ${expectedM2} m², got ${labelHit.labelM2}`);
-    assert.strictEqual(labelHit.notCenterline, true, `must differ from centerline ${centerM2} m²`);
-    console.log('openplan3d-room-interior-label-browser: ok', { expectedM2, labelHit, storeChunk: patched.storeChunk });
+    console.log('openplan3d-room-interior-label-browser: ok', {
+      storeChunk: patched.storeChunk,
+      imperial: imperialLabels.labels[0],
+      hand0: hand0Labels.labels[0],
+      lPart: lLabels.labels[0],
+    });
   } finally {
     await browser.close();
     server.close();

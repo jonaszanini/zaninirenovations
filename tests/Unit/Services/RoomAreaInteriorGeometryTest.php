@@ -196,9 +196,12 @@ class RoomAreaInteriorGeometryTest extends TestCase
 
     public function test_boundary_wall_lengths_sum_to_interior_perimeter(): void
     {
+        $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $hand0 = json_decode((string) file_get_contents($hand0Path), true);
         $fixtures = [
             $this->bridge->layoutMetrics($this->rectPlan(10.0, 12.0), 'r1'),
             $this->bridge->layoutMetrics($this->lRoomPlan(), 'r_l'),
+            $this->bridge->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]),
         ];
         foreach ($fixtures as $metrics) {
             $perimeter = (float) ($metrics['perimeter_lf'] ?? 0);

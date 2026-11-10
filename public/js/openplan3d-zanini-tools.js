@@ -851,10 +851,43 @@
     };
   }
 
-  function wallsEligibleForBaseboardSidesControl(wallIds) {
-    return (wallIds || []).filter(function (wallId) {
-      return !wallIsBoundary(wallId);
+  function roomsTouchingWall(wallId, floor) {
+    var hits = [];
+    if (!floor || !floor.rooms) return hits;
+    floor.rooms.forEach(function (room) {
+      var ids = room.boundary_wall_ids || room.walls || [];
+      for (var i = 0; i < ids.length; i++) {
+        if (String(ids[i]) === String(wallId)) {
+          hits.push(String(room.name || room.id || 'Room').trim() || 'Room');
+          break;
+        }
+      }
     });
+    return hits;
+  }
+
+  function wallIsInteriorPartition(wallId, floor) {
+    return roomsTouchingWall(wallId, floor).length >= 2;
+  }
+
+  function wallsEligibleForBaseboardSidesControl(wallIds, floor) {
+    if (!floor) floor = activeFloor(readPlan());
+    return (wallIds || []).filter(function (wallId) {
+      return wallIsInteriorPartition(wallId, floor);
+    });
+  }
+
+  function friendlyWallFinishHeading(wallIds, floor) {
+    if (!floor) floor = activeFloor(readPlan());
+    if (!wallIds || wallIds.length !== 1) {
+      return wallIds.length > 1
+        ? 'Wall finishes (' + wallIds.length + ' walls)'
+        : 'Wall finishes';
+    }
+    var names = roomsTouchingWall(wallIds[0], floor);
+    if (names.length >= 2) return 'Wall finishes · ' + names.join(' / ');
+    if (names.length === 1) return 'Wall finishes · ' + names[0];
+    return 'Wall finishes · partition';
   }
 
   function readBaseboardSidesForWall(wallFinishes, wallId) {
@@ -884,9 +917,9 @@
   function drywallSideOptionLabels(wallId, floor) {
     var adj = roomNamesOnWall(wallId, floor);
     return {
-      a: adj[0] ? adj[0] + ' side' : 'Side A',
-      b: adj[1] ? adj[1] + ' side' : (adj.length === 1 ? 'Opposite side' : 'Side B'),
-      tipRooms: adj.length ? adj.join(' / ') : 'the rooms on each side'
+      a: adj[0] ? adj[0] + ' side' : 'This side',
+      b: adj[1] ? adj[1] + ' side' : (adj.length === 1 ? 'Other side' : 'Other side'),
+      tipRooms: adj.length ? adj.join(' and ') : 'each adjacent room'
     };
   }
 
@@ -982,7 +1015,7 @@
     var primary = wallIds[0];
     var flags = wallFinishes[primary] || {};
     var defaults = finishDefaultsForWall(primary);
-    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds);
+    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds, floor);
     var floor = activeFloor(plan);
     var wallLenLf = 0;
     var interiorGeom = typeof RoomAreaInteriorGeometry !== 'undefined' ? RoomAreaInteriorGeometry : null;
@@ -1002,9 +1035,7 @@
         }
       }
     }
-    var heading = wallIds.length > 1
-      ? ('Wall finishes (' + wallIds.length + ' walls)')
-      : ('Wall finishes · ' + primary);
+    var heading = friendlyWallFinishHeading(wallIds, floor);
     var finishKeys = ['drywall', 'paint', 'insulation', 'studs', 'baseboard'];
     var finishLabels = {
       drywall: 'Drywall',
@@ -1097,7 +1128,7 @@
         }
       }
       var drywallRow = document.createElement('div');
-      drywallRow.style.cssText = 'display:flex;align-items:center;gap:6px;min-height:44px;margin-top:4px;font-size:12px;flex-wrap:wrap;';
+      drywallRow.style.cssText = 'display:flex;align-items:flex-start;gap:6px;min-height:44px;margin-top:6px;font-size:12px;flex-wrap:wrap;';
       var drywallLabel = sidesEligible.length === wallIds.length
         ? 'Drywall faces'
         : ('Drywall faces (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
@@ -1112,11 +1143,11 @@
       var sideLabels = { a: sideInfo.a, b: sideInfo.b };
       drywallRow.innerHTML =
         '<span>' + drywallLabel + '</span>' +
-        '<span class="admin-info-tip-wrap" data-finish-drywall-tip-wrap>' +
-        '<button type="button" class="admin-info-tip" data-finish-drywall-tip aria-label="Drywall faces help" style="min-width:44px;min-height:44px;">&#9432;</button>' +
-        '<span class="admin-info-tip__bubble" hidden>Partition walls default to both faces (interior ×2). ' +
-        'Single-face options are labeled for adjacent rooms (' + sideInfo.tipRooms + '). ' +
-        'Exterior perimeter walls count the interior face only.</span></span>' +
+        '<span class="admin-info-tip-wrap openplan3d-finish-drywall-tip-wrap" data-finish-drywall-tip-wrap>' +
+        '<button type="button" class="admin-info-tip openplan3d-finish-drywall-tip" data-finish-drywall-tip aria-label="Drywall faces help">&#9432;</button>' +
+        '<span class="admin-info-tip__bubble openplan3d-finish-drywall-tip__bubble" role="tooltip" hidden>Interior partitions default to drywall on both faces. ' +
+        'Choose a single face when only one room gets drywall; labels match adjacent rooms (' + sideInfo.tipRooms + '). ' +
+        'Exterior perimeter walls always measure the interior face only.</span></span>' +
         '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
         '<option value="both">Both sides</option>' +
         '<option value="a">' + sideLabels.a + '</option>' +

@@ -294,6 +294,68 @@
     return Math.max(0, center - trim.start - trim.end);
   }
 
+  function wallOverlapsRingEdge(wall, ax, ay, bx, by, cmPerUnit) {
+    if (!wall || !wall.start || !wall.end) return false;
+    var eps = WALL_JOIN_TOLERANCE_CM;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var sx = wall.start.x * unit;
+    var sy = wall.start.y * unit;
+    var ex = wall.end.x * unit;
+    var ey = wall.end.y * unit;
+    var edx = bx - ax;
+    var edy = by - ay;
+    var elen = hypot(edx, edy) || 1;
+    var cross1 = Math.abs(edx * (sy - ay) - edy * (sx - ax)) / elen;
+    var cross2 = Math.abs(edx * (ey - ay) - edy * (ex - ax)) / elen;
+    if (cross1 > eps || cross2 > eps) return false;
+    var t1 = ((sx - ax) * edx + (sy - ay) * edy) / (elen * elen);
+    var t2 = ((ex - ax) * edx + (ey - ay) * edy) / (elen * elen);
+    var lo = Math.max(0, Math.min(t1, t2));
+    var hi = Math.min(1, Math.max(t1, t2));
+    return hi - lo > eps / elen;
+  }
+
+  function distributeBoundaryLengthsFt(centerlineRingCm, interiorRingCm, boundaryWallIds, wallsById, cmPerUnit) {
+    var out = {};
+    var matchRing = centerlineRingCm && centerlineRingCm.length >= 3 ? centerlineRingCm : interiorRingCm;
+    if (!matchRing || matchRing.length < 3 || !boundaryWallIds || !boundaryWallIds.length) {
+      return out;
+    }
+    var lenRing = interiorRingCm && interiorRingCm.length >= 3 ? interiorRingCm : matchRing;
+    var n = matchRing.length;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    for (var ei = 0; ei < n; ei++) {
+      var ax = matchRing[ei].x * unit;
+      var ay = matchRing[ei].y * unit;
+      var bx = matchRing[(ei + 1) % n].x * unit;
+      var by = matchRing[(ei + 1) % n].y * unit;
+      var li = ei % lenRing.length;
+      var lj = (ei + 1) % lenRing.length;
+      var ix0 = lenRing[li].x * unit;
+      var iy0 = lenRing[li].y * unit;
+      var ix1 = lenRing[lj].x * unit;
+      var iy1 = lenRing[lj].y * unit;
+      var edgeLenFt = hypot(ix1 - ix0, iy1 - iy0) / CM_PER_FOOT;
+      var matched = [];
+      for (var wi = 0; wi < boundaryWallIds.length; wi++) {
+        var w = wallsById[String(boundaryWallIds[wi])];
+        if (!w) continue;
+        if (wallOverlapsRingEdge(w, ax, ay, bx, by, cmPerUnit)) matched.push(w);
+      }
+      if (!matched.length) continue;
+      var totalCenterCm = 0;
+      for (var mi = 0; mi < matched.length; mi++) {
+        totalCenterCm += wallCenterlineLengthCm(matched[mi], cmPerUnit);
+      }
+      if (!(totalCenterCm > 0)) continue;
+      for (var mj = 0; mj < matched.length; mj++) {
+        var frac = wallCenterlineLengthCm(matched[mj], cmPerUnit) / totalCenterCm;
+        out[String(matched[mj].id)] = edgeLenFt * frac;
+      }
+    }
+    return out;
+  }
+
   return {
     CM_PER_INCH: CM_PER_INCH,
     CM_PER_FOOT: CM_PER_FOOT,
@@ -303,6 +365,7 @@
     interiorFloorAreaSqFt: interiorFloorAreaSqFt,
     exteriorFloorAreaSqFt: exteriorFloorAreaSqFt,
     wallPlanEdgeLengthCm: wallPlanEdgeLengthCm,
+    distributeBoundaryLengthsFt: distributeBoundaryLengthsFt,
     wallEndpointTrimCm: wallEndpointTrimCm,
     wallThicknessCm: wallThicknessCm,
     planRingPerimeterLf: planRingPerimeterLf,

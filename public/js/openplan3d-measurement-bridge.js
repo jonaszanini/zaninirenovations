@@ -1178,12 +1178,29 @@
 
     var trimBoundaryCorners = !alreadyInterior;
     var useRingEdges = interiorRingCm.length >= 3 && bWallIds.length === interiorRingCm.length;
+    var distributedFt = null;
+    if (
+      interiorGeom &&
+      interiorRingCm.length >= 3 &&
+      bWallIds.length > 0 &&
+      bWallIds.length !== interiorRingCm.length
+    ) {
+      distributedFt = interiorGeom.distributeBoundaryLengthsFt(
+        polyVertices,
+        interiorRingCm,
+        bWallIds,
+        walls,
+        cmPerUnit
+      );
+    }
     if (bWallIds.length > 0) {
       for (var i = 0; i < bWallIds.length; i++) {
         var w = walls[String(bWallIds[i])];
         if (!w) continue;
         var lenFt;
-        if (useRingEdges) {
+        if (distributedFt && distributedFt[String(bWallIds[i])] != null) {
+          lenFt = distributedFt[String(bWallIds[i])];
+        } else if (useRingEdges) {
           var ringJ = (i + 1) % interiorRingCm.length;
           var ringDx = (interiorRingCm[ringJ].x - interiorRingCm[i].x) * cmPerUnit;
           var ringDy = (interiorRingCm[ringJ].y - interiorRingCm[i].y) * cmPerUnit;
@@ -1688,7 +1705,7 @@
     return true;
   }
 
-  function buildRoomsFromRegions(regions, wallsList, cmPerUnit, epsUnit) {
+  function buildRoomsFromRegions(regions, wallsList, cmPerUnit, epsUnit, floorCtx) {
     var sorted = regions.slice().sort(function (a, b) {
       return polygonAreaSqFt(b, cmPerUnit) - polygonAreaSqFt(a, cmPerUnit);
     });
@@ -1705,7 +1722,8 @@
             walls: wallIds
           },
           poly,
-          wallIds
+          wallIds,
+          floorCtx || { walls: wallsList }
         )
       );
     }
@@ -1731,7 +1749,7 @@
    * Room objects consumed by vendor detectedRooms / n3() must include finite area,
    * floorTexture, and walls[] covering every wall id that should stay visible.
    */
-  function enrichVendorRendererRoom(room, polygon, drawableWallIds) {
+  function enrichVendorRendererRoom(room, polygon, drawableWallIds, floorCtx) {
     var poly = polygon && polygon.length >= 3 ? polygon : room.polygon || [];
     var walls =
       Array.isArray(drawableWallIds) && drawableWallIds.length
@@ -1739,10 +1757,33 @@
         : room.walls && room.walls.length
           ? room.walls.slice()
           : [];
+    var boundaryIds = room.boundary_wall_ids || walls;
     var area =
       typeof room.area === 'number' && isFinite(room.area)
         ? room.area
         : vendorAreaM2FromPolygon(poly);
+    var interiorGeom = interiorGeomRuntime();
+    if (interiorGeom && floorCtx && poly.length >= 3) {
+      var wallsById = {};
+      var wallList = floorCtx.walls || [];
+      for (var wi = 0; wi < wallList.length; wi++) {
+        var ww = wallList[wi];
+        if (ww && ww.id) wallsById[String(ww.id)] = ww;
+      }
+      var unit = String(floorCtx.units || floorCtx.unit || 'cm').toLowerCase();
+      var cmPerUnit = cmPerUnitForPlan({ unit: unit, units: unit, floor: floorCtx });
+      var sqFt = interiorGeom.interiorFloorAreaSqFt(
+        poly,
+        boundaryIds,
+        wallsById,
+        wallList,
+        cmPerUnit,
+        false
+      );
+      if (sqFt > 0) {
+        area = Math.round((sqFt / 10.7639) * 100) / 100;
+      }
+    }
     return {
       id: room.id,
       name: room.name || 'Room 1',
@@ -1886,7 +1927,7 @@
     if (spanning.length > 0) {
       var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
       if (regions.length >= 2) {
-        var nextRooms = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit);
+        var nextRooms = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit, target);
         if (nextRooms.length >= 2) {
           if (roomsMatchPersisted(live.rooms, nextRooms, cmPerUnit)) {
             return { plan: plan, changed: false };
@@ -1912,7 +1953,8 @@
       enrichVendorRendererRoom(
         { id: 'room_1', name: 'Room 1', walls: drawable.map(function (w) { return w.id; }) },
         nextPoly,
-        drawable.map(function (w) { return w.id; })
+        drawable.map(function (w) { return w.id; }),
+        target
       )
     ];
 
@@ -1951,7 +1993,7 @@
     if (spanning.length > 0) {
       var regions = splitRegionsBySpanningWalls(outer, spanning, cmPerUnit, epsUnit);
       if (regions.length >= 2) {
-        var multi = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit);
+        var multi = buildRoomsFromRegions(regions, drawable, cmPerUnit, epsUnit, live);
         if (multi.length >= 2) {
           return multi.map(function (room) {
             return { room: room, polygon: room.polygon.slice() };
@@ -1968,7 +2010,8 @@
     var roomObj = enrichVendorRendererRoom(
       { id: 'room-1-canvas', name: 'Room 1', walls: allWallIds },
       nextPoly,
-      allWallIds
+      allWallIds,
+      live
     );
     return [{ room: roomObj, polygon: nextPoly.slice() }];
   }
@@ -1995,6 +2038,41 @@
     canvasFillRoomEntries: canvasFillRoomEntries,
     editorFloorNeedsPersistedRoom: editorFloorNeedsPersistedRoom,
     cmPerUnitForPlan: cmPerUnitForPlan,
+    formatOnPlanRoomArea: function (room, polygonCm, holeRings, floor, settings) {
+      var units = String(
+        (settings && settings.units) || (floor && floor.units) || (floor && floor.unit) || 'metric'
+      ).toLowerCase();
+      var imperial =
+        units === 'imperial' || units === 'ft' || units === 'feet' || units === 'foot' || units === 'in';
+      var wallsBy = {};
+      var wallList = (floor && floor.walls) || [];
+      for (var wi = 0; wi < wallList.length; wi++) {
+        var w = wallList[wi];
+        if (w && w.id) wallsBy[String(w.id)] = w;
+      }
+      var boundaryIds = (room && (room.boundary_wall_ids || room.walls)) || [];
+      var sqFt = 0;
+      var interiorGeom = interiorGeomRuntime();
+      if (interiorGeom && polygonCm && polygonCm.length >= 3) {
+        sqFt = interiorGeom.interiorFloorAreaSqFt(
+          polygonCm,
+          boundaryIds,
+          wallsBy,
+          wallList,
+          cmPerUnitForPlan({ floor: floor, unit: floor && floor.unit, units: floor && floor.units }),
+          false
+        );
+      }
+      if (!(sqFt > 0) && room && typeof room.area === 'number' && isFinite(room.area)) {
+        sqFt = room.area * 10.7639;
+      }
+      if (imperial) {
+        var sqRounded = Math.round(sqFt * 100) / 100;
+        return sqRounded.toFixed(2) + ' ft\u00b2';
+      }
+      var m2 = Math.round((sqFt / 10.7639) * 100) / 100;
+      return m2.toFixed(2) + ' m\u00b2';
+    },
     interiorRoomLabelAreaSqFt: function (floor, polygonCm, boundaryWallIds, wallsById) {
       var interiorGeom = interiorGeomRuntime();
       if (!interiorGeom) return 0;

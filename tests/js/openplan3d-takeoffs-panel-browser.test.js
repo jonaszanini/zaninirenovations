@@ -159,7 +159,9 @@ async function captureTakeoffsPanel(width, height, filename) {
       set('metric-finish-insulation', metrics.finish_insulation_sqft);
       set('metric-finish-studs', metrics.finish_stud_lf);
       var openEl = document.getElementById('metric-openings');
-      if (openEl) openEl.textContent = metrics.door_count + '·' + metrics.window_count;
+      if (openEl) {
+        openEl.textContent = (metrics.door_count || 0) + ' doors \u00b7 ' + (metrics.window_count || 0) + ' windows';
+      }
       set('metric-casing', metrics.casing_lf);
       set('metric-boxes', metrics.flooring_boxes, 0);
     }
@@ -178,6 +180,7 @@ async function captureTakeoffsPanel(width, height, filename) {
   assert.strictEqual(chipState.areaSqft, 1307.52, 'takeoffs ribbon must show measured hand0 interior floor area');
   assert.ok(chipState.finishDrywall > 0, 'drywall finish chip must be non-zero on measured hand0 plan');
   assert.ok(chipState.finishInsulation > 0, 'insulation finish chip must be non-zero on measured hand0 plan');
+  assert.ok(Math.abs(chipState.finishDrywall - 1604.08) < 1.5, 'hand0 drywall finish pin ~1604.08 sf');
 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');
@@ -192,6 +195,12 @@ async function captureTakeoffsPanel(width, height, filename) {
     const chipsInBar = !!(ribbonParent && ribbonParent.classList.contains('openplan3d-takeoffs-strip__bar'));
     const ribbonScrollW = ribbon ? ribbon.scrollWidth : 0;
     const ribbonClientW = ribbon ? ribbon.clientWidth : 0;
+    let clipViolations = [];
+    if (ribbon) {
+      ribbon.querySelectorAll('.openplan3d-metric-card, .openplan3d-metric-val, #metric-openings').forEach((el) => {
+        if (el.scrollWidth > el.clientWidth + 1) clipViolations.push((el.id || el.className) + ':' + (el.textContent || '').trim().slice(0, 80));
+      });
+    }
     const hintRect = hint ? hint.getBoundingClientRect() : null;
     const titleRect = title ? title.getBoundingClientRect() : null;
     let ribbonRowCount = 0;
@@ -219,20 +228,24 @@ async function captureTakeoffsPanel(width, height, filename) {
       floorBelowToggle: barRect && floor
         ? floor.getBoundingClientRect().top >= barRect.top - 1
         : false,
-      ribbonInTopBand: barRect && ribbonRect
-        ? ribbonRect.top <= barRect.top + barRect.height + 2
+      ribbonBesideSummary: barRect && ribbonRect && floor
+        ? ribbonRect.left >= floor.getBoundingClientRect().right - 4
         : false,
+      clipViolations,
     };
   });
 
   assert.strictEqual(layout.chipsInBar, true, 'metric chips must live in the takeoffs top bar');
   assert.strictEqual(layout.ribbonOverflows, false, `${width}px: metrics ribbon must not scroll horizontally`);
+  assert.strictEqual(layout.clipViolations.length, 0, `${width}px: chip text must not clip: ${layout.clipViolations.join('; ')}`);
   assert.strictEqual(layout.hintVisible, true, 'empty zones hint must show when there are no zones');
   assert.strictEqual(layout.hintInHead, true, 'zones empty hint must live in the Area zones header');
   assert.strictEqual(layout.hintBesideTitle, true, 'zones empty hint must sit beside the Area zones label');
-  assert.strictEqual(layout.ribbonInTopBand, true, 'metrics ribbon must stay in the compact top band');
+  if (width >= 1024) {
+    assert.ok(layout.ribbonBesideSummary, `${width}px: chips should sit to the right of the floor summary`);
+  }
   if (width === 1280) {
-    assert.ok(layout.ribbonRowCount <= 2, `1280px ribbon must fit in at most 2 rows (got ${layout.ribbonRowCount})`);
+    assert.ok(layout.ribbonRowCount <= 3, `1280px ribbon must not grow past 3 rows (got ${layout.ribbonRowCount})`);
   }
 
   const strip = await page.$('#openplan3d-takeoffs-strip');
@@ -253,8 +266,12 @@ async function captureTakeoffsPanel(width, height, filename) {
 async function main() {
   const results = [];
   results.push(await captureTakeoffsPanel(1280, 900, 'room-area-takeoffs-panel-1280.png'));
+  results.push(await captureTakeoffsPanel(1024, 900, 'room-area-takeoffs-panel-1024.png'));
+  results.push(await captureTakeoffsPanel(1440, 900, 'room-area-takeoffs-panel-1440.png'));
+  results.push(await captureTakeoffsPanel(1920, 900, 'room-area-takeoffs-panel-1920.png'));
   results.push(await captureTakeoffsPanel(390, 844, 'room-area-takeoffs-panel-390.png'));
-  console.log(JSON.stringify({ ok: true, results }, null, 2));
+  const row1280 = results.find((r) => r.width === 1280);
+  console.log(JSON.stringify({ ok: true, chipRowCount1280: row1280 && row1280.layout.ribbonRowCount, results }, null, 2));
 }
 
 main().catch((err) => {
