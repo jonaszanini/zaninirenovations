@@ -184,7 +184,10 @@ async function shot(page, name) {
   await waitReconciliationGrand(page);
   const recon = await readReconciliation(page);
   report.reconciliation = recon;
-  const toolbarGrand = await page.$eval('#br-toolbar-grand-amount', (el) => parseMoney(el.textContent));
+  const toolbarGrand = await page.$eval('#br-toolbar-grand-amount', (el) => {
+    const n = parseFloat(String(el.textContent || '').replace(/[^\d.-]/g, ''));
+    return isFinite(n) ? Math.round(n * 100) / 100 : 0;
+  });
   report.reconciliation.toolbarGrand = toolbarGrand;
   report.reconciliation.grandMatchesToolbar = moneyClose(recon.grand_total || 0, toolbarGrand);
   const partsSum = Math.round(((recon.subtotal_pre_hst || 0) + (recon.hst || 0)
