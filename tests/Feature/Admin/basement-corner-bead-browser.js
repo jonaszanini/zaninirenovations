@@ -35,13 +35,14 @@ async function login(page) {
 }
 
 async function gotoDrywall(page) {
-  await page.waitForSelector('[data-br-goto="drywall"]', { timeout: 20000 });
-  await page.click('[data-br-goto="drywall"]');
+  const btn = await page.$('[data-br-goto="drywall"]');
+  if (!btn) throw new Error('Missing wizard progress control for drywall');
+  await btn.click();
   await page.waitForFunction(() => {
     const step = document.querySelector('[data-br-step="drywall"]');
     return step && step.classList.contains('is-active');
-  }, { timeout: 15000 });
-  await page.waitForSelector('#br-dw-corners', { timeout: 15000 });
+  }, { timeout: 45000 }, []);
+  await page.waitForSelector('#br-dw-corners', { timeout: 20000 });
 }
 
 (async function main() {

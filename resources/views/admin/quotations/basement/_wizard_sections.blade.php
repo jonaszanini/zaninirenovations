@@ -787,11 +787,11 @@
       </div>
       <input type="hidden" id="br-import-bh-dw" name="import_bulkhead_drywall_sqft" value="{{ $brVal('import_bulkhead_drywall_sqft', 0) }}">
       <input type="hidden" id="br-import-bh-bead" name="import_bulkhead_corner_bead_lf" value="{{ $brVal('import_bulkhead_corner_bead_lf', 0) }}">
-      @if ($isEdit && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'corner_bead_by_height'))
+      @if ($isEdit && filled($quotation) && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'corner_bead_by_height'))
       @else
         <input type="hidden" name="corner_bead_by_height" value="1">
       @endif
-      @if ($isEdit && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'drywall_boxing_v2'))
+      @if ($isEdit && filled($quotation) && ! \Illuminate\Support\Arr::has($quotation->inputs ?? [], 'drywall_boxing_v2'))
       @else
         <input type="hidden" name="drywall_boxing_v2" value="1">
       @endif
