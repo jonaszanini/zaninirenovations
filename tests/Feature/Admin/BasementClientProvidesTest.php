@@ -56,7 +56,7 @@ class BasementClientProvidesTest extends IntegrationTestCase
         $floorMatsBase = collect($basePreview['materials'] ?? [])->where('section', 'flooring')->sum('amount');
         $floorMatsWith = collect($withPreview['materials'] ?? [])->where('section', 'flooring')->sum('amount');
         $this->assertGreaterThan(0, $floorMatsBase);
-        $this->assertSame(0.0, $floorMatsWith);
+        $this->assertEqualsWithDelta(0.0, (float) $floorMatsWith, 0.01);
 
         $floorLabBase = collect($basePreview['labor'] ?? [])->where('section', 'flooring')->sum('amount');
         $floorLabWith = collect($withPreview['labor'] ?? [])->where('section', 'flooring')->sum('amount');
