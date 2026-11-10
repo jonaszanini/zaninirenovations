@@ -1253,8 +1253,8 @@
       if (row.detail) trade += ' <span class="admin-form-help">- ' + escapeHtml(row.detail) + '</span>';
       return '<tr data-br-labor-key="' + escapeHtml(row.key) + '">'
         + '<td>' + trade + '</td>'
-        + '<td>' + Number(row.hours || 0).toFixed(2) + '</td>'
-        + '<td class="cp-col-amount">' + fmt(row.amount || 0) + '</td>'
+        + '<td data-br-labor-hrs>' + Number(row.hours || 0).toFixed(2) + '</td>'
+        + '<td class="cp-col-amount" data-br-labor-amt>' + fmt(row.amount || 0) + '</td>'
         + '</tr>';
     }).join('');
   }

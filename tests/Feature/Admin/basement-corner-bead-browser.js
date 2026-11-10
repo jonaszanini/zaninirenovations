@@ -39,9 +39,11 @@ async function gotoStep(page, key) {
   if (!btn) throw new Error('Missing wizard progress control for ' + key);
   await page.evaluate((stepKey) => {
     const el = document.querySelector(`[data-br-goto="${stepKey}"]`);
-    if (el) el.scrollIntoView({ block: 'center' });
+    if (el) {
+      el.scrollIntoView({ block: 'center' });
+      el.click();
+    }
   }, key);
-  await btn.click();
   await page.waitForFunction((step) => {
     const el = document.querySelector(`[data-br-step="${step}"]`);
     return el && el.classList.contains('is-active');
@@ -51,16 +53,13 @@ async function gotoStep(page, key) {
 
 async function typeField(page, selector, value) {
   await page.waitForSelector(selector, { timeout: 20000 });
-  await page.click(selector, { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type(selector, String(value), { delay: 15 });
-  await page.evaluate((sel) => {
+  await page.evaluate((sel, val) => {
     const el = document.querySelector(sel);
-    if (el) {
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-  }, selector);
+    if (!el) throw new Error('Missing field ' + sel);
+    el.value = String(val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, selector, value);
 }
 
 async function waitGrandPositive(page) {
@@ -141,13 +140,13 @@ async function fillDrywallForPreview(page) {
   report.shots.mobile = path.join(shotsDir, 'basement-corner-bead-drywall-390.png');
   await page.screenshot({ path: report.shots.mobile, fullPage: false });
 
-  const beadOk = (report.live.desktop.found && report.live.desktop.qty > 0)
-    || (report.live.mobile.found && report.live.mobile.qty > 0);
-
   report.ok = report.labels.desktop.hasTip
     && report.labels.desktop.subtotal
     && report.labels.mobile.visible
-    && beadOk;
+    && report.live.desktop.found
+    && report.live.desktop.qty > 0
+    && report.live.mobile.found
+    && report.live.mobile.qty > 0;
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

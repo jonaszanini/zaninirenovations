@@ -134,17 +134,16 @@ async function readHeaderLabor(page) {
   await page.screenshot({ path: report.shots.mobile, fullPage: false });
 
   const hrs = parseFloat(String(report.labor.hours || '').replace(/[^\d.-]/g, ''));
-  const mobileHrs = parseFloat(String((report.labor.mobile || {}).hours || report.labor.hours || '').replace(/[^\d.-]/g, ''));
+  const mobileHrs = parseFloat(String((report.labor.mobile || {}).hours || '').replace(/[^\d.-]/g, ''));
 
-  const labelShowsLf = (report.labor.label || '').includes('16 lf')
-    || ((report.labor.mobile || {}).label || '').includes('16 lf');
   report.ok = report.labels.desktop.label === 'Headers / beams (lin. ft)'
     && report.labels.desktop.inputName === 'header_lf'
     && report.labels.desktop.step === '0.01'
     && report.labels.desktop.hasTip
     && report.labels.mobile.label === 'Headers / beams (lin. ft)'
     && report.labels.mobile.visible
-    && (labelShowsLf || (isFinite(hrs) && Math.abs(hrs - 4) < 0.2) || (isFinite(mobileHrs) && Math.abs(mobileHrs - 4) < 0.2));
+    && isFinite(hrs) && Math.abs(hrs - 4) < 0.01
+    && isFinite(mobileHrs) && Math.abs(mobileHrs - 4) < 0.01;
 
   await browser.close();
   process.stdout.write(JSON.stringify(report));

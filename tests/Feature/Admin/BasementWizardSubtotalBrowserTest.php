@@ -9,18 +9,24 @@ use App\Models\BasementSettings;
 use Tests\Support\ActsAsAdmin;
 use App\Services\BasementQuotationCalculator;
 use App\Services\BasementRoomAreaImportMapper;
+use App\Support\QuotationSharedLabourRates;
 use Illuminate\Support\Facades\Hash;
 use Tests\IntegrationTestCase;
 
 class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
-    /**
-     * Pinned literals for basement-wizard-subtotal-browser.js (regressed by test_pinned_wizard_browser_subtotal_literals_match_calculator).
-     */
-    private const PINNED_FLOORING_SECTION_PRE_HST = 7735.0;
 
-    private const PINNED_PAINTING_SECTION_PRE_HST = 3787.75;
+    /**
+     * Hand-computed from Browser paint fill import (area 240) + CI seeded rates.
+     * Wall 512 sf × 2 coats, ceiling 240 sf, trim 64 lf, paint cans per calculator.
+     */
+    private const LITERAL_PAINTING_AFTER_IMPORT_PRE_HST = 3787.75;
+
+    /**
+     * Hand-computed: post-import fields + area 800, flooring_sf 800, LVP waste 7%, partition 25 lf.
+     */
+    private const LITERAL_FLOORING_AT_800_PRE_HST = 7651.0;
 
     /** @var list<string> */
     protected $connectionsToTransact = [];
@@ -34,30 +40,19 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     {
         $this->actingAsAdmin();
         $import = $this->seedPaintLayoutRoom();
-        $settings = BasementSettings::current();
-        $wizard = array_merge(
-            BasementQuotationCalculator::defaultInputs(),
-            array_filter($import['proposed'], fn ($v) => $v !== null),
-            [
-                'area_sqft' => 800,
-                'ceiling_height_ft' => 8,
-                'flooring_type' => 'lvp',
-                'flooring_sf' => 800,
-            ]
-        );
-        $calc = (new BasementQuotationCalculator)->calculate($wizard, $settings);
-        $sections = $calc['summary']['section_subtotals_pre_hst'] ?? [];
+        $hand = $this->handComputedSectionLiterals($import['proposed']);
+
         $this->assertEqualsWithDelta(
-            self::PINNED_FLOORING_SECTION_PRE_HST,
-            (float) ($sections['flooring'] ?? 0),
-            0.05,
-            'Update PINNED_FLOORING_SECTION_PRE_HST when flooring pricing changes'
+            self::LITERAL_PAINTING_AFTER_IMPORT_PRE_HST,
+            $hand['painting_section_pre_hst'],
+            0.01,
+            'Update LITERAL_PAINTING_AFTER_IMPORT_PRE_HST when paint pricing changes'
         );
         $this->assertEqualsWithDelta(
-            self::PINNED_PAINTING_SECTION_PRE_HST,
-            (float) ($sections['painting'] ?? 0),
-            0.05,
-            'Update PINNED_PAINTING_SECTION_PRE_HST when paint import pricing changes'
+            self::LITERAL_FLOORING_AT_800_PRE_HST,
+            $hand['flooring_section_pre_hst'],
+            0.01,
+            'Update LITERAL_FLOORING_AT_800_PRE_HST when flooring pricing changes'
         );
     }
 
@@ -125,18 +120,16 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(
             (float) $literals['painting_section_pre_hst'],
             (float) ($report['importPaint']['paintingSection']['amount'] ?? 0),
-            12.0,
+            0.01,
             json_encode($report['importPaint'] ?? [])
         );
         $this->assertTrue((bool) ($report['reconciliation']['grandMatchesToolbar'] ?? false), json_encode($report['reconciliation'] ?? []));
-        if (isset($literals['flooring_section_pre_hst'])) {
-            $this->assertEqualsWithDelta(
-                (float) $literals['flooring_section_pre_hst'],
-                (float) ($report['create']['flooringSection']['amount'] ?? 0),
-                12.0,
-                json_encode($report['create']['flooringSection'] ?? [])
-            );
-        }
+        $this->assertEqualsWithDelta(
+            (float) $literals['flooring_section_pre_hst'],
+            (float) ($report['create']['flooringSection']['amount'] ?? 0),
+            0.01,
+            json_encode($report['create']['flooringSection'] ?? [])
+        );
 
         $artifactDir = '/opt/cursor/artifacts';
         if (! is_dir($artifactDir)) {
@@ -148,41 +141,72 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
     }
 
     /**
+     * @param  array<string, mixed>  $proposed
+     * @return array{painting_section_pre_hst: float, flooring_section_pre_hst: float}
+     */
+    private function handComputedSectionLiterals(array $proposed): array
+    {
+        $settings = BasementSettings::current();
+        $proposedFiltered = array_filter($proposed, fn ($v) => $v !== null);
+        $shared = [
+            'corner_bead_by_height' => true,
+            'drywall_boxing_v2' => true,
+            'trim_material_lf_v2' => true,
+            'owner_hourly_rate' => round(QuotationSharedLabourRates::ownerHourlyForNewQuotation(), 4),
+            'helper_hourly_rate' => round((float) ($settings->helper_hourly_rate ?? 40), 4),
+        ];
+        $calc = new BasementQuotationCalculator;
+
+        $afterImport = $calc->calculate(array_merge(
+            BasementQuotationCalculator::defaultInputs(),
+            $proposedFiltered,
+            $shared,
+            [
+                'client_name' => 'Subtotal Browser Client',
+                'area_sqft' => 240.0,
+                'ceiling_height_ft' => 8.0,
+            ]
+        ), $settings);
+
+        $flooringStep = $calc->calculate(array_merge(
+            BasementQuotationCalculator::defaultInputs(),
+            $proposedFiltered,
+            $shared,
+            [
+                'client_name' => 'Subtotal Browser Client',
+                'area_sqft' => 800.0,
+                'partition_lf' => 25.0,
+                'ceiling_height_ft' => 8.0,
+                'flooring_type' => 'lvp',
+                'flooring_sf' => 800.0,
+                'flooring_waste_percent' => BasementQuotationCalculator::flooringWasteDefault('lvp'),
+            ]
+        ), $settings);
+
+        return [
+            'painting_section_pre_hst' => round((float) ($afterImport['summary']['section_subtotals_pre_hst']['painting'] ?? 0), 2),
+            'flooring_section_pre_hst' => round((float) ($flooringStep['summary']['section_subtotals_pre_hst']['flooring'] ?? 0), 2),
+        ];
+    }
+
+    /**
      * @param  array{query: string, proposed: array<string, mixed>}  $import
      * @return array{wall_sf: float, drywall_wall_sf: float, ceiling_sf: float, paint_ceiling_sf: float, flooring_section_pre_hst: float, painting_section_pre_hst: float}
      */
     private function browserSubtotalLiterals(array $import): array
     {
         $proposed = $import['proposed'];
-        $payload = array_merge(
-            BasementQuotationCalculator::defaultInputs(),
-            array_filter($proposed, fn ($v) => $v !== null),
-            [
-                'client_name' => 'Subtotal Browser Client',
-                'area_sqft' => 800,
-                'ceiling_height_ft' => 8,
-                'flooring_type' => 'lvp',
-                'flooring_sf' => 800,
-                'paint_wall_sf' => (float) ($proposed['paint_wall_sf'] ?? 512),
-                'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240),
-                'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512),
-                'corner_bead_by_height' => true,
-                'drywall_boxing_v2' => true,
-                'trim_material_lf_v2' => true,
-            ]
-        );
-        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)
-            ->assertOk()
-            ->json();
-        $sections = $preview['summary']['section_subtotals_pre_hst'] ?? [];
+        $hand = $this->handComputedSectionLiterals($proposed);
+        $this->assertEqualsWithDelta(self::LITERAL_PAINTING_AFTER_IMPORT_PRE_HST, $hand['painting_section_pre_hst'], 0.01);
+        $this->assertEqualsWithDelta(self::LITERAL_FLOORING_AT_800_PRE_HST, $hand['flooring_section_pre_hst'], 0.01);
 
         return [
             'wall_sf' => 512.0,
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
             'ceiling_sf' => 240.0,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
-            'painting_section_pre_hst' => (float) ($sections['painting'] ?? self::PINNED_PAINTING_SECTION_PRE_HST),
-            'flooring_section_pre_hst' => (float) ($sections['flooring'] ?? self::PINNED_FLOORING_SECTION_PRE_HST),
+            'painting_section_pre_hst' => self::LITERAL_PAINTING_AFTER_IMPORT_PRE_HST,
+            'flooring_section_pre_hst' => self::LITERAL_FLOORING_AT_800_PRE_HST,
         ];
     }
 
@@ -235,6 +259,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8, 'drywall');
         $this->assertEqualsWithDelta(512.0, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.5);
         $this->assertEqualsWithDelta(512.0, (float) ($proposed['paint_wall_sf'] ?? 0), 0.5);
+
         return ['query' => 'Browser paint fill room', 'proposed' => $proposed];
     }
 

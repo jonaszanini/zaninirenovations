@@ -56,8 +56,14 @@ function moneyClose(a, b, tol) {
   return Math.abs(a - b) <= tol;
 }
 
-function sectionMoneyClose(a, b) {
-  return moneyClose(a, b, 8);
+async function waitSectionSubtotalAmount(page, section, expected) {
+  await page.waitForFunction((sec, exp) => {
+    const wrap = document.querySelector(`[data-br-section-subtotal="${sec}"]`);
+    if (!wrap || wrap.hidden) return false;
+    const amt = wrap.querySelector('[data-br-section-subtotal-amount]');
+    const n = parseFloat(String(amt?.textContent || '').replace(/[^\d.-]/g, ''));
+    return isFinite(n) && Math.abs(Math.round(n * 100) / 100 - exp) <= 0.01;
+  }, { timeout: 60000 }, section, expected);
 }
 
 async function waitGrandPositive(page) {
@@ -116,9 +122,13 @@ async function waitReconciliationGrand(page) {
 
 async function typeField(page, selector, value) {
   await page.waitForSelector(selector, { timeout: 20000 });
-  await page.click(selector, { clickCount: 3 });
-  await page.keyboard.press('Backspace');
-  await page.type(selector, String(value), { delay: 25 });
+  await page.evaluate((sel, val) => {
+    const el = document.querySelector(sel);
+    if (!el) throw new Error('Missing field ' + sel);
+    el.value = String(val);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }, selector, value);
 }
 
 async function importLayoutViaUi(page, query) {
@@ -276,11 +286,15 @@ function shotFileNonEmpty(filePath) {
     report.importPaint.ceilingSfOk = moneyClose(report.importPaint.fields.paintCeil, LITERAL_PAINT_CEILING_SF, 0.5);
     await gotoStep(page, 'painting');
     await waitGrandPositive(page);
+    if (EXPECT_PAINTING_SECTION > 0) {
+      await waitSectionSubtotalAmount(page, 'painting', EXPECT_PAINTING_SECTION);
+    }
     report.importPaint.paintingSection = await readSectionSubtotal(page, 'painting');
     if (EXPECT_PAINTING_SECTION > 0) {
-      report.importPaint.paintingSectionLiteralOk = sectionMoneyClose(
+      report.importPaint.paintingSectionLiteralOk = moneyClose(
         report.importPaint.paintingSection.amount,
-        EXPECT_PAINTING_SECTION
+        EXPECT_PAINTING_SECTION,
+        0.01
       );
     }
     report.importPaint.shot1280 = await shot(page, 'basement-painting-after-import-1280.png');
@@ -293,8 +307,9 @@ function shotFileNonEmpty(filePath) {
   }
 
   await typeField(page, '#br-area', '800');
+  await typeField(page, '#br-fl-sf', '800');
   await waitGrandPositive(page);
-  await new Promise((r) => setTimeout(r, 1200));
+  await new Promise((r) => setTimeout(r, 600));
 
   await gotoStep(page, 'flooring');
   const flooringBefore = await readSectionSubtotal(page, 'flooring');
@@ -311,10 +326,13 @@ function shotFileNonEmpty(filePath) {
 
   await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
   await gotoStep(page, 'flooring');
+  if (EXPECT_FLOORING_SECTION > 0) {
+    await waitSectionSubtotalAmount(page, 'flooring', EXPECT_FLOORING_SECTION);
+  }
   const flooringDesktop = await readSectionSubtotal(page, 'flooring');
   report.create.flooringSection = flooringDesktop;
   if (EXPECT_FLOORING_SECTION > 0) {
-    report.create.flooringSectionLiteralOk = sectionMoneyClose(flooringDesktop.amount, EXPECT_FLOORING_SECTION);
+    report.create.flooringSectionLiteralOk = moneyClose(flooringDesktop.amount, EXPECT_FLOORING_SECTION, 0.01);
   }
   report.create.shotFlooring1280 = await shot(page, 'basement-section-subtotal-flooring-1280.png');
   report.create.shotFlooring1280NonEmpty = shotFileNonEmpty(report.create.shotFlooring1280);

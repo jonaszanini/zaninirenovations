@@ -53,7 +53,10 @@ class BasementCornerBeadBrowserTest extends IntegrationTestCase
 
         $this->assertFileExists($shots.'/basement-corner-bead-drywall-1280.png');
         $this->assertFileExists($shots.'/basement-corner-bead-drywall-390.png');
-        $this->assertNotSame('', (string) ($report['live']['desktop']['cornerBeadLine'] ?? ''));
+        $this->assertTrue((bool) ($report['live']['desktop']['found'] ?? false));
+        $this->assertGreaterThan(0, (float) ($report['live']['desktop']['qty'] ?? 0));
+        $this->assertTrue((bool) ($report['live']['mobile']['found'] ?? false));
+        $this->assertGreaterThan(0, (float) ($report['live']['mobile']['qty'] ?? 0));
     }
 
     /**
