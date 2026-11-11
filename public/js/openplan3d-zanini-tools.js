@@ -926,6 +926,7 @@
         ? 'Wall finishes (' + wallIds.length + ' walls)'
         : 'Wall finishes';
     }
+    if (wallIsBoundary(wallIds[0])) return 'Wall finishes · exterior';
     var names = roomsTouchingWall(wallIds[0], floor);
     if (names.length >= 2) return 'Wall finishes · ' + names.join(' / ');
     if (names.length === 1) return 'Wall finishes · ' + names[0];
@@ -1449,6 +1450,7 @@
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
     wallIsBoundary: wallIsBoundary,
+    friendlyWallFinishHeading: friendlyWallFinishHeading,
     wallIsInteriorPartition: wallIsInteriorPartition,
     finishDefaultsForWall: finishDefaultsForWall,
     wallsEligibleForBaseboardSidesControl: wallsEligibleForBaseboardSidesControl,

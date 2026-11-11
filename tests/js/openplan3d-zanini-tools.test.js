@@ -19,6 +19,8 @@ global.document = {
 };
 
 const tools = require('../../public/js/openplan3d-zanini-tools.js');
+const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
+const hand0 = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8'));
 
 console.log('openplan3d-zanini-tools tests');
 
@@ -193,6 +195,31 @@ global.window.__openPlan3D = {
 assert.strictEqual(tools.wallIsBoundary('mtn32xy9'), true, 'perimeter wall on non-first room must be boundary');
 assert.strictEqual(tools.wallIsBoundary('inner1'), false, 'interior segment on shared edge is not an exterior boundary wall');
 assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is not boundary');
+(function () {
+  var boundaryIds = bridge.floorBoundaryWallIds(hand0.floor, hand0);
+  var handFloor = {
+    id: 'f1',
+    walls: hand0.floor.walls,
+    rooms: [{ id: 'r-detected', boundary_wall_ids: boundaryIds }],
+  };
+  var prevPlan = global.window.__openPlan3D;
+  global.window.__openPlan3D = {
+    getProject: function () {
+      return { activeFloorId: 'f1', floors: [handFloor], unit: hand0.unit, units: hand0.units };
+    },
+    setProject: function () {},
+  };
+  try {
+    assert.strictEqual(tools.wallIsBoundary('memtgvve'), true, 'memtgvve is exterior on detected hand0 room');
+    assert.strictEqual(
+      tools.friendlyWallFinishHeading(['memtgvve'], handFloor),
+      'Wall finishes · exterior',
+      'memtgvve finish panel heading must say exterior not partition'
+    );
+  } finally {
+    global.window.__openPlan3D = prevPlan;
+  }
+})();
 assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
 assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');
 

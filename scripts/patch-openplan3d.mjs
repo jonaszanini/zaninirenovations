@@ -448,6 +448,16 @@ function patchEditorCanvasChunk(source) {
     process.exit(1);
   }
 
+  const canvasStatusAreaOld = '()=>Go(t(ir).reduce((xt,Ut)=>xt+Ut.area,0),o().units)';
+  const canvasStatusAreaNew =
+    '()=>(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanCanvasStatusArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanCanvasStatusArea(t(ir),t(bt),o(),De,_r):Go(t(ir).reduce((xt,Ut)=>xt+Ut.area,0),o().units))';
+  if (s.includes(canvasStatusAreaOld)) {
+    s = replaceExpected(s, canvasStatusAreaOld, canvasStatusAreaNew, 'editor chunk: canvas status bar interior area', 1);
+  } else if (!s.includes('formatOnPlanCanvasStatusArea(t(ir),t(bt)')) {
+    console.error('patch-openplan3d: editor chunk: canvas status bar area pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,

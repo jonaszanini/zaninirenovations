@@ -646,7 +646,9 @@
         var wallId = String(wall.id || '');
         var isBoundary = !!boundaryMap[wallId];
         var studLen = wallStudLengthLf(wall);
-        var netSqFt = Number(wall.net_area_sqft || 0);
+        var netSqFt = Number(
+          wall.net_area_sqft_exact != null ? wall.net_area_sqft_exact : wall.net_area_sqft || 0
+        );
         var touchCount = roomTouchCountForWall(wallId, floor, plan);
         drywall += netSqFt;
         paintUnassigned += 1;
@@ -680,7 +682,7 @@
         var isB = !!boundaryMap[id];
         var len = wallStudLengthLf(w);
         var studLen = wallStudLengthLf(w);
-        var net = Number(w.net_area_sqft || 0);
+        var net = Number(w.net_area_sqft_exact != null ? w.net_area_sqft_exact : w.net_area_sqft || 0);
         var flags = finishes[id] || {};
         var touchCount = roomTouchCountForWall(id, floor, plan);
         var finishNet = drywallFinishAreaSqFt(net, flags, isB, touchCount);

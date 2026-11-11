@@ -454,7 +454,8 @@ class OpenPlan3DMeasurementBridge
 
             $deductRaw = $this->finishMath->unionOpeningAreaRawSqFt($canvasObjects, $ceilingHeightFt, $wallLengthIn);
             $deductSqFt = $this->roundTo($deductRaw, 2);
-            $netWallArea = $this->finishMath->netWallAreaSqFt($finishLenFt, $ceilingHeightFt, $deductRaw);
+            $netWallAreaExact = max(0.0, $finishLenFt * $ceilingHeightFt - max(0.0, $deductRaw));
+            $netWallArea = $this->roundTo($netWallAreaExact, 2);
             $totalNetWallArea += $netWallArea;
 
             $perWallNetAreas[] = [
@@ -467,6 +468,7 @@ class OpenPlan3DMeasurementBridge
                 'finish_run_lf' => $finishLenFt,
                 'opening_area_sqft' => $deductSqFt,
                 'net_area_sqft' => $netWallArea,
+                'net_area_sqft_exact' => $netWallAreaExact,
             ];
             $wallIdx++;
         }
@@ -496,9 +498,10 @@ class OpenPlan3DMeasurementBridge
 
             $deductRaw = $this->finishMath->unionOpeningAreaRawSqFt($canvasObjects, $ceilingHeightFt, $wallLengthIn);
             $deductSqFt = $this->roundTo($deductRaw * 2.0, 2);
-            $netWallAreaSingle = $this->finishMath->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw);
+            $netWallAreaSingle = max(0.0, $lengthFt * $ceilingHeightFt - max(0.0, $deductRaw));
             $buttOverlapSqFt = $partButt > 0 ? $partButt * $ceilingHeightFt : 0.0;
-            $netWallArea = $this->roundTo(max(0.0, $netWallAreaSingle * 2.0 - $buttOverlapSqFt), 2);
+            $netWallAreaExact = max(0.0, $netWallAreaSingle * 2.0 - $buttOverlapSqFt);
+            $netWallArea = $this->roundTo($netWallAreaExact, 2);
             $totalNetWallArea += $netWallArea;
 
             $perWallNetAreas[] = [
@@ -511,6 +514,7 @@ class OpenPlan3DMeasurementBridge
                 'finish_run_lf' => $finishPartLenFt,
                 'opening_area_sqft' => $deductSqFt,
                 'net_area_sqft' => $netWallArea,
+                'net_area_sqft_exact' => $netWallAreaExact,
             ];
             $wallIdx++;
         }

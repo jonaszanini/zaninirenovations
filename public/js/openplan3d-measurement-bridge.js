@@ -1543,7 +1543,8 @@
       }
 
       var dedRaw = unionOpeningAreaRawSqFt(rects);
-      var netArea = netWallAreaSqFt(finishLenFt, ceilingHeight, dedRaw);
+      var netAreaExact = Math.max(0.0, finishLenFt * ceilingHeight - Math.max(0.0, dedRaw || 0.0));
+      var netArea = roundTo(netAreaExact, 2);
       totalNetWallArea += netArea;
 
       perWallNetAreas.push({
@@ -1555,7 +1556,8 @@
         interior_butt_deduction_lf: roundTo(buttLf, 2),
         finish_run_lf: finishLenFt,
         opening_area_sqft: roundTo(dedRaw, 2),
-        net_area_sqft: netArea
+        net_area_sqft: netArea,
+        net_area_sqft_exact: netAreaExact
       });
       wallIdx++;
     }
@@ -1588,9 +1590,10 @@
       }
 
       var dedRaw = unionOpeningAreaRawSqFt(rects);
-      var netAreaSingle = netWallAreaSqFt(wLenFt, ceilingHeight, dedRaw);
+      var netAreaSingle = Math.max(0.0, wLenFt * ceilingHeight - Math.max(0.0, dedRaw || 0.0));
       var buttOverlapSqFt = partButt > 0 ? partButt * ceilingHeight : 0;
-      var netArea = roundTo(Math.max(0, netAreaSingle * 2.0 - buttOverlapSqFt), 2);
+      var netAreaExact = Math.max(0, netAreaSingle * 2.0 - buttOverlapSqFt);
+      var netArea = roundTo(netAreaExact, 2);
       totalNetWallArea += netArea;
 
       perWallNetAreas.push({
@@ -1602,7 +1605,8 @@
         interior_butt_deduction_lf: roundTo(partButt, 2),
         finish_run_lf: finishPartLenFt,
         opening_area_sqft: roundTo(dedRaw * 2.0, 2),
-        net_area_sqft: netArea
+        net_area_sqft: netArea,
+        net_area_sqft_exact: netAreaExact
       });
       wallIdx++;
     }
@@ -2272,6 +2276,107 @@
     return saved > 0 ? saved : 1;
   }
 
+  function onPlanRoomAreaSqFt(room, polygonCm, holeRings, floor, settings) {
+    var wallsBy = {};
+    var wallList = (floor && floor.walls) || [];
+    for (var wi = 0; wi < wallList.length; wi++) {
+      var w = wallList[wi];
+      if (w && w.id) wallsBy[String(w.id)] = w;
+    }
+    var planCtx = { floor: floor, unit: floor && floor.unit, units: floor && floor.units };
+    var boundaryIds = (room && room.boundary_wall_ids) || [];
+    if (!boundaryIds.length) boundaryIds = floorBoundaryWallIds(floor, planCtx);
+    if (!boundaryIds.length) boundaryIds = (room && room.walls) || [];
+    var cm = cmPerUnitForPlan(planCtx);
+    var sqFt = 0;
+    var interiorGeom = interiorGeomRuntime();
+    if (interiorGeom && polygonCm && polygonCm.length >= 3) {
+      sqFt = interiorGeom.interiorFloorAreaSqFt(
+        polygonCm,
+        boundaryIds,
+        wallsBy,
+        wallList,
+        cm,
+        false
+      );
+    }
+    var persistedRoom = false;
+    if (floor && Array.isArray(floor.rooms) && floor.rooms.length > 0 && room && room.id) {
+      for (var ri = 0; ri < floor.rooms.length; ri++) {
+        if (String(floor.rooms[ri].id) === String(room.id)) {
+          persistedRoom = true;
+          break;
+        }
+      }
+    }
+    if (persistedRoom && floor && room && room.id && wallList.length >= 3) {
+      try {
+        var metricsPlan = {
+          floor: floor,
+          floors: [floor],
+          unit: floor.unit,
+          units: floor.units || floor.unit
+        };
+        var live = layoutMetrics(metricsPlan, room.id, {});
+        if (live && Number(live.area_sqft) > 0) {
+          sqFt = Number(live.area_sqft);
+        }
+      } catch (ignore) { /* keep polygon-derived area */ }
+    } else if (sqFt <= 0 && polygonCm && polygonCm.length >= 3 && interiorGeom) {
+      sqFt = interiorGeom.interiorFloorAreaSqFt(
+        polygonCm,
+        boundaryIds,
+        wallsBy,
+        wallList,
+        cm,
+        false
+      );
+    }
+    return Math.round(sqFt * 100) / 100;
+  }
+
+  function formatOnPlanRoomAreaDisplay(sqFt, settings, floor) {
+    var units = String(
+      (settings && settings.units) || (floor && floor.units) || (floor && floor.unit) || 'metric'
+    ).toLowerCase();
+    var imperial =
+      units === 'imperial' || units === 'ft' || units === 'feet' || units === 'foot' || units === 'in';
+    if (imperial) {
+      return sqFt.toFixed(2) + ' ft\u00b2';
+    }
+    var m2 = Math.round((sqFt / 10.7639) * 100) / 100;
+    return m2.toFixed(2) + ' m\u00b2';
+  }
+
+  function formatOnPlanCanvasStatusArea(rooms, floor, settings, polygonByRoomId, holesByRoomId) {
+    if (!rooms || !rooms.length) {
+      return formatOnPlanRoomAreaDisplay(0, settings, floor);
+    }
+    var totalSqFt = 0;
+    for (var i = 0; i < rooms.length; i++) {
+      var room = rooms[i];
+      if (!room) continue;
+      var poly = null;
+      if (polygonByRoomId && typeof polygonByRoomId.get === 'function') {
+        poly = polygonByRoomId.get(room.id);
+      } else if (polygonByRoomId && room.id) {
+        poly = polygonByRoomId[room.id];
+      }
+      if ((!poly || poly.length < 3) && room.polygon && room.polygon.length >= 3) {
+        poly = room.polygon;
+      }
+      var holes = [];
+      if (holesByRoomId && typeof holesByRoomId.get === 'function') {
+        holes = holesByRoomId.get(room.id) || [];
+      } else if (holesByRoomId && room.id && holesByRoomId[room.id]) {
+        holes = holesByRoomId[room.id];
+      }
+      totalSqFt += onPlanRoomAreaSqFt(room, poly, holes, floor, settings);
+    }
+    totalSqFt = Math.round(totalSqFt * 100) / 100;
+    return formatOnPlanRoomAreaDisplay(totalSqFt, settings, floor);
+  }
+
   return {
     CM_PER_INCH: CM_PER_INCH,
     CM_PER_FOOT: CM_PER_FOOT,
@@ -2292,74 +2397,15 @@
     wallSeparatesTwoSpaces: wallSeparatesTwoSpaces,
     geometryRoomTouchCount: geometryRoomTouchCount,
     interiorButtDeductionLfOnBoundaryWall: interiorButtDeductionLfOnBoundaryWall,
+    onPlanRoomAreaSqFt: onPlanRoomAreaSqFt,
     formatOnPlanRoomArea: function (room, polygonCm, holeRings, floor, settings) {
-      var units = String(
-        (settings && settings.units) || (floor && floor.units) || (floor && floor.unit) || 'metric'
-      ).toLowerCase();
-      var imperial =
-        units === 'imperial' || units === 'ft' || units === 'feet' || units === 'foot' || units === 'in';
-      var wallsBy = {};
-      var wallList = (floor && floor.walls) || [];
-      for (var wi = 0; wi < wallList.length; wi++) {
-        var w = wallList[wi];
-        if (w && w.id) wallsBy[String(w.id)] = w;
-      }
-      var planCtx = { floor: floor, unit: floor && floor.unit, units: floor && floor.units };
-      var boundaryIds = (room && room.boundary_wall_ids) || [];
-      if (!boundaryIds.length) boundaryIds = floorBoundaryWallIds(floor, planCtx);
-      if (!boundaryIds.length) boundaryIds = (room && room.walls) || [];
-      var cm = cmPerUnitForPlan(planCtx);
-      var sqFt = 0;
-      var interiorGeom = interiorGeomRuntime();
-      if (interiorGeom && polygonCm && polygonCm.length >= 3) {
-        sqFt = interiorGeom.interiorFloorAreaSqFt(
-          polygonCm,
-          boundaryIds,
-          wallsBy,
-          wallList,
-          cm,
-          false
-        );
-      }
-      var persistedRoom = false;
-      if (floor && Array.isArray(floor.rooms) && floor.rooms.length > 0 && room && room.id) {
-        for (var ri = 0; ri < floor.rooms.length; ri++) {
-          if (String(floor.rooms[ri].id) === String(room.id)) {
-            persistedRoom = true;
-            break;
-          }
-        }
-      }
-      if (persistedRoom && floor && room && room.id && wallList.length >= 3) {
-        try {
-          var metricsPlan = {
-            floor: floor,
-            floors: [floor],
-            unit: floor.unit,
-            units: floor.units || floor.unit
-          };
-          var live = layoutMetrics(metricsPlan, room.id, {});
-          if (live && Number(live.area_sqft) > 0) {
-            sqFt = Number(live.area_sqft);
-          }
-        } catch (ignore) { /* keep polygon-derived area */ }
-      } else if (sqFt <= 0 && polygonCm && polygonCm.length >= 3 && interiorGeom) {
-        sqFt = interiorGeom.interiorFloorAreaSqFt(
-          polygonCm,
-          boundaryIds,
-          wallsBy,
-          wallList,
-          cm,
-          false
-        );
-      }
-      sqFt = Math.round(sqFt * 100) / 100;
-      if (imperial) {
-        return sqFt.toFixed(2) + ' ft\u00b2';
-      }
-      var m2 = Math.round((sqFt / 10.7639) * 100) / 100;
-      return m2.toFixed(2) + ' m\u00b2';
+      return formatOnPlanRoomAreaDisplay(
+        onPlanRoomAreaSqFt(room, polygonCm, holeRings, floor, settings),
+        settings,
+        floor
+      );
     },
+    formatOnPlanCanvasStatusArea: formatOnPlanCanvasStatusArea,
     interiorRoomLabelAreaSqFt: function (floor, polygonCm, boundaryWallIds, wallsById) {
       var interiorGeom = interiorGeomRuntime();
       if (!interiorGeom) return 0;

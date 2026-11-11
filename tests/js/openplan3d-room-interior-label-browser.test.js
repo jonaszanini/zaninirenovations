@@ -102,12 +102,12 @@ function twoDetectedRoomsPartitionPlan() {
   };
 }
 
-function stub20x10ImperialPlan() {
+function stub20x10SavedRoomPlan() {
   const cm = 30.48;
   const floor = {
     id: 'f1',
     unit: 'cm',
-    units: 'imperial',
+    units: 'cm',
     walls: [
       { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 11.43, height: 243.84 },
       { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
@@ -133,10 +133,31 @@ function stub20x10ImperialPlan() {
     format: 'openplan3d',
     activeFloorId: 'f1',
     unit: 'cm',
-    units: 'imperial',
+    units: 'cm',
     floors: [floor],
     floor,
   };
+}
+
+async function setEditorUnits(page, units) {
+  await page.evaluate(
+    async ({ storeChunk, unitsArg }) => {
+      const mod = await import('/vendor/openplan3d-h1/_app/immutable/chunks/' + storeChunk);
+      if (mod.W && typeof mod.W.update === 'function') {
+        mod.W.update((s) => Object.assign({}, s, { units: unitsArg }));
+      }
+    },
+    { storeChunk: patched.storeChunk, unitsArg: units }
+  );
+  await new Promise((r) => setTimeout(r, 400));
+}
+
+async function readCanvasStatusBar(page) {
+  await page.waitForSelector('div.absolute.bottom-2.right-2', { timeout: 90000 });
+  return page.evaluate(() => {
+    const el = document.querySelector('div.absolute.bottom-2.right-2');
+    return el ? el.textContent.replace(/\s+/g, ' ').trim() : '';
+  });
 }
 
 function hand0NoRoomsPlan() {
@@ -332,7 +353,29 @@ async function main() {
     assert.ok(Math.abs(parsedTwo[0] - 73.39) < 0.2, 'smaller room label ~73.39 sf, got ' + JSON.stringify(parsedTwo));
     assert.ok(Math.abs(parsedTwo[1] - 111.89) < 0.2, 'larger room label ~111.89 sf, got ' + JSON.stringify(parsedTwo));
 
-    const stubPlan = stub20x10ImperialPlan();
+    const twoRoomPage = await newLabeledPage(browser, port);
+    try {
+      await loadPlan(twoRoomPage, twoRoomPlan);
+      await twoRoomPage.waitForFunction(
+        () => {
+          const text =
+            (document.querySelector('div.absolute.bottom-2.right-2') || {}).textContent || '';
+          return /\b2 rooms\b/i.test(text);
+        },
+        { timeout: 90000 }
+      );
+      await setEditorUnits(twoRoomPage, 'imperial');
+      const twoRoomStatusImperial = await readCanvasStatusBar(twoRoomPage);
+      assert.ok(/\b2 rooms\b/i.test(twoRoomStatusImperial), 'two-room status must show room count');
+      assert.ok(
+        /185\.28\s*ft/.test(twoRoomStatusImperial),
+        'two detected rooms status must total 185.28 ft², got ' + twoRoomStatusImperial
+      );
+    } finally {
+      await twoRoomPage.close();
+    }
+
+    const stubPlan = stub20x10SavedRoomPlan();
     const stubPage = await newLabeledPage(browser, port);
     try {
       await loadPlan(stubPage, stubPlan);
@@ -343,28 +386,30 @@ async function main() {
         },
         { timeout: 90000 }
       );
-      const stubState = await stubPage.evaluate(() => {
-        const plan = window.__openPlan3D.getProject();
-        const bridge = window.OpenPlan3DMeasurementBridge;
-        const floor = plan.floors[0];
-        const room = floor.rooms[0];
-        const statusArea = bridge.formatOnPlanRoomArea(room, room.polygon, room.holes || [], floor, {
-          units: floor.units || plan.units || 'imperial',
-        });
-        const ribbon = bridge.layoutMetrics(plan, room.id, { wall_height_ft: 8.0 }).area_sqft;
-        const body = document.body.innerText || '';
-        return { statusArea, ribbon, bodySnippet: body.slice(0, 4000) };
-      });
-      assert.ok(
-        stubState.statusArea.includes('188.89'),
-        'stub status area must use layoutMetrics interior 188.89 sf, got ' + stubState.statusArea
+      await stubPage.waitForFunction(
+        () => {
+          const text =
+            (document.querySelector('div.absolute.bottom-2.right-2') || {}).textContent || '';
+          return /\b1 room\b/i.test(text);
+        },
+        { timeout: 90000 }
       );
-      assert.ok(Math.abs(stubState.ribbon - 188.89) < 0.02, 'stub ribbon area pin 188.89');
+      await setEditorUnits(stubPage, 'metric');
+      const statusMetric = await readCanvasStatusBar(stubPage);
+      assert.ok(/\b1 room\b/i.test(statusMetric), 'stub status must show 1 room');
       assert.ok(
-        /188\.89\s*ft/.test(stubState.bodySnippet) || stubState.statusArea.includes('188.89'),
-        'editor must not show legacy 187.80 ft² status from vendor m² alone'
+        /17\.55\s*m/.test(statusMetric),
+        'stub status bar must show 17.55 m² (metric), got ' + statusMetric
       );
-      assert.ok(!/187\.80\s*ft/.test(stubState.bodySnippet), 'stub must not regress to 187.80 ft² status');
+      assert.ok(!/17\.45\s*m/.test(statusMetric), 'stub must not show legacy 17.45 m²');
+      assert.ok(!/187\.80/.test(statusMetric), 'metric mode must not show wrong imperial ft²');
+      await setEditorUnits(stubPage, 'imperial');
+      const statusImperial = await readCanvasStatusBar(stubPage);
+      assert.ok(
+        /188\.89\s*ft/.test(statusImperial),
+        'stub status bar must show 188.89 ft² (imperial), got ' + statusImperial
+      );
+      assert.ok(!/187\.80\s*ft/.test(statusImperial), 'stub status must not show 187.80 ft²');
     } finally {
       await stubPage.close();
     }

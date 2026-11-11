@@ -211,7 +211,7 @@ const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall
 assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
 assert.strictEqual(lPartMetrics.area_sqft, 286.98, 'Interior L-shape floor area (~10 cm walls; was 300 centerline)');
 assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter');
-assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811.03,
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811.02,
   'Net wall area with boundary + single-face partition butt overlap at T junctions');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
 assert.strictEqual(lPartMetrics.partition_lf, 11.67, 'Partition framing stays full length (T butts do not shorten studs)');
@@ -411,7 +411,7 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
   });
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
   assert.strictEqual(finished.finish_baseboard_lf, 199.53, 'hand0 finish_baseboard_lf with vertex + collinear-split butt rules');
-  assert.ok(Math.abs(finished.finish_drywall_sqft - 1596.21) < 0.03, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
+  assert.strictEqual(finished.finish_drywall_sqft, 1596.21, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
   const interiorGeom = require('../../public/js/room-area-interior-geometry.js');
   const hand0Floor = hand0Plan.floors && hand0Plan.floors[0] ? hand0Plan.floors[0] : hand0Plan.floor;
   const hand0Walls = (hand0Floor && hand0Floor.walls) || [];

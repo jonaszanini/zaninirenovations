@@ -380,7 +380,7 @@ class RoomAreaOpenPlan3DExtensions
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
                 $studLen = $this->wallStudLengthLf($wall);
-                $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
+                $netSqFt = (float) ($wall['net_area_sqft_exact'] ?? $wall['net_area_sqft'] ?? 0.0);
                 $touchCount = $this->roomTouchCountForWall($wallId, $floor);
                 $drywall += $netSqFt;
                 $paintUnassigned++;
@@ -414,7 +414,7 @@ class RoomAreaOpenPlan3DExtensions
                 $isBoundary = isset($boundaryMap[$wallId]);
                 $runLf = $this->wallStudLengthLf($wall);
                 $studLen = $this->wallStudLengthLf($wall);
-                $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
+                $netSqFt = (float) ($wall['net_area_sqft_exact'] ?? $wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
 
                 $touchCount = $this->roomTouchCountForWall($wallId, $floor);
