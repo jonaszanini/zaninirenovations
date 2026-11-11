@@ -2321,7 +2321,16 @@
           false
         );
       }
-      if (floor && room && room.id && wallList.length >= 3) {
+      var persistedRoom = false;
+      if (floor && Array.isArray(floor.rooms) && floor.rooms.length > 0 && room && room.id) {
+        for (var ri = 0; ri < floor.rooms.length; ri++) {
+          if (String(floor.rooms[ri].id) === String(room.id)) {
+            persistedRoom = true;
+            break;
+          }
+        }
+      }
+      if (persistedRoom && floor && room && room.id && wallList.length >= 3) {
         try {
           var metricsPlan = {
             floor: floor,
@@ -2334,6 +2343,15 @@
             sqFt = Number(live.area_sqft);
           }
         } catch (ignore) { /* keep polygon-derived area */ }
+      } else if (sqFt <= 0 && polygonCm && polygonCm.length >= 3 && interiorGeom) {
+        sqFt = interiorGeom.interiorFloorAreaSqFt(
+          polygonCm,
+          boundaryIds,
+          wallsBy,
+          wallList,
+          cm,
+          false
+        );
       }
       sqFt = Math.round(sqFt * 100) / 100;
       if (imperial) {

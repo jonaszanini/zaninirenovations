@@ -251,18 +251,43 @@ class RoomAreaInteriorGeometry
         if (count($matched) < 2) {
             return null;
         }
-        $ctx = $allWallsList !== [] ? $allWallsList : $matched;
+        $fullCtx = $allWallsList !== [] ? $allWallsList : $matched;
         $out = [];
-        $totalEdgeCm = 0.0;
-        foreach ($matched as $mw) {
-            $totalEdgeCm += $this->wallPlanEdgeLengthCm($mw, $ctx, $cmPerUnit, true);
+        $interiorFt = 0.0;
+        $endWalls = [];
+        foreach ($matched as $w) {
+            $touch = $this->wallEndpointTouchesOther($w, $matched, $cmPerUnit);
+            if ($touch['start'] && $touch['end']) {
+                $edgeFt = $this->wallPlanEdgeLengthCm($w, $matched, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+                $out[(string) ($w['id'] ?? '')] = $edgeFt;
+                $interiorFt += $edgeFt;
+            } else {
+                $endWalls[] = $w;
+            }
         }
-        if ($totalEdgeCm <= 0) {
-            return null;
+        if ($endWalls === []) {
+            return $out !== [] ? $out : null;
         }
-        foreach ($matched as $mw) {
-            $edgeCm = $this->wallPlanEdgeLengthCm($mw, $ctx, $cmPerUnit, true);
-            $out[(string) ($mw['id'] ?? '')] = $edgeLenFt * ($edgeCm / $totalEdgeCm);
+        $remainder = $edgeLenFt - $interiorFt;
+        if ($remainder < 0) {
+            $remainder = 0.0;
+        }
+        $endEdge = 0.0;
+        foreach ($endWalls as $ew) {
+            $endEdge += $this->wallPlanEdgeLengthCm($ew, $fullCtx, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        }
+        if ($endEdge <= 0) {
+            $frac = 1.0 / count($endWalls);
+            foreach ($endWalls as $ew) {
+                $out[(string) ($ew['id'] ?? '')] = $remainder * $frac;
+            }
+
+            return $out;
+        }
+        foreach ($endWalls as $ew) {
+            $edgeFt = $this->wallPlanEdgeLengthCm($ew, $fullCtx, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+            $frac = $edgeFt / $endEdge;
+            $out[(string) ($ew['id'] ?? '')] = $remainder * $frac;
         }
 
         return $out;

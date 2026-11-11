@@ -411,7 +411,7 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
   });
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
   assert.strictEqual(finished.finish_baseboard_lf, 199.53, 'hand0 finish_baseboard_lf with vertex + collinear-split butt rules');
-  assert.ok(Math.abs(finished.finish_drywall_sqft - 1596.22) < 0.05, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
+  assert.ok(Math.abs(finished.finish_drywall_sqft - 1596.21) < 0.03, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
   const interiorGeom = require('../../public/js/room-area-interior-geometry.js');
   const hand0Floor = hand0Plan.floors && hand0Plan.floors[0] ? hand0Plan.floors[0] : hand0Plan.floor;
   const hand0Walls = (hand0Floor && hand0Floor.walls) || [];
@@ -428,6 +428,58 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     Math.abs(interiorGeom.wallPlanEdgeLengthCm(x83Wall, hand0Walls, cmPer, true) / cmPerFt - 15.338) < 0.02,
     'hand0 top run x83nxa0q interior edge span ~15.338 lf'
   );
+  var byLf = {};
+  (hand0Metrics.walls || []).forEach(function (w) {
+    byLf[w.id] = w;
+  });
+  var topNorthIds = ['ed9b3bxc', '1jr475cr', 'memtgvve', 'su7a1f0m', 'x83nxa0q'];
+  var topExact = [3.035, 3.281, 6.562, 13.123, 15.338];
+  var topSum = 0;
+  topNorthIds.forEach(function (id, idx) {
+    assert.ok(byLf[id], 'hand0 north collinear wall ' + id);
+    assert.ok(
+      Math.abs(byLf[id].length_lf_exact - topExact[idx]) < 0.005,
+      'hand0 north ' + id + ' length_lf_exact pin'
+    );
+    topSum += byLf[id].length_lf_exact;
+    if (id === 'ed9b3bxc' || id === 'x83nxa0q') {
+      assert.ok(Math.abs(byLf[id].length_lf - topExact[idx]) < 0.02, 'hand0 north ' + id + ' length_lf display pin');
+    }
+  });
+  assert.ok(Math.abs(topSum - 41.339) < 0.01, 'hand0 north collinear interior spans sum ~41.339 lf');
+})();
+
+(function detectedTwoRoomLabels() {
+  var cm = 30.48;
+  var px = 8;
+  var plan = {
+    unit: 'cm',
+    floor: {
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w3', start: { x: 20 * cm, y: 10 * cm }, end: { x: 0, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w4', start: { x: 0, y: 10 * cm }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'p1', start: { x: px * cm, y: 0 }, end: { x: px * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 }
+      ],
+      rooms: []
+    }
+  };
+  var entries = bridge.canvasFillRoomEntries(plan.floor, plan);
+  assert.strictEqual(entries.length, 2, '20×10 with 8 ft partition yields two detected rooms');
+  entries.sort(function (a, b) {
+    return a.room.area - b.room.area;
+  });
+  var sf = entries.map(function (e) {
+    var parsed = parseFloat(
+      bridge.formatOnPlanRoomArea(e.room, e.polygon, [], plan.floor, { units: 'imperial' })
+    );
+    return parsed;
+  });
+  assert.ok(Math.abs(sf[0] - 73.39) < 0.15, 'smaller detected room label ~73.39 sf, got ' + sf[0]);
+  assert.ok(Math.abs(sf[1] - 111.89) < 0.15, 'larger detected room label ~111.89 sf, got ' + sf[1]);
+  assert.strictEqual(bridge.layoutMetrics(plan, null, { wall_height_ft: 8.0 }).area_sqft, 188.89,
+    'whole-floor layout must not replace per-room labels');
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');

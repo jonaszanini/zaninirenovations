@@ -339,16 +339,39 @@
 
   function distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit, allWallsList) {
     if (!matched || matched.length < 2) return null;
-    var ctx = (allWallsList && allWallsList.length) ? allWallsList : matched;
+    var fullCtx = (allWallsList && allWallsList.length) ? allWallsList : matched;
     var out = {};
-    var totalEdgeCm = 0;
-    for (var ti = 0; ti < matched.length; ti++) {
-      totalEdgeCm += wallPlanEdgeLengthCm(matched[ti], ctx, cmPerUnit, true);
+    var interiorFt = 0;
+    var endWalls = [];
+    for (var i = 0; i < matched.length; i++) {
+      var w = matched[i];
+      var touch = wallEndpointTouchesOther(w, matched, cmPerUnit);
+      if (touch.start && touch.end) {
+        var edgeFt = wallPlanEdgeLengthCm(w, matched, cmPerUnit, true) / CM_PER_FOOT;
+        out[String(w.id)] = edgeFt;
+        interiorFt += edgeFt;
+      } else {
+        endWalls.push(w);
+      }
     }
-    if (!(totalEdgeCm > 0)) return null;
-    for (var tj = 0; tj < matched.length; tj++) {
-      var edgeCm = wallPlanEdgeLengthCm(matched[tj], ctx, cmPerUnit, true);
-      out[String(matched[tj].id)] = edgeLenFt * (edgeCm / totalEdgeCm);
+    if (!endWalls.length) return Object.keys(out).length ? out : null;
+    var remainder = edgeLenFt - interiorFt;
+    if (remainder < 0) remainder = 0;
+    var endEdge = 0;
+    for (var j = 0; j < endWalls.length; j++) {
+      endEdge += wallPlanEdgeLengthCm(endWalls[j], fullCtx, cmPerUnit, true) / CM_PER_FOOT;
+    }
+    if (!(endEdge > 0)) {
+      var frac = 1 / endWalls.length;
+      for (var e = 0; e < endWalls.length; e++) {
+        out[String(endWalls[e].id)] = remainder * frac;
+      }
+      return out;
+    }
+    for (var k = 0; k < endWalls.length; k++) {
+      var ew = endWalls[k];
+      var eft = wallPlanEdgeLengthCm(ew, fullCtx, cmPerUnit, true) / CM_PER_FOOT;
+      out[String(ew.id)] = remainder * (eft / endEdge);
     }
     return out;
   }
