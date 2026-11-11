@@ -40,9 +40,16 @@ class ClientProjectContactService
             return;
         }
 
-        $clientId = array_key_exists('client_id', $data)
-            ? ($data['client_id'] !== '' && $data['client_id'] !== null ? (int) $data['client_id'] : null)
-            : $project->client_id;
+        // Absent client_id means this payload is not a directory edit.
+        // Do not fall back to the project's current id (that would sync or
+        // recreate a clients row from denormalised project contact).
+        if (! array_key_exists('client_id', $data)) {
+            return;
+        }
+
+        $clientId = $data['client_id'] !== '' && $data['client_id'] !== null
+            ? (int) $data['client_id']
+            : null;
 
         if ($clientId === null) {
             $clientId = $this->resolveOrCreateClientFromProjectContact($this->mergeProjectContact($project, $data));

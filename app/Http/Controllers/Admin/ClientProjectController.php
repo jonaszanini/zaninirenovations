@@ -597,7 +597,7 @@ class ClientProjectController extends Controller
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
-                ->withFragment('schedule')
+                ->withFragment($this->updateReturnFragment($request) ?? 'schedule')
                 ->withErrors($validator)
                 ->withInput($input);
         }
@@ -636,7 +636,16 @@ class ClientProjectController extends Controller
 
         $syncDirectory = $request->boolean('sync_client_directory', true);
         unset($data['sync_client_directory']);
-        $contactService->applyForUpdate($client_project, $data, $syncDirectory);
+        // Partial updates (Overview visit/schedule, Calendar dates) omit
+        // client_id. That must leave the directory link and clients row
+        // untouched. Edit Details always posts client_id (including empty
+        // when the picker is cleared). Completed projects still run the
+        // contact service so snapshot fields are stripped before fill().
+        if ($request->exists('client_id') || $client_project->isCompleted()) {
+            $contactService->applyForUpdate($client_project, $data, $syncDirectory);
+        } else {
+            unset($data['client_id']);
+        }
 
         $client_project->fill($data)->save();
         $client_project = $service->syncVisitStatusFromFields($client_project->fresh());
@@ -645,7 +654,9 @@ class ClientProjectController extends Controller
             $client_project,
             $previousStart,
             $previousEnd,
-            $service
+            $service,
+            'Project updated',
+            $this->updateReturnFragment($request)
         );
     }
 
@@ -760,6 +771,17 @@ class ClientProjectController extends Controller
         }
 
         return $redirect;
+    }
+
+    /**
+     * Overview inline visit/schedule forms post return_tab=overview so
+     * validation and success land on the Overview tab. Edit Details posts
+     * billing_type (redirects to the edit page). The Calendar tab omits
+     * return_tab (validation still returns to #schedule).
+     */
+    private function updateReturnFragment(Request $request): ?string
+    {
+        return $request->input('return_tab') === 'overview' ? 'overview' : null;
     }
 
     /**
@@ -1224,9 +1246,18 @@ class ClientProjectController extends Controller
 
     /**
      * Normalize client_id from the request (the picker may post "" plus the id).
+     *
+     * When client_id is omitted entirely, do not merge null. That would make
+     * validation treat the link as cleared and create a new directory row.
+     * Empty / zero values that were actually posted still become null so
+     * Edit Details can clear the picker.
      */
     private function postedDirectoryClientId(Request $request): int
     {
+        if (! $request->exists('client_id')) {
+            return 0;
+        }
+
         $raw = $request->input('client_id');
         if (is_array($raw)) {
             $raw = collect($raw)

@@ -1421,6 +1421,77 @@
     });
   }
 
+  function initOverviewInlineEdit() {
+    var root = document.querySelector('.cp-tab-panel[data-panel="overview"]');
+    if (!root || root._cpOverviewInlineWired) return;
+    root._cpOverviewInlineWired = true;
+
+    function panel(name) {
+      return root.querySelector('[data-cp-overview-editable="' + name + '"]');
+    }
+
+    function formFor(name) {
+      var wrap = panel(name);
+      return wrap ? wrap.querySelector('[data-cp-overview-form="' + name + '"]') : null;
+    }
+
+    function buttonFor(name) {
+      var wrap = panel(name);
+      return wrap ? wrap.querySelector('[data-cp-overview-edit="' + name + '"]') : null;
+    }
+
+    function setOpen(name, open) {
+      var form = formFor(name);
+      var btn = buttonFor(name);
+      if (!form) return;
+      if (open) {
+        form.hidden = false;
+      } else {
+        form.hidden = true;
+      }
+      if (btn) btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function syncVisitRequired() {
+      var required = root.querySelector('[data-cp-overview-visit-required]');
+      var dateInput = root.querySelector('[data-cp-overview-visit-date]');
+      if (!required || !dateInput) return;
+      if (dateInput.value) {
+        required.value = '1';
+      }
+    }
+
+    root.addEventListener('click', function (ev) {
+      var editBtn = ev.target.closest('[data-cp-overview-edit]');
+      if (editBtn && root.contains(editBtn)) {
+        var name = editBtn.getAttribute('data-cp-overview-edit');
+        var form = formFor(name);
+        if (!form) return;
+        var opening = form.hidden;
+        setOpen('visit', name === 'visit' && opening);
+        setOpen('schedule', name === 'schedule' && opening);
+        if (opening) {
+          var first = form.querySelector('input[type="date"], input[type="time"]');
+          if (first) first.focus();
+        }
+        return;
+      }
+      var cancelBtn = ev.target.closest('[data-cp-overview-cancel]');
+      if (cancelBtn && root.contains(cancelBtn)) {
+        setOpen(cancelBtn.getAttribute('data-cp-overview-cancel'), false);
+      }
+    });
+
+    var visitDate = root.querySelector('[data-cp-overview-visit-date]');
+    var visitTime = root.querySelector('[data-cp-overview-visit-time]');
+    if (visitDate) visitDate.addEventListener('change', syncVisitRequired);
+    if (visitTime) visitTime.addEventListener('change', syncVisitRequired);
+    var visitForm = formFor('visit');
+    if (visitForm) {
+      visitForm.addEventListener('submit', syncVisitRequired);
+    }
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initMoneyMask();
     initPhoneMask();
@@ -1435,6 +1506,7 @@
     initCreateScheduleFields();
     initCreateDuplicateCheck();
     initEditScheduleFields();
+    initOverviewInlineEdit();
     initRecalculateInstallmentsModal();
 
     var planSelect = document.getElementById('cp-plan');
