@@ -35,9 +35,14 @@ class PaintingQuotationCreateHiddenTest extends IntegrationTestCase
             ->assertOk()
             ->assertSee('Painting quotation archive', false)
             ->assertSee('New painting quotations are not offered', false)
+            ->assertSee('admin-info-tip', false)
             ->assertDontSee('fa-plus', false)
             ->getContent();
         $this->assertStringNotContainsString(route('admin.quotations.painting.create'), $index);
+        $this->assertDoesNotMatchRegularExpression(
+            '/<p class="admin-form-help"[^>]*>\s*New painting quotations are not offered/',
+            $index
+        );
 
         $roomArea = $this->get(route('admin.utilities.room-area.quote', [
             'layout' => 'room:'.$room->id,

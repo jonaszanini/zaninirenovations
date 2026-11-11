@@ -1,6 +1,9 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Painting quotation archive')
+@section('heading')
+  Painting quotation archive
+  <x-admin.info-tip label="Painting quotation archive">New painting quotations are not offered. Existing quotes stay available here.</x-admin.info-tip>
+@endsection
 
 @section('content')
   @php $qpid = request('project'); @endphp
@@ -14,7 +17,6 @@
       </a>
     </div>
   </div>
-  <p class="admin-form-help" style="margin:0 0 16px;">New painting quotations are not offered. Existing quotes stay available here.</p>
 
   @include('admin.quotations._index_project_context')
 
