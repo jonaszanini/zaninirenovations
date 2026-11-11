@@ -50,4 +50,14 @@ class ClientProjectStreetLineTest extends TestCase
             ClientProject::googleMapsSearchUrlFor('1025 Grenon Ave, Ottawa, ON', 'ChIJ_abc'),
         );
     }
+
+    public function test_tel_href_normalises_digits_and_adds_plus_one(): void
+    {
+        $this->assertNull(ClientProject::telHref(null));
+        $this->assertNull(ClientProject::telHref(''));
+        $this->assertSame('tel:+16475550100', ClientProject::telHref('6475550100'));
+        $this->assertSame('tel:+16475550100', ClientProject::telHref('(647) 555-0100'));
+        $this->assertSame('tel:+16475550100', ClientProject::telHref('16475550100'));
+        $this->assertSame('tel:5550199', ClientProject::telHref('555-0199'));
+    }
 }

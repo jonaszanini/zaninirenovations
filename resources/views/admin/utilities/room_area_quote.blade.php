@@ -43,7 +43,6 @@
       <p class="util-rq-hint">Opens the existing wizard with measurements filled from this layout.</p>
       <div class="util-rq-wizards">
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['flooring'] }}">Flooring</a>
-        <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['painting'] }}">Painting</a>
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['trimming'] }}">Trim</a>
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['tile'] }}">Tile</a>
         <a class="admin-btn admin-btn--outline" href="{{ $wizardUrls['millwork'] }}">Millwork</a>

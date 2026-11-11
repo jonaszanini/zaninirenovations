@@ -106,9 +106,14 @@
     "public/css/admin-**",
     "resources/views/admin/layouts/**",
     "resources/views/admin/partials/**",
+    "resources/views/admin/clients/**",
+    "resources/views/admin/dashboard/**",
     "resources/views/components/admin/info-tip.blade.php",
     "tests/js/admin-*",
-    "tests/js/**/*admin*browser*"
+    "tests/js/**/*admin*browser*",
+    "tests/Feature/Admin/Dashboard*.php",
+    "tests/Feature/Admin/dashboard-*.js",
+    "tests/Unit/Views/AdminDashboard*.php"
   ],
   "browser_openplan3d": [
     "public/js/openplan3d-**",
@@ -135,11 +140,17 @@
     "public/js/admin-dialog.js",
     "public/js/admin-info-tip.js",
     "public/css/admin.css",
+    "public/css/admin-client-projects.css",
     "tests/js/quotation-**",
+    "tests/js/helpers/render-standard-quotation-editor.php",
     "tests/js/fixtures/quotation-redraft-hotkey-lock.html",
+    "tests/js/fixtures/quotation-standard-option-grid.html",
     "tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php",
     "tests/Feature/Admin/QuotationLifecycleBrowserTest.php",
-    "tests/Feature/Admin/quotation-lifecycle-browser.js"
+    "tests/Feature/Admin/quotation-lifecycle-browser.js",
+    "tests/Feature/Admin/QuotationEditorFlashTest.php",
+    "tests/Feature/Admin/QuotationEditorFlashBrowserTest.php",
+    "tests/Feature/Admin/quotation-editor-flash-browser.js"
   ],
   "browser_client": [
     "resources/views/admin/client-projects/**",

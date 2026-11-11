@@ -17,7 +17,7 @@ const pages = [
   { key: 'standard', href: '/admin/quotations/standard/create', painting: false },
   { key: 'fence', href: '/admin/quotations/fence/create', painting: false },
   { key: 'paving', href: '/admin/quotations/paving/create', painting: false },
-  { key: 'painting', href: '/admin/quotations/painting/create', painting: true },
+  { key: 'painting', href: process.env.QH_FOOTER_PAINTING_HREF || '', painting: true },
 ];
 
 function launchOpts() {
@@ -71,6 +71,9 @@ async function shotWithRetry(page, dest, fullPage) {
 
   const report = { sha };
   for (const spec of pages) {
+    if (!spec.href) {
+      continue;
+    }
     report[spec.key] = {};
     const widths = spec.key === 'paving' ? [1280, 1024, 390] : [1280, 390];
     for (const width of widths) {

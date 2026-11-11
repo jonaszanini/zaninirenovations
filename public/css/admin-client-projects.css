@@ -1301,6 +1301,158 @@ html.cp-cancel-modal-open {
   display: block;
 }
 
+/* Overview tab: compact 2-column card grid on desktop, stacked on phone. */
+.cp-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .cp-overview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px 16px;
+  }
+}
+.cp-overview-grid > .admin-card {
+  padding: 0.85rem 1rem;
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .cp-overview-grid > .admin-card {
+    padding: 1rem 1.15rem;
+  }
+}
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card,
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card::before {
+  margin-top: 0;
+}
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card::before {
+  content: none;
+  display: none;
+}
+.cp-overview-grid > .cp-travel-cost-card,
+.cp-overview-grid > .cp-utilities-teaser {
+  margin-bottom: 0;
+}
+.cp-overview-grid > .admin-card > h3,
+.cp-overview-grid .cp-travel-cost-card__head h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+.cp-overview-grid .cp-travel-cost-card__head {
+  margin-bottom: 4px;
+  gap: 8px;
+  align-items: flex-start;
+}
+.cp-overview-grid .cp-travel-cost-card__head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cp-overview-grid .cp-travel-breakdown {
+  font-size: 0.8rem;
+}
+.cp-overview-grid .cp-travel-breakdown-wrap {
+  overflow-x: auto;
+}
+.cp-overview-grid .cp-travel-cost-card__foot {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.cp-overview-grid .cp-travel-breakdown tbody td,
+.cp-overview-grid .cp-travel-breakdown tbody th,
+.cp-overview-grid .cp-travel-breakdown tfoot td,
+.cp-overview-grid .cp-travel-breakdown tfoot th {
+  padding: 8px 8px;
+}
+.cp-overview-grid .cp-dl {
+  row-gap: 4px;
+  column-gap: 12px;
+  margin-top: 4px;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+}
+.cp-overview-dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cp-overview-editable {
+  display: contents;
+}
+.cp-overview-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.cp-overview-value {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cp-overview-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cp-overview-edit-btn:hover,
+.cp-overview-edit-btn[aria-expanded="true"] {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+}
+.cp-overview-inline-form {
+  grid-column: 1 / -1;
+  margin-top: 4px;
+  padding: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface-hover);
+  min-width: 0;
+}
+.cp-overview-inline-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.cp-overview-inline-form .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+.cp-overview-inline-form input[type="date"],
+.cp-overview-inline-form input[type="time"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+.cp-overview-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cp-overview-notes-heading {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+.cp-utilities-teaser__count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+.cp-overview-grid > .cp-utilities-teaser {
+  gap: 10px;
+}
+
 /* Visual rhythm between sibling sections inside a tab panel: ~28px gap +
    a soft hairline so each .admin-card / form feels deliberately separated.
    Form pairs use the direct-child combinator (> form + form) so nested
@@ -7135,7 +7287,144 @@ body.cp-modal-open {
   min-width: 0;
 }
 
-/* Desktop: one line per row; Address takes leftover width and wraps. */
+.cl-copy-fields {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cl-copy-field {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+  width: fit-content;
+  vertical-align: top;
+}
+
+.cl-copy-field__value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.cl-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+.cl-copy-btn:hover,
+.cl-copy-btn:focus-visible {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-surface-hover);
+}
+
+.cl-copy-btn.is-copied {
+  color: #fff;
+  background: #2e7d4a;
+  border-color: #2e7d4a;
+}
+
+.cl-show-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cl-show-card + .cl-show-card {
+  margin-top: 1rem;
+}
+
+.cl-show-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1.25rem;
+  margin: 0;
+}
+
+.cl-show-field {
+  min-width: 0;
+}
+
+.cl-show-field--full {
+  grid-column: 1 / -1;
+}
+
+.cl-show-field dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.cl-show-field dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--admin-text);
+}
+
+.cl-show-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cl-show-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--admin-heading);
+}
+
+.cl-show-projects .admin-code {
+  margin-left: 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .cl-copy-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cl-copy-field__value {
+    overflow-wrap: anywhere;
+  }
+  .cl-show-fields {
+    grid-template-columns: 1fr;
+  }
+  .cl-show-toolbar .admin-btn {
+    min-height: 44px;
+  }
+}
+
+/* Desktop: Address keeps a real share so text wraps by words next to the
+   copy icon when the 270px sidebar is open (1024 / 1280 / 1440). */
 @media (min-width: 641px) {
   .cp-clients-table {
     width: 100%;
@@ -7144,33 +7433,44 @@ body.cp-modal-open {
   }
   .cp-clients-table th,
   .cp-clients-table td {
-    padding: 0.55rem 0.65rem;
+    padding: 0.55rem 0.5rem;
+  }
+  .cp-clients-table th.cp-clients-col-projects,
+  .cp-clients-table th.cp-clients-col-actions {
+    letter-spacing: 0.03em;
+    font-size: 0.65rem;
   }
   .cp-clients-table .cp-clients-col-name {
-    white-space: nowrap;
-    width: 10.75rem;
+    white-space: normal;
+    width: 14%;
   }
   .cp-clients-table .cp-clients-col-email {
-    white-space: nowrap;
-    width: 12.5rem;
+    white-space: normal;
+    width: 16%;
   }
   .cp-clients-table .cp-clients-col-phone {
-    white-space: nowrap;
-    width: 8.25rem;
+    white-space: normal;
+    width: 18%;
+  }
+  .cp-clients-table .cp-clients-col-address {
+    width: 28%;
+    white-space: normal;
   }
   .cp-clients-table .cp-clients-col-projects {
     white-space: nowrap;
-    width: 5.75rem;
+    width: 10%;
   }
   .cp-clients-table .cp-clients-col-actions {
     white-space: nowrap;
-    width: 6.5rem;
+    width: 14%;
   }
-  .cp-clients-table .cp-clients-col-address {
-    width: auto;
-    white-space: normal;
+  .cp-clients-table .cl-copy-field--address {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
   }
-  .cp-clients-table .cp-clients-address-link {
+  .cp-clients-table .cp-clients-address-link,
+  .cp-clients-table .cl-copy-field--address .cl-copy-field__value {
     overflow-wrap: break-word;
     word-break: normal;
   }
@@ -7223,6 +7523,17 @@ body.cp-modal-open {
   }
   .cp-clients-table.admin-table--stack td.cp-clients-col-actions .admin-btn {
     margin-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack .cl-copy-fields,
+  .cp-clients-table.admin-table--stack .cl-copy-field {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-email,
+  .cp-clients-table.admin-table--stack td.cp-clients-col-phone,
+  .cp-clients-table.admin-table--stack td.cp-clients-col-address {
+    align-items: flex-start;
   }
 }
 
@@ -7725,6 +8036,170 @@ body.cp-modal-open {
 .q-expense-pair > .q-debris-card {
   margin-bottom: 0;
   padding: 14px 16px;
+}
+
+/* Standard quotation editor: option cards left, Totals right from 1024px. */
+.sq-lower-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid .q-expense-pair {
+  display: contents;
+}
+.sq-option-grid .q-building-card,
+.sq-option-grid .q-commute-card,
+.sq-option-grid .q-debris-card,
+.sq-option-grid .q-payment-schedule-card {
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+.sq-option-grid .q-commute-card__title,
+.sq-option-grid .q-debris-card__title,
+.sq-option-grid .q-payment-schedule-card__title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.sq-option-grid .q-commute-choice {
+  margin-bottom: 8px;
+  gap: 6px;
+}
+.sq-option-grid .q-commute-choice__option {
+  padding: 6px 10px;
+}
+.sq-option-grid .q-building-percent-wrap {
+  padding-top: 8px;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid .q-building-added {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  margin-left: 0;
+  box-sizing: border-box;
+}
+.sq-option-grid .q-building-added__label,
+.sq-option-grid .q-building-added__amount,
+.sq-option-grid .q-building-added__detail {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.sq-option-grid .q-building-field,
+.sq-option-grid .q-debris-amount-group,
+.sq-option-grid .q-commute-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 0;
+}
+.sq-option-grid .q-building-field > .admin-label-with-tip,
+.sq-option-grid .q-debris-amount-group > .admin-label-with-tip,
+.sq-option-grid .q-commute-field > .admin-label-with-tip,
+.sq-option-grid .q-commute-field > label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  flex: 0 1 auto;
+}
+.sq-option-grid .q-commute-card__metrics {
+  margin-bottom: 8px;
+  gap: 6px;
+}
+.sq-option-grid .q-commute-metric {
+  padding: 8px 10px;
+}
+.sq-option-grid .q-commute-card__fields {
+  gap: 8px;
+}
+.sq-option-grid .q-debris-card__body {
+  padding: 8px 10px;
+}
+.sq-option-grid .q-payment-schedule-options {
+  gap: 8px;
+}
+.sq-option-grid .q-payment-schedule-option {
+  padding: 8px 10px;
+  gap: 8px;
+}
+.sq-option-grid .q-payment-schedule-panels {
+  margin-top: 8px;
+}
+.sq-option-grid .q-payment-schedule-panel {
+  padding: 10px 12px;
+}
+.sq-option-grid .q-payment-schedule-panel__title {
+  margin-bottom: 8px;
+}
+.sq-option-grid .q-payment-schedule-pct-grid {
+  grid-template-columns: 1fr;
+}
+.sq-option-grid .q-pct-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  min-width: 0;
+}
+.sq-option-grid .q-pct-group > label {
+  margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
+}
+@media (max-width: 700px) {
+  .sq-option-grid .q-commute-choice {
+    flex-direction: row;
+  }
+  .sq-option-grid .q-commute-choice__option {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+}
+@media (max-width: 480px) {
+  .sq-option-grid .q-commute-card__metrics {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 641px) {
+  .sq-option-grid .q-payment-schedule-pct-grid {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  }
+}
+@media (min-width: 1024px) {
+  .sq-lower-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: start;
+  }
+  .sq-lower-grid > .sq-grand-card {
+    position: sticky;
+    top: 12px;
+    margin-bottom: 0;
+    min-width: 0;
+  }
+  .sq-lower-grid .sq-grand-rows {
+    max-width: none;
+  }
 }
 
 /* Quotation editors — commute expense (shown when “Yes — charge commute fuel” is selected) */

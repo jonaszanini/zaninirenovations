@@ -15,7 +15,6 @@ use App\Models\Helper;
 use App\Models\LowDeckQuotation;
 use App\Models\Material;
 use App\Models\MillworkQuotation;
-use App\Models\PaintingQuotation;
 use App\Models\PavingQuotation;
 use App\Models\PavingStoneType;
 use App\Models\Project;
@@ -91,7 +90,7 @@ class AdminOnceSubmitReplayTest extends IntegrationTestCase
             );
         }
 
-        $this->assertCount(24, $seen, 'expected replay coverage for the 24 non-project create endpoints');
+        $this->assertCount(23, $seen, 'expected replay coverage for the 23 non-project create endpoints');
     }
 
     public function test_calendar_personal_event_replay_returns_409_and_one_event(): void
@@ -331,18 +330,6 @@ class AdminOnceSubmitReplayTest extends IntegrationTestCase
                     'address' => '1 Industrial Rd',
                     'is_favorite' => '0',
                 ],
-            ],
-            'painting' => [
-                'route' => route('admin.quotations.painting.store'),
-                'from' => route('admin.quotations.painting.create'),
-                'model' => PaintingQuotation::class,
-                'column' => 'client_name',
-                'first' => 'Replay painting A',
-                'replay' => 'Replay painting B',
-                'payload' => fn (string $name) => [
-                    'save_intent' => 'draft',
-                    'client_name' => $name,
-                ] + $quoteExtras,
             ],
             'paving' => [
                 'route' => route('admin.quotations.paving.store'),

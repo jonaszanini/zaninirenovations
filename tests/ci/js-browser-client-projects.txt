@@ -1,1 +1,2 @@
 tests/js/client-projects-table-screenshots.test.js
+tests/js/client-projects-overview-screenshots.test.js

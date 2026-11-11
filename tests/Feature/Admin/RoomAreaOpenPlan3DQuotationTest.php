@@ -331,7 +331,7 @@ class RoomAreaOpenPlan3DQuotationTest extends TestCase
         $response->assertSee('Recreation Room', false);
     }
 
-    public function test_prefills_painting_wizard_from_openplan3d_room(): void
+    public function test_painting_wizard_create_from_openplan3d_room_is_blocked(): void
     {
         $room = $this->createSampleRoom();
 
@@ -342,7 +342,8 @@ class RoomAreaOpenPlan3DQuotationTest extends TestCase
             ])
         );
 
-        $response->assertOk();
-        $response->assertSee('Recreation Room', false);
+        $response->assertRedirect(route('admin.quotations.index', [
+            'project' => $this->clientProject->id,
+        ]));
     }
 }

@@ -14,6 +14,10 @@
     </ol>
   </nav>
 
+  @if (session('info'))
+    <div class="admin-flash admin-flash--info">{{ session('info') }}</div>
+  @endif
+
   @if (!empty($hubProjectError))
     <div class="admin-flash admin-flash--danger">{{ $hubProjectError }}</div>
   @endif
@@ -76,15 +80,6 @@
       </div>
       <div class="fq-hub-card-body">
         <h4>Tile</h4>
-      </div>
-    </a>
-
-    <a href="{{ route('admin.quotations.painting.index', $pq) }}" class="fq-hub-card">
-      <div class="fq-hub-card-image-wrap" aria-hidden="true">
-        @include('admin.quotations._hub_icon', ['name' => 'painting'])
-      </div>
-      <div class="fq-hub-card-body">
-        <h4>Painting</h4>
       </div>
     </a>
 

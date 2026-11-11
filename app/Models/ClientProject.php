@@ -1822,6 +1822,26 @@ class ClientProject extends Model
      * "10 digits" branch. The graceful fallbacks cover legacy rows that
      * existed before normalisation was introduced.
      */
+    /**
+     * tel: href with digits only. 10-digit NANP numbers get a +1 prefix.
+     * Display stays with {@see formatPhone()}; this is the dial link.
+     */
+    public static function telHref(?string $phone): ?string
+    {
+        $digits = preg_replace('/\D/', '', (string) $phone) ?? '';
+        if ($digits === '') {
+            return null;
+        }
+        if (strlen($digits) === 10) {
+            return 'tel:+1'.$digits;
+        }
+        if (strlen($digits) === 11 && $digits[0] === '1') {
+            return 'tel:+'.$digits;
+        }
+
+        return 'tel:'.$digits;
+    }
+
     public static function formatPhone(?string $phone): string
     {
         $digits = preg_replace('/\D/', '', (string) $phone);

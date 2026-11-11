@@ -65,9 +65,11 @@
       : ($qhClientName !== '' ? $qhClientName : null);
   $qhMiddleUrl = $qhProject ? $qhProjectUrl : $qhClientUrl;
   $qhMiddleKind = $qhProject ? 'project' : ($qhMiddleLabel ? 'client' : null);
+  $qhFlash = \App\Support\QuotationEditorFlash::current(isset($errors) ? $errors : null);
 @endphp
 
 <header class="qh" data-qh-header>
+  <div class="qh-crumb-row">
   <nav class="qh-crumb" aria-label="Breadcrumb">
     <ol class="qh-crumb__list">
       <li class="qh-crumb__item">
@@ -89,6 +91,8 @@
       </li>
     </ol>
   </nav>
+  @include('admin.partials.quotation_flash_status', ['qhFlash' => $qhFlash])
+  </div>
 
   <div class="qh-actions" role="group" aria-label="Quotation actions">
     <button type="submit"
@@ -134,3 +138,4 @@
     </div>
   @endif
 </header>
+@include('admin.partials.quotation_flash_toast', ['qhFlash' => $qhFlash])

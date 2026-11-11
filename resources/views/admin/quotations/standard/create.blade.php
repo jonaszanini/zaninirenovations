@@ -362,10 +362,13 @@
       </button>
     </div>
 
-    {{-- Grand summary -------------------------------------------- --}}
-    @include('admin.quotations._building', ['quotation' => $quotation])
-    @include('admin.quotations._commute_debris_row')
-    @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+    {{-- Option cards left, Totals right from 1024px. One column on phones. --}}
+    <div class="sq-lower-grid">
+    <div class="sq-option-grid">
+      @include('admin.quotations._building', ['quotation' => $quotation])
+      @include('admin.quotations._commute_debris_row')
+      @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+    </div>
 
     <div class="admin-card sq-grand-card">
       <h3 class="sq-grand-card__title">Totals</h3>
@@ -447,6 +450,7 @@
           <span id="sq-g-grand">CA$0.00</span>
         </div>
       </div>
+    </div>
     </div>
 
     @include('admin.partials.quotation_editor_footer', [

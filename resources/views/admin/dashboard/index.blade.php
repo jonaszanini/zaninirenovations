@@ -21,7 +21,10 @@
     <div class="dash-toolbar">
       <div>
         <p class="dash-toolbar-meta">Snapshot for {{ \App\Support\EasternStandardTimeDisplay::formatDateTimeMedium($d['generated_at']) }}</p>
-        <strong class="dash-toolbar-title">What needs action</strong>
+        <strong class="dash-toolbar-title">
+          <i class="fa fa-tachometer dash-title-icon" aria-hidden="true"></i>
+          What needs action
+        </strong>
       </div>
       <div class="dash-toolbar-actions">
         <a href="{{ route('admin.dashboard', ['refresh' => 1]) }}" class="admin-btn admin-btn--secondary admin-btn--sm" title="Bypass cache and recompute figures">
@@ -57,17 +60,26 @@
     {{-- Hero: exactly four action/cash cards --}}
     <div class="dash-grid dash-grid--cards dash-grid--spaced">
       <div class="dash-card dash-card--stat" title="Sum of totals on sent, unpaid invoices.">
-        <span class="dash-stat-label">Outstanding receivables</span>
+        <span class="dash-stat-label">
+          <i class="fa fa-credit-card dash-title-icon" aria-hidden="true"></i>
+          <span class="dash-stat-label__copy">Outstanding receivables</span>
+        </span>
         <span class="dash-stat-value">{{ ClientProject::formatMoney($c['outstanding_receivables']) }}</span>
         <span class="dash-stat-sub">Sent invoices awaiting payment</span>
       </div>
       <div class="dash-card dash-card--stat" title="Cash recorded from invoices marked paid this calendar month.">
-        <span class="dash-stat-label">Cash this month</span>
+        <span class="dash-stat-label">
+          <i class="fa fa-usd dash-title-icon" aria-hidden="true"></i>
+          <span class="dash-stat-label__copy">Cash this month</span>
+        </span>
         <span class="dash-stat-value">{{ ClientProject::formatMoney($c['cash_this_month']) }}</span>
         <span class="dash-stat-sub">Paid invoice amounts (MTD)</span>
       </div>
       <div class="dash-card dash-card--stat {{ ($c['overdue_invoice_count'] ?? 0) > 0 ? 'dash-card--alert' : '' }}" title="Sent invoices past their due date.">
-        <span class="dash-stat-label">Overdue</span>
+        <span class="dash-stat-label">
+          <i class="fa fa-exclamation-circle dash-title-icon" aria-hidden="true"></i>
+          <span class="dash-stat-label__copy">Overdue</span>
+        </span>
         <span class="dash-stat-value">{{ $c['overdue_invoice_count'] }}</span>
         <span class="dash-stat-sub">
           {{ ClientProject::formatMoney($c['overdue_invoice_total'] ?? 0) }} past due
@@ -75,8 +87,11 @@
       </div>
       <div class="dash-card dash-card--stat" title="Projects not completed, cancelled, or rejected, with contract total where set.">
         <span class="dash-stat-label">
-          Active projects
-          <x-admin.info-tip label="Active projects">Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
+          <i class="fa fa-briefcase dash-title-icon" aria-hidden="true"></i>
+          <span class="dash-stat-label__copy">
+            Active projects
+            <x-admin.info-tip label="Active projects">Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
+          </span>
         </span>
         <span class="dash-stat-value">{{ $c['active_projects_count'] }}</span>
         <span class="dash-stat-sub">Contract total {{ ClientProject::formatMoney($c['active_projects_value']) }}</span>
@@ -84,7 +99,10 @@
     </div>
 
     {{-- Do today: overdue invoices + attention, above charts --}}
-    <h2 class="dash-block-title">Do today</h2>
+    <h2 class="dash-block-title">
+      <i class="fa fa-check-square-o dash-title-icon" aria-hidden="true"></i>
+      Do today
+    </h2>
     @if (($d['pending_etransfers'] ?? 0) > 0)
       <div class="dash-panel dash-etransfer-today">
         <div class="dash-etransfer-today__copy">
@@ -96,7 +114,10 @@
     @endif
     <div class="dash-two-col dash-two-col--today">
       <div class="dash-panel">
-        <h3 class="dash-section-title">Overdue invoices</h3>
+        <h3 class="dash-section-title">
+          <i class="fa fa-file-text-o dash-title-icon" aria-hidden="true"></i>
+          Overdue invoices
+        </h3>
         @if (count($d['overdue_invoices']) === 0)
           <p class="dash-empty">No overdue sent invoices with a due date.</p>
         @else
@@ -128,26 +149,48 @@
       </div>
 
       <div class="dash-panel dash-panel--attention">
-        <h3 class="dash-section-title">Attention</h3>
+        <h3 class="dash-section-title">
+          <i class="fa fa-exclamation-triangle dash-title-icon" aria-hidden="true"></i>
+          Attention
+        </h3>
         @if (count($d['attention']['alerts']) === 0)
           <p class="dash-empty">No overdue invoices or behind-schedule flags on active projects.</p>
         @else
-          <ul class="dash-attention-list">
+          <ul class="dash-compact-list">
             @foreach ($d['attention']['alerts'] as $row)
-              <li>
-                <a class="dash-link" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
-                <span class="dash-attention-meta">— {{ implode('; ', $row['reasons']) }}</span>
+              <li class="dash-compact-row">
+                <span class="dash-compact-row__icon dash-compact-row__icon--alert" aria-hidden="true">
+                  <i class="fa fa-exclamation-triangle"></i>
+                </span>
+                <div class="dash-compact-row__body">
+                  <div class="dash-compact-row__top">
+                    <a class="dash-link dash-compact-row__title" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
+                  </div>
+                  @if (!empty($row['reasons']))
+                    <div class="dash-compact-row__meta">{{ implode(', ', $row['reasons']) }}</div>
+                  @endif
+                </div>
               </li>
             @endforeach
           </ul>
         @endif
         @if (count($d['attention']['high_value']) > 0)
-          <h4 class="dash-attention-subheading">Top contract values</h4>
-          <ul class="dash-attention-list dash-attention-list--compact">
+          <h4 class="dash-attention-subheading">
+            <i class="fa fa-line-chart dash-title-icon" aria-hidden="true"></i>
+            Top contract values
+          </h4>
+          <ul class="dash-compact-list">
             @foreach ($d['attention']['high_value'] as $row)
-              <li>
-                <a class="dash-link" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
-                <span class="dash-attention-meta">— {{ ClientProject::formatMoney($row['value']) }}</span>
+              <li class="dash-compact-row">
+                <span class="dash-compact-row__icon" aria-hidden="true">
+                  <i class="fa fa-briefcase"></i>
+                </span>
+                <div class="dash-compact-row__body">
+                  <div class="dash-compact-row__top">
+                    <a class="dash-link dash-compact-row__title" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
+                    <span class="dash-compact-row__amt">{{ ClientProject::formatMoney($row['value']) }}</span>
+                  </div>
+                </div>
               </li>
             @endforeach
           </ul>
@@ -156,10 +199,16 @@
     </div>
 
     {{-- Pipeline / follow-up --}}
-    <h2 class="dash-block-title">Pipeline / follow-up</h2>
+    <h2 class="dash-block-title">
+      <i class="fa fa-filter dash-title-icon" aria-hidden="true"></i>
+      Pipeline / follow-up
+    </h2>
     <div class="dash-two-col">
       <div class="dash-panel">
-        <h3 class="dash-section-title">Who to chase</h3>
+        <h3 class="dash-section-title">
+          <i class="fa fa-phone dash-title-icon" aria-hidden="true"></i>
+          Who to chase
+        </h3>
         <div class="dash-pipeline dash-pipeline--summary">
           <div>
             <strong>{{ $pipeline['open_quotations_count'] }}</strong> open project quotations<br>
@@ -171,38 +220,58 @@
           </div>
         </div>
 
-        <h4 class="dash-attention-subheading">Open quotations</h4>
+        <h4 class="dash-attention-subheading">
+          <i class="fa fa-file-text dash-title-icon" aria-hidden="true"></i>
+          Open quotations
+        </h4>
         @if (count($openQuoteRows) === 0)
           <p class="dash-empty">No open visit / quote-stage projects.</p>
         @else
-          <ul class="dash-chase-list">
+          <ul class="dash-compact-list">
             @foreach ($openQuoteRows as $row)
-              <li>
-                <a class="dash-link" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
-                <span class="dash-attention-meta">
-                  — {{ $row['client_name'] ?: 'No client' }}
-                  · {{ $row['status'] }}
-                  @if (($row['potential'] ?? 0) > 0)
-                    · {{ ClientProject::formatMoney($row['potential']) }}
-                  @endif
+              <li class="dash-compact-row">
+                <span class="dash-compact-row__icon" aria-hidden="true">
+                  <i class="fa fa-file-text-o"></i>
                 </span>
+                <div class="dash-compact-row__body">
+                  <div class="dash-compact-row__top">
+                    <a class="dash-link dash-compact-row__title" href="{{ $row['url'] }}">{{ $row['name'] }}</a>
+                    @if (($row['potential'] ?? 0) > 0)
+                      <span class="dash-compact-row__amt">{{ ClientProject::formatMoney($row['potential']) }}</span>
+                    @endif
+                  </div>
+                  <div class="dash-compact-row__meta">
+                    <span class="dash-row-pill">{{ $row['status'] }}</span>
+                    <span class="dash-compact-row__client">{{ $row['client_name'] ?: 'No client' }}</span>
+                  </div>
+                </div>
               </li>
             @endforeach
           </ul>
         @endif
 
-        <h4 class="dash-attention-subheading">Standalone fence quotes</h4>
+        <h4 class="dash-attention-subheading">
+          <i class="fa fa-th-large dash-title-icon" aria-hidden="true"></i>
+          Standalone fence quotes
+        </h4>
         @if (count($fenceRows) === 0)
           <p class="dash-empty">No unlinked fence quotations.</p>
         @else
-          <ul class="dash-chase-list">
+          <ul class="dash-compact-list">
             @foreach ($fenceRows as $row)
-              <li>
-                <a class="dash-link" href="{{ $row['url'] }}">{{ $row['quote_number'] }}</a>
-                <span class="dash-attention-meta">
-                  — {{ $row['client_name'] ?: 'No client' }}
-                  · {{ ClientProject::formatMoney($row['grand_total']) }}
+              <li class="dash-compact-row">
+                <span class="dash-compact-row__icon" aria-hidden="true">
+                  <i class="fa fa-th-large"></i>
                 </span>
+                <div class="dash-compact-row__body">
+                  <div class="dash-compact-row__top">
+                    <a class="dash-link dash-compact-row__title" href="{{ $row['url'] }}">{{ $row['quote_number'] }}</a>
+                    <span class="dash-compact-row__amt">{{ ClientProject::formatMoney($row['grand_total']) }}</span>
+                  </div>
+                  <div class="dash-compact-row__meta">
+                    <span class="dash-compact-row__client">{{ $row['client_name'] ?: 'No client' }}</span>
+                  </div>
+                </div>
               </li>
             @endforeach
           </ul>
@@ -213,7 +282,10 @@
       </div>
 
       <div class="dash-panel">
-        <h3 class="dash-section-title">Upcoming (30 days)</h3>
+        <h3 class="dash-section-title">
+          <i class="fa fa-calendar dash-title-icon" aria-hidden="true"></i>
+          Upcoming (30 days)
+        </h3>
         @if (count($d['upcoming']) === 0)
           <p class="dash-empty">No project start or end dates in the next 30 days.</p>
         @else

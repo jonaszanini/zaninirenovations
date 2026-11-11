@@ -26,6 +26,9 @@ class QuotationEditorHeaderMarkupTest extends TestCase
         $this->assertStringContainsString('Save as draft', $partial);
         $this->assertStringContainsString('← Back', $partial);
         $this->assertStringContainsString('→ Next', $partial);
+        $this->assertStringContainsString('admin.partials.quotation_flash_status', $partial);
+        $this->assertStringContainsString('admin.partials.quotation_flash_toast', $partial);
+        $this->assertStringContainsString('qh-crumb-row', $partial);
 
         $creates = [
             'basement' => 'br-btn-draft',

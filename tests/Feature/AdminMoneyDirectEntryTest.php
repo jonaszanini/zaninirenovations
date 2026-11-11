@@ -537,7 +537,6 @@ class AdminMoneyDirectEntryTest extends IntegrationTestCase
             '/admin/quotations/low-deck/create',
             '/admin/quotations/paving/create',
             '/admin/quotations/stairs/create',
-            '/admin/quotations/painting/create',
             '/admin/materials/create',
             '/admin/helpers/create',
             '/admin/vehicles',

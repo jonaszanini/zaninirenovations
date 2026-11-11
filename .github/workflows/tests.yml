@@ -207,9 +207,14 @@ jobs:
               - 'public/css/admin-**'
               - 'resources/views/admin/layouts/**'
               - 'resources/views/admin/partials/**'
+              - 'resources/views/admin/clients/**'
+              - 'resources/views/admin/dashboard/**'
               - 'resources/views/components/admin/info-tip.blade.php'
               - 'tests/js/admin-*'
               - 'tests/js/**/*admin*browser*'
+              - 'tests/Feature/Admin/Dashboard*.php'
+              - 'tests/Feature/Admin/dashboard-*.js'
+              - 'tests/Unit/Views/AdminDashboard*.php'
             browser_openplan3d:
               - 'public/js/openplan3d-**'
               - 'public/js/room-area/**'
@@ -234,11 +239,17 @@ jobs:
               - 'public/js/admin-dialog.js'
               - 'public/js/admin-info-tip.js'
               - 'public/css/admin.css'
+              - 'public/css/admin-client-projects.css'
               - 'tests/js/quotation-**'
+              - 'tests/js/helpers/render-standard-quotation-editor.php'
               - 'tests/js/fixtures/quotation-redraft-hotkey-lock.html'
+              - 'tests/js/fixtures/quotation-standard-option-grid.html'
               - 'tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php'
               - 'tests/Feature/Admin/QuotationLifecycleBrowserTest.php'
               - 'tests/Feature/Admin/quotation-lifecycle-browser.js'
+              - 'tests/Feature/Admin/QuotationEditorFlashTest.php'
+              - 'tests/Feature/Admin/QuotationEditorFlashBrowserTest.php'
+              - 'tests/Feature/Admin/quotation-editor-flash-browser.js'
             browser_client:
               - 'resources/views/admin/client-projects/**'
               - 'resources/views/admin/client_projects/**'
@@ -330,7 +341,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: dom, mbstring, pdo_mysql, fileinfo, intl
+          extensions: dom, mbstring, pdo_mysql, pdo_sqlite, fileinfo, intl
           coverage: none
           cache: composer
 
@@ -398,6 +409,18 @@ jobs:
             tests/js/artifacts/room-area-takeoffs-panel-390.png
           if-no-files-found: warn
 
+      - name: Upload clients directory screenshots
+        if: success() && needs.changes.outputs.run_browser_admin == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clients-directory-screenshots
+          path: |
+            storage/app/qa-screenshots/clients-list-1280.png
+            storage/app/qa-screenshots/clients-list-390.png
+            storage/app/qa-screenshots/clients-view-1280.png
+            storage/app/qa-screenshots/clients-view-390.png
+          if-no-files-found: warn
+
       - name: Upload wall finishes drywall panel screenshots
         if: success() && needs.changes.outputs.run_browser_openplan3d == 'true'
         uses: actions/upload-artifact@v4
@@ -418,6 +441,28 @@ jobs:
             tests/js/artifacts/quotation-row-actions-menu-1280.png
             storage/app/qa-screenshots/quotation-row-actions-menu-390.png
             storage/app/qa-screenshots/quotation-row-actions-menu-1280.png
+          if-no-files-found: warn
+
+      - name: Upload client project overview screenshots
+        if: success() && needs.changes.outputs.run_browser_client == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-project-overview-screenshots
+          path: storage/app/qa-screenshots/client-project-overview-*.png
+          if-no-files-found: warn
+
+      - name: Upload standard quotation option grid screenshots
+        if: success() && needs.changes.outputs.run_browser_quotation == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standard-quotation-option-grid-screenshots
+          path: |
+            tests/js/artifacts/standard-quotation-option-grid-1280.png
+            tests/js/artifacts/standard-quotation-option-grid-390.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1024.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1280.png
+            tests/js/artifacts/standard-quotation-option-grid-real-390.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1440.png
           if-no-files-found: warn
 
   mysql:
@@ -503,12 +548,32 @@ jobs:
           CI_MYSQL_FILTER_ROUTES_SMOKE: ${{ needs.changes.outputs.filter_routes_smoke }}
         run: tests/ci/run-database-suite.sh
 
+      - name: Upload client project overview real-render screenshots
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-project-overview-real-screenshots
+          path: storage/app/qa-screenshots/client-project-overview-visit-edit-real-*.png
+          if-no-files-found: warn
+
       - name: Upload basement wizard QA screenshots
         if: success() && needs.changes.outputs.filter_quotation == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: basement-wizard-qa-screenshots
           path: storage/app/qa-screenshots/basement-*.png
+          if-no-files-found: warn
+
+      - name: Upload quotation flash toast screenshots
+        if: success() && needs.changes.outputs.filter_quotation == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotation-flash-toast-screenshots
+          path: |
+            storage/app/qa-screenshots/quotation-flash-standard-1280.png
+            storage/app/qa-screenshots/quotation-flash-standard-390.png
+            storage/app/qa-screenshots/quotation-flash-basement-1280.png
+            storage/app/qa-screenshots/quotation-flash-basement-390.png
           if-no-files-found: warn
 
       - name: Upload Shared prices geometry

@@ -56,7 +56,7 @@
     @endforeach
   </div>
 
-  <div class="q-payment-schedule-panels" style="margin-top: 14px;">
+  <div class="q-payment-schedule-panels">
     @foreach ([2, 3, 4] as $n)
       @php
         $defaults = QuotationPaymentSchedule::percentages($n);
@@ -106,6 +106,7 @@
     color: var(--admin-heading, #0f172a);
   }
   .q-payment-schedule-card__intro { margin: 0 0 14px; }
+  .q-payment-schedule-panels { margin-top: 14px; }
   .q-payment-schedule-options {
     display: grid;
     /* auto-fit (not a fixed 4-up viewport breakpoint) so this stays
@@ -197,7 +198,9 @@
     margin-bottom: 4px;
     display: block;
     line-height: 1.25;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: manual;
   }
   .q-pct-input-wrap {
     position: relative;

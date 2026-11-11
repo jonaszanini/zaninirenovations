@@ -770,65 +770,30 @@
 
   {{-- OVERVIEW TAB --------------------------------------------------------- --}}
   <section class="cp-tab-panel is-active" data-panel="overview">
-    @if ($isCompleted)
-      @include('admin.client_projects._final_summary', ['project' => $project])
-    @endif
-
-    @include('admin.client_projects._travel_cost', ['project' => $project])
-
-    @if ($linkedUtilities['has_any'] ?? false)
-      <div class="admin-card cp-utilities-teaser">
-        <div class="cp-utilities-teaser__text">
-          <h3>Linked utilities</h3>
-          <p class="admin-form-help">
-            {{ $linkedUtilities['total_count'] }}
-            {{ \Illuminate\Support\Str::plural('saved item', $linkedUtilities['total_count']) }}
-            from admin calculators are linked to this project.
-          </p>
-        </div>
-        <a href="#utilities" class="admin-btn admin-btn--ghost admin-btn--sm">View utilities</a>
-      </div>
-    @endif
-
-    <div class="admin-card">
-      <h3>Details</h3>
-      <dl class="cp-dl">
-        <dt>Project name</dt><dd>{{ $project->name }}</dd>
-        <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [
-          'project' => $project,
-          'label' => $project->client_name,
-        ])</dd>
-        <dt>Email</dt><dd>@include('admin.partials.client_directory_link', [
-          'project' => $project,
-          'label' => $project->client_email,
-          'fallbackMailto' => true,
-        ])</dd>
-        <dt>Secondary email</dt><dd>{{ $project->secondaryClientEmail() ?: '—' }}</dd>
-        <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</dd>
-        <dt>Address</dt><dd>{{ $project->client_address ?: '—' }}</dd>
-        <dt>Created</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</dd>
-        <dt>Status changed</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->status_changed_at) }}</dd>
-        @if ($project->visit_required || $project->visit_date || $project->visit_done)
-          <dt>Visit</dt>
-          <dd>
-            @if ($project->visit_done)
-              Done
-              @if ($project->visit_date)
-                ({{ $project->visitDateTimeDisplay() }})
-              @endif
-            @elseif ($project->visit_required)
-              {{ $project->visit_date ? $project->visitDateTimeDisplay() : 'Required — date not set yet' }}
-            @elseif ($project->visit_date)
-              {{ $project->visitDateTimeDisplay() }}
-            @endif
-          </dd>
-        @endif
-      </dl>
-
-      @if ($project->notes)
-        <h3 style="margin-top:24px;">Notes</h3>
-        <div class="cp-notes-box">{{ $project->notes }}</div>
+    <div class="cp-overview-grid">
+      @if ($isCompleted)
+        @include('admin.client_projects._final_summary', ['project' => $project])
       @endif
+
+      @include('admin.client_projects._travel_cost', ['project' => $project])
+
+      @if ($linkedUtilities['has_any'] ?? false)
+        <div class="admin-card cp-utilities-teaser">
+          <div class="cp-utilities-teaser__text">
+            <h3>
+              Linked utilities
+              <x-admin.info-tip label="Linked utilities">Saved items from admin calculators that are linked to this project.</x-admin.info-tip>
+            </h3>
+            <p class="cp-utilities-teaser__count">
+              {{ $linkedUtilities['total_count'] }}
+              {{ \Illuminate\Support\Str::plural('saved item', $linkedUtilities['total_count']) }}
+            </p>
+          </div>
+          <a href="#utilities" class="admin-btn admin-btn--ghost admin-btn--sm">View utilities</a>
+        </div>
+      @endif
+
+      @include('admin.client_projects._overview_details', ['project' => $project])
     </div>
   </section>
 

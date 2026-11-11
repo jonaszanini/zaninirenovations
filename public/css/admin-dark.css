@@ -3695,6 +3695,39 @@ html.admin-dark .dash-etransfer-today {
   border-color: var(--admin-border);
 }
 
+html.admin-dark .admin-content .dash-toolbar-title,
+html.admin-dark .admin-content .dash-block-title,
+html.admin-dark .admin-content .dash-section-title,
+html.admin-dark .admin-content .dash-attention-subheading,
+html.admin-dark .admin-content .dash-card--stat .dash-stat-label,
+html.admin-dark .admin-content .dash-title-icon {
+  color: var(--admin-primary);
+}
+
+html.admin-dark .dash-compact-row__icon {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
+html.admin-dark .dash-compact-row__icon--alert {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+
+html.admin-dark .dash-compact-row__amt {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .dash-compact-row__meta,
+html.admin-dark .dash-compact-row__client {
+  color: var(--admin-muted);
+}
+
+html.admin-dark .dash-row-pill {
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+}
+
 html.admin-dark .util-lb-offcut-used {
   background: var(--admin-stat-tile-bg);
   border-color: var(--admin-border);
@@ -3755,6 +3788,36 @@ html.admin-dark .admin-toast--warning {
 html.admin-dark .admin-toast__close:hover,
 html.admin-dark .admin-toast__close:focus-visible {
   background: var(--admin-surface-hover);
+}
+
+html.admin-dark [data-qh-editor-toast] .admin-toast__card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--success {
+  background: rgba(20, 83, 45, 0.82);
+  color: #bbf7d0;
+  border-color: rgba(22, 101, 52, 0.85);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--error {
+  background: rgba(127, 29, 29, 0.82);
+  color: #fecaca;
+  border-color: rgba(153, 27, 27, 0.85);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--warning {
+  background: rgba(124, 45, 18, 0.82);
+  color: #fed7aa;
+  border-color: rgba(154, 52, 18, 0.85);
+}
+html.admin-dark .qh-flash-status,
+html.admin-dark .qh-flash-status--success {
+  color: #bbf7d0;
+}
+html.admin-dark .qh-flash-status--warning {
+  color: #fed7aa;
+}
+html.admin-dark .qh-flash-status--error {
+  color: #fecaca;
 }
 
 html.admin-dark .admin-input.admin-field-invalid,
@@ -3829,6 +3892,22 @@ html.admin-dark .cp-client-action-btn:disabled:hover {
   border-color: rgba(255, 255, 255, 0.08) !important;
   color: #64748b !important;
   cursor: not-allowed !important;
+}
+html.admin-dark .cl-copy-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .cl-copy-btn:hover,
+html.admin-dark .cl-copy-btn:focus-visible {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+html.admin-dark .cl-copy-btn.is-copied {
+  color: #fff;
+  background: #2e7d4a;
+  border-color: #2e7d4a;
 }
 
 

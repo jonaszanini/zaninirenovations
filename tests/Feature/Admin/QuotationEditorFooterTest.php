@@ -3,6 +3,7 @@
 namespace Tests\Feature\Admin;
 
 use App\Models\ClientProject;
+use App\Models\PaintingQuotation;
 use Tests\IntegrationTestCase;
 use Tests\Support\ActsAsAdmin;
 
@@ -41,7 +42,7 @@ class QuotationEditorFooterTest extends IntegrationTestCase
     ): void {
         $this->actingAsAdmin();
 
-        $html = $this->get(route($createRoute))
+        $html = $this->get($this->editorUrl($type, $createRoute, $isPainting))
             ->assertOk()
             ->assertSee('data-qh-header', false)
             ->getContent();
@@ -141,7 +142,7 @@ class QuotationEditorFooterTest extends IntegrationTestCase
         ]);
         $projectUrl = route('admin.client-projects.show', $project).'#quotation';
 
-        $html = $this->get(route($createRoute, ['project' => $project->id]))
+        $html = $this->get($this->editorUrl($type, $createRoute, $isPainting, $project))
             ->assertOk()
             ->assertSee('qh-crumb__project', false)
             ->assertSee($projectUrl, false)
@@ -201,5 +202,31 @@ class QuotationEditorFooterTest extends IntegrationTestCase
             $omittedZero,
             'stored total 0 must SSR as CA$0.00 when initialTotal is omitted'
         );
+    }
+
+    /**
+     * Painting create is blocked. Exercise the editor on an existing quote instead.
+     */
+    private function editorUrl(string $type, string $createRoute, bool $isPainting, ?ClientProject $project = null): string
+    {
+        if (! $isPainting) {
+            return route($createRoute, $project ? ['project' => $project->id] : []);
+        }
+
+        $quote = PaintingQuotation::query()->create([
+            'quote_number' => PaintingQuotation::generateNumber(),
+            'client_name' => 'Footer Painting Client',
+            'is_draft' => true,
+            'inputs' => [],
+            'calculation' => [],
+            'final_quote_total' => 0,
+        ]);
+
+        $params = ['painting_quotation' => $quote];
+        if ($project) {
+            $params['project'] = $project->id;
+        }
+
+        return route('admin.quotations.painting.edit', $params);
     }
 }

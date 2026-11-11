@@ -18,7 +18,9 @@ tests/Feature/Admin/BasementQuotationPagesTest.php
 tests/Feature/Admin/BasementRoomAreaImportTest.php
 tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
 tests/Feature/Admin/BlogPostsIndexLayoutTest.php
+tests/Feature/Admin/ClientIndexAddressColumnLayoutTest.php
 tests/Feature/Admin/ClientIndexAddressSearchTest.php
+tests/Feature/Admin/ClientShowPageTest.php
 tests/Feature/Admin/ClientProjectCalendarUpgradeTest.php
 tests/Feature/Admin/ClientProjectFiltersAccordionTest.php
 tests/Feature/Admin/ClientProjectRoomAreaPageTest.php
@@ -40,10 +42,13 @@ tests/Feature/Admin/QuotationCutListImportTest.php
 tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
 tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
 tests/Feature/Admin/QuotationEditorControlInventoryTest.php
+tests/Feature/Admin/QuotationEditorFlashBrowserTest.php
+tests/Feature/Admin/QuotationEditorFlashTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
 tests/Feature/Admin/QuotationEditorHeaderTest.php
 tests/Feature/Admin/QuotationHotkeySaveStateTest.php
+tests/Feature/Admin/PaintingQuotationCreateHiddenTest.php
 tests/Feature/Admin/QuotationHelpTipBrowserTest.php
 tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 tests/Feature/Admin/RoomAreaBatch2PageTest.php

@@ -44,6 +44,7 @@ class RoomAreaQuoteLinesTest extends IntegrationTestCase
             ->assertSee('lf perimeter', false)
             ->assertSee('Millwork', false)
             ->assertSee('Stairs', false)
+            ->assertDontSee(route('admin.quotations.painting.create'), false)
             ->assertDontSee('lf walls', false);
     }
 

@@ -15,6 +15,7 @@
   root.AdminToast = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   var SUCCESS_MS = 2500;
+  var QUOTE_MS = 6000;
   var AVOID_PAD = 14;
   var PLACEMENTS = [
     'bottom-center',
@@ -57,6 +58,10 @@
   var fieldWatchBound = false;
   var keyBound = false;
   var lastEnv = null;
+  var hidePaused = false;
+  var hideRemaining = 0;
+  var hideStartedAt = 0;
+  var hoverBoundHost = null;
 
   function envDoc(env) {
     return (env && env.document) || (typeof document !== 'undefined' ? document : null);
@@ -74,14 +79,31 @@
       .replace(/"/g, '&quot;');
   }
 
+  function isQuotationEditor(doc, node) {
+    if (node && node.hasAttribute && node.hasAttribute('data-qh-editor-toast')) return true;
+    doc = doc || (node && node.ownerDocument) || null;
+    return !!(doc && doc.querySelector && doc.querySelector('[data-qh-header]'));
+  }
+
+  function isQuotationHost(node) {
+    return isQuotationEditor(node && node.ownerDocument, node);
+  }
+
+  function quotationDuration(node) {
+    return isQuotationHost(node) ? QUOTE_MS : SUCCESS_MS;
+  }
+
   function ensureHost(env) {
     var doc = envDoc(env);
     if (!doc) return null;
-    host = doc.querySelector('[data-admin-toast-host]');
+    host = doc.querySelector('[data-qh-editor-toast]') || doc.querySelector('[data-admin-toast-host]');
     if (!host) {
       host = doc.createElement('div');
       host.className = 'admin-toast';
       host.setAttribute('data-admin-toast-host', '');
+      if (isQuotationEditor(doc, null)) {
+        host.setAttribute('data-qh-editor-toast', '');
+      }
       host.hidden = true;
       (doc.body || doc.documentElement).appendChild(host);
     }
@@ -160,7 +182,8 @@
 
   function applyPlacement(node, name) {
     node.setAttribute('data-placement', name);
-    node.className = 'admin-toast admin-toast--' + name;
+    var entering = node.classList && node.classList.contains('is-entering') ? ' is-entering' : '';
+    node.className = 'admin-toast admin-toast--' + name + entering;
     if (node.style) {
       node.style.top = '';
       node.style.bottom = '';
@@ -215,6 +238,10 @@
     var win = envWin(env);
     var node = ensureHost(env);
     if (!node || !doc) return 'bottom-center';
+    if (isQuotationHost(node)) {
+      applyPlacement(node, 'top-right');
+      return 'top-right';
+    }
     var rects = avoidRects(doc, win);
     var best = null;
     for (var i = 0; i < PLACEMENTS.length; i++) {
@@ -394,7 +421,11 @@
 
   function close(env) {
     clearTimer();
-    var node = host || (envDoc(env) && envDoc(env).querySelector('[data-admin-toast-host]'));
+    hidePaused = false;
+    hideRemaining = 0;
+    var node = host || (envDoc(env) && (
+      envDoc(env).querySelector('[data-qh-editor-toast]') || envDoc(env).querySelector('[data-admin-toast-host]')
+    ));
     if (node) {
       node.hidden = true;
       node.innerHTML = '';
@@ -403,6 +434,38 @@
       highlightFields(lastOptions.fields, false);
     }
     lastOptions = null;
+  }
+
+  function scheduleHide(env, ms) {
+    clearTimer();
+    hideRemaining = ms;
+    hideStartedAt = Date.now ? Date.now() : 0;
+    hideTimer = setTimeout(function () {
+      hideTimer = null;
+      if (hidePaused) return;
+      close(env);
+    }, ms);
+  }
+
+  function bindHoverPause(node, env) {
+    if (!node || hoverBoundHost === node || typeof node.addEventListener !== 'function') return;
+    hoverBoundHost = node;
+    node.addEventListener('mouseenter', function () {
+      if (!hideTimer && hideRemaining <= 0) return;
+      hidePaused = true;
+      if (hideTimer && hideStartedAt) {
+        var elapsed = (Date.now ? Date.now() : hideStartedAt) - hideStartedAt;
+        hideRemaining = Math.max(0, hideRemaining - elapsed);
+      }
+      clearTimer();
+    });
+    node.addEventListener('mouseleave', function () {
+      if (!hidePaused) return;
+      hidePaused = false;
+      if (hideRemaining > 0 && host && !host.hidden) {
+        scheduleHide(env, hideRemaining);
+      }
+    });
   }
 
   function show(options, env) {
@@ -425,17 +488,15 @@
     if (type === 'validation') {
       type = options.warning ? 'warning' : 'error';
     }
-    var sticky = options.sticky;
-    if (sticky == null) {
-      sticky = type !== 'success';
-    }
+    var quoteHost = isQuotationHost(host);
+    var sticky = quoteHost ? false : (options.sticky == null ? type !== 'success' : options.sticky);
     var title = options.title || (type === 'success' ? 'Saved' : 'Could not save');
-    var live = type === 'success' ? 'status' : 'alert';
+    var live = type === 'success' || quoteHost ? 'status' : 'alert';
 
     lastOptions = options;
     host.hidden = false;
     host.setAttribute('role', live);
-    host.setAttribute('aria-live', type === 'success' ? 'polite' : 'assertive');
+    host.setAttribute('aria-live', quoteHost || type === 'success' ? 'polite' : 'assertive');
     host.innerHTML =
       '<div class="admin-toast__card admin-toast--' + type + '">' +
         '<i class="fa ' + iconFor(type) + ' admin-toast__icon" aria-hidden="true"></i>' +
@@ -458,14 +519,19 @@
     bindFieldLinks(env);
     if (options.fields) highlightFields(options.fields, true);
     pickPlacement(env);
+    if (quoteHost && host.classList) {
+      host.classList.remove('is-entering');
+      if (host.offsetWidth) { /* restart slide/fade */ }
+      host.classList.add('is-entering');
+    }
     if (options.fields && options.fields[0] && options.fields[0].el) {
       focusField(options.fields[0], env);
     }
 
     if (!sticky) {
-      hideTimer = setTimeout(function () {
-        close(env);
-      }, options.duration || SUCCESS_MS);
+      var duration = options.duration || (quoteHost ? quotationDuration(host) : SUCCESS_MS);
+      scheduleHide(env, duration);
+      if (quoteHost) bindHoverPause(host, env);
     }
     return host;
   }
@@ -473,16 +539,15 @@
   function saved(env, message) {
     var text = message && String(message).trim();
     var plain = !text || /^(saved\.?|changes saved\.?)$/i.test(text);
-    return show({
+    return api.show({
       type: 'success',
       title: plain ? 'Saved' : text,
       sticky: false,
-      duration: SUCCESS_MS,
     }, env);
   }
 
   function error(message, env, title) {
-    return show({
+    return api.show({
       type: 'error',
       title: title || 'Could not save',
       message: message || 'The server could not save your changes.',
@@ -493,7 +558,7 @@
   function validation(fields, opts, env) {
     opts = opts || {};
     var warning = !!opts.warning;
-    return show({
+    return api.show({
       type: warning ? 'warning' : 'error',
       title: warning ? 'Please review' : 'Please fix these fields',
       fields: fields || [],
@@ -521,8 +586,9 @@
     return false;
   }
 
-  return {
+  var api = {
     SUCCESS_MS: SUCCESS_MS,
+    QUOTE_MS: QUOTE_MS,
     PLACEMENTS: PLACEMENTS,
     AVOID_SEL: AVOID_SEL,
     PRIORITY_AVOID_SEL: PRIORITY_AVOID_SEL,
@@ -539,4 +605,5 @@
     revealWizardFor: revealWizardFor,
     bindFieldWatch: bindFieldWatch,
   };
+  return api;
 });
