@@ -178,16 +178,16 @@ class RoomAreaOpenPlan3DQuotationTest extends TestCase
         $this->assertNotNull($floorLine);
         $this->assertNotNull($baseLine);
 
-        // 180 sq ft + 10% waste = 198 sq ft
-        $this->assertEquals(198.0, (float) $floorLine['quantity']);
+        // Interior floor 171.25 sf (12×15 ft loop, 10 cm walls, interior-face area) + 10% waste → 188.38 sf
+        $this->assertEquals(188.38, (float) $floorLine['quantity']);
         $this->assertEquals(5.00, (float) $floorLine['unit_price']);
 
-        // Perimeter = 2*(12+15) = 54 lf, minus 3ft door = 51 lf
-        $this->assertEquals(51.0, (float) $baseLine['quantity']);
+        // finish_baseboard_lf 49.69: interior perimeter 52.69 lf minus 3 ft door casing width
+        $this->assertEquals(49.69, (float) $baseLine['quantity']);
         $this->assertEquals(2.50, (float) $baseLine['unit_price']);
 
-        $expectedSubtotal = (198.0 * 5.00) + (51.0 * 2.50); // 990 + 127.50 = 1117.50
-        $this->assertEquals(1117.50, (float) $quote->materials_subtotal_before_hst);
+        $expectedSubtotal = (188.38 * 5.00) + (49.69 * 2.50); // 941.90 + 124.225 = 1066.125
+        $this->assertEqualsWithDelta(1066.13, (float) $quote->materials_subtotal_before_hst, 0.02);
         $this->assertSame($this->clientProject->id, (int) $quote->client_project_id);
     }
 
@@ -293,7 +293,7 @@ class RoomAreaOpenPlan3DQuotationTest extends TestCase
 
         // Third line is the newly added openPlan3D flooring line
         $this->assertSame(StandardQuotation::LINE_KIND_MATERIAL, $materials[2]['line_kind']);
-        $this->assertEquals(180.0, (float) $materials[2]['quantity']);
+        $this->assertEquals(171.25, (float) $materials[2]['quantity']);
         $this->assertEquals(4.00, (float) $materials[2]['unit_price']);
 
         // Grand total must equal editorGrandTotal() including commute, debris, and contingency
@@ -312,10 +312,8 @@ class RoomAreaOpenPlan3DQuotationTest extends TestCase
         );
 
         $response->assertOk();
-        // 180 sq ft area
-        $response->assertSee('value="180"', false);
-        // 51 lf baseboard
-        $response->assertSee('value="51"', false);
+        $response->assertSee('value="171.25"', false);
+        $response->assertSee('value="49.69"', false);
     }
 
     public function test_prefills_trimming_wizard_from_openplan3d_room(): void
