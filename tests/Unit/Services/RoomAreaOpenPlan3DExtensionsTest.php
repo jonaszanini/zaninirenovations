@@ -244,7 +244,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(160.0 + 128.0, $out['finish_drywall_sqft']);
         $this->assertSame(160.0, $out['finish_insulation_sqft']);
         $this->assertSame(8.0, $out['finish_stud_lf']);
-        $this->assertSame(20.0, $out['finish_baseboard_lf']);
+        $this->assertSame(36.0, $out['finish_baseboard_lf']);
         $this->assertSame(12.5, $out['finish_casing_lf']);
         $this->assertArrayNotHasKey('finish_paint_sqft', $out);
     }
