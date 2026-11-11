@@ -7721,12 +7721,19 @@ body.cp-modal-open {
   padding: 14px 16px;
 }
 
-/* Standard quotation editor: pair option cards in two columns from 1024px. */
-.sq-option-grid {
+/* Standard quotation editor: option cards left, Totals right from 1024px. */
+.sq-lower-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 10px;
   margin-bottom: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
   min-width: 0;
   max-width: 100%;
 }
@@ -7832,10 +7839,19 @@ body.cp-modal-open {
   }
 }
 @media (min-width: 1024px) {
-  .sq-option-grid {
+  .sq-lower-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     gap: 10px 12px;
     align-items: start;
+  }
+  .sq-lower-grid > .sq-grand-card {
+    position: sticky;
+    top: 12px;
+    margin-bottom: 0;
+    min-width: 0;
+  }
+  .sq-lower-grid .sq-grand-rows {
+    max-width: none;
   }
 }
 

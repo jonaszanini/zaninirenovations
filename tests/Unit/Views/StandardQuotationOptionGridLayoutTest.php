@@ -20,24 +20,31 @@ class StandardQuotationOptionGridLayoutTest extends TestCase
     public function test_standard_editor_wraps_option_cards_in_a_grid(): void
     {
         $blade = $this->createBlade();
+        $this->assertStringContainsString('class="sq-lower-grid"', $blade);
         $this->assertStringContainsString('class="sq-option-grid"', $blade);
 
+        $lowerPos = strpos($blade, 'class="sq-lower-grid"');
         $gridPos = strpos($blade, 'class="sq-option-grid"');
+        $this->assertNotFalse($lowerPos);
         $this->assertNotFalse($gridPos);
+        $this->assertGreaterThan($lowerPos, $gridPos);
 
         $buildingPos = strpos($blade, "admin.quotations._building");
         $pairPos = strpos($blade, "admin.quotations._commute_debris_row");
         $payPos = strpos($blade, "admin.quotations._payment_schedule");
         $closePos = strpos($blade, 'sq-grand-card', $gridPos);
+        $footerPos = strpos($blade, 'admin.partials.quotation_editor_footer');
 
         $this->assertNotFalse($buildingPos);
         $this->assertNotFalse($pairPos);
         $this->assertNotFalse($payPos);
         $this->assertNotFalse($closePos);
+        $this->assertNotFalse($footerPos);
         $this->assertGreaterThan($gridPos, $buildingPos);
         $this->assertGreaterThan($buildingPos, $pairPos);
         $this->assertGreaterThan($pairPos, $payPos);
         $this->assertGreaterThan($payPos, $closePos);
+        $this->assertGreaterThan($closePos, $footerPos);
         $gridClose = strpos($blade, '</div>', $payPos);
         $this->assertNotFalse($gridClose);
         $this->assertLessThan($closePos, $gridClose);
@@ -46,18 +53,36 @@ class StandardQuotationOptionGridLayoutTest extends TestCase
     public function test_option_grid_css_is_one_column_until_1024px(): void
     {
         $css = $this->optionCss();
+        $start = strpos($css, '/* Standard quotation editor:');
+        $this->assertNotFalse($start);
+        $end = strpos($css, '/* Quotation editors', $start + 1);
+        $this->assertNotFalse($end);
+        $chunk = substr($css, $start, $end - $start);
 
         $this->assertMatchesRegularExpression(
-            '/\.sq-option-grid\s*\{[^}]*grid-template-columns:\s*1fr/s',
-            $css
+            '/\.sq-lower-grid\s*\{[^}]*grid-template-columns:\s*1fr/s',
+            $chunk
         );
         $this->assertMatchesRegularExpression(
-            '/@media\s*\(min-width:\s*1024px\)\s*\{[^}]*\.sq-option-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/s',
-            $css
+            '/\.sq-option-grid\s*\{[^}]*grid-template-columns:\s*1fr/s',
+            $chunk
         );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*\.sq-lower-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/s',
+            $chunk
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*\.sq-lower-grid\s*>\s*\.sq-grand-card\s*\{[^}]*position:\s*sticky/s',
+            $chunk
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*\.sq-lower-grid\s+\.sq-grand-rows\s*\{[^}]*max-width:\s*none/s',
+            $chunk
+        );
+        $this->assertStringNotContainsString('.sq-option-grid {', substr($chunk, strpos($chunk, '@media')));
         $this->assertMatchesRegularExpression(
             '/\.sq-option-grid\s+\.q-expense-pair\s*\{[^}]*display:\s*contents/s',
-            $css
+            $chunk
         );
     }
 
@@ -97,6 +122,17 @@ class StandardQuotationOptionGridLayoutTest extends TestCase
         $this->assertStringContainsString('name="payment_installments"', $pay);
         $this->assertStringContainsString('name="payment_percentages', $pay);
         $this->assertStringContainsString('data-plan-summary', $pay);
+
+        $blade = $this->createBlade();
+        $this->assertStringContainsString('id="sq-g-mat-sub"', $blade);
+        $this->assertStringContainsString('id="sq-g-labour"', $blade);
+        $this->assertStringContainsString('id="sq-g-commute-row"', $blade);
+        $this->assertStringContainsString('id="sq-g-commute"', $blade);
+        $this->assertStringContainsString('id="sq-g-debris-row"', $blade);
+        $this->assertStringContainsString('id="sq-g-debris"', $blade);
+        $this->assertStringContainsString('id="sq-g-grand"', $blade);
+        $this->assertStringContainsString('id="sq-include-labour-hst"', $blade);
+        $this->assertStringContainsString('name="include_labour_hst"', $blade);
     }
 
     public function test_create_does_not_change_the_sticky_footer_include(): void

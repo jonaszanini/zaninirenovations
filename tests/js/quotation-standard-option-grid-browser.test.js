@@ -100,10 +100,12 @@ async function capture(width, height, filename, port) {
   const page = await browser.newPage();
   await page.setViewport({ width, height, deviceScaleFactor: 1 });
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle0', timeout: 60000 });
-  await page.waitForSelector('.sq-option-grid', { timeout: 5000 });
+  await page.waitForSelector('.sq-lower-grid', { timeout: 5000 });
 
   const layout = await page.evaluate(() => {
-    const grid = document.querySelector('.sq-option-grid');
+    const lower = document.querySelector('.sq-lower-grid');
+    const options = document.querySelector('.sq-option-grid');
+    const totals = document.querySelector('.sq-grand-card');
     const ids = ['q-building', 'q-commute-expense', 'q-debris-removal', 'q-payment-schedule'];
     const cards = {};
     ids.forEach((id) => {
@@ -113,6 +115,10 @@ async function capture(width, height, filename, port) {
         ? { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height), right: Math.round(r.right) }
         : null;
     });
+    const totalsRect = totals ? totals.getBoundingClientRect() : null;
+    cards.totals = totalsRect
+      ? { x: Math.round(totalsRect.x), y: Math.round(totalsRect.y), w: Math.round(totalsRect.width), h: Math.round(totalsRect.height), right: Math.round(totalsRect.right) }
+      : null;
     const fields = {
       includeBuilding: !!document.getElementById('q-building-include'),
       buildingPercent: !!document.getElementById('q-building-percent'),
@@ -124,12 +130,20 @@ async function capture(width, height, filename, port) {
       debrisAmount: !!document.getElementById('q-debris-amount'),
       payment: !!document.querySelector('input[name="payment_installments"]'),
       paymentPct: !!document.querySelector('input[name="payment_percentages[2][0]"]'),
+      matSub: !!document.getElementById('sq-g-mat-sub'),
+      labour: !!document.getElementById('sq-g-labour'),
+      commuteTotal: !!document.getElementById('sq-g-commute'),
+      debrisTotal: !!document.getElementById('sq-g-debris'),
+      grand: !!document.getElementById('sq-g-grand'),
+      labourHst: !!document.getElementById('sq-include-labour-hst'),
     };
     return {
       overflow: document.documentElement.scrollWidth > window.innerWidth + 1,
       scrollWidth: document.documentElement.scrollWidth,
       innerWidth: window.innerWidth,
-      gridCols: getComputedStyle(grid).gridTemplateColumns,
+      lowerCols: getComputedStyle(lower).gridTemplateColumns,
+      optionCols: getComputedStyle(options).gridTemplateColumns,
+      totalsSticky: getComputedStyle(totals).position,
       tipCount: document.querySelectorAll('.sq-option-grid .admin-info-tip').length,
       fields,
       cards,
@@ -140,6 +154,7 @@ async function capture(width, height, filename, port) {
   assert.ok(layout.cards['q-commute-expense'], 'commute card missing');
   assert.ok(layout.cards['q-debris-removal'], 'debris card missing');
   assert.ok(layout.cards['q-payment-schedule'], 'payment card missing');
+  assert.ok(layout.cards.totals, 'Totals card missing');
   Object.entries(layout.fields).forEach(([name, ok]) => {
     assert.ok(ok, `missing field hook ${name}`);
   });
@@ -147,40 +162,53 @@ async function capture(width, height, filename, port) {
   assert.strictEqual(layout.overflow, false, `${width}px must not horizontal-overflow (scrollWidth=${layout.scrollWidth})`);
   assert.ok(layout.cards['q-building'].right <= width + 1, `${width}px building card overflows viewport`);
   assert.ok(layout.cards['q-payment-schedule'].right <= width + 1, `${width}px payment card overflows viewport`);
+  assert.ok(layout.cards.totals.right <= width + 1, `${width}px Totals card overflows viewport`);
 
   if (width >= 1024) {
-    const cols = layout.gridCols.trim().split(/\s+/);
-    assert.strictEqual(cols.length, 2, `1024px+ grid must be 2 columns, got ${layout.gridCols}`);
+    const cols = layout.lowerCols.trim().split(/\s+/);
+    assert.strictEqual(cols.length, 2, `1024px+ lower grid must be 2 columns, got ${layout.lowerCols}`);
+    assert.strictEqual(layout.optionCols.trim().split(/\s+/).length, 1, `option cards stay one column, got ${layout.optionCols}`);
+    assert.strictEqual(layout.totalsSticky, 'sticky', 'Totals should stick within the right column');
     assert.ok(
-      layout.cards['q-commute-expense'].x > layout.cards['q-building'].x + 80,
-      'Building extra labour should sit beside Charge Commute expense'
+      layout.cards.totals.x > layout.cards['q-building'].x + 80,
+      'Totals should sit in the right column beside the option cards'
     );
     assert.ok(
-      Math.abs(layout.cards['q-building'].y - layout.cards['q-commute-expense'].y) < 24,
-      'Building and Commute should share a row'
+      Math.abs(layout.cards.totals.y - layout.cards['q-building'].y) < 40,
+      'Totals should share the top row with Building extra labour'
     );
     assert.ok(
-      layout.cards['q-payment-schedule'].x > layout.cards['q-debris-removal'].x + 80,
-      'Charge Debris removal should sit beside Payment schedule'
+      Math.abs(layout.cards['q-building'].x - layout.cards['q-commute-expense'].x) <= 2,
+      'Building and Commute should stack in the left column'
     );
     assert.ok(
-      Math.abs(layout.cards['q-debris-removal'].y - layout.cards['q-payment-schedule'].y) < 24,
-      'Debris and Payment schedule should share a row'
+      Math.abs(layout.cards['q-building'].x - layout.cards['q-payment-schedule'].x) <= 2,
+      'Payment schedule should stay in the left column'
     );
+    assert.ok(layout.cards['q-commute-expense'].y > layout.cards['q-building'].y);
+    assert.ok(layout.cards['q-debris-removal'].y > layout.cards['q-commute-expense'].y);
+    assert.ok(layout.cards['q-payment-schedule'].y > layout.cards['q-debris-removal'].y);
   } else {
-    const cols = layout.gridCols.trim().split(/\s+/);
-    assert.strictEqual(cols.length, 1, `390px grid must be 1 column, got ${layout.gridCols}`);
-    const xs = Object.values(layout.cards).map((c) => c.x);
+    const cols = layout.lowerCols.trim().split(/\s+/);
+    assert.strictEqual(cols.length, 1, `390px lower grid must be 1 column, got ${layout.lowerCols}`);
+    const xs = [
+      layout.cards['q-building'].x,
+      layout.cards['q-commute-expense'].x,
+      layout.cards['q-debris-removal'].x,
+      layout.cards['q-payment-schedule'].x,
+      layout.cards.totals.x,
+    ];
     assert.ok(Math.max(...xs) - Math.min(...xs) <= 2, `390px cards must stack (x=${xs.join(',')})`);
     assert.ok(layout.cards['q-commute-expense'].y > layout.cards['q-building'].y);
     assert.ok(layout.cards['q-debris-removal'].y > layout.cards['q-commute-expense'].y);
     assert.ok(layout.cards['q-payment-schedule'].y > layout.cards['q-debris-removal'].y);
+    assert.ok(layout.cards.totals.y > layout.cards['q-payment-schedule'].y, 'Totals stay after the option sections on phones');
   }
 
   fs.mkdirSync(shotsDir, { recursive: true });
   const outPath = path.join(shotsDir, filename);
-  const grid = await page.$('.sq-option-grid');
-  assert.ok(grid, 'option grid missing for screenshot');
+  const grid = await page.$('.sq-lower-grid');
+  assert.ok(grid, 'lower grid missing for screenshot');
   await grid.screenshot({ path: outPath });
   copyShot(outPath, filename);
 

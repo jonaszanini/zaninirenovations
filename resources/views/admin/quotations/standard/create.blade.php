@@ -362,7 +362,8 @@
       </button>
     </div>
 
-    {{-- Option cards: 2-col from 1024px, one column on phones. --}}
+    {{-- Option cards left, Totals right from 1024px. One column on phones. --}}
+    <div class="sq-lower-grid">
     <div class="sq-option-grid">
       @include('admin.quotations._building', ['quotation' => $quotation])
       @include('admin.quotations._commute_debris_row')
@@ -449,6 +450,7 @@
           <span id="sq-g-grand">CA$0.00</span>
         </div>
       </div>
+    </div>
     </div>
 
     @include('admin.partials.quotation_editor_footer', [

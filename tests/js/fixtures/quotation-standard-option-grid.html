@@ -26,6 +26,7 @@
       </header>
       <div class="admin-content">
         <form id="sq-standard-form" data-quotation-editor>
+          <div class="sq-lower-grid">
           <div class="sq-option-grid">
             <div class="admin-card q-building-card" id="q-building">
               <input type="hidden" name="include_building" value="0">
@@ -211,6 +212,64 @@
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="admin-card sq-grand-card">
+            <h3 class="sq-grand-card__title">Totals</h3>
+            <div class="sq-grand-rows">
+              <section class="sq-grand-section">
+                <h4 class="sq-grand-section__title">Materials</h4>
+                <div class="sq-grand-section__body">
+                  <div class="sq-grand-row sq-grand-row--sub">
+                    <span>Subtotal (before HST)</span>
+                    <span id="sq-g-mat-sub">CA$800.00</span>
+                  </div>
+                  <div class="sq-grand-row sq-grand-row--sub">
+                    <span>HST (13%)</span>
+                    <span id="sq-g-mat-hst">CA$104.00</span>
+                  </div>
+                  <div class="sq-grand-row sq-grand-row--section-total">
+                    <span>Total materials with HST</span>
+                    <span id="sq-g-mat-total">CA$904.00</span>
+                  </div>
+                </div>
+              </section>
+              <section class="sq-grand-section">
+                <h4 class="sq-grand-section__title">Labour</h4>
+                <div class="sq-grand-section__body">
+                  <div class="sq-grand-row sq-grand-row--sub">
+                    <span>Subtotal (before HST)</span>
+                    <span id="sq-g-labour">CA$400.00</span>
+                  </div>
+                  <div class="sq-grand-row sq-grand-row--sub sq-grand-row--labour-hst" id="sq-g-labour-hst-row">
+                    <label class="admin-checkbox sq-labour-hst-toggle" for="sq-include-labour-hst">
+                      <input type="hidden" name="include_labour_hst" value="0">
+                      <input type="checkbox" name="include_labour_hst" value="1" id="sq-include-labour-hst" class="admin-checkbox__input" checked>
+                      <span class="admin-checkbox__mark" aria-hidden="true"></span>
+                      <span class="admin-checkbox__text">HST (13%)</span>
+                    </label>
+                    <span id="sq-g-labour-hst">CA$52.00</span>
+                  </div>
+                  <div class="sq-grand-row sq-grand-row--section-total">
+                    <span id="sq-g-labour-total-label">Total labour with HST</span>
+                    <span id="sq-g-labour-total">CA$452.00</span>
+                  </div>
+                </div>
+              </section>
+              <div class="sq-grand-row sq-grand-row--commute" id="sq-g-commute-row">
+                <span>Commute expense <span class="admin-form-help">(incl. HST)</span></span>
+                <span id="sq-g-commute">CA$18.40</span>
+              </div>
+              <div class="sq-grand-row sq-grand-row--commute" id="sq-g-debris-row">
+                <span>Debris removal <span class="admin-form-help">(incl. HST)</span></span>
+                <span id="sq-g-debris">CA$150.00</span>
+              </div>
+              <div class="sq-grand-row sq-grand-row--final">
+                <span>Grand total</span>
+                <span id="sq-g-grand">CA$1,524.40</span>
+              </div>
+            </div>
+          </div>
           </div>
         </form>
       </div>
