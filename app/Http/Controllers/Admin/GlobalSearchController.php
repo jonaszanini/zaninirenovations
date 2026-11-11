@@ -231,7 +231,7 @@ class GlobalSearchController extends Controller
                 'id' => $c->id,
                 'title' => $c->name ?: 'Unknown',
                 'subtitle' => trim(($c->email ?? '').' '.ClientProject::formatPhone($c->phone)),
-                'url' => route('admin.clients.edit', $c),
+                'url' => route('admin.clients.show', $c),
                 'icon' => 'user',
             ])
             ->values()

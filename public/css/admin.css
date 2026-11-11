@@ -3475,6 +3475,11 @@ html.admin-photo-edit-modal-open {
     border-right: 1px solid var(--admin-border);
     z-index: 0;
   }
+
+  .admin-app--no-sidebar::before,
+  .admin-app--fullscreen::before {
+    display: none;
+  }
 }
 
 body.admin-nav-open {

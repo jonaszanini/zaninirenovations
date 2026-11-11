@@ -58,6 +58,7 @@ class AdminDarkThemeCoverageTest extends TestCase
         $this->assertNotFalse($dark);
 
         foreach ([
+            'html.admin-dark .cl-copy-btn',
             'html.admin-dark .cp-hourly-summary-tile',
             'html.admin-dark .cp-profit-tile--highlight',
             'html.admin-dark .cp-invoice-bill-to',

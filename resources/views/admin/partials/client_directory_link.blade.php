@@ -1,11 +1,12 @@
 {{--
-  Display a client label linked to the central client edit page when we know
-  the directory id. Use for read-only client name (or email) anywhere in admin.
+  Display a client label linked to the central client record when we know
+  the directory id. Defaults to the edit page; pass $url to open View instead.
 
   Params:
     project        ClientProject — uses client_id (+ client_name if label omitted)
     client         Client — uses id (+ name if label omitted)
     clientId       int|string|null — explicit directory id
+    url            string|null — override href (default: admin.clients.edit)
     label          string|null — text to show (default: project/client name)
     class          string — CSS classes on the <a> or <span>
     title          string|null — link title (default: Open client record)
@@ -46,11 +47,15 @@
 
   $labelText = trim((string) ($label ?? ''));
   $linkClass = trim('admin-client-link'.($class !== '' ? ' '.$class : ''));
+  $url = isset($url) ? (string) $url : '';
+  if ($url === '' && $clientId) {
+      $url = route('admin.clients.edit', $clientId);
+  }
 @endphp
 @if ($labelText === '')
   <span @if ($class !== '') class="{{ $class }}" @endif>{{ $empty }}</span>
-@elseif ($clientId)
-  <a href="{{ route('admin.clients.edit', $clientId) }}"
+@elseif ($url !== '')
+  <a href="{{ $url }}"
      class="{{ $linkClass }}"
      title="{{ $title }}">{{ $labelText }}</a>
 @elseif ($fallbackMailto && str_contains($labelText, '@'))

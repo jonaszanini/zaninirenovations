@@ -11,6 +11,7 @@ tests/js/openplan3d-kr-inch-snap.test.js
 tests/js/room-area-formula.test.js
 tests/js/shared-prices-effective.test.js
 tests/js/admin-hotkey-save.test.js
+tests/js/admin-copy-value.test.js
 tests/js/admin-quotation-editor-footer.test.js
 tests/js/admin-project-calendar-swipe.test.js
 tests/js/admin-project-calendar-popover.test.js

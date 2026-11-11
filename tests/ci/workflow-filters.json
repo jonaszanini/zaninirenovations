@@ -105,6 +105,7 @@
     "public/css/admin-**",
     "resources/views/admin/layouts/**",
     "resources/views/admin/partials/**",
+    "resources/views/admin/clients/**",
     "resources/views/components/admin/info-tip.blade.php",
     "tests/js/admin-*",
     "tests/js/**/*admin*browser*"

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body">
+  <div class="admin-app admin-app--no-sidebar" id="admin-app">
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-topbar-inner">
+          <h1>Lucca View</h1>
+        </div>
+      </header>
+      <div class="admin-content">
+        <div class="cl-show-toolbar">
+          <a href="/admin/clients/1/edit" class="admin-btn admin-btn--primary"><i class="fa fa-pencil"></i> Edit</a>
+          <a href="/admin/clients" class="admin-btn admin-btn--ghost">Clients</a>
+        </div>
+        <div class="admin-card cl-show-card">
+          <dl class="cl-show-fields">
+            <div class="cl-show-field">
+              <dt>Name</dt>
+              <dd>Lucca View</dd>
+            </div>
+            <div class="cl-show-field">
+              <dt>Email</dt>
+              <dd>
+                <span class="cl-copy-field">
+                  <a href="mailto:lucca.view@example.test" class="cl-copy-field__value admin-client-link">lucca.view@example.test</a>
+                  <button type="button" class="cl-copy-btn" data-copy-value="lucca.view@example.test" aria-label="Copy email" title="Copy email"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                </span>
+              </dd>
+            </div>
+            <div class="cl-show-field">
+              <dt>Secondary email</dt>
+              <dd>
+                <span class="cl-copy-field">
+                  <a href="mailto:lucca.cc@example.test" class="cl-copy-field__value admin-client-link">lucca.cc@example.test</a>
+                  <button type="button" class="cl-copy-btn" data-copy-value="lucca.cc@example.test" aria-label="Copy secondary email" title="Copy secondary email"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                </span>
+              </dd>
+            </div>
+            <div class="cl-show-field">
+              <dt>Phone</dt>
+              <dd>
+                <span class="cl-copy-field">
+                  <a href="tel:+16475550100" class="cl-copy-field__value admin-client-link">(647) 555-0100</a>
+                  <button type="button" class="cl-copy-btn" data-copy-value="(647) 555-0100" aria-label="Copy phone" title="Copy phone"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                </span>
+              </dd>
+            </div>
+            <div class="cl-show-field cl-show-field--full">
+              <dt>Address</dt>
+              <dd>
+                <span class="cl-copy-field cl-copy-field--address">
+                  <a class="cl-copy-field__value admin-client-link" href="https://www.google.com/maps/search/?api=1&query=1025%20Grenon%20Ave%2C%20Ottawa%2C%20ON%20K2B%208S5" target="_blank" rel="noopener">1025 Grenon Ave, Ottawa, ON K2B 8S5</a>
+                  <button type="button" class="cl-copy-btn" data-copy-value="1025 Grenon Ave, Ottawa, ON K2B 8S5" aria-label="Copy address" title="Copy address"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                </span>
+              </dd>
+            </div>
+            <div class="cl-show-field cl-show-field--full">
+              <dt>Notes</dt>
+              <dd><div class="cl-show-notes">Prefers morning visits.</div></dd>
+            </div>
+            <div class="cl-show-field cl-show-field--full">
+              <dt>Tags</dt>
+              <dd>
+                <div class="cl-tag-picker">
+                  <span class="admin-badge" style="background:#0247681a;color:#024768;border:1px solid #02476855;">VIP</span>
+                </div>
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div class="admin-card cl-show-card">
+          <h2 class="cl-show-section-title">Projects</h2>
+          <div class="admin-table-scroll">
+            <table class="admin-table admin-table--stack cl-show-projects">
+              <thead>
+                <tr>
+                  <th>Project</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td data-label="Project">
+                    <a href="/admin/client-projects/1" class="admin-client-link">Kitchen refresh</a>
+                    <span class="admin-code">PRJ00001</span>
+                  </td>
+                  <td data-label="Status">
+                    <span class="admin-badge">Quote Pending</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

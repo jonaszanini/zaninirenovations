@@ -12,6 +12,7 @@ class PublicLayoutExcludesAdminHotkeySaveTest extends TestCase
         $this->assertNotFalse($html);
         $this->assertStringNotContainsString('admin-hotkey-save.js', $html);
         $this->assertStringNotContainsString('admin-toast.js', $html);
+        $this->assertStringNotContainsString('admin-copy-value.js', $html);
         $this->assertStringNotContainsString('data-hotkey-save', $html);
     }
 
@@ -21,6 +22,7 @@ class PublicLayoutExcludesAdminHotkeySaveTest extends TestCase
         $this->assertNotFalse($html);
         $this->assertStringNotContainsString('admin-hotkey-save.js', $html);
         $this->assertStringNotContainsString('admin-toast.js', $html);
+        $this->assertStringNotContainsString('admin-copy-value.js', $html);
     }
 
     public function test_admin_layout_includes_toast_and_hotkey_scripts(): void
@@ -29,6 +31,7 @@ class PublicLayoutExcludesAdminHotkeySaveTest extends TestCase
         $this->assertNotFalse($html);
         $this->assertStringContainsString('admin-hotkey-save.js', $html);
         $this->assertStringContainsString('admin-toast.js', $html);
+        $this->assertStringContainsString('admin-copy-value.js', $html);
         $this->assertStringContainsString('id="admin-toast-flash"', $html);
         $this->assertStringContainsString('$adminToastFlash', $html);
         $this->assertStringContainsString('json_encode($adminToastFlash', $html);

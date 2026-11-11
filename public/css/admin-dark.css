@@ -3830,5 +3830,21 @@ html.admin-dark .cp-client-action-btn:disabled:hover {
   color: #64748b !important;
   cursor: not-allowed !important;
 }
+html.admin-dark .cl-copy-btn {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .cl-copy-btn:hover,
+html.admin-dark .cl-copy-btn:focus-visible {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
+html.admin-dark .cl-copy-btn.is-copied {
+  color: #fff;
+  background: #2e7d4a;
+  border-color: #2e7d4a;
+}
 
 

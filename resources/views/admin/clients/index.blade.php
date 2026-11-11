@@ -65,10 +65,16 @@
             @php
               $listAddress = $client->listAddress();
               $mapsUrl = $listAddress ? $client->googleMapsSearchUrl() : null;
+              $formattedPhone = $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '';
+              $telHref = $formattedPhone !== '' ? \App\Models\ClientProject::telHref($client->phone) : null;
             @endphp
             <tr>
               <td class="cp-clients-col-name" data-label="Name">
-                <strong>@include('admin.partials.client_directory_link', ['client' => $client])</strong>
+                <strong>@include('admin.partials.client_directory_link', [
+                  'client' => $client,
+                  'url' => route('admin.clients.show', $client),
+                  'title' => 'View client',
+                ])</strong>
                 @if ($client->tags->isNotEmpty())
                   <div class="cl-tag-picker" style="margin-top:4px;">
                     @foreach ($client->tags as $tag)
@@ -77,19 +83,49 @@
                   </div>
                 @endif
               </td>
-              <td class="cp-clients-col-email" data-label="Email">@include('admin.partials.client_directory_link', [
-                'client' => $client,
-                'label' => $client->email,
-                'fallbackMailto' => true,
-              ])</td>
-              <td class="cp-clients-col-phone" data-label="Phone">{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
-              <td class="cp-clients-col-address" data-label="Address">@if ($mapsUrl)
-                <a class="admin-client-link cp-clients-address-link"
-                   href="{{ $mapsUrl }}"
-                   target="_blank"
-                   rel="noopener"
-                   title="Open in Google Maps">{{ $listAddress }}</a>
-              @endif</td>
+              <td class="cp-clients-col-email" data-label="Email">
+                <span class="cl-copy-fields">
+                  @if ($client->email)
+                    @include('admin.partials.copy_value', [
+                      'value' => $client->email,
+                      'href' => 'mailto:'.$client->email,
+                      'copyLabel' => 'Copy email',
+                    ])
+                  @endif
+                  @if ($client->email_secondary)
+                    @include('admin.partials.copy_value', [
+                      'value' => $client->email_secondary,
+                      'href' => 'mailto:'.$client->email_secondary,
+                      'copyLabel' => 'Copy secondary email',
+                    ])
+                  @endif
+                  @if (! $client->email && ! $client->email_secondary)
+                    —
+                  @endif
+                </span>
+              </td>
+              <td class="cp-clients-col-phone" data-label="Phone">
+                @if ($formattedPhone !== '')
+                  @include('admin.partials.copy_value', [
+                    'value' => $formattedPhone,
+                    'href' => $telHref,
+                    'copyLabel' => 'Copy phone',
+                  ])
+                @else
+                  —
+                @endif
+              </td>
+              <td class="cp-clients-col-address" data-label="Address">
+                @if ($mapsUrl)
+                  @include('admin.partials.copy_value', [
+                    'value' => $listAddress,
+                    'href' => $mapsUrl,
+                    'copyLabel' => 'Copy address',
+                    'external' => true,
+                    'class' => 'cl-copy-field--address',
+                  ])
+                @endif
+              </td>
               <td class="cp-clients-col-projects" data-label="Projects">{{ $client->projects_count ?: '0' }}</td>
               <td class="admin-table__actions cp-clients-col-actions" data-label="">
                 <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">

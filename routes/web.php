@@ -216,7 +216,7 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
 
     // Client directory (shared contacts for new projects).
     Route::get('clients/search', [ClientController::class, 'search'])->name('clients.search');
-    Route::resource('clients', ClientController::class)->except(['show']);
+    Route::resource('clients', ClientController::class);
     Route::resource('client-tags', \App\Http\Controllers\Admin\ClientTagController::class)
         ->except(['show']);
 
