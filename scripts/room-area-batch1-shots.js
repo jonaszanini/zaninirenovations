@@ -2,7 +2,7 @@
  * Batch 1 review screenshots from real pointer/tap interaction.
  *
  *   BASE_URL=http://127.0.0.1:8000 EDITOR_PATH=/admin/client-projects/1/utilities/room-area \
- *     ADMIN_EMAIL=admin@zanini.ca ADMIN_PASSWORD=password \
+ *     ADMIN_EMAIL=admin@zanini.test ADMIN_PASSWORD=password \
  *     QA_OUT=/opt/cursor/artifacts/screenshots node scripts/room-area-batch1-shots.js
  */
 const puppeteer = require('puppeteer');
@@ -11,7 +11,7 @@ const path = require('path');
 
 const BASE_URL = process.env.BASE_URL || 'http://127.0.0.1:8000';
 const EDITOR_PATH = process.env.EDITOR_PATH || '/admin/client-projects/1/utilities/room-area';
-const EMAIL = process.env.ADMIN_EMAIL || 'admin@zanini.ca';
+const EMAIL = process.env.ADMIN_EMAIL || 'admin@zanini.test';
 const PASSWORD = process.env.ADMIN_PASSWORD || 'password';
 const OUT = process.env.QA_OUT || '/opt/cursor/artifacts/screenshots';
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

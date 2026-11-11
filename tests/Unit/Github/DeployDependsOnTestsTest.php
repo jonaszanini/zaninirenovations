@@ -524,6 +524,59 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertSame(0, $testsCode, implode("\n", $testsOutput));
     }
 
+    public function test_rotate_db_password_workflow_is_manual_and_shares_deploy_lock(): void
+    {
+        $yaml = $this->workflow('rotate-db-password.yml');
+        $deploy = $this->workflow('deploy.yml');
+
+        $onBlock = $this->section($yaml, 'on:', 'permissions:');
+        $this->assertStringContainsString('workflow_dispatch:', $onBlock);
+        $this->assertDoesNotMatchRegularExpression('/^\s+push:\s*$/m', $onBlock);
+        $this->assertDoesNotMatchRegularExpression('/^\s+pull_request:\s*$/m', $onBlock);
+        $this->assertDoesNotMatchRegularExpression('/^\s+workflow_run:\s*$/m', $onBlock);
+        $this->assertDoesNotMatchRegularExpression('/^\s+schedule:\s*$/m', $onBlock);
+
+        $this->assertMatchesRegularExpression(
+            '/^permissions:\s*\n\s+contents:\s+read/m',
+            $yaml
+        );
+        $this->assertMatchesRegularExpression(
+            '/concurrency:\s*\n\s+group:\s+production-deploy\s*\n\s+cancel-in-progress:\s+false/m',
+            $yaml
+        );
+        $this->assertSame(
+            1,
+            preg_match('/^\s+environment:\s+PROD\s*$/m', $deploy)
+        );
+        $this->assertMatchesRegularExpression('/^\s+environment:\s+PROD\s*$/m', $yaml);
+
+        preg_match('/DEPLOY_ROOT:\s+(\S+)/', $deploy, $deployRoot);
+        preg_match('/DEPLOY_ROOT:\s+(\S+)/', $yaml, $rotateRoot);
+        $this->assertNotEmpty($deployRoot[1] ?? null);
+        $this->assertSame($deployRoot[1], $rotateRoot[1] ?? null);
+
+        $this->assertStringContainsString('secrets.SSH_KNOWN_HOSTS', $yaml);
+        $this->assertStringContainsString('webfactory/ssh-agent@v0.10.0', $yaml);
+        $this->assertStringContainsString('secrets.SSH_PRIVATE_KEY', $yaml);
+        $this->assertStringContainsString('secrets.SSH_HOST', $yaml);
+        $this->assertStringContainsString('secrets.SSH_PORT', $yaml);
+        $this->assertStringContainsString('secrets.SSH_USER', $yaml);
+        $this->assertStringContainsString('secrets.NEW_DB_PASSWORD', $yaml);
+        $this->assertStringContainsString('::add-mask::', $yaml);
+        $this->assertStringContainsString('NEW_DB_PASSWORD secret is empty', $yaml);
+        $this->assertStringContainsString('remote-rotate-db-password.sh', $yaml);
+        $this->assertStringContainsString('rewrite-env-db-password.php', $yaml);
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/sed.{0,200}NEW_DB_PASSWORD/',
+            $yaml,
+            'Password must not be interpolated into a sed pattern'
+        );
+
+        exec('bash '.escapeshellarg(base_path('tests/ci/rotate-db-password.test.sh')).' 2>&1', $rotateOutput, $rotateCode);
+        $this->assertSame(0, $rotateCode, implode("\n", $rotateOutput));
+    }
+
     /**
      * @return list<string>
      */

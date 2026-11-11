@@ -11,7 +11,7 @@ $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
 $kernel->bootstrap();
 
 $index = (int) ($argv[1] ?? 0);
-$email = (string) ($argv[2] ?? 'admin@zanini.ca');
+$email = (string) ($argv[2] ?? 'admin@zanini.test');
 $markers = ['!', '@', '#', '$', '%', '^', '&', '*', '=', '+', '~', '|', '/', '\\', '{', '}'];
 $label = 'Par'.$markers[$index % count($markers)].'allel';
 

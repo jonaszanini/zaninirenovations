@@ -11,6 +11,8 @@
 .env.production
 .env.testing
 .env.*.local
+.env*
+!.env.example
 .phpunit.result.cache
 Homestead.json
 Homestead.yaml
@@ -32,6 +34,9 @@ yarn-error.log
 
 # Sensitive / notes files that should never be committed
 users.txt
+u372714627_zr_DB
+*.sqlite
+*.sqlite-journal
 
 # Agent / local UI captures — do not deploy
 /artifacts/

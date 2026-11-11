@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 
 class BlogPostsGeometrySeeder extends Seeder
 {
-    public const ADMIN_EMAIL = 'admin@zanini.ca';
+    public const ADMIN_EMAIL = 'admin@zanini.test';
 
     public const ADMIN_PASSWORD = 'password';
 

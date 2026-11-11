@@ -2,7 +2,7 @@
 
 Living design-system reference for **public site** and **admin panel**. All new pages, features, and Blade partials must follow these patterns.
 
-**Related:** `Template/` HTML is the source of truth for public theme markup (see `.cursor/rules/template-source.mdc`).
+**Related:** public theme markup lives under `public/` (CSS, JS, and static assets). The unused vendor `Template/` copy was removed from the repo.
 
 ---
 

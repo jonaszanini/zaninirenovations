@@ -469,7 +469,7 @@ jobs:
     needs: changes
     if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 50
     env:
       PUPPETEER_CACHE_DIR: /home/runner/.cache/puppeteer
 

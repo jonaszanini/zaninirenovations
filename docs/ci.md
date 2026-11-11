@@ -55,3 +55,16 @@ The **Tests** workflow on `push` to `main` still runs the full suite (`CI_MYSQL_
 - the pin is rechecked immediately before rsync
 
 A Full CI check on a PR head is not a deploy pin. Only a green **Tests** run on current `main` can ship.
+
+## Rotate the production MySQL password
+
+The live Hostinger password is not in git. After it leaks or is rotated in hPanel, update Laravel's `.env` with **Actions → Rotate production DB password** (`rotate-db-password.yml`). That workflow shares the `production-deploy` lock with deploy, so the two never run at the same time.
+
+Do it in this order so the site is only briefly unable to reach MySQL:
+
+1. Generate a new password.
+2. Store it as a GitHub Actions secret: `gh secret set NEW_DB_PASSWORD` (repo Settings → Secrets and variables → Actions also works).
+3. Change the password on the Hostinger MySQL user in hPanel.
+4. Immediately dispatch **Rotate production DB password**.
+
+The job copies `.env` to `.env.bak-rotate-<timestamp>`, writes `DB_PASSWORD`, runs `config:clear` / `config:cache`, and checks the connection. If the check fails it restores the backup and recaches. Do not put the password in the workflow file, a commit, or the run logs.
