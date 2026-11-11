@@ -211,7 +211,7 @@ const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall
 assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
 assert.strictEqual(lPartMetrics.area_sqft, 286.98, 'Interior L-shape floor area (~10 cm walls; was 300 centerline)');
 assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter');
-assert.strictEqual(lPartMetrics.net_wall_area_sqft, 816.28, 'Net wall area includes both faces of partitions (interior-face spans)');
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 813.65, 'Net wall area with interior butt deductions on boundary walls');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
 
 // Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
