@@ -17,7 +17,7 @@ class SharedPricesLayoutTest extends IntegrationTestCase
     public function test_shared_prices_layout_geometry_and_precision(): void
     {
         $user = User::factory()->create([
-            'email' => 'admin@zanini.ca',
+            'email' => 'admin@zanini.test',
             'password' => Hash::make('password'),
             'role' => 'admin',
         ]);

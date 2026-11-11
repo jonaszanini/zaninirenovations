@@ -31,7 +31,7 @@ const overflowReport = {};
 
 async function login(page) {
   await page.goto(`${BASE_URL}/admin/login`, { waitUntil: 'networkidle0' });
-  await page.type('input[name="email"]', 'admin@zanini.ca');
+  await page.type('input[name="email"]', 'admin@zanini.test');
   await page.type('input[name="password"]', 'password');
   await Promise.all([
     page.click('button[type="submit"]'),

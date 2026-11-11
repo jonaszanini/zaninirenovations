@@ -4,7 +4,7 @@ const assert = require('assert');
 const puppeteer = require('puppeteer');
 
 const BASE = process.env.RA_LIVE_URL || process.env.APP_URL || 'http://127.0.0.1:8001';
-const EMAIL = process.env.RA_LIVE_EMAIL || 'admin@zanini.ca';
+const EMAIL = process.env.RA_LIVE_EMAIL || 'admin@zanini.test';
 const PASSWORD = process.env.RA_LIVE_PASSWORD || 'password';
 
 async function login(page) {

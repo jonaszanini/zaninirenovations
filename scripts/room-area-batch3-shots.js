@@ -3,7 +3,7 @@
  *
  *   BASE_URL=http://127.0.0.1:8000 \
  *     EDITOR_PATH=/admin/client-projects/1/utilities/room-area?ra_room=1 \
- *     ADMIN_EMAIL=admin@zanini.ca ADMIN_PASSWORD=password \
+ *     ADMIN_EMAIL=admin@zanini.test ADMIN_PASSWORD=password \
  *     QA_OUT=/opt/cursor/artifacts/screenshots node scripts/room-area-batch3-shots.js
  */
 const puppeteer = require('puppeteer');

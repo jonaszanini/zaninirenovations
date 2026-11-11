@@ -25,7 +25,7 @@ node dark-mode-audit.js --ci       # exit 1 if any offender remains
 node screenshot-all.js             # overflow checker + screenshots
 ```
 
-Login for the seeded admin: `admin@zanini.ca` / `password`.
+Login for the seeded admin: `admin@zanini.test` / `password`.
 
 `--ci` is **not** wired into GitHub Actions: it needs a long-lived app server, Chrome, and a seeded database. CI instead runs `tests/Unit/Views/AdminDarkThemeCoverageTest.php` (token + selector coverage) plus existing PHPUnit jobs.
 
