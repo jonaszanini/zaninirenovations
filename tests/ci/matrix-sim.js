@@ -209,6 +209,14 @@ const cases = [
     },
   },
   {
+    name: 'standard quotation option grid fixture',
+    paths: ['tests/js/fixtures/quotation-standard-option-grid.html'],
+    expect: {
+      run_browser_quotation: 'true',
+      browserIncludes: ['tests/js/quotation-standard-option-grid-browser.test.js'],
+    },
+  },
+  {
     name: 'client projects underscore views',
     paths: ['resources/views/admin/client_projects/show.blade.php'],
     expect: {

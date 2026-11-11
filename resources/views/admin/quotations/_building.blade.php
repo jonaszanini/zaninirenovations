@@ -183,9 +183,11 @@
       flex-wrap: wrap;
       align-items: baseline;
       gap: 2px 14px;
-      flex: 0 1 auto;
-      width: max-content;
+      flex: 1 1 auto;
+      min-width: 0;
+      width: auto;
       max-width: 100%;
+      box-sizing: border-box;
       padding: 8px 14px;
     }
     .q-building-added__label,
@@ -193,6 +195,9 @@
     .q-building-added__detail {
       display: inline;
       margin: 0;
+      min-width: 0;
+      overflow-wrap: break-word;
+      word-break: normal;
     }
   }
   @media (min-width: 900px) {

@@ -31,3 +31,4 @@ tests/Feature/Admin/QuotationHelpTipBrowserTest.php
 tests/Feature/Admin/StairsQuotationPagesTest.php
 tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php
 tests/Feature/Admin/QuotationLifecycleBrowserTest.php
+tests/Feature/Admin/StandardQuotationPdfDocumentTest.php

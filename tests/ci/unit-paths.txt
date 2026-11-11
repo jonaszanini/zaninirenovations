@@ -100,3 +100,4 @@ tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 tests/Unit/Views/QuotationExpensePairLayoutTest.php
 tests/Unit/Views/QuotationPdfPageBreakTest.php
 tests/Unit/Views/StandardQuotationEditorJsTest.php
+tests/Unit/Views/StandardQuotationOptionGridLayoutTest.php
