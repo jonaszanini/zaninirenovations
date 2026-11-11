@@ -95,12 +95,20 @@ class DashboardLayoutBrowserTest extends IntegrationTestCase
         foreach ([
             'w1280_light' => 'admin-dashboard-action-1280-light.png',
             'w1280_dark' => 'admin-dashboard-action-1280-dark.png',
+            'w1024_light' => 'admin-dashboard-action-1024-light.png',
+            'w1024_dark' => 'admin-dashboard-action-1024-dark.png',
             'w390_light' => 'admin-dashboard-action-390-light.png',
             'w390_dark' => 'admin-dashboard-action-390-dark.png',
         ] as $key => $name) {
             $shot = (string) ($report[$key]['shot'] ?? '');
             $this->assertFileExists($shot, "Missing {$key} screenshot");
             $this->writeArtifact($shot, $name);
+            $this->writeArtifact($shot, str_replace(['admin-dashboard-action-', '-'], ['admin_dashboard_kpi_', '_'], $name));
+            $crop = (string) ($report[$key]['activeCardShot'] ?? '');
+            $this->assertFileExists($crop, "Missing {$key} Active projects crop");
+            $this->writeArtifact($crop, str_replace('admin-dashboard-action-', 'admin-dashboard-active-card-', $name));
+            $this->writeArtifact($crop, str_replace(['admin-dashboard-action-', '-'], ['admin_dashboard_active_card_', '_'], $name));
+            $this->assertTrue((bool) ($report[$key]['tipOpen'] ?? false), "{$key} info tip did not open");
         }
 
         $this->writeArtifactString('dashboard-layout-browser.json', $raw);

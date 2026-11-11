@@ -88,6 +88,55 @@ async function measure(page, width) {
       const el = document.querySelector('.dash-card--stat .dash-stat-label');
       return el ? getComputedStyle(el).color : '';
     })();
+    const kpiLabels = [...document.querySelectorAll('.dash-card--stat .dash-stat-label')].map((label) => {
+      const icon = label.querySelector('.dash-title-icon');
+      const copy = label.querySelector('.dash-stat-label__copy');
+      const tipBtn = label.querySelector('.admin-info-tip');
+      const labelBox = label.getBoundingClientRect();
+      const iconBox = icon ? icon.getBoundingClientRect() : null;
+      const copyBox = copy ? copy.getBoundingClientRect() : null;
+      const tipBox = tipBtn ? tipBtn.getBoundingClientRect() : null;
+      const copyStyle = copy ? getComputedStyle(copy) : null;
+      const lineHeight = copyStyle ? parseFloat(copyStyle.lineHeight) || 0 : 0;
+      let titleLineCount = 0;
+      if (copy) {
+        const range = document.createRange();
+        [...copy.childNodes].forEach((node) => {
+          if (node.nodeType !== Node.TEXT_NODE || !String(node.textContent || '').trim()) {
+            return;
+          }
+          range.selectNodeContents(node);
+          titleLineCount += range.getClientRects().length;
+        });
+      }
+      return {
+        text: copy ? String(copy.textContent || '').replace(/\s+/g, ' ').trim() : '',
+        hasCopy: !!copy,
+        hasTip: !!tipBtn,
+        tipExpanded: !!(tipBtn && tipBtn.getAttribute('aria-expanded') === 'true'),
+        flexWrap: getComputedStyle(label).flexWrap,
+        justify: getComputedStyle(label).justifyContent,
+        copyDisplay: copyStyle ? copyStyle.display : '',
+        copyWhiteSpace: copyStyle ? copyStyle.whiteSpace : '',
+        iconRight: iconBox ? Math.round(iconBox.right) : null,
+        copyLeft: copyBox ? Math.round(copyBox.left) : null,
+        copyRight: copyBox ? Math.round(copyBox.right) : null,
+        copyHeight: copyBox ? Math.round(copyBox.height) : null,
+        lineHeight: Math.round(lineHeight),
+        titleLineCount,
+        labelWidth: Math.round(labelBox.width),
+        copyWidth: copyBox ? Math.round(copyBox.width) : null,
+        iconCy: iconBox ? iconBox.top + iconBox.height / 2 : null,
+        copyCy: copyBox ? copyBox.top + copyBox.height / 2 : null,
+        tipCy: tipBox ? tipBox.top + tipBox.height / 2 : null,
+        tipLeft: tipBox ? Math.round(tipBox.left) : null,
+        tipTop: tipBox ? Math.round(tipBox.top) : null,
+        copyTop: copyBox ? Math.round(copyBox.top) : null,
+        copyBottom: copyBox ? Math.round(copyBox.bottom) : null,
+        tipDropped: !!(tipBox && copyBox && tipBox.top > copyBox.bottom - 2),
+        tipParkedRight: !!(tipBox && copyBox && tipBox.left - copyBox.right > 24),
+      };
+    });
     const firstAmt = document.querySelector('.dash-compact-row__amt');
     const firstClient = document.querySelector('.dash-compact-row__client');
     const firstTitle = document.querySelector('.dash-compact-row__title');
@@ -122,6 +171,7 @@ async function measure(page, width) {
       clientRight: firstClient ? Math.round(firstClient.getBoundingClientRect().right) : null,
       titleLeft: firstTitle ? Math.round(firstTitle.getBoundingClientRect().left) : null,
       rowText: compact.slice(0, 8).map((row) => (row.textContent || '').replace(/\s+/g, ' ').trim()),
+      kpiLabels,
     };
   }, width);
 }
@@ -172,6 +222,23 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   const dest = path.join(outDir, `${label}.png`);
   await page.screenshot({ path: dest, fullPage: !!fullPage });
   metrics.shot = dest;
+
+  const activeCard = await page.$('.dash-card--stat:nth-child(4)');
+  if (activeCard) {
+    const crop = path.join(outDir, label.replace('admin-dashboard-action-', 'admin-dashboard-active-card-') + '.png');
+    await activeCard.screenshot({ path: crop });
+    metrics.activeCardShot = crop;
+  }
+
+  const tipBtn = await page.$('.dash-card--stat .admin-info-tip');
+  if (tipBtn) {
+    await tipBtn.click();
+    await new Promise((r) => setTimeout(r, 120));
+    metrics.tipOpen = await page.$eval('.dash-card--stat .admin-info-tip', (el) => el.getAttribute('aria-expanded') === 'true');
+    const wrapOpen = await page.$eval('.dash-card--stat .admin-info-tip-wrap', (el) => el.classList.contains('is-open'));
+    metrics.tipWrapOpen = wrapOpen;
+    await tipBtn.click();
+  }
   return metrics;
 }
 
@@ -196,6 +263,7 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   report.w1280_light = await capture(page, port, 1280, 900, false, 'admin-dashboard-action-1280-light', false);
   report.w1280_dark = await capture(page, port, 1280, 900, true, 'admin-dashboard-action-1280-dark', false);
   report.w1024_light = await capture(page, port, 1024, 900, false, 'admin-dashboard-action-1024-light', false);
+  report.w1024_dark = await capture(page, port, 1024, 900, true, 'admin-dashboard-action-1024-dark', false);
   report.w390_light = await capture(page, port, 390, 844, false, 'admin-dashboard-action-390-light', true);
   report.w390_dark = await capture(page, port, 390, 844, true, 'admin-dashboard-action-390-dark', true);
 
@@ -223,6 +291,24 @@ async function capture(page, port, width, height, dark, label, fullPage) {
       assert.ok(!text.includes('—'), `${key} compact row still has em dash: ${text}`);
       assert.ok(!text.includes(' – '), `${key} compact row still has en dash: ${text}`);
     }
+    assert.ok(Array.isArray(row.kpiLabels) && row.kpiLabels.length === 4, `${key} expected 4 KPI labels`);
+    row.kpiLabels.forEach((kpi, idx) => {
+      assert.ok(kpi.hasCopy, `${key} KPI ${idx} missing dash-stat-label__copy`);
+      assert.strictEqual(kpi.flexWrap, 'nowrap', `${key} KPI ${idx} label must not wrap flex items`);
+      assert.ok(kpi.copyLeft - kpi.iconRight >= -2 && kpi.copyLeft - kpi.iconRight < 20, `${key} KPI ${idx} icon/title gap ${kpi.copyLeft - kpi.iconRight}`);
+      if (kpi.hasTip) {
+        assert.ok(kpi.titleLineCount >= 1 && kpi.titleLineCount <= 2, `${key} KPI ${idx} title split across ${kpi.titleLineCount} lines`);
+        assert.ok(!kpi.tipDropped, `${key} KPI ${idx} info tip dropped under the title`);
+        assert.ok(!kpi.tipParkedRight, `${key} KPI ${idx} info tip parked at the far right of the card`);
+        assert.ok(Math.abs(kpi.tipCy - kpi.iconCy) < 16, `${key} KPI ${idx} tip not on the same row as the icon`);
+        assert.ok(kpi.tipLeft - kpi.copyRight < 28, `${key} KPI ${idx} tip too far from title end`);
+      }
+    });
+    const active = row.kpiLabels.find((k) => /active projects/i.test(k.text));
+    assert.ok(active, `${key} missing Active projects card`);
+    assert.ok(active.hasTip, `${key} Active projects missing info tip`);
+    assert.strictEqual(active.titleLineCount, 1, `${key} Active projects title must stay on one line`);
+    assert.ok(row.tipOpen, `${key} Active projects info tip did not open on click`);
   }
 
   const desktop = report.w1280_light;

@@ -62,7 +62,7 @@
       <div class="dash-card dash-card--stat" title="Sum of totals on sent, unpaid invoices.">
         <span class="dash-stat-label">
           <i class="fa fa-credit-card dash-title-icon" aria-hidden="true"></i>
-          Outstanding receivables
+          <span class="dash-stat-label__copy">Outstanding receivables</span>
         </span>
         <span class="dash-stat-value">{{ ClientProject::formatMoney($c['outstanding_receivables']) }}</span>
         <span class="dash-stat-sub">Sent invoices awaiting payment</span>
@@ -70,7 +70,7 @@
       <div class="dash-card dash-card--stat" title="Cash recorded from invoices marked paid this calendar month.">
         <span class="dash-stat-label">
           <i class="fa fa-usd dash-title-icon" aria-hidden="true"></i>
-          Cash this month
+          <span class="dash-stat-label__copy">Cash this month</span>
         </span>
         <span class="dash-stat-value">{{ ClientProject::formatMoney($c['cash_this_month']) }}</span>
         <span class="dash-stat-sub">Paid invoice amounts (MTD)</span>
@@ -78,7 +78,7 @@
       <div class="dash-card dash-card--stat {{ ($c['overdue_invoice_count'] ?? 0) > 0 ? 'dash-card--alert' : '' }}" title="Sent invoices past their due date.">
         <span class="dash-stat-label">
           <i class="fa fa-exclamation-circle dash-title-icon" aria-hidden="true"></i>
-          Overdue
+          <span class="dash-stat-label__copy">Overdue</span>
         </span>
         <span class="dash-stat-value">{{ $c['overdue_invoice_count'] }}</span>
         <span class="dash-stat-sub">
@@ -88,8 +88,10 @@
       <div class="dash-card dash-card--stat" title="Projects not completed, cancelled, or rejected, with contract total where set.">
         <span class="dash-stat-label">
           <i class="fa fa-briefcase dash-title-icon" aria-hidden="true"></i>
-          Active projects
-          <x-admin.info-tip label="Active projects">Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
+          <span class="dash-stat-label__copy">
+            Active projects
+            <x-admin.info-tip label="Active projects">Excludes completed, cancelled &amp; rejected</x-admin.info-tip>
+          </span>
         </span>
         <span class="dash-stat-value">{{ $c['active_projects_count'] }}</span>
         <span class="dash-stat-sub">Contract total {{ ClientProject::formatMoney($c['active_projects_value']) }}</span>

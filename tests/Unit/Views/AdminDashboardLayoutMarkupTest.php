@@ -33,6 +33,11 @@ class AdminDashboardLayoutMarkupTest extends TestCase
             );
         }
 
+        $this->assertStringContainsString('dash-stat-label__copy', $blade);
+        $this->assertMatchesRegularExpression(
+            '/dash-stat-label__copy">\s*Active projects\s*<x-admin.info-tip/',
+            $blade
+        );
         $this->assertStringContainsString('dash-compact-row', $blade);
         $this->assertStringContainsString('dash-compact-row__amt', $blade);
         $this->assertStringContainsString('dash-row-pill', $blade);
@@ -73,6 +78,15 @@ class AdminDashboardLayoutMarkupTest extends TestCase
             );
         }
 
+        $this->assertMatchesRegularExpression(
+            '/\.dash-card--stat \.dash-stat-label\s*\{[^}]*flex-wrap:\s*nowrap/s',
+            $css
+        );
+        $this->assertStringContainsString('.dash-stat-label__copy', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.dash-stat-label__copy\s*\{[^}]*flex:\s*0 1 auto/s',
+            $css
+        );
         $this->assertStringContainsString('.dash-compact-row', $css);
         $this->assertStringContainsString('.dash-compact-row__amt', $css);
         $this->assertStringContainsString('margin-left: auto', $css);

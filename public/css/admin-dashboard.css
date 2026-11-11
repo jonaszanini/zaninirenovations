@@ -91,17 +91,45 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: 0.3rem;
+  padding: 0.9rem 0.7rem;
 }
 
 .dash-card--stat .dash-stat-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.02em;
   color: var(--admin-primary);
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.dash-card--stat .dash-stat-label .dash-title-icon {
+  flex: 0 0 auto;
+  width: 1em;
+  font-size: 0.9em;
+}
+
+.dash-stat-label__copy {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: block;
+  max-width: 100%;
+}
+
+.dash-card--stat .dash-stat-label > .admin-info-tip-wrap,
+.dash-stat-label__copy > .admin-info-tip-wrap {
+  display: inline-flex;
+  vertical-align: middle;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  overflow: visible;
+  margin-left: 0.1em;
 }
 
 .dash-card--stat .dash-stat-value {

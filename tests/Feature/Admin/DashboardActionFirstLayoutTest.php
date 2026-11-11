@@ -104,6 +104,7 @@ class DashboardActionFirstLayoutTest extends IntegrationTestCase
         $this->assertStringContainsString('fa-phone dash-title-icon', $html);
         $this->assertStringContainsString('fa-file-text dash-title-icon', $html);
         $this->assertStringContainsString('fa-calendar dash-title-icon', $html);
+        $this->assertStringContainsString('dash-stat-label__copy', $html);
         $this->assertStringContainsString('dash-compact-row', $html);
         $this->assertStringContainsString('dash-row-pill', $html);
         $this->assertStringContainsString('dash-compact-row__client', $html);
