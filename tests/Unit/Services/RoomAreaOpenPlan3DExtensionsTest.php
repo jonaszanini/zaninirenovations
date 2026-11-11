@@ -578,7 +578,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertEqualsWithDelta(1596.22, $out['finish_drywall_sqft'], 1.5);
     }
 
-    public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void
+    public function test_default_baseboard_per_wall_when_no_wall_finishes(): void
     {
         $metrics = [
             'area_sqft' => 200.0,

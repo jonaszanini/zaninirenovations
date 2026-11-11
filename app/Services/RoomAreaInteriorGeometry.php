@@ -243,8 +243,24 @@ class RoomAreaInteriorGeometry
      */
     private function distributeCollinearEdgeLengthsFt(array $matched, float $edgeLenFt, float $cmPerUnit): ?array
     {
-        if (count($matched) < 3) {
+        if (count($matched) < 2) {
             return null;
+        }
+        if (count($matched) === 2) {
+            $outTwo = [];
+            $totalEdgeCm = 0.0;
+            foreach ($matched as $mw) {
+                $totalEdgeCm += $this->wallPlanEdgeLengthCm($mw, $matched, $cmPerUnit, true);
+            }
+            if ($totalEdgeCm <= 0) {
+                return null;
+            }
+            foreach ($matched as $mw) {
+                $edgeCm = $this->wallPlanEdgeLengthCm($mw, $matched, $cmPerUnit, true);
+                $outTwo[(string) ($mw['id'] ?? '')] = $edgeLenFt * ($edgeCm / $totalEdgeCm);
+            }
+
+            return $outTwo;
         }
         $out = [];
         $interiorFt = 0.0;

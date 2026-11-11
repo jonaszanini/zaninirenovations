@@ -1572,7 +1572,7 @@
       var wLenFt = lenCm / CM_PER_FOOT;
       var partButt = interiorButtDeductionLfOnInteriorWall(pw, allWallsList, boundaryIdMap, cmPerUnit, partitionJunctionDedup);
       var finishPartLenFt = Math.max(0, wLenFt - partButt);
-      partitionLf += finishPartLenFt;
+      partitionLf += wLenFt;
       var wLenIn = wLenFt * 12.0;
       var wOpenings = openingsByWall[pwId] || [];
 

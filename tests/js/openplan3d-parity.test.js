@@ -214,6 +214,27 @@ assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter
 assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811.03,
   'Net wall area with boundary + single-face partition butt overlap at T junctions');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
+assert.strictEqual(lPartMetrics.partition_lf, 11.67, 'Partition framing stays full length (T butts do not shorten studs)');
+(function lPartFinishBaseboardPin() {
+  const finishes = {};
+  const boundary = new Set((lPartMetrics.boundary_wall_ids || []).map(String));
+  (lPartMetrics.walls || []).forEach(function (w) {
+    finishes[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: boundary.has(String(w.id)),
+      studs: !boundary.has(String(w.id)),
+    };
+  });
+  const finished = ext.applyToMetrics(
+    lPartMetrics,
+    Object.assign({}, lShapeWithPartitionsPlan, { zanini: { wallFinishes: finishes } }),
+    {},
+    cmPerFt
+  );
+  assert.strictEqual(finished.finish_baseboard_lf, 101.37,
+    'Partition–partition T butt applies once to p1 baseboard (both faces), not twice');
+})();
 
 // Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
 function basementStubRegressionPlan(stubYOffsetCm) {
@@ -391,6 +412,22 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
   assert.strictEqual(finished.finish_baseboard_lf, 199.53, 'hand0 finish_baseboard_lf with vertex + collinear-split butt rules');
   assert.strictEqual(finished.finish_drywall_sqft, 1596.22, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
+  const interiorGeom = require('../../public/js/room-area-interior-geometry.js');
+  const hand0Floor = hand0Plan.floors && hand0Plan.floors[0] ? hand0Plan.floors[0] : hand0Plan.floor;
+  const hand0Walls = (hand0Floor && hand0Floor.walls) || [];
+  const ed9Wall = hand0Walls.find(function (w) { return w.id === 'ed9b3bxc'; });
+  const x83Wall = hand0Walls.find(function (w) { return w.id === 'x83nxa0q'; });
+  assert.ok(ed9Wall && x83Wall, 'hand0 north collinear walls exist in fixture');
+  const cmPer = bridge.cmPerUnitForPlan(hand0Plan);
+  const cmPerFt = bridge.CM_PER_FOOT || 30.48;
+  assert.ok(
+    Math.abs(interiorGeom.wallPlanEdgeLengthCm(ed9Wall, hand0Walls, cmPer, true) / cmPerFt - 3.035) < 0.02,
+    'hand0 top stub ed9b3bxc interior edge span ~3.035 lf'
+  );
+  assert.ok(
+    Math.abs(interiorGeom.wallPlanEdgeLengthCm(x83Wall, hand0Walls, cmPer, true) / cmPerFt - 15.338) < 0.02,
+    'hand0 top run x83nxa0q interior edge span ~15.338 lf'
+  );
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');

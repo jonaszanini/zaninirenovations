@@ -666,7 +666,11 @@
           runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(wallId, floor, boundaryMap, cmPerUnit, plan));
         }
         var sides = resolveBaseboardSides({}, isBoundary, touchCount);
-        baseboard += runLf * sides;
+        if (isBoundary) {
+          baseboard += runLf * sides;
+        } else {
+          baseboard += partitionBaseboardLf(wall, sides);
+        }
       }
     } else {
       for (var j = 0; j < walls.length; j++) {
@@ -705,8 +709,10 @@
           }
           if (isB) {
             runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(id, floor, boundaryMap, cmPerUnit, plan));
+            baseboard += runLf * sides;
+          } else {
+            baseboard += partitionBaseboardLf(w, sides);
           }
-          baseboard += runLf * sides;
         }
       }
     }
@@ -734,6 +740,17 @@
       return Number(wall.length_lf_exact) || 0;
     }
     return Number(wall && wall.length_lf) || 0;
+  }
+
+  function partitionBaseboardLf(wall, sides) {
+    var studLen = wallStudLengthLf(wall);
+    var partButt = Number(wall && wall.interior_butt_deduction_lf) || 0;
+    sides = Number(sides) || 0;
+    if (sides <= 0) return 0;
+    if (sides === 1) {
+      return Math.max(0, studLen - partButt);
+    }
+    return Math.max(0, studLen * sides - partButt);
   }
 
   function flagEnabled(flags, key, defaultVal) {

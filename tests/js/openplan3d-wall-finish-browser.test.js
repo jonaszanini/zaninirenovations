@@ -226,8 +226,36 @@ async function main() {
     assert.ok(finishHost, 'finish host for drywall screenshot');
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png') });
-    await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
-    const mobileFinishTap = await page.evaluate(() => {
+
+    const mobilePage = await browser.newPage();
+    mobilePage.setDefaultTimeout(60000);
+    await mobilePage.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await mobilePage.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000,
+    });
+    await mobilePage.waitForSelector('canvas', { timeout: 120000 });
+  await mobilePage.waitForFunction(
+      () => window.__openPlan3D && window.OpenPlan3DZaniniTools && typeof window.OpenPlan3DZaniniTools.renderFinishPanel === 'function',
+      { timeout: 120000 }
+    );
+    await mobilePage.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(true));
+    await mobilePage.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('p1');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['p1']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await mobilePage.waitForSelector('[data-finish-drywall-tip]', { timeout: 15000 });
+
+    const mobileFinishTap = await mobilePage.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
       const cb = host && host.querySelector('input[type="checkbox"]');
       if (!cb) return { ok: false, reason: 'no checkbox' };
@@ -245,7 +273,16 @@ async function main() {
     assert.ok(mobileFinishTap.viewportW === 390, '390 drywall screenshot must use real 390px viewport');
     assert.ok(mobileFinishTap.ok, 'Wall finishes panel must be above properties sheet at 390');
     assert.ok(mobileFinishTap.w >= 44 && mobileFinishTap.h >= 44, 'finish checkboxes need >=44px tap targets at 390');
-    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png') });
+    const tipGlyph = await mobilePage.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      const svg = btn && btn.querySelector('svg.openplan3d-finish-info-glyph');
+      const rect = svg && svg.getBoundingClientRect();
+      return { hasSvg: !!svg, w: rect ? rect.width : 0, h: rect ? rect.height : 0 };
+    });
+    assert.ok(tipGlyph.hasSvg && tipGlyph.w > 8 && tipGlyph.h > 8, 'drywall help icon must render SVG glyph at 390');
+    const mobileFinishHost = await mobilePage.$('#openplan3d-zanini-finish-host');
+    await mobileFinishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png') });
+    await mobilePage.close();
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     try {
       fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });

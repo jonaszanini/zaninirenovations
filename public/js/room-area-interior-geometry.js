@@ -338,7 +338,20 @@
   }
 
   function distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit) {
-    if (!matched || matched.length < 3) return null;
+    if (!matched || matched.length < 2) return null;
+    if (matched.length === 2) {
+      var outTwo = {};
+      var totalEdgeCm = 0;
+      for (var ti = 0; ti < matched.length; ti++) {
+        totalEdgeCm += wallPlanEdgeLengthCm(matched[ti], matched, cmPerUnit, true);
+      }
+      if (!(totalEdgeCm > 0)) return null;
+      for (var tj = 0; tj < matched.length; tj++) {
+        var edgeCm = wallPlanEdgeLengthCm(matched[tj], matched, cmPerUnit, true);
+        outTwo[String(matched[tj].id)] = edgeLenFt * (edgeCm / totalEdgeCm);
+      }
+      return outTwo;
+    }
     var out = {};
     var interiorFt = 0;
     var endWalls = [];

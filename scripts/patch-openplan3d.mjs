@@ -375,6 +375,13 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
+  const aoImperialOld = 'function Ao(e,t){return t==="imperial"?`${(e*10.7639).toFixed(1)} ft²`:`${e.toFixed(1)} m²`}';
+  const aoImperialNew =
+    'function Ao(e,t){return t==="imperial"?`${(Math.round(e*10.7639*100)/100).toFixed(2)} ft²`:`${(Math.round(e*100)/100).toFixed(2)} m²`}';
+  if (s.includes(aoImperialOld)) {
+    s = replaceExpected(s, aoImperialOld, aoImperialNew, 'store chunk: Ao() area uses 2 dp', 1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
@@ -456,6 +463,7 @@ function patchHostedEditorIndexBoot() {
   const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
   const extV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-extensions.js'));
   const toolsV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-tools.js'));
+  const infoTipV = fileContentVersion16(path.join(ROOT, 'public/js/admin-info-tip.js'));
 
   html = html.replace(
     /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
@@ -499,13 +507,22 @@ function patchHostedEditorIndexBoot() {
     html = html.replace(/openplan3d-zanini-extensions\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-extensions.js?v=${extV}`);
   }
 
+  const infoTipTag = `<script src="/js/admin-info-tip.js?v=${infoTipV}"></script>`;
   const toolsTag = `<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`;
   if (!html.includes('openplan3d-zanini-tools.js')) {
     html = html.replace(
       `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
-      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>\n\t\t${toolsTag}`
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>\n\t\t${infoTipTag}\n\t\t${toolsTag}`
     );
   } else {
+    if (!html.includes('admin-info-tip.js')) {
+      html = html.replace(toolsTag.split('?')[0], `${infoTipTag}\n\t\t${toolsTag.split('?')[0]}`);
+      html = html.replace(
+        new RegExp(`<script src="/js/openplan3d-zanini-tools\\.js\\?v=[A-Za-z0-9]+"></script>`),
+        `${infoTipTag}\n\t\t<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`
+      );
+    }
+    html = html.replace(/admin-info-tip\.js\?v=[A-Za-z0-9]+/, `admin-info-tip.js?v=${infoTipV}`);
     html = html.replace(/openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-tools.js?v=${toolsV}`);
   }
 

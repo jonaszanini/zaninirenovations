@@ -399,7 +399,11 @@ class RoomAreaOpenPlan3DExtensions
                     $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
                 }
                 $sides = $this->resolveBaseboardSides([], $isBoundary, $touchCount);
-                $baseboard += $runLf * (float) $sides;
+                if ($isBoundary) {
+                    $baseboard += $runLf * (float) $sides;
+                } else {
+                    $baseboard += $this->partitionBaseboardLf($wall, (int) $sides);
+                }
             }
         } else {
             foreach ($walls as $wall) {
@@ -445,8 +449,10 @@ class RoomAreaOpenPlan3DExtensions
                             $runLf = max(0.0, $runLf - (float) ($wall['interior_butt_deduction_lf'] ?? 0.0));
                         }
                         $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
+                        $baseboard += $runLf * (float) $sides;
+                    } else {
+                        $baseboard += $this->partitionBaseboardLf($wall, (int) $sides);
                     }
-                    $baseboard += $runLf * (float) $sides;
                 }
             }
         }
@@ -663,6 +669,23 @@ class RoomAreaOpenPlan3DExtensions
         }
 
         return (float) ($wall['length_lf'] ?? 0.0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $wall
+     */
+    private function partitionBaseboardLf(array $wall, int $sides): float
+    {
+        $studLen = $this->wallStudLengthLf($wall);
+        $partButt = (float) ($wall['interior_butt_deduction_lf'] ?? 0.0);
+        if ($sides <= 0) {
+            return 0.0;
+        }
+        if ($sides === 1) {
+            return max(0.0, $studLen - $partButt);
+        }
+
+        return max(0.0, $studLen * (float) $sides - $partButt);
     }
 
     /**

@@ -194,6 +194,27 @@ class RoomAreaInteriorGeometryTest extends TestCase
         $this->assertEqualsWithDelta(107.64, $metrics['outside_area_sqft'], 0.01);
     }
 
+    public function test_hand0_top_collinear_edge_lengths_pinned(): void
+    {
+        $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $hand0 = json_decode((string) file_get_contents($hand0Path), true);
+        $floor = is_array($hand0['floor'] ?? null)
+            ? $hand0['floor']
+            : ($hand0['floors'][0] ?? []);
+        $walls = is_array($floor['walls'] ?? null) ? $floor['walls'] : [];
+        $cmPerUnit = 1.0;
+        $byId = [];
+        foreach ($walls as $wall) {
+            if (is_array($wall) && isset($wall['id'])) {
+                $byId[(string) $wall['id']] = $wall;
+            }
+        }
+        $ed9 = $this->geom->wallPlanEdgeLengthCm($byId['ed9b3bxc'], $walls, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $x83 = $this->geom->wallPlanEdgeLengthCm($byId['x83nxa0q'], $walls, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $this->assertEqualsWithDelta(3.035, $ed9, 0.02);
+        $this->assertEqualsWithDelta(15.338, $x83, 0.02);
+    }
+
     public function test_boundary_wall_lengths_sum_to_interior_perimeter(): void
     {
         $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');

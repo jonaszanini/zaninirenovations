@@ -49,7 +49,7 @@ class RoomAreaFormulaParser
         $netWall = self::firstFiniteMetric($metrics, ['net_wall_area_sqft', 'wall_area_sqft', 'net_wall_sf'], 0.0);
         $ceiling = self::firstFiniteMetric($metrics, ['ceiling_area_sqft', 'ceiling_sf'], $floor);
         $perimeter = self::firstFiniteMetric($metrics, ['perimeter_lf', 'perimeter'], 0.0);
-        $baseboard = self::firstFiniteMetric($metrics, ['baseboard_lf', 'baseboard'], $perimeter);
+        $baseboard = self::firstFiniteMetric($metrics, ['finish_baseboard_lf', 'baseboard_lf', 'baseboard'], $perimeter);
         $casing = self::firstFiniteMetric($metrics, ['casing_lf', 'casing'], 0.0);
         $doors = self::firstFiniteMetric($metrics, ['door_count', 'doors'], 0.0);
         $windows = self::firstFiniteMetric($metrics, ['window_count', 'windows'], 0.0);

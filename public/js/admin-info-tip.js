@@ -126,6 +126,31 @@
 
     bubble.style.top = Math.round(top) + 'px';
     bubble.style.left = Math.round(left) + 'px';
+
+    var finalRect = bubble.getBoundingClientRect();
+    var vw = window.innerWidth || 0;
+    var vh = window.innerHeight || 0;
+    var clampLeft = finalRect.left;
+    if (finalRect.right > vw - PAD) {
+      clampLeft -= finalRect.right - (vw - PAD);
+    }
+    if (clampLeft < PAD) {
+      clampLeft = PAD;
+    }
+    if (Math.abs(clampLeft - finalRect.left) > 0.5) {
+      bubble.style.left = Math.round(left + (clampLeft - finalRect.left)) + 'px';
+    }
+    finalRect = bubble.getBoundingClientRect();
+    var clampTop = finalRect.top;
+    if (finalRect.bottom > vh - PAD) {
+      clampTop -= finalRect.bottom - (vh - PAD);
+    }
+    if (clampTop < PAD) {
+      clampTop = PAD;
+    }
+    if (Math.abs(clampTop - finalRect.top) > 0.5) {
+      bubble.style.top = Math.round(top + (clampTop - finalRect.top)) + 'px';
+    }
   }
 
   function repositionOpenTips() {

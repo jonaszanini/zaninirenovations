@@ -479,7 +479,7 @@ class OpenPlan3DMeasurementBridge
             $lengthFt = $this->interiorGeometry->wallPlanEdgeLengthCm($pw, $allWallsList, $cmPerUnit) / self::CM_PER_FOOT;
             $partButt = $this->interiorButtDeductionLfOnInteriorWall($pw, $allWallsList, $boundaryWallIdMap, $cmPerUnit, $partitionJunctionDedup);
             $finishPartLenFt = max(0.0, $lengthFt - $partButt);
-            $partitionLf += $finishPartLenFt;
+            $partitionLf += $lengthFt;
             $wallLengthIn = $lengthFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
 
