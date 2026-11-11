@@ -408,6 +408,18 @@ jobs:
             storage/app/qa-screenshots/room-area-wall-finishes-drywall-390.png
           if-no-files-found: warn
 
+      - name: Upload quotation row actions menu screenshots
+        if: success() && needs.changes.outputs.run_browser == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotation-row-actions-menu-screenshots
+          path: |
+            tests/js/artifacts/quotation-row-actions-menu-390.png
+            tests/js/artifacts/quotation-row-actions-menu-1280.png
+            storage/app/qa-screenshots/quotation-row-actions-menu-390.png
+            storage/app/qa-screenshots/quotation-row-actions-menu-1280.png
+          if-no-files-found: warn
+
   mysql:
     needs: changes
     if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'

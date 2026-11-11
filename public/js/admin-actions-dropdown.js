@@ -107,7 +107,7 @@
     menu.style.marginBottom = '0';
     menu.style.maxHeight = 'none';
     menu.style.overflowY = '';
-    menu.style.zIndex = '400';
+    menu.style.zIndex = '500';
 
     var toggleRect = toggle.getBoundingClientRect();
     var menuHeight = menu.offsetHeight;
@@ -162,6 +162,11 @@
     if (!wasOpen) openDropdown(dropdown);
   }
 
+  // Capture phase: row wrappers (quotation accordion summary, table cells)
+  // call stopPropagation on bubble to keep <details> from toggling. A bubble
+  // listener on document never sees those taps, so the menu looks dead on
+  // mobile. Capture still runs, preventDefault blocks the summary toggle, and
+  // the same path covers invoice/contract overflow menus.
   document.addEventListener('click', function (e) {
     var toggle = e.target.closest('.admin-actions-dropdown__toggle');
     if (toggle) {
@@ -179,7 +184,7 @@
     ) {
       closeAll(null, false);
     }
-  });
+  }, true);
 
   document.addEventListener('keydown', function (e) {
     var open = document.querySelector('.admin-actions-dropdown.is-open');

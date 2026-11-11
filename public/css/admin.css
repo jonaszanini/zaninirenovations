@@ -4850,6 +4850,9 @@ body.admin-ai-text-history-open {
   background: var(--admin-surface);
   color: var(--admin-muted);
   cursor: pointer;
+  touch-action: manipulation;
+  position: relative;
+  z-index: 1;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
@@ -4891,7 +4894,7 @@ body.admin-ai-text-history-open {
 .admin-actions-dropdown__menu.is-portaled {
   display: block;
   position: fixed;
-  z-index: 400;
+  z-index: 500;
   margin-top: 0;
   margin-bottom: 0;
 }

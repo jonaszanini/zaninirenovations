@@ -3281,6 +3281,7 @@ a:hover .cp-expense-receipt-pdf {
   cursor: pointer;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  overflow: visible;
 }
 .cp-quotation-accordion__summary::-webkit-details-marker {
   display: none;
@@ -3418,6 +3419,8 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-accordion__actions {
   grid-area: actions;
   position: relative;
+  z-index: 3;
+  pointer-events: auto;
 }
 .cp-quotation-accordion__actions .cp-quotation-toolbar {
   justify-content: flex-end;
@@ -4236,6 +4239,9 @@ a:hover .cp-expense-receipt-pdf {
   }
   .cp-invoices-table td[data-label="Actions"] {
     justify-content: flex-end;
+    overflow: visible;
+    position: relative;
+    z-index: 2;
   }
   .cp-invoices-table td[data-label="Actions"]::before {
     margin-right: auto;
