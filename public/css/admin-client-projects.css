@@ -7265,7 +7265,8 @@ body.cp-modal-open {
   }
 }
 
-/* Desktop: one line per row; Address takes leftover width and wraps. */
+/* Desktop: Address keeps a real share so text wraps by words next to the
+   copy icon when the 270px sidebar is open (1024 / 1280 / 1440). */
 @media (min-width: 641px) {
   .cp-clients-table {
     width: 100%;
@@ -7274,31 +7275,41 @@ body.cp-modal-open {
   }
   .cp-clients-table th,
   .cp-clients-table td {
-    padding: 0.55rem 0.65rem;
+    padding: 0.55rem 0.5rem;
+  }
+  .cp-clients-table th.cp-clients-col-projects,
+  .cp-clients-table th.cp-clients-col-actions {
+    letter-spacing: 0.03em;
+    font-size: 0.65rem;
   }
   .cp-clients-table .cp-clients-col-name {
-    white-space: nowrap;
-    width: 10.75rem;
+    white-space: normal;
+    width: 14%;
   }
   .cp-clients-table .cp-clients-col-email {
     white-space: normal;
-    width: 16.5rem;
+    width: 16%;
   }
   .cp-clients-table .cp-clients-col-phone {
-    white-space: nowrap;
-    width: 11rem;
+    white-space: normal;
+    width: 18%;
+  }
+  .cp-clients-table .cp-clients-col-address {
+    width: 28%;
+    white-space: normal;
   }
   .cp-clients-table .cp-clients-col-projects {
     white-space: nowrap;
-    width: 5.75rem;
+    width: 10%;
   }
   .cp-clients-table .cp-clients-col-actions {
     white-space: nowrap;
-    width: 6.5rem;
+    width: 14%;
   }
-  .cp-clients-table .cp-clients-col-address {
-    width: auto;
-    white-space: normal;
+  .cp-clients-table .cl-copy-field--address {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
   }
   .cp-clients-table .cp-clients-address-link,
   .cp-clients-table .cl-copy-field--address .cl-copy-field__value {

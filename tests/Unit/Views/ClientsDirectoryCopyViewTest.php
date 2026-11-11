@@ -46,5 +46,9 @@ class ClientsDirectoryCopyViewTest extends TestCase
             '/@media \(max-width: 640px\) \{[^}]*\.cl-copy-btn\s*\{[^}]*min-width:\s*44px/s',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-clients-table \.cp-clients-col-address \{\s*width:\s*28%;/',
+            $css
+        );
     }
 }

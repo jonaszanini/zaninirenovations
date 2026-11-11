@@ -113,6 +113,13 @@ async function capture(pageName, fixtureFile, width, height, port, minCopy) {
     );
   }
 
+  if (pageName === 'clients-list') {
+    const count = await page.$$eval('.cl-copy-btn', (els) => els.length);
+    await browser.close();
+    assert.ok(count >= minCopy, `${pageName}@${width} expected at least ${minCopy} copy buttons, got ${count}`);
+    return { label: `${pageName}-${width}`, count, layout };
+  }
+
   fs.mkdirSync(outDir, { recursive: true });
   const fileName = `${pageName}-${width}.png`;
   const dest = path.join(outDir, fileName);

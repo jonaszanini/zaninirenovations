@@ -1,4 +1,5 @@
 tests/Feature/Smoke/AdminGetRoutesSmokeTest.php
 tests/Feature/Smoke/PublicGetRoutesSmokeTest.php
 tests/Feature/Admin/ClientShowPageTest.php
+tests/Feature/Admin/ClientIndexAddressColumnLayoutTest.php
 tests/Feature/Admin/GlobalSearchApiTest.php
