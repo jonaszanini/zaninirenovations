@@ -41,7 +41,8 @@ class RoomAreaBatch2PageTest extends IntegrationTestCase
         $this->assertStringContainsString('ceil($this->roundTo($needed / $box, 9))', $php);
         $this->assertStringContainsString('abs($shifted) + 1e-9', $php);
         $this->assertStringContainsString('function unionOpeningAreaRawSqFt(', $php);
-        $this->assertStringContainsString('netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw)', $php);
+        $this->assertStringContainsString('net_area_sqft_exact', $php);
+        $this->assertStringContainsString('$wall[\'net_area_sqft_exact\']', $php);
         $this->assertStringContainsString('is_string($rawSides)', $php);
         $this->assertStringContainsString("preg_match('/[eE]/', \$raw)", $php);
         $this->assertStringContainsString('LEGACY_OPENING_HEIGHT_IN', $php);
