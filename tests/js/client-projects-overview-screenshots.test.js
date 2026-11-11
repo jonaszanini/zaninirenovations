@@ -177,8 +177,26 @@ async function main() {
     }, { timeout: 5000 });
     const visitOpenDesktop = await measure(afterDesktop);
     assert.strictEqual(visitOpenDesktop.visitFormHidden, false);
+    const dateWidth1280 = await afterDesktop.evaluate(() => {
+      const el = document.querySelector('#cp-overview-visit-date');
+      return el ? el.getBoundingClientRect().width : 0;
+    });
+    assert.ok(dateWidth1280 >= 200, `after 1280 visit date width ${dateWidth1280} clips the year`);
     await shot(afterDesktop, 'client-project-overview-visit-edit-1280');
     await afterDesktop.close();
+
+    const after1024 = await openPage(browser, port, '/after', 1024, 900);
+    await after1024.click('[data-cp-overview-edit="visit"]');
+    await after1024.waitForFunction(() => {
+      const form = document.querySelector('#cp-overview-visit-form');
+      return form && !form.hidden;
+    }, { timeout: 5000 });
+    const dateWidth1024 = await after1024.evaluate(() => {
+      const el = document.querySelector('#cp-overview-visit-date');
+      return el ? el.getBoundingClientRect().width : 0;
+    });
+    assert.ok(dateWidth1024 >= 200, `after 1024 visit date width ${dateWidth1024} clips the year`);
+    await after1024.close();
 
     const afterPhone = await openPage(browser, port, '/after', 390, 844);
     const afterPhoneLayout = await measure(afterPhone);

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\Client;
 use App\Models\ClientProject;
 use Illuminate\Support\Facades\Mail;
 use Tests\IntegrationTestCase;
@@ -66,6 +67,18 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         );
         $this->assertMatchesRegularExpression(
             '/@media\s*\(min-width:\s*1024px\)\s*\{[^}]*\.cp-overview-grid\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-overview-inline-fields\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s',
+            $css
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.cp-overview-inline-fields\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(0,\s*1fr\)/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.cp-overview-inline-form\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/s',
             $css
         );
     }
@@ -274,6 +287,205 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         $this->assertSame('2026-11-21', $project->end_date->toDateString());
     }
 
+    public function test_overview_inline_save_does_not_touch_directory_when_contact_differs(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Directory Name',
+            'email' => 'directory@example.com',
+            'phone' => '4165550100',
+            'address' => '1 Directory Street, Toronto, ON',
+        ]);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Kitchen renovation',
+            'client_id' => $client->id,
+            'client_name' => 'Project Contact',
+            'client_email' => 'project-contact@example.com',
+            'client_phone' => '6475550199',
+            'client_address' => '99 Project Avenue, Vaughan, ON',
+            'visit_required' => true,
+            'visit_date' => '2026-11-10',
+            'visit_time' => '09:00:00',
+            'start_date' => '2026-12-01',
+            'end_date' => '2026-12-05',
+        ]);
+
+        $directoryBefore = $this->directorySnapshot($client);
+        $projectContactBefore = $this->projectContactSnapshot($project);
+        $clientsBefore = Client::query()->count();
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Kitchen renovation',
+            'client_name' => 'Project Contact',
+            'return_tab' => 'overview',
+            'visit_required' => '1',
+            'visit_date' => '2026-11-18',
+            'visit_time' => '14:30',
+        ])->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('admin.client-projects.show', $project).'#overview');
+
+        $this->assertDirectoryUntouched($client, $project, $directoryBefore, $projectContactBefore, $clientsBefore);
+        $project->refresh();
+        $this->assertSame('2026-11-18', $project->visit_date->toDateString());
+        $this->assertStringStartsWith('14:30', (string) $project->visit_time);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Kitchen renovation',
+            'client_name' => 'Project Contact',
+            'return_tab' => 'overview',
+            'start_date' => '2026-12-08',
+            'end_date' => '2026-12-10',
+        ])->assertSessionDoesntHaveErrors()
+            ->assertRedirect(route('admin.client-projects.show', $project).'#overview');
+
+        $this->assertDirectoryUntouched($client, $project, $directoryBefore, $projectContactBefore, $clientsBefore);
+        $project->refresh();
+        $this->assertSame('2026-12-08', $project->start_date->toDateString());
+        $this->assertSame('2026-12-10', $project->end_date->toDateString());
+    }
+
+    public function test_edit_details_posted_client_id_still_syncs_directory(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Directory Name',
+            'email' => 'directory@example.com',
+            'phone' => '4165550100',
+        ]);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Porch rebuild',
+            'client_id' => $client->id,
+            'client_name' => 'Project Contact',
+            'client_email' => 'project-contact@example.com',
+            'client_phone' => '6475550199',
+        ]);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Porch rebuild',
+            'client_id' => $client->id,
+            'client_name' => 'Project Contact',
+            'client_email' => 'project-contact@example.com',
+            'client_phone' => '6475550199',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'sync_client_directory' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $project->refresh();
+        $client->refresh();
+        $this->assertSame($client->id, (int) $project->client_id);
+        $this->assertSame('Project Contact', $client->name);
+        $this->assertSame('project-contact@example.com', $client->email);
+        $this->assertSame('6475550199', $client->phone);
+        $this->assertSame(1, Client::query()->count());
+    }
+
+    public function test_edit_details_empty_client_id_still_creates_directory_row_from_contact(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $client = Client::create([
+            'name' => 'Directory Name',
+            'email' => 'directory@example.com',
+            'phone' => '4165550100',
+        ]);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Porch rebuild',
+            'client_id' => $client->id,
+            'client_name' => 'Project Contact',
+            'client_email' => 'project-contact@example.com',
+            'client_phone' => '6475550199',
+        ]);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Porch rebuild',
+            'client_id' => '',
+            'client_name' => 'Project Contact',
+            'client_email' => 'project-contact@example.com',
+            'client_phone' => '6475550199',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'sync_client_directory' => '1',
+        ])->assertSessionDoesntHaveErrors();
+
+        $project->refresh();
+        $client->refresh();
+        $this->assertNotSame($client->id, (int) $project->client_id);
+        $this->assertSame('Directory Name', $client->name);
+        $this->assertSame('directory@example.com', $client->email);
+        $this->assertSame(2, Client::query()->count());
+        $created = Client::query()->whereKey($project->client_id)->first();
+        $this->assertNotNull($created);
+        $this->assertSame('Project Contact', $created->name);
+        $this->assertSame('project-contact@example.com', $created->email);
+    }
+
+    public function test_overview_real_render_visit_form_date_inputs_fit_at_1280_and_1024(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Kitchen renovation',
+            'client_name' => 'Jane Chen',
+            'client_email' => 'jane.chen@example.com',
+            'client_phone' => '4165550142',
+            'client_address' => '14 Maple Avenue, Richmond Hill, ON',
+            'visit_required' => true,
+            'visit_date' => '2026-11-18',
+            'visit_time' => '10:00:00',
+            'start_date' => '2026-11-20',
+            'end_date' => '2026-11-22',
+            'notes' => 'Client wants quartz counters and a pot filler.',
+        ]);
+
+        $html = $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertDontSee('name="client_id"', false)
+            ->getContent();
+
+        $this->assertStringContainsString('id="cp-overview-visit-form"', $html);
+        $this->assertStringContainsString('id="cp-overview-visit-date"', $html);
+
+        if (! is_dir(base_path('node_modules/puppeteer'))) {
+            $this->markTestSkipped('Puppeteer is not installed');
+        }
+
+        $outDir = storage_path('app/qa-screenshots');
+        if (! is_dir($outDir)) {
+            mkdir($outDir, 0777, true);
+        }
+        $htmlPath = $outDir.'/overview-real-show.html';
+        $appUrl = rtrim((string) config('app.url'), '/');
+        $html = str_replace($appUrl, '', $html);
+        file_put_contents($htmlPath, $html);
+
+        $script = base_path('tests/js/client-projects-overview-real-screenshots.js');
+        $reportPath = $outDir.'/overview-real-report.json';
+        @unlink($reportPath);
+
+        $cmd = 'OVERVIEW_HTML='.escapeshellarg($htmlPath)
+            .' OVERVIEW_OUT='.escapeshellarg($outDir)
+            .' OVERVIEW_REPORT='.escapeshellarg($reportPath)
+            .' node '.escapeshellarg($script);
+        $output = [];
+        $code = 0;
+        exec($cmd.' 2>&1', $output, $code);
+        $this->assertSame(0, $code, "Overview real-render screenshots failed:\n".implode("\n", $output));
+
+        $report = json_decode((string) file_get_contents($reportPath), true);
+        $this->assertIsArray($report);
+        $this->assertGreaterThanOrEqual(200, (float) ($report['width1280'] ?? 0), '1280 date input is clipped');
+        $this->assertGreaterThanOrEqual(200, (float) ($report['width1024'] ?? 0), '1024 date input is clipped');
+        $this->assertFileExists($outDir.'/client-project-overview-visit-edit-real-1280.png');
+        $this->assertFileExists($outDir.'/client-project-overview-visit-edit-real-390.png');
+    }
+
     public function test_edit_details_and_calendar_tab_behavior_is_unchanged(): void
     {
         Mail::fake();
@@ -318,5 +530,53 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         $calendarFail->assertSessionHasErrors('end_date');
         $this->assertStringContainsString('#schedule', (string) $calendarFail->headers->get('Location'));
         $this->assertStringNotContainsString('#overview', (string) $calendarFail->headers->get('Location'));
+    }
+
+    /**
+     * @return array{name: ?string, email: ?string, phone: ?string, address: ?string}
+     */
+    private function directorySnapshot(Client $client): array
+    {
+        $client->refresh();
+
+        return [
+            'name' => $client->name,
+            'email' => $client->email,
+            'phone' => $client->phone,
+            'address' => $client->address,
+        ];
+    }
+
+    /**
+     * @return array{client_name: mixed, client_email: mixed, client_phone: mixed, client_address: mixed}
+     */
+    private function projectContactSnapshot(ClientProject $project): array
+    {
+        $attrs = $project->getAttributes();
+
+        return [
+            'client_name' => $attrs['client_name'] ?? null,
+            'client_email' => $attrs['client_email'] ?? null,
+            'client_phone' => $attrs['client_phone'] ?? null,
+            'client_address' => $attrs['client_address'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  array{name: ?string, email: ?string, phone: ?string, address: ?string}  $directoryBefore
+     * @param  array{client_name: mixed, client_email: mixed, client_phone: mixed, client_address: mixed}  $projectContactBefore
+     */
+    private function assertDirectoryUntouched(
+        Client $client,
+        ClientProject $project,
+        array $directoryBefore,
+        array $projectContactBefore,
+        int $clientsBefore
+    ): void {
+        $project->refresh();
+        $this->assertSame($client->id, (int) $project->client_id);
+        $this->assertSame($clientsBefore, Client::query()->count());
+        $this->assertSame($directoryBefore, $this->directorySnapshot($client));
+        $this->assertSame($projectContactBefore, $this->projectContactSnapshot($project));
     }
 }

@@ -1369,12 +1369,15 @@ html.cp-cancel-modal-open {
   row-gap: 4px;
   column-gap: 12px;
   margin-top: 4px;
-  grid-template-columns: 7.5rem 1fr;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
 }
 .cp-overview-dt {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+}
+.cp-overview-editable {
+  display: contents;
 }
 .cp-overview-value-row {
   display: flex;
@@ -1406,24 +1409,29 @@ html.cp-cancel-modal-open {
   border-color: var(--admin-border-strong);
 }
 .cp-overview-inline-form {
-  margin-top: 8px;
+  grid-column: 1 / -1;
+  margin-top: 4px;
   padding: 8px;
   border: 1px solid var(--admin-border);
   border-radius: 8px;
   background: var(--admin-surface-hover);
+  min-width: 0;
 }
 .cp-overview-inline-fields {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 8px;
-}
-@media (min-width: 1024px) {
-  .cp-overview-inline-fields {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  }
 }
 .cp-overview-inline-form .admin-form-group {
   margin-bottom: 0;
+  min-width: 0;
+}
+.cp-overview-inline-form input[type="date"],
+.cp-overview-inline-form input[type="time"] {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 .cp-overview-inline-actions {
   display: flex;
