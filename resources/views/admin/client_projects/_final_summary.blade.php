@@ -11,15 +11,17 @@
 @endphp
 
 <div class="admin-card cp-final-summary">
-  <h3><i class="fa fa-check-circle"></i> Project completed — Final summary</h3>
-  <p class="admin-form-help">
-    @if ($isHourly)
-      Hourly project: profit uses labour revenue only; Financials expenses (materials reimbursed by the client) are not deducted from gross or net profit.
-    @else
-      All figures below are calculated from paid installments, expenses, returns, and logged time. HST to save is 13% of labour (not materials).
-    @endif
-    A thank-you + review request was sent to the client (if an email was on file).
-  </p>
+  <h3>
+    <i class="fa fa-check-circle"></i> Project completed
+    <x-admin.info-tip label="Final summary">
+      @if ($isHourly)
+        Hourly project: profit uses labour revenue only. Financials expenses (materials reimbursed by the client) are not deducted from gross or net profit.
+      @else
+        Figures below are calculated from paid installments, expenses, returns, and logged time. HST to save is 13% of labour (not materials).
+      @endif
+      A thank you and review request was sent to the client when an email was on file.
+    </x-admin.info-tip>
+  </h3>
 
   <div class="cp-profit-grid">
     <div class="cp-profit-tile">
@@ -27,13 +29,13 @@
       <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($revenue) }}</div>
     </div>
     <div class="cp-profit-tile">
-      <div class="cp-profit-label">{{ $isHourly ? 'Total spent (tracked)' : 'Total spent' }}</div>
+      <div class="cp-profit-label">
+        {{ $isHourly ? 'Total spent (tracked)' : 'Total spent' }}
+        @if ($isHourly)
+          <x-admin.info-tip label="Total spent">Not deducted from profit. These are client reimbursed materials.</x-admin.info-tip>
+        @endif
+      </div>
       <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
-      @if ($isHourly)
-        <p class="admin-form-help" style="margin:6px 0 0;font-size:12px;line-height:1.4;color:#6b7280;">
-          Not deducted from profit (client-reimbursed materials).
-        </p>
-      @endif
     </div>
     <div class="cp-profit-tile">
       <div class="cp-profit-label">Returns</div>

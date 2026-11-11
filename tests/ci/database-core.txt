@@ -6,6 +6,7 @@ tests/Feature/Invoices/MarkPaidInvoiceTest.php
 tests/Feature/Invoices/HourlyInvoiceUpdateTest.php
 tests/Feature/Admin/GlobalFinancialsTest.php
 tests/Feature/Admin/PrepareBillingTest.php
+tests/Feature/Admin/ClientProjectOverviewInlineEditTest.php
 tests/Feature/AdminMoneyDirectEntryTest.php
 tests/Feature/SharedPricesTest.php
 tests/Feature/SharedPricesAddRenameTest.php

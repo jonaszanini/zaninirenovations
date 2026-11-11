@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overview before</title>
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-vehicles.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body">
+  <div class="admin-app" id="admin-app">
+    <main class="admin-main">
+      <div class="admin-content">
+        <div class="admin-card cp-header-card">
+          <div class="cp-header-layout">
+            <div class="cp-header-row cp-header-row--title">
+              <div class="cp-header-title-block">
+                <h2 class="cp-header-name">
+                  <span class="cp-header-ref">CP-1042</span>
+                  <span class="cp-header-project-name">Kitchen renovation</span>
+                </h2>
+                <div class="cp-header-client-row">
+                  <span class="cp-header-client">Jane Chen</span>
+                </div>
+              </div>
+              <div class="cp-header-status">
+                <span class="cp-badge cp-badge--lg" style="background:#dbeafe;color:#1e40af;">Quote pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cp-tabs" role="tablist">
+          <button type="button" class="cp-tab is-active" data-tab="overview">Overview</button>
+          <button type="button" class="cp-tab" data-tab="schedule">Calendar</button>
+          <button type="button" class="cp-tab" data-tab="quotation">Quotation</button>
+        </div>
+        <section class="cp-tab-panel is-active" data-panel="overview">
+          <div class="admin-card cp-travel-cost-card" id="cp-travel-cost">
+            <div class="cp-travel-cost-card__head">
+              <h3><i class="fa fa-car" aria-hidden="true"></i> Estimated travel cost</h3>
+              <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm">Refresh</button>
+            </div>
+            <div class="cp-travel-cost-card__body">
+              <div class="cp-travel-cost-card__result">
+                <div class="cp-travel-breakdown-wrap">
+                  <table class="cp-travel-breakdown">
+                    <thead>
+                      <tr>
+                        <th scope="col"></th>
+                        <th scope="col">Distance</th>
+                        <th scope="col">Drive time</th>
+                        <th scope="col">Fuel cost</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <th scope="row" class="cp-travel-breakdown__leg">
+                          <span class="cp-travel-breakdown__leg-name">Outbound</span>
+                          <span class="cp-travel-breakdown__leg-sub">Home → project</span>
+                        </th>
+                        <td class="cp-travel-breakdown__num">18.4 km</td>
+                        <td class="cp-travel-breakdown__num">24 min</td>
+                        <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$3.42</td>
+                      </tr>
+                      <tr>
+                        <th scope="row" class="cp-travel-breakdown__leg">
+                          <span class="cp-travel-breakdown__leg-name">Return</span>
+                          <span class="cp-travel-breakdown__leg-sub">Project → home</span>
+                        </th>
+                        <td class="cp-travel-breakdown__num">18.4 km</td>
+                        <td class="cp-travel-breakdown__num">24 min</td>
+                        <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$3.42</td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <th scope="row" class="cp-travel-breakdown__leg">
+                          <span class="cp-travel-breakdown__leg-name">Total</span>
+                        </th>
+                        <td class="cp-travel-breakdown__num">36.8 km</td>
+                        <td class="cp-travel-breakdown__num">48 min</td>
+                        <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$6.84</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+                <p class="admin-form-help cp-travel-breakdown-meta">Vehicle: Honda CR-V · 8.4 L/100 km @ CA$1.49/L</p>
+              </div>
+            </div>
+            <div class="cp-travel-cost-card__foot">
+              <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm cp-travel-cost-card__manage">Manage vehicles &amp; home address</a>
+            </div>
+          </div>
+          <div class="admin-card">
+            <h3>Details</h3>
+            <dl class="cp-dl">
+              <dt>Project name</dt><dd>Kitchen renovation</dd>
+              <dt>Client</dt><dd>Jane Chen</dd>
+              <dt>Email</dt><dd>jane.chen@example.com</dd>
+              <dt>Secondary email</dt><dd>—</dd>
+              <dt>Phone</dt><dd>(416) 555-0142</dd>
+              <dt>Address</dt><dd>14 Maple Avenue, Richmond Hill, ON</dd>
+              <dt>Created</dt><dd>02/11/2026 9:14 AM EST</dd>
+              <dt>Status changed</dt><dd>08/11/2026 4:02 PM EST</dd>
+              <dt>Visit</dt>
+              <dd>12/11/2026 · 10:00 AM EST</dd>
+            </dl>
+            <h3 style="margin-top:24px;">Notes</h3>
+            <div class="cp-notes-box">Client wants quartz counters and a pot filler. Confirm cabinet colour on visit.</div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

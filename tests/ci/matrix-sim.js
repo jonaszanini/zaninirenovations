@@ -210,7 +210,10 @@ const cases = [
     paths: ['resources/views/admin/client_projects/show.blade.php'],
     expect: {
       run_browser_client: 'true',
-      browserIncludes: ['tests/js/client-projects-table-screenshots.test.js'],
+      browserIncludes: [
+        'tests/js/client-projects-table-screenshots.test.js',
+        'tests/js/client-projects-overview-screenshots.test.js',
+      ],
     },
   },
   {

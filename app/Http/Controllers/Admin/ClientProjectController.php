@@ -597,7 +597,7 @@ class ClientProjectController extends Controller
 
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
-                ->withFragment('schedule')
+                ->withFragment($this->updateReturnFragment($request) ?? 'schedule')
                 ->withErrors($validator)
                 ->withInput($input);
         }
@@ -645,7 +645,9 @@ class ClientProjectController extends Controller
             $client_project,
             $previousStart,
             $previousEnd,
-            $service
+            $service,
+            'Project updated',
+            $this->updateReturnFragment($request)
         );
     }
 
@@ -760,6 +762,17 @@ class ClientProjectController extends Controller
         }
 
         return $redirect;
+    }
+
+    /**
+     * Overview inline visit/schedule forms post return_tab=overview so
+     * validation and success land on the Overview tab. Edit Details posts
+     * billing_type (redirects to the edit page). The Calendar tab omits
+     * return_tab (validation still returns to #schedule).
+     */
+    private function updateReturnFragment(Request $request): ?string
+    {
+        return $request->input('return_tab') === 'overview' ? 'overview' : null;
     }
 
     /**

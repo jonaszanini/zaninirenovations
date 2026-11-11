@@ -1301,6 +1301,150 @@ html.cp-cancel-modal-open {
   display: block;
 }
 
+/* Overview tab: compact 2-column card grid on desktop, stacked on phone. */
+.cp-overview-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  align-items: start;
+}
+@media (min-width: 1024px) {
+  .cp-overview-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 12px 16px;
+  }
+}
+.cp-overview-grid > .admin-card {
+  padding: 0.85rem 1rem;
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .cp-overview-grid > .admin-card {
+    padding: 1rem 1.15rem;
+  }
+}
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card,
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card::before {
+  margin-top: 0;
+}
+.cp-tab-panel[data-panel="overview"] .cp-overview-grid > .admin-card + .admin-card::before {
+  content: none;
+  display: none;
+}
+.cp-overview-grid > .cp-travel-cost-card,
+.cp-overview-grid > .cp-utilities-teaser {
+  margin-bottom: 0;
+}
+.cp-overview-grid > .admin-card > h3,
+.cp-overview-grid .cp-travel-cost-card__head h3 {
+  font-size: 1rem;
+  margin: 0 0 8px;
+}
+.cp-overview-grid .cp-travel-cost-card__head {
+  margin-bottom: 4px;
+  gap: 8px;
+  align-items: flex-start;
+}
+.cp-overview-grid .cp-travel-cost-card__head h3 {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.cp-overview-grid .cp-travel-breakdown {
+  font-size: 0.8rem;
+}
+.cp-overview-grid .cp-travel-breakdown-wrap {
+  overflow-x: auto;
+}
+.cp-overview-grid .cp-travel-cost-card__foot {
+  margin-top: 10px;
+  padding-top: 10px;
+}
+.cp-overview-grid .cp-travel-breakdown tbody td,
+.cp-overview-grid .cp-travel-breakdown tbody th,
+.cp-overview-grid .cp-travel-breakdown tfoot td,
+.cp-overview-grid .cp-travel-breakdown tfoot th {
+  padding: 8px 8px;
+}
+.cp-overview-grid .cp-dl {
+  row-gap: 4px;
+  column-gap: 12px;
+  margin-top: 4px;
+  grid-template-columns: 7.5rem 1fr;
+}
+.cp-overview-dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.cp-overview-value-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.cp-overview-value {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.cp-overview-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface);
+  color: var(--admin-primary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cp-overview-edit-btn:hover,
+.cp-overview-edit-btn[aria-expanded="true"] {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+}
+.cp-overview-inline-form {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  background: var(--admin-surface-hover);
+}
+.cp-overview-inline-fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+@media (min-width: 1024px) {
+  .cp-overview-inline-fields {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+}
+.cp-overview-inline-form .admin-form-group {
+  margin-bottom: 0;
+}
+.cp-overview-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.cp-overview-notes-heading {
+  margin-top: 12px;
+  margin-bottom: 6px;
+  font-size: 1rem;
+}
+.cp-utilities-teaser__count {
+  margin: 0;
+  font-size: 13px;
+  color: var(--admin-muted);
+}
+.cp-overview-grid > .cp-utilities-teaser {
+  gap: 10px;
+}
+
 /* Visual rhythm between sibling sections inside a tab panel: ~28px gap +
    a soft hairline so each .admin-card / form feels deliberately separated.
    Form pairs use the direct-child combinator (> form + form) so nested

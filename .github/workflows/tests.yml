@@ -348,6 +348,14 @@ jobs:
             storage/app/qa-screenshots/room-area-wall-finishes-drywall-390.png
           if-no-files-found: warn
 
+      - name: Upload client project overview screenshots
+        if: success() && needs.changes.outputs.run_browser_client == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-project-overview-screenshots
+          path: storage/app/qa-screenshots/client-project-overview-*.png
+          if-no-files-found: warn
+
   mysql:
     needs: changes
     if: github.event.pull_request.draft != true && needs.changes.outputs.run_database == 'true'

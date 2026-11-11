@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Overview after</title>
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-vehicles.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body">
+  <div class="admin-app" id="admin-app">
+    <main class="admin-main">
+      <div class="admin-content">
+        <div class="admin-card cp-header-card">
+          <div class="cp-header-layout">
+            <div class="cp-header-row cp-header-row--title">
+              <div class="cp-header-title-block">
+                <h2 class="cp-header-name">
+                  <span class="cp-header-ref">CP-1042</span>
+                  <span class="cp-header-project-name">Kitchen renovation</span>
+                </h2>
+                <div class="cp-header-client-row">
+                  <span class="cp-header-client">Jane Chen</span>
+                </div>
+              </div>
+              <div class="cp-header-status">
+                <span class="cp-badge cp-badge--lg" style="background:#dbeafe;color:#1e40af;">Quote pending</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="cp-tabs" role="tablist">
+          <button type="button" class="cp-tab is-active" data-tab="overview">Overview</button>
+          <button type="button" class="cp-tab" data-tab="schedule">Calendar</button>
+          <button type="button" class="cp-tab" data-tab="quotation">Quotation</button>
+        </div>
+        <section class="cp-tab-panel is-active" data-panel="overview">
+          <div class="cp-overview-grid">
+            <div class="admin-card cp-travel-cost-card" id="cp-travel-cost">
+              <div class="cp-travel-cost-card__head">
+                <h3><i class="fa fa-car" aria-hidden="true"></i> Estimated travel cost
+                  <span class="admin-info-tip-wrap">
+                    <button type="button" class="admin-info-tip" aria-label="About Estimated travel cost" aria-expanded="false">
+                      <i class="fa fa-info-circle" aria-hidden="true"></i>
+                    </button>
+                    <span class="admin-info-tip__bubble" role="tooltip">Round trip from your home / office to this project, using the active vehicle’s L/100 km and your company gas price.</span>
+                  </span>
+                </h3>
+                <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm">Refresh</button>
+              </div>
+              <div class="cp-travel-cost-card__body">
+                <div class="cp-travel-cost-card__result">
+                  <div class="cp-travel-breakdown-wrap">
+                    <table class="cp-travel-breakdown">
+                      <thead>
+                        <tr>
+                          <th scope="col"></th>
+                          <th scope="col">Distance</th>
+                          <th scope="col">Drive time</th>
+                          <th scope="col">Fuel cost</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <th scope="row" class="cp-travel-breakdown__leg">
+                            <span class="cp-travel-breakdown__leg-name">Outbound</span>
+                            <span class="cp-travel-breakdown__leg-sub">Home → project</span>
+                          </th>
+                          <td class="cp-travel-breakdown__num">18.4 km</td>
+                          <td class="cp-travel-breakdown__num">24 min</td>
+                          <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$3.42</td>
+                        </tr>
+                        <tr>
+                          <th scope="row" class="cp-travel-breakdown__leg">
+                            <span class="cp-travel-breakdown__leg-name">Return</span>
+                            <span class="cp-travel-breakdown__leg-sub">Project → home</span>
+                          </th>
+                          <td class="cp-travel-breakdown__num">18.4 km</td>
+                          <td class="cp-travel-breakdown__num">24 min</td>
+                          <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$3.42</td>
+                        </tr>
+                      </tbody>
+                      <tfoot>
+                        <tr>
+                          <th scope="row" class="cp-travel-breakdown__leg">
+                            <span class="cp-travel-breakdown__leg-name">Total</span>
+                          </th>
+                          <td class="cp-travel-breakdown__num">36.8 km</td>
+                          <td class="cp-travel-breakdown__num">48 min</td>
+                          <td class="cp-travel-breakdown__num cp-travel-breakdown__fuel">CA$6.84</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                  <p class="admin-form-help cp-travel-breakdown-meta">Vehicle: Honda CR-V · 8.4 L/100 km @ CA$1.49/L</p>
+                </div>
+              </div>
+              <div class="cp-travel-cost-card__foot">
+                <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm cp-travel-cost-card__manage">Manage vehicles &amp; home address</a>
+              </div>
+            </div>
+            <div class="admin-card cp-overview-details-card">
+              <h3>Details</h3>
+              <dl class="cp-dl">
+                <dt>Project name</dt><dd>Kitchen renovation</dd>
+                <dt>Client</dt><dd>Jane Chen</dd>
+                <dt>Email</dt><dd>jane.chen@example.com</dd>
+                <dt>Secondary email</dt><dd>Not set</dd>
+                <dt>Phone</dt><dd>(416) 555-0142</dd>
+                <dt>Address</dt><dd>14 Maple Avenue, Richmond Hill, ON</dd>
+                <dt>Created</dt><dd>02/11/2026 9:14 AM EST</dd>
+                <dt>Status changed</dt><dd>08/11/2026 4:02 PM EST</dd>
+                <dt>
+                  <span class="cp-overview-dt">
+                    Visit
+                    <span class="admin-info-tip-wrap">
+                      <button type="button" class="admin-info-tip" aria-label="About Visit" aria-expanded="false">
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                      </button>
+                      <span class="admin-info-tip__bubble" role="tooltip">On site visit before quoting. Set a date when you know it.</span>
+                    </span>
+                  </span>
+                </dt>
+                <dd class="cp-overview-editable" data-cp-overview-editable="visit">
+                  <div class="cp-overview-value-row">
+                    <span class="cp-overview-value" data-cp-overview-visit-value>12/11/2026 · 10:00 AM EST</span>
+                    <button type="button" class="cp-overview-edit-btn" data-cp-overview-edit="visit" aria-expanded="false" aria-controls="cp-overview-visit-form" aria-label="Edit visit">
+                      <i class="fa fa-pencil" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <form id="cp-overview-visit-form" class="cp-overview-inline-form" method="post" data-cp-overview-form="visit" hidden>
+                    <input type="hidden" name="return_tab" value="overview">
+                    <input type="hidden" name="visit_required" value="1" data-cp-overview-visit-required>
+                    <div class="cp-overview-inline-fields">
+                      <div class="admin-form-group">
+                        <label for="cp-overview-visit-date">Visit date</label>
+                        <input class="admin-input" type="date" id="cp-overview-visit-date" name="visit_date" value="2026-11-12" data-cp-overview-visit-date>
+                      </div>
+                      <div class="admin-form-group">
+                        <label for="cp-overview-visit-time">Time</label>
+                        <input class="admin-input" type="time" id="cp-overview-visit-time" name="visit_time" value="10:00" step="900" data-cp-overview-visit-time>
+                      </div>
+                    </div>
+                    <div class="cp-overview-inline-actions">
+                      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save visit</button>
+                      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-overview-cancel="visit">Cancel</button>
+                    </div>
+                  </form>
+                </dd>
+                <dt>
+                  <span class="cp-overview-dt">
+                    Schedule
+                    <span class="admin-info-tip-wrap">
+                      <button type="button" class="admin-info-tip" aria-label="About Schedule" aria-expanded="false">
+                        <i class="fa fa-info-circle" aria-hidden="true"></i>
+                      </button>
+                      <span class="admin-info-tip__bubble" role="tooltip">Project start and end as shown on the Project Calendar and used for the Google Calendar email.</span>
+                    </span>
+                  </span>
+                </dt>
+                <dd class="cp-overview-editable" data-cp-overview-editable="schedule">
+                  <div class="cp-overview-value-row">
+                    <span class="cp-overview-value" data-cp-overview-schedule-value>20/11/2026 to 22/11/2026</span>
+                    <button type="button" class="cp-overview-edit-btn" data-cp-overview-edit="schedule" aria-expanded="false" aria-controls="cp-overview-schedule-form" aria-label="Edit schedule">
+                      <i class="fa fa-pencil" aria-hidden="true"></i>
+                    </button>
+                  </div>
+                  <form id="cp-overview-schedule-form" class="cp-overview-inline-form" method="post" data-cp-overview-form="schedule" hidden>
+                    <input type="hidden" name="return_tab" value="overview">
+                    <div class="cp-overview-inline-fields">
+                      <div class="admin-form-group">
+                        <label for="cp-overview-start-date">Start date</label>
+                        <input class="admin-input" type="date" id="cp-overview-start-date" name="start_date" value="2026-11-20">
+                      </div>
+                      <div class="admin-form-group">
+                        <label for="cp-overview-end-date">End date</label>
+                        <input class="admin-input" type="date" id="cp-overview-end-date" name="end_date" value="2026-11-22">
+                      </div>
+                    </div>
+                    <div class="cp-overview-inline-actions">
+                      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save schedule</button>
+                      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-cp-overview-cancel="schedule">Cancel</button>
+                    </div>
+                  </form>
+                </dd>
+              </dl>
+              <h3 class="cp-overview-notes-heading">Notes</h3>
+              <div class="cp-notes-box">Client wants quartz counters and a pot filler. Confirm cabinet colour on visit.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+  <script src="/js/admin-info-tip.js"></script>
+  <script src="/js/admin-client-projects.js"></script>
+</body>
+</html>
