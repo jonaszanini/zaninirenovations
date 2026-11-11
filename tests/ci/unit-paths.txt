@@ -79,6 +79,8 @@ tests/Unit/Support/SecurityHardeningTest.php
 tests/Unit/Support/SeoGeoTest.php
 tests/Unit/Views/AdminActionsDropdownScriptTest.php
 tests/Unit/Views/AdminDarkThemeCoverageTest.php
+tests/Unit/Views/ClientsDirectoryCopyViewTest.php
+tests/Unit/Models/ClientProjectStreetLineTest.php
 tests/Unit/Views/AdminDatePickerThemeTest.php
 tests/Unit/Views/AdminInfoTipBehaviourTest.php
 tests/Unit/Views/AdminInfoTipCallerContractTest.php

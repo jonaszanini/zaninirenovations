@@ -33,6 +33,16 @@ class ClientController extends Controller
         return view('admin.clients.index', compact('clients', 'q', 'tagId', 'totalClients', 'tags'));
     }
 
+    public function show(Client $client): View
+    {
+        $client->load([
+            'tags',
+            'projects' => fn ($query) => $query->orderByDesc('updated_at'),
+        ]);
+
+        return view('admin.clients.show', compact('client'));
+    }
+
     public function create(): View
     {
         $tags = ClientTag::query()->orderBy('name')->get();

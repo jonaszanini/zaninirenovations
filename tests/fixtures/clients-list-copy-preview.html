@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+</head>
+<body class="admin-body">
+  <div class="admin-app admin-app--no-sidebar" id="admin-app">
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-topbar-inner">
+          <h1>Clients</h1>
+        </div>
+      </header>
+      <div class="admin-content">
+        <div class="admin-card cp-clients-table-card">
+          <div class="admin-table-scroll">
+            <table class="admin-table admin-table--stack cp-clients-table">
+              <thead>
+                <tr>
+                  <th class="cp-clients-col-name">Name</th>
+                  <th class="cp-clients-col-email">Email</th>
+                  <th class="cp-clients-col-phone">Phone</th>
+                  <th class="cp-clients-col-address">Address</th>
+                  <th class="cp-clients-col-projects">Projects</th>
+                  <th class="cp-clients-col-actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="cp-clients-col-name" data-label="Name">
+                    <strong><a href="/admin/clients/1" class="admin-client-link" title="View client">Lucca View</a></strong>
+                  </td>
+                  <td class="cp-clients-col-email" data-label="Email">
+                    <span class="cl-copy-fields">
+                      <span class="cl-copy-field">
+                        <a href="mailto:lucca.view@example.test" class="cl-copy-field__value admin-client-link">lucca.view@example.test</a>
+                        <button type="button" class="cl-copy-btn" data-copy-value="lucca.view@example.test" aria-label="Copy email" title="Copy email"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                      </span>
+                      <span class="cl-copy-field">
+                        <a href="mailto:lucca.cc@example.test" class="cl-copy-field__value admin-client-link">lucca.cc@example.test</a>
+                        <button type="button" class="cl-copy-btn" data-copy-value="lucca.cc@example.test" aria-label="Copy secondary email" title="Copy secondary email"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                      </span>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-phone" data-label="Phone">
+                    <span class="cl-copy-field">
+                      <a href="tel:+16475550100" class="cl-copy-field__value admin-client-link">(647) 555-0100</a>
+                      <button type="button" class="cl-copy-btn" data-copy-value="(647) 555-0100" aria-label="Copy phone" title="Copy phone"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-address" data-label="Address">
+                    <span class="cl-copy-field cl-copy-field--address">
+                      <a class="cl-copy-field__value admin-client-link" href="https://www.google.com/maps/search/?api=1&query=1025%20Grenon%20Ave%2C%20Ottawa%2C%20ON%20K2B%208S5" target="_blank" rel="noopener">1025 Grenon Ave, Ottawa, ON K2B 8S5</a>
+                      <button type="button" class="cl-copy-btn" data-copy-value="1025 Grenon Ave, Ottawa, ON K2B 8S5" aria-label="Copy address" title="Copy address"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-projects" data-label="Projects">2</td>
+                  <td class="admin-table__actions cp-clients-col-actions" data-label="">
+                    <a href="/admin/clients/1/edit" class="admin-btn admin-btn--ghost admin-btn--sm"><i class="fa fa-pencil"></i> Edit</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="cp-clients-col-name" data-label="Name">
+                    <strong><a href="/admin/clients/2" class="admin-client-link" title="View client">Maria Costa</a></strong>
+                  </td>
+                  <td class="cp-clients-col-email" data-label="Email">
+                    <span class="cl-copy-fields">
+                      <span class="cl-copy-field">
+                        <a href="mailto:maria.costa@example.test" class="cl-copy-field__value admin-client-link">maria.costa@example.test</a>
+                        <button type="button" class="cl-copy-btn" data-copy-value="maria.costa@example.test" aria-label="Copy email" title="Copy email"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                      </span>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-phone" data-label="Phone">
+                    <span class="cl-copy-field">
+                      <a href="tel:+16135550199" class="cl-copy-field__value admin-client-link">(613) 555-0199</a>
+                      <button type="button" class="cl-copy-btn" data-copy-value="(613) 555-0199" aria-label="Copy phone" title="Copy phone"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-address" data-label="Address">
+                    <span class="cl-copy-field cl-copy-field--address">
+                      <a class="cl-copy-field__value admin-client-link" href="https://www.google.com/maps/search/?api=1&query=10%20Sample%20St%2C%20Ottawa%2C%20ON" target="_blank" rel="noopener">10 Sample St, Ottawa, ON</a>
+                      <button type="button" class="cl-copy-btn" data-copy-value="10 Sample St, Ottawa, ON" aria-label="Copy address" title="Copy address"><i class="fa fa-copy" aria-hidden="true"></i></button>
+                    </span>
+                  </td>
+                  <td class="cp-clients-col-projects" data-label="Projects">1</td>
+                  <td class="admin-table__actions cp-clients-col-actions" data-label="">
+                    <a href="/admin/clients/2/edit" class="admin-btn admin-btn--ghost admin-btn--sm"><i class="fa fa-pencil"></i> Edit</a>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

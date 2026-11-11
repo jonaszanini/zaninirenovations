@@ -7287,7 +7287,144 @@ body.cp-modal-open {
   min-width: 0;
 }
 
-/* Desktop: one line per row; Address takes leftover width and wraps. */
+.cl-copy-fields {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.15rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.cl-copy-field {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+  width: fit-content;
+  vertical-align: top;
+}
+
+.cl-copy-field__value {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.cl-copy-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-muted);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
+
+.cl-copy-btn:hover,
+.cl-copy-btn:focus-visible {
+  color: var(--admin-primary);
+  border-color: var(--admin-primary);
+  background: var(--admin-surface-hover);
+}
+
+.cl-copy-btn.is-copied {
+  color: #fff;
+  background: #2e7d4a;
+  border-color: #2e7d4a;
+}
+
+.cl-show-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.cl-show-card + .cl-show-card {
+  margin-top: 1rem;
+}
+
+.cl-show-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem 1.25rem;
+  margin: 0;
+}
+
+.cl-show-field {
+  min-width: 0;
+}
+
+.cl-show-field--full {
+  grid-column: 1 / -1;
+}
+
+.cl-show-field dt {
+  margin: 0 0 0.2rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--admin-muted);
+}
+
+.cl-show-field dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--admin-text);
+}
+
+.cl-show-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.cl-show-section-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 650;
+  color: var(--admin-heading);
+}
+
+.cl-show-projects .admin-code {
+  margin-left: 0.4rem;
+}
+
+@media (max-width: 640px) {
+  .cl-copy-btn {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+  .cl-copy-field__value {
+    overflow-wrap: anywhere;
+  }
+  .cl-show-fields {
+    grid-template-columns: 1fr;
+  }
+  .cl-show-toolbar .admin-btn {
+    min-height: 44px;
+  }
+}
+
+/* Desktop: Address keeps a real share so text wraps by words next to the
+   copy icon when the 270px sidebar is open (1024 / 1280 / 1440). */
 @media (min-width: 641px) {
   .cp-clients-table {
     width: 100%;
@@ -7296,33 +7433,44 @@ body.cp-modal-open {
   }
   .cp-clients-table th,
   .cp-clients-table td {
-    padding: 0.55rem 0.65rem;
+    padding: 0.55rem 0.5rem;
+  }
+  .cp-clients-table th.cp-clients-col-projects,
+  .cp-clients-table th.cp-clients-col-actions {
+    letter-spacing: 0.03em;
+    font-size: 0.65rem;
   }
   .cp-clients-table .cp-clients-col-name {
-    white-space: nowrap;
-    width: 10.75rem;
+    white-space: normal;
+    width: 14%;
   }
   .cp-clients-table .cp-clients-col-email {
-    white-space: nowrap;
-    width: 12.5rem;
+    white-space: normal;
+    width: 16%;
   }
   .cp-clients-table .cp-clients-col-phone {
-    white-space: nowrap;
-    width: 8.25rem;
+    white-space: normal;
+    width: 18%;
+  }
+  .cp-clients-table .cp-clients-col-address {
+    width: 28%;
+    white-space: normal;
   }
   .cp-clients-table .cp-clients-col-projects {
     white-space: nowrap;
-    width: 5.75rem;
+    width: 10%;
   }
   .cp-clients-table .cp-clients-col-actions {
     white-space: nowrap;
-    width: 6.5rem;
+    width: 14%;
   }
-  .cp-clients-table .cp-clients-col-address {
-    width: auto;
-    white-space: normal;
+  .cp-clients-table .cl-copy-field--address {
+    display: flex;
+    width: 100%;
+    max-width: 100%;
   }
-  .cp-clients-table .cp-clients-address-link {
+  .cp-clients-table .cp-clients-address-link,
+  .cp-clients-table .cl-copy-field--address .cl-copy-field__value {
     overflow-wrap: break-word;
     word-break: normal;
   }
@@ -7375,6 +7523,17 @@ body.cp-modal-open {
   }
   .cp-clients-table.admin-table--stack td.cp-clients-col-actions .admin-btn {
     margin-bottom: 0;
+  }
+  .cp-clients-table.admin-table--stack .cl-copy-fields,
+  .cp-clients-table.admin-table--stack .cl-copy-field {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .cp-clients-table.admin-table--stack td.cp-clients-col-email,
+  .cp-clients-table.admin-table--stack td.cp-clients-col-phone,
+  .cp-clients-table.admin-table--stack td.cp-clients-col-address {
+    align-items: flex-start;
   }
 }
 

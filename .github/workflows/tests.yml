@@ -207,6 +207,7 @@ jobs:
               - 'public/css/admin-**'
               - 'resources/views/admin/layouts/**'
               - 'resources/views/admin/partials/**'
+              - 'resources/views/admin/clients/**'
               - 'resources/views/components/admin/info-tip.blade.php'
               - 'tests/js/admin-*'
               - 'tests/js/**/*admin*browser*'
@@ -330,7 +331,7 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: dom, mbstring, pdo_mysql, fileinfo, intl
+          extensions: dom, mbstring, pdo_mysql, pdo_sqlite, fileinfo, intl
           coverage: none
           cache: composer
 
@@ -396,6 +397,18 @@ jobs:
           path: |
             tests/js/artifacts/room-area-takeoffs-panel-1280.png
             tests/js/artifacts/room-area-takeoffs-panel-390.png
+          if-no-files-found: warn
+
+      - name: Upload clients directory screenshots
+        if: success() && needs.changes.outputs.run_browser_admin == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: clients-directory-screenshots
+          path: |
+            storage/app/qa-screenshots/clients-list-1280.png
+            storage/app/qa-screenshots/clients-list-390.png
+            storage/app/qa-screenshots/clients-view-1280.png
+            storage/app/qa-screenshots/clients-view-390.png
           if-no-files-found: warn
 
       - name: Upload wall finishes drywall panel screenshots

@@ -38,7 +38,7 @@
                   <td>{{ $client->email ?: '—' }}</td>
                   <td>{{ $client->phone ? \App\Models\ClientProject::formatPhone($client->phone) : '—' }}</td>
                   <td style="white-space:nowrap;">
-                    <a href="{{ route('admin.clients.edit', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Open</a>
+                    <a href="{{ route('admin.clients.show', $client) }}" class="admin-btn admin-btn--ghost admin-btn--sm">Open</a>
                   </td>
                 </tr>
               @endforeach

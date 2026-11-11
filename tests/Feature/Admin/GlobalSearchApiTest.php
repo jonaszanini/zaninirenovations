@@ -68,7 +68,7 @@ class GlobalSearchApiTest extends IntegrationTestCase
                 'title' => 'Luccas',
             ])
             ->assertJsonFragment([
-                'url' => route('admin.clients.edit', $client),
+                'url' => route('admin.clients.show', $client),
             ]);
     }
 
