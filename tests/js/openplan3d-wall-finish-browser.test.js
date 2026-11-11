@@ -239,7 +239,7 @@ async function main() {
       () => window.__openPlan3D && window.OpenPlan3DZaniniTools && typeof window.OpenPlan3DZaniniTools.renderFinishPanel === 'function',
       { timeout: 120000 }
     );
-    await mobilePage.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(true));
+    await mobilePage.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), partitionPlan);
     await mobilePage.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
         const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
