@@ -536,20 +536,106 @@
     return metrics;
   }
 
-  function resolveBaseboardSides(flags, isBoundaryWall) {
-    if (isBoundaryWall) return 1;
-    var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
-    sides = sides === 1 ? 1 : 2;
-    return sides;
+  function roomTouchCountForWall(wallId, floor, plan) {
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.geometryRoomTouchCount === 'function') {
+      return bridge.geometryRoomTouchCount(wallId, floor, plan);
+    }
+    if (!floor || !Array.isArray(floor.rooms) || floor.rooms.length === 0) return 0;
+    var id = String(wallId);
+    var count = 0;
+    for (var ri = 0; ri < floor.rooms.length; ri++) {
+      var room = floor.rooms[ri];
+      if (!room) continue;
+      var seen = {};
+      var lists = [room.boundary_wall_ids, room.walls];
+      for (var li = 0; li < lists.length; li++) {
+        var list = lists[li];
+        if (!Array.isArray(list)) continue;
+        for (var i = 0; i < list.length; i++) seen[String(list[i])] = true;
+      }
+      if (seen[id]) count += 1;
+    }
+    return count;
   }
 
-  function applyWallFinishMetrics(metrics, zanini) {
+  function resolveBaseboardSides(flags, isBoundaryWall, roomTouchCount) {
+    if (isBoundaryWall) return 1;
+    var sides = flags && flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+    if (roomTouchCount >= 2 && sides === 1 && !Object.prototype.hasOwnProperty.call(flags || {}, 'baseboardSides')) {
+      sides = 2;
+    }
+    return sides === 1 ? 1 : 2;
+  }
+
+  function resolveDrywallFaces(flags, isBoundaryWall) {
+    if (isBoundaryWall) return 'both';
+    var faces = flags && flags.drywallFaces != null ? String(flags.drywallFaces).toLowerCase() : 'both';
+    if (faces === 'a' || faces === 'b') return faces;
+    return 'both';
+  }
+
+  function drywallFinishAreaSqFt(netSqFt, flags, isBoundaryWall, roomTouchCount) {
+    netSqFt = Number(netSqFt) || 0;
+    if (isBoundaryWall) return netSqFt;
+    roomTouchCount = roomTouchCount != null ? Number(roomTouchCount) : 0;
+    var faces = resolveDrywallFaces(flags, false);
+    if (faces === 'a' || faces === 'b') return netSqFt / 2;
+    if (roomTouchCount >= 2) return netSqFt;
+    return netSqFt;
+  }
+
+  function resolveFloorFromPlan(plan) {
+    if (!plan || typeof plan !== 'object') return null;
+    if (plan.floor && typeof plan.floor === 'object') return plan.floor;
+    if (Array.isArray(plan.floors) && plan.floors.length) return plan.floors[0];
+    return null;
+  }
+
+  function openingLists(floor, plan) {
+    function pick(key) {
+      if (floor && Array.isArray(floor[key]) && floor[key].length) return floor[key];
+      if (plan && Array.isArray(plan[key]) && plan[key].length) return plan[key];
+      if (plan && plan.floor && Array.isArray(plan.floor[key]) && plan.floor[key].length) return plan.floor[key];
+      return [];
+    }
+    return [pick('doors'), pick('windows'), pick('openings')];
+  }
+
+  function boundaryOpeningDeductionLf(wallId, floor, boundaryMap, cmPerUnit, plan) {
+    if (!boundaryMap[wallId]) return 0;
+    var CM_PER_INCH = 2.54;
+    var dedIn = 0;
+    var lists = openingLists(floor, plan);
+    for (var li = 0; li < lists.length; li++) {
+      var list = lists[li] || [];
+      if (li === 1) continue;
+      for (var i = 0; i < list.length; i++) {
+        var op = list[i];
+        if (!op) continue;
+        var wid = String(op.wallId || op.wall_id || '');
+        if (wid !== String(wallId)) continue;
+        if (li === 2) {
+          var type = String(op.type || 'opening').toLowerCase();
+          if (type !== 'door' && type !== 'opening') continue;
+        }
+        var wCm = op.width != null ? Number(op.width) * cmPerUnit : 0;
+        if (op.width_in != null) wCm = Number(op.width_in) * CM_PER_INCH;
+        dedIn += Math.max(0, wCm / CM_PER_INCH);
+      }
+    }
+    return dedIn / 12;
+  }
+
+  function applyWallFinishMetrics(metrics, zanini, plan, cmPerUnit) {
     var walls = metrics.walls || [];
     var boundaryIds = metrics.boundary_wall_ids || [];
     var boundaryMap = {};
     for (var b = 0; b < boundaryIds.length; b++) boundaryMap[String(boundaryIds[b])] = true;
     var finishes = zanini.wallFinishes || {};
     var finishKeys = Object.keys(finishes);
+    var floor = resolveFloorFromPlan(plan);
+    cmPerUnit = cmPerUnit > 0 ? cmPerUnit : 1;
     var drywall = 0.0, insulation = 0.0, studs = 0.0, baseboard = 0.0;
     var paint = 0.0, paintSeen = false, paintMarked = 0, paintOff = 0, paintUnassigned = 0;
 
@@ -559,32 +645,53 @@
         if (!wall) continue;
         var wallId = String(wall.id || '');
         var isBoundary = !!boundaryMap[wallId];
-        var lengthLf = Number(wall.length_lf || 0);
-        var netSqFt = Number(wall.net_area_sqft || 0);
+        var studLen = wallStudLengthLf(wall);
+        var netSqFt = Number(
+          wall.net_area_sqft_exact != null ? wall.net_area_sqft_exact : wall.net_area_sqft || 0
+        );
+        var touchCount = roomTouchCountForWall(wallId, floor, plan);
         drywall += netSqFt;
         paintUnassigned += 1;
         if (isBoundary) {
           insulation += netSqFt;
         } else {
-          studs += lengthLf;
+          studs += studLen;
+        }
+        var runLf = Number(wall.finish_run_lf);
+        if (!isFinite(runLf)) {
+          runLf = studLen;
+          if (isBoundary) {
+            runLf = Math.max(0, runLf - (Number(wall.interior_butt_deduction_lf) || 0));
+          }
+        }
+        if (isBoundary) {
+          runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(wallId, floor, boundaryMap, cmPerUnit, plan));
+        }
+        var sides = resolveBaseboardSides({}, isBoundary, touchCount);
+        if (isBoundary) {
+          baseboard += runLf * sides;
+        } else {
+          baseboard += partitionBaseboardLf(wall, sides);
         }
       }
-      baseboard = Number(metrics.baseboard_lf || 0);
     } else {
       for (var j = 0; j < walls.length; j++) {
         var w = walls[j];
         if (!w) continue;
         var id = String(w.id || '');
         var isB = !!boundaryMap[id];
-        var len = Number(w.length_lf || 0);
-        var net = Number(w.net_area_sqft || 0);
+        var len = wallStudLengthLf(w);
+        var studLen = wallStudLengthLf(w);
+        var net = Number(w.net_area_sqft_exact != null ? w.net_area_sqft_exact : w.net_area_sqft || 0);
         var flags = finishes[id] || {};
-        if (flagEnabled(flags, 'drywall', true)) drywall += net;
+        var touchCount = roomTouchCountForWall(id, floor, plan);
+        var finishNet = drywallFinishAreaSqFt(net, flags, isB, touchCount);
+        if (flagEnabled(flags, 'drywall', true)) drywall += finishNet;
         if (Object.prototype.hasOwnProperty.call(flags, 'paint')) {
           paintSeen = true;
           if (flagEnabled(flags, 'paint', false)) {
             paintMarked += 1;
-            paint += net;
+            paint += finishNet;
           } else {
             paintOff += 1;
           }
@@ -592,10 +699,22 @@
           paintUnassigned += 1;
         }
         if (flagEnabled(flags, 'insulation', isB)) insulation += net;
-        if (flagEnabled(flags, 'studs', !isB)) studs += len;
+        if (flagEnabled(flags, 'studs', !isB)) studs += studLen;
         if (flagEnabled(flags, 'baseboard', true)) {
-          var sides = resolveBaseboardSides(flags, isB);
-          baseboard += len * sides;
+          var sides = resolveBaseboardSides(flags, isB, touchCount);
+          var runLf = Number(w.finish_run_lf);
+          if (!isFinite(runLf)) {
+            runLf = len;
+            if (isB) {
+              runLf = Math.max(0, runLf - (Number(w.interior_butt_deduction_lf) || 0));
+            }
+          }
+          if (isB) {
+            runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(id, floor, boundaryMap, cmPerUnit, plan));
+            baseboard += runLf * sides;
+          } else {
+            baseboard += partitionBaseboardLf(w, sides);
+          }
         }
       }
     }
@@ -618,6 +737,24 @@
     return metrics;
   }
 
+  function wallStudLengthLf(wall) {
+    if (wall && Object.prototype.hasOwnProperty.call(wall, 'length_lf_exact')) {
+      return Number(wall.length_lf_exact) || 0;
+    }
+    return Number(wall && wall.length_lf) || 0;
+  }
+
+  function partitionBaseboardLf(wall, sides) {
+    var studLen = wallStudLengthLf(wall);
+    var partButt = Number(wall && wall.interior_butt_deduction_lf) || 0;
+    sides = Number(sides) || 0;
+    if (sides <= 0) return 0;
+    if (sides === 1) {
+      return Math.max(0, studLen - partButt);
+    }
+    return Math.max(0, studLen * sides - partButt);
+  }
+
   function flagEnabled(flags, key, defaultVal) {
     if (!flags || !Object.prototype.hasOwnProperty.call(flags, key)) return defaultVal;
     return !!flags[key];
@@ -629,7 +766,7 @@
     var zanini = normalizeZanini(extractZanini(plan));
     var out = applyExcludedZones(metrics, zanini, cmPerUnit, finish || {});
     out = applyBulkheadMetrics(out, zanini, cmPerUnit);
-    out = applyWallFinishMetrics(out, zanini);
+    out = applyWallFinishMetrics(out, zanini, plan, cmPerUnit);
     return out;
   }
 
@@ -645,7 +782,10 @@
     mergeZaniniIntoPlan: mergeZaniniIntoPlan,
     mergeWallFinishes: mergeWallFinishes,
     mergeZaniniSnapshots: mergeZaniniSnapshots,
+    roomTouchCountForWall: roomTouchCountForWall,
     resolveBaseboardSides: resolveBaseboardSides,
+    resolveDrywallFaces: resolveDrywallFaces,
+    drywallFinishAreaSqFt: drywallFinishAreaSqFt,
     normalizeZanini: normalizeZanini,
     applyToMetrics: applyToMetrics,
     bulkheadTakeoff: bulkheadTakeoff,

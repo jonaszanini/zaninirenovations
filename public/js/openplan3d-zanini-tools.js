@@ -709,7 +709,16 @@
       '#openplan3d-zanini-overlay .zanini-bulkhead-rect{cursor:pointer;}',
       '#openplan3d-zanini-toolbar .zanini-tool-active{background:#024768!important;}',
       '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
-      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}'
+      '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}',
+      '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
+      '.admin-info-tip{min-width:24px;min-height:24px;width:24px;height:24px;padding:0;border:1px solid #94a3b8;border-radius:50%;background:#fff;color:#334155;font-size:14px;line-height:22px;text-align:center;cursor:pointer;}',
+      '.admin-info-tip__bubble{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(calc(100vw - 24px),320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble{display:block;}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
+      '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}',
+      '#openplan3d-zanini-finish-host .openplan3d-finish-row label{min-height:44px;display:flex;align-items:center;gap:8px;}',
+      '#openplan3d-zanini-finish-host input[type=checkbox],#openplan3d-zanini-finish-host button.admin-info-tip{min-width:44px;min-height:44px;}',
+      '@media (max-width:519px){#openplan3d-zanini-finish-host{background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -778,7 +787,9 @@
       while (panel && panel !== document.body) {
         var rect = panel.getBoundingClientRect();
         var txt = (panel.textContent || '').toLowerCase();
-        if (rect.width >= 120 && rect.height >= 80 && rect.left > window.innerWidth * 0.45
+        var narrow = window.innerWidth < 520;
+        var sideOk = narrow || rect.left > window.innerWidth * 0.45;
+        if (rect.width >= 120 && rect.height >= 80 && sideOk
           && (txt.indexOf('thickness') !== -1 || txt.indexOf('height') !== -1 || txt.indexOf('elevation') !== -1)) {
           return panel;
         }
@@ -794,7 +805,7 @@
       if (el.offsetParent === null) continue;
       var r = el.getBoundingClientRect();
       if (r.width < 120 || r.height < 80) continue;
-      if (r.left < window.innerWidth * 0.5) continue;
+      if (window.innerWidth >= 520 && r.left < window.innerWidth * 0.5) continue;
       var text = (el.textContent || '').toLowerCase();
       var score = 0;
       if (text.indexOf('thickness') !== -1) score += 3;
@@ -818,8 +829,12 @@
       }
       state.finishHost = document.createElement('div');
       state.finishHost.id = 'openplan3d-zanini-finish-host';
-      state.finishHost.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);';
-      sidebar.appendChild(state.finishHost);
+      state.finishHost.style.cssText = 'position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);';
+      if (window.innerWidth < 520) {
+        sidebar.insertBefore(state.finishHost, sidebar.firstChild);
+      } else {
+        sidebar.appendChild(state.finishHost);
+      }
       state.finishPanel = state.finishHost;
     }
     return state.finishHost;
@@ -829,13 +844,20 @@
     var plan = readPlan();
     var floor = activeFloor(plan);
     if (!floor) return true;
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.floorBoundaryWallIds === 'function') {
+      var loopIds = bridge.floorBoundaryWallIds(floor, plan);
+      if (loopIds.length) {
+        return loopIds.indexOf(String(wallId)) >= 0;
+      }
+    }
     var rooms = floor.rooms || [];
     for (var ri = 0; ri < rooms.length; ri++) {
       var room = rooms[ri];
       if (!room) continue;
-      var ids = room.boundary_wall_ids || room.walls || [];
-      for (var i = 0; i < ids.length; i++) {
-        if (String(ids[i]) === String(wallId)) return true;
+      var ids = room.boundary_wall_ids || [];
+      for (var bi = 0; bi < ids.length; bi++) {
+        if (String(ids[bi]) === String(wallId)) return true;
       }
     }
     return false;
@@ -851,19 +873,105 @@
     };
   }
 
-  function wallsEligibleForBaseboardSidesControl(wallIds) {
-    return (wallIds || []).filter(function (wallId) {
-      return !wallIsBoundary(wallId);
+  function roomsTouchingWall(wallId, floor) {
+    var hits = [];
+    if (!floor || !floor.rooms) return hits;
+    floor.rooms.forEach(function (room) {
+      var ids = [];
+      var seen = {};
+      var merge = function (list) {
+        if (!Array.isArray(list)) return;
+        for (var j = 0; j < list.length; j++) {
+          var id = String(list[j]);
+          if (!seen[id]) {
+            seen[id] = true;
+            ids.push(id);
+          }
+        }
+      };
+      merge(room.boundary_wall_ids);
+      merge(room.walls);
+      for (var i = 0; i < ids.length; i++) {
+        if (String(ids[i]) === String(wallId)) {
+          hits.push(String(room.name || room.id || 'Room').trim() || 'Room');
+          break;
+        }
+      }
     });
+    return hits;
+  }
+
+  function wallIsInteriorPartition(wallId, floor) {
+    if (wallIsBoundary(wallId)) return false;
+    if (roomsTouchingWall(wallId, floor).length >= 2) return true;
+    var plan = readPlan();
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.wallSeparatesTwoSpaces === 'function') {
+      return bridge.wallSeparatesTwoSpaces(floor, wallId, plan);
+    }
+    return false;
+  }
+
+  function wallsEligibleForBaseboardSidesControl(wallIds, floor) {
+    if (!floor) floor = activeFloor(readPlan());
+    return (wallIds || []).filter(function (wallId) {
+      return wallIsInteriorPartition(wallId, floor);
+    });
+  }
+
+  function friendlyWallFinishHeading(wallIds, floor) {
+    if (!floor) floor = activeFloor(readPlan());
+    if (!wallIds || wallIds.length !== 1) {
+      return wallIds.length > 1
+        ? 'Wall finishes (' + wallIds.length + ' walls)'
+        : 'Wall finishes';
+    }
+    if (wallIsBoundary(wallIds[0])) return 'Wall finishes · exterior';
+    var names = roomsTouchingWall(wallIds[0], floor);
+    if (names.length >= 2) return 'Wall finishes · ' + names.join(' / ');
+    if (names.length === 1) return 'Wall finishes · ' + names[0];
+    return 'Wall finishes · partition';
   }
 
   function readBaseboardSidesForWall(wallFinishes, wallId) {
     var flags = (wallFinishes && wallFinishes[wallId]) || {};
+    var plan = readPlan();
+    var floor = activeFloor(plan);
+    var touchCount = roomsTouchingWall(wallId, floor).length;
+    var bridge = typeof window !== 'undefined' && window.OpenPlan3DMeasurementBridge;
+    if (bridge && typeof bridge.geometryRoomTouchCount === 'function') {
+      touchCount = bridge.geometryRoomTouchCount(wallId, floor, plan);
+    }
     var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
     if (ext && typeof ext.resolveBaseboardSides === 'function') {
-      return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId));
+      return ext.resolveBaseboardSides(flags, wallIsBoundary(wallId), touchCount);
     }
-    return wallIsBoundary(wallId) ? 1 : (flags.baseboardSides != null ? Number(flags.baseboardSides) : 2);
+    if (wallIsBoundary(wallId)) return 1;
+    if (touchCount < 2) return 1;
+    return flags.baseboardSides != null ? Number(flags.baseboardSides) : 2;
+  }
+
+  function roomNamesOnWall(wallId, floor) {
+    return roomsTouchingWall(wallId, floor);
+  }
+
+  function drywallSideOptionLabels(wallId, floor) {
+    var adj = roomNamesOnWall(wallId, floor);
+    return {
+      a: adj[0] ? adj[0] + ' side' : 'This side',
+      b: adj[1] ? adj[1] + ' side' : (adj.length === 1 ? 'Other side' : 'Other side'),
+      tipRooms: adj.length ? adj.join(' and ') : 'each adjacent room'
+    };
+  }
+
+  function readDrywallFacesForWall(wallFinishes, wallId) {
+    var flags = (wallFinishes && wallFinishes[wallId]) || {};
+    var ext = typeof window !== 'undefined' && window.OpenPlan3DZaniniExtensions;
+    if (ext && typeof ext.resolveDrywallFaces === 'function') {
+      return ext.resolveDrywallFaces(flags, wallIsBoundary(wallId));
+    }
+    var faces = flags.drywallFaces != null ? String(flags.drywallFaces).toLowerCase() : 'both';
+    return faces === 'a' || faces === 'b' ? faces : 'both';
   }
 
   function renderFinishPanel() {
@@ -948,23 +1056,27 @@
     var primary = wallIds[0];
     var flags = wallFinishes[primary] || {};
     var defaults = finishDefaultsForWall(primary);
-    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds);
     var floor = activeFloor(plan);
+    var sidesEligible = wallsEligibleForBaseboardSidesControl(wallIds, floor);
     var wallLenLf = 0;
+    var interiorGeom = typeof RoomAreaInteriorGeometry !== 'undefined' ? RoomAreaInteriorGeometry : null;
     if (floor && Array.isArray(floor.walls)) {
+      var cmPerUnit = 1.0;
+      var unit = String(plan.unit || plan.units || (floor && floor.units) || (floor && floor.unit) || 'cm').toLowerCase();
+      if (unit === 'ft' || unit === 'feet' || unit === 'foot') cmPerUnit = CM_PER_FOOT;
       for (var wi = 0; wi < floor.walls.length; wi++) {
         if (String(floor.walls[wi].id) === String(primary)) {
-          wallLenLf = Math.hypot(
-            floor.walls[wi].end.x - floor.walls[wi].start.x,
-            floor.walls[wi].end.y - floor.walls[wi].start.y
-          ) / CM_PER_FOOT;
+          var wObj = floor.walls[wi];
+          if (interiorGeom && typeof interiorGeom.wallPlanEdgeLengthCm === 'function') {
+            wallLenLf = interiorGeom.wallPlanEdgeLengthCm(wObj, floor.walls, cmPerUnit, true) / CM_PER_FOOT;
+          } else {
+            wallLenLf = Math.hypot(wObj.end.x - wObj.start.x, wObj.end.y - wObj.start.y) / CM_PER_FOOT;
+          }
           break;
         }
       }
     }
-    var heading = wallIds.length > 1
-      ? ('Wall finishes (' + wallIds.length + ' walls)')
-      : ('Wall finishes · ' + primary);
+    var heading = friendlyWallFinishHeading(wallIds, floor);
     var finishKeys = ['drywall', 'paint', 'insulation', 'studs', 'baseboard'];
     var finishLabels = {
       drywall: 'Drywall',
@@ -1008,6 +1120,10 @@
           plan.zanini.wallFinishes[wallId][key] = val;
           if (key === 'baseboard' && wallIsBoundary(wallId)) {
             plan.zanini.wallFinishes[wallId].baseboardSides = 1;
+          } else if (key === 'baseboard' && wallIsInteriorPartition(wallId, activeFloor(plan))) {
+            if (!Object.prototype.hasOwnProperty.call(plan.zanini.wallFinishes[wallId], 'baseboardSides')) {
+              plan.zanini.wallFinishes[wallId].baseboardSides = 2;
+            }
           }
         });
       });
@@ -1039,13 +1155,85 @@
       host.appendChild(row);
       if (st.indeterminate) inputEl.indeterminate = true;
     });
-    if (sidesEligible.length === 0 && wallIds.length > 0) {
-      var perimeterNote = document.createElement('p');
-      perimeterNote.style.cssText = 'margin:4px 0 0;opacity:.85;font-size:11px;line-height:1.35;';
-      perimeterNote.textContent = 'Perimeter walls: baseboard on interior face only (exterior has none).';
-      host.appendChild(perimeterNote);
+    if (sidesEligible.length === 0 && wallIds.length > 0 && wallIds.some(wallIsBoundary)) {
+      var perimeterRow = document.createElement('div');
+      perimeterRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:12px;';
+      perimeterRow.innerHTML =
+        '<span>Perimeter baseboard</span>' +
+        '<span class="admin-info-tip-wrap" data-finish-perimeter-tip-wrap>' +
+        '<button type="button" class="admin-info-tip" data-finish-perimeter-tip aria-label="Perimeter baseboard help">&#9432;</button>' +
+        '<span class="admin-info-tip__bubble" role="tooltip" hidden>Exterior walls measure baseboard on the interior face only. The outside face has none.</span></span>';
+      host.appendChild(perimeterRow);
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
+        window.AdminInfoTip.sealClosed(perimeterRow);
+      }
     }
     if (sidesEligible.length > 0) {
+      var drywallPrimary = readDrywallFacesForWall(wallFinishes, sidesEligible[0]);
+      var drywallMixed = false;
+      if (sidesEligible.length > 1) {
+        for (var di = 1; di < sidesEligible.length; di++) {
+          if (readDrywallFacesForWall(wallFinishes, sidesEligible[di]) !== drywallPrimary) {
+            drywallMixed = true;
+            break;
+          }
+        }
+      }
+      var drywallRow = document.createElement('div');
+      drywallRow.style.cssText = 'display:flex;align-items:flex-start;gap:6px;min-height:44px;margin-top:6px;font-size:12px;flex-wrap:wrap;';
+      var drywallLabel = sidesEligible.length === wallIds.length
+        ? 'Drywall faces'
+        : ('Drywall faces (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
+      var sideWall = null;
+      for (var swi = 0; floor && swi < floor.walls.length; swi++) {
+        if (String(floor.walls[swi].id) === String(sidesEligible[0])) {
+          sideWall = floor.walls[swi];
+          break;
+        }
+      }
+      var sideInfo = drywallSideOptionLabels(sidesEligible[0], floor);
+      var sideLabels = { a: sideInfo.a, b: sideInfo.b };
+      drywallRow.innerHTML =
+        '<span>' + drywallLabel + '</span>' +
+        '<span class="admin-info-tip-wrap openplan3d-finish-drywall-tip-wrap" data-finish-drywall-tip-wrap>' +
+        '<button type="button" class="admin-info-tip openplan3d-finish-drywall-tip" data-finish-drywall-tip aria-label="Drywall faces help" aria-expanded="false">' +
+        '<svg class="openplan3d-finish-info-glyph" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+        '<circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+        '<text x="8" y="11.5" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">i</text></svg></button>' +
+        '<span class="admin-info-tip__bubble openplan3d-finish-drywall-tip__bubble" role="tooltip" hidden>Interior partitions default to drywall on both faces. ' +
+        'Choose a single face when only one room gets drywall; labels match adjacent rooms (' + sideInfo.tipRooms + '). ' +
+        'Exterior perimeter walls always measure the interior face only.</span></span>' +
+        '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
+        '<option value="both">Both sides</option>' +
+        '<option value="a">' + sideLabels.a + '</option>' +
+        '<option value="b">' + sideLabels.b + '</option></select>';
+      host.appendChild(drywallRow);
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshControlIds === 'function') {
+        window.AdminInfoTip.refreshControlIds(host);
+      }
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
+        window.AdminInfoTip.sealClosed(drywallRow);
+      }
+      var drywallSel = host.querySelector('[data-finish-drywall-faces]');
+      if (drywallSel) {
+        if (drywallMixed) {
+          drywallSel.value = 'both';
+          drywallSel.selectedIndex = -1;
+        } else {
+          drywallSel.value = drywallPrimary === 'a' || drywallPrimary === 'b' ? drywallPrimary : 'both';
+        }
+        drywallSel.addEventListener('change', function () {
+          var faceVal = String(drywallSel.value || 'both').toLowerCase();
+          if (faceVal !== 'a' && faceVal !== 'b') faceVal = 'both';
+          writePlan(function (plan) {
+            plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
+            sidesEligible.forEach(function (wallId) {
+              plan.zanini.wallFinishes[wallId] = plan.zanini.wallFinishes[wallId] || {};
+              plan.zanini.wallFinishes[wallId].drywallFaces = faceVal;
+            });
+          });
+        });
+      }
       var sidesRow = document.createElement('label');
       sidesRow.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:12px;';
       var sidesPrimary = readBaseboardSidesForWall(wallFinishes, sidesEligible[0]);
@@ -1262,6 +1450,8 @@
     zoneAreaSqFt: zoneAreaSqFt,
     zoneUnionBounds: zoneUnionBounds,
     wallIsBoundary: wallIsBoundary,
+    friendlyWallFinishHeading: friendlyWallFinishHeading,
+    wallIsInteriorPartition: wallIsInteriorPartition,
     finishDefaultsForWall: finishDefaultsForWall,
     wallsEligibleForBaseboardSidesControl: wallsEligibleForBaseboardSidesControl,
     readBaseboardSidesForWall: readBaseboardSidesForWall,

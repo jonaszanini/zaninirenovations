@@ -6,6 +6,8 @@
   <title>Room Area (openPlan3D Test)</title>
   <link rel="stylesheet" href="/css/admin-utilities.css">
   <script src="/js/admin-hotkey-save.js"></script>
+  <script src="/js/room-area-interior-geometry.js"></script>
+  <script src="/js/openplan3d-zanini-extensions.js"></script>
   <script src="/js/openplan3d-measurement-bridge.js"></script>
   <script src="/js/openplan3d-host.js"></script>
   <style>
@@ -184,6 +186,26 @@
       <span class="openplan3d-metric-label">Boxes</span>
       <span class="openplan3d-metric-val" id="metric-boxes">0</span>
       <span class="openplan3d-metric-unit">boxes</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Drywall</span>
+      <span class="openplan3d-metric-val" id="metric-finish-drywall">0.00</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Paint</span>
+      <span class="openplan3d-metric-val" id="metric-finish-paint">—</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Insulation</span>
+      <span class="openplan3d-metric-val" id="metric-finish-insulation">0.00</span>
+      <span class="openplan3d-metric-unit">sq ft</span>
+    </div>
+    <div class="openplan3d-metric-card">
+      <span class="openplan3d-metric-label">Studs</span>
+      <span class="openplan3d-metric-val" id="metric-finish-studs">0.00</span>
+      <span class="openplan3d-metric-unit">lf</span>
     </div>
   </div>
 

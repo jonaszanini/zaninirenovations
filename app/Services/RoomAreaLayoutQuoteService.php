@@ -312,7 +312,11 @@ class RoomAreaLayoutQuoteService
     ): array {
         $area = $this->formatQty((float) $metrics['area_sqft']);
         $peri = $this->formatQty((float) $metrics['perimeter_lf']);
-        $base = $this->formatQty((float) ($metrics['baseboard_lf'] ?? $metrics['perimeter_lf']));
+        $base = $this->formatQty((float) (
+            ($metrics['finish_baseboard_lf'] ?? 0) > 0
+                ? $metrics['finish_baseboard_lf']
+                : ($metrics['baseboard_lf'] ?? $metrics['perimeter_lf'])
+        ));
         $openings = (int) ($metrics['drywall_openings'] ?? 0);
         $cabinetBase = (float) ($metrics['cabinet_base_lf'] ?? 0);
         $cabinetUpper = (float) ($metrics['cabinet_upper_lf'] ?? 0);
@@ -360,7 +364,9 @@ class RoomAreaLayoutQuoteService
             'geometry_message' => $geometryMessage !== '' ? $geometryMessage : null,
             'area_sqft' => $metrics['area_sqft'],
             'perimeter_lf' => $metrics['perimeter_lf'],
-            'baseboard_lf' => $metrics['baseboard_lf'] ?? $metrics['perimeter_lf'],
+            'baseboard_lf' => ($metrics['finish_baseboard_lf'] ?? 0) > 0
+                ? $metrics['finish_baseboard_lf']
+                : ($metrics['baseboard_lf'] ?? $metrics['perimeter_lf']),
             'wall_height_ft' => $metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT,
             'ceiling_height_ft' => $metrics['ceiling_height_ft'] ?? ($metrics['wall_height_ft'] ?? RoomAreaCanvasData::DEFAULT_WALL_HEIGHT_FT),
             'ceiling_area_sqft' => $measuredCeiling,

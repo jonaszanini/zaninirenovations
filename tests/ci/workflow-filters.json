@@ -63,6 +63,7 @@
     "tests/Feature/Admin/*RoomArea*.php",
     "tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php",
     "tests/js/openplan3d-room-area-blade-browser.test.js",
+    "tests/js/openplan3d-takeoffs-panel-browser.test.js",
     "tests/js/room-area-main-thread-responsive.test.js",
     "tests/js/room-area-phone-geometry.test.js",
     "public/js/openplan3d-editor-bridge.js",

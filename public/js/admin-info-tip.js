@@ -6,6 +6,11 @@
  * (bubble is never nested inside the button).
  */
 (function (global) {
+  if (global.__ADMIN_INFO_TIP_BOUND__) {
+    return;
+  }
+  global.__ADMIN_INFO_TIP_BOUND__ = true;
+
   var OPEN = 'is-open';
   var PAD = 12;
   var MAX_W = 273;
@@ -126,6 +131,24 @@
 
     bubble.style.top = Math.round(top) + 'px';
     bubble.style.left = Math.round(left) + 'px';
+
+    var vw = window.innerWidth || 0;
+    var vh = window.innerHeight || 0;
+    var popW = popRect.width;
+    if (left + popW > vw - PAD) {
+      left = Math.max(PAD, vw - PAD - popW);
+      bubble.style.left = Math.round(left) + 'px';
+    } else if (left < PAD) {
+      bubble.style.left = Math.round(PAD) + 'px';
+    }
+    var placedBelow = top >= btnRect.bottom - 4;
+  var popBottom = top + need;
+  if (placedBelow && popBottom > vh - PAD) {
+    top = Math.max(PAD, vh - PAD - need);
+    bubble.style.top = Math.round(top) + 'px';
+  } else if (!placedBelow && top < PAD) {
+    bubble.style.top = Math.round(PAD) + 'px';
+  }
   }
 
   function repositionOpenTips() {
@@ -137,11 +160,15 @@
   function closeTip(root) {
     if (!root) return;
     var btn = buttonOf(root);
+    var bubble = bubbleOf(root);
     root.classList.remove(OPEN);
     if (btn) {
       btn.setAttribute('aria-expanded', 'false');
     }
-    resetBubble(bubbleOf(root));
+    if (bubble) {
+      bubble.hidden = true;
+    }
+    resetBubble(bubble);
   }
 
   function closeTips(exceptRoot) {
@@ -156,9 +183,18 @@
     var btn = buttonOf(root);
     var bubble = bubbleOf(root);
     if (!btn || !bubble) return;
+    bubble.hidden = false;
     root.classList.add(OPEN);
     btn.setAttribute('aria-expanded', 'true');
     positionBubble(btn, bubble);
+  }
+
+  function sealClosedBubbles(scope) {
+    wrapsIn(scope).forEach(function (root) {
+      if (root.classList.contains(OPEN)) return;
+      var bubble = bubbleOf(root);
+      if (bubble) bubble.hidden = true;
+    });
   }
 
   function toggleTip(root) {
@@ -202,7 +238,7 @@
         '<button type="button" class="admin-info-tip" aria-label="' + escapeHtml(aria) + '" aria-expanded="false" aria-controls="' + id + '" aria-describedby="' + id + '">' +
           '<i class="fa fa-info-circle" aria-hidden="true"></i>' +
         '</button>' +
-        '<span id="' + id + '" class="admin-info-tip__bubble" role="tooltip">' + escapeHtml(text) + '</span>' +
+        '<span id="' + id + '" class="admin-info-tip__bubble" role="tooltip" hidden>' + escapeHtml(text) + '</span>' +
       '</span>'
     );
   }
@@ -552,6 +588,7 @@
     deriveMissingLabels(node);
     bindSummaryGuard(node);
     refreshRepeatLabels(node);
+    sealClosedBubbles(node);
   }
 
   function isLinkTarget(el) {
@@ -1026,9 +1063,13 @@
   document.addEventListener('scroll', onViewportMove, { capture: true, passive: true });
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', function () { hoistFromLabels(document); });
+    document.addEventListener('DOMContentLoaded', function () {
+      hoistFromLabels(document);
+      sealClosedBubbles(document);
+    });
   } else {
     hoistFromLabels(document);
+    sealClosedBubbles(document);
   }
 
   if (typeof MutationObserver === 'function' && document.documentElement) {
@@ -1059,5 +1100,6 @@
     labelCopy: labelCopy,
     closeAll: function () { closeTips(null); },
     positionOpen: repositionOpenTips,
+    sealClosed: sealClosedBubbles,
   };
 })(window);

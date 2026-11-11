@@ -51,8 +51,9 @@ assert.strictEqual(incomingOverride.a.studs, true, 'explicit incoming flag wins'
 assert.strictEqual(incomingOverride.a.drywall, true, 'unspecified incoming keys keep previous');
 
 assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 2 }, true), 1, 'perimeter ignores outside baseboard sides');
-assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 1 }, false), 1);
-assert.strictEqual(ext.resolveBaseboardSides({}, false), 2);
+assert.strictEqual(ext.resolveBaseboardSides({ baseboardSides: 1 }, false, 2), 1);
+assert.strictEqual(ext.resolveBaseboardSides({}, false, 0), 2, 'interior partition defaults to two baseboard faces');
+assert.strictEqual(ext.resolveBaseboardSides({}, false, 2), 2, 'shared partition counts both baseboard faces by default');
 
 const perimeterBb = ext.applyToMetrics(Object.assign({}, {
   boundary_wall_ids: ['w1'],
@@ -70,5 +71,11 @@ const batchSides = ext.mergeWallFinishes(
 );
 assert.strictEqual(batchSides.p1.baseboardSides, 1);
 assert.strictEqual(batchSides.p2.baseboardSides, 1);
+
+const drywallFacesMerge = ext.mergeWallFinishes(
+  { p1: { drywallFaces: 'both' } },
+  { p1: { drywallFaces: 'a' } }
+);
+assert.strictEqual(drywallFacesMerge.p1.drywallFaces, 'a');
 
 console.log('openplan3d-wall-finishes-persist: ok');

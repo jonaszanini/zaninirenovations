@@ -138,8 +138,13 @@ class RoomAreaQuoteQuantities
         $key = $catalog[$trade]['metric'];
         $value = (float) ($metrics[$key] ?? 0);
 
-        if ($trade === self::TRADE_BASEBOARD && $value <= 0) {
-            $value = (float) ($metrics['perimeter_lf'] ?? 0);
+        if ($trade === self::TRADE_BASEBOARD) {
+            $finish = (float) ($metrics['finish_baseboard_lf'] ?? 0);
+            if ($finish > 0) {
+                $value = $finish;
+            } elseif ($value <= 0) {
+                $value = (float) ($metrics['perimeter_lf'] ?? 0);
+            }
         }
 
         return round(max(0.0, $value), 2);

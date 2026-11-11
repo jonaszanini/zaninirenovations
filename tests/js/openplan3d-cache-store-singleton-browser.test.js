@@ -76,7 +76,8 @@ async function run() {
   });
   const pageErrors = [];
   const requestedH3 = [];
-  const requestedH4 = [];
+  const requestedGraph = [];
+  const graphSuffix = '-' + MANIFEST.immutableGraphSuffix + '.js';
   try {
     const page = await browser.newPage();
     page.on('pageerror', (e) => pageErrors.push(e.message));
@@ -84,7 +85,7 @@ async function run() {
     page.on('request', (req) => {
       const u = req.url();
       if (u.includes('-h3.js')) requestedH3.push(u);
-      if (u.includes('-h4.js')) requestedH4.push(u);
+      if (u.includes(graphSuffix)) requestedGraph.push(u);
       req.continue();
     });
 
@@ -99,11 +100,11 @@ async function run() {
       `fresh index must not fetch legacy -h3 modules; got ${requestedH3.slice(0, 5).join(', ')}`
     );
     assert.ok(
-      requestedH4.some((u) => u.includes(MANIFEST.storeChunk)),
+      requestedGraph.some((u) => u.includes(MANIFEST.storeChunk)),
       'must fetch active store chunk'
     );
     assert.ok(
-      requestedH4.some((u) => u.includes('app.Badnr33M-h4.js')),
+      requestedGraph.some((u) => u.includes(MANIFEST.entryChunk)),
       'must fetch active app entry'
     );
 
@@ -145,7 +146,7 @@ async function run() {
     assert.strictEqual(pageErrors.length, 0, pageErrors.join('; '));
 
     console.log(
-      `cache-singleton: h4Requests=${requestedH4.length}, apiWalls=${state.apiWalls}, footerWalls=${state.footerWalls}`
+      `cache-singleton: graphRequests=${requestedGraph.length}, apiWalls=${state.apiWalls}, footerWalls=${state.footerWalls}`
     );
     console.log('openplan3d-cache-store-singleton-browser: ok');
   } finally {

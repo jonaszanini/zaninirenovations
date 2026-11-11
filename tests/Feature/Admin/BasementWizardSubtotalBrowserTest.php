@@ -147,7 +147,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             $shared,
             [
                 'client_name' => 'Subtotal Browser Client',
-                'area_sqft' => 240.0,
+                'area_sqft' => 229.61,
                 'ceiling_height_ft' => 8.0,
             ]
         ), $settings);
@@ -183,10 +183,10 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $hand = $this->handComputedSectionLiterals($proposed);
 
         return [
-            'wall_sf' => 512.0,
-            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
-            'ceiling_sf' => 240.0,
-            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
+            'wall_sf' => 501.5,
+            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 501.5),
+            'ceiling_sf' => 229.61,
+            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 229.61),
             'painting_section_pre_hst' => $hand['painting_section_pre_hst'],
             'flooring_section_pre_hst' => $hand['flooring_section_pre_hst'],
         ];
@@ -206,7 +206,7 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             'room_area_project_id' => $project->id,
             'name' => 'Browser paint fill room',
             'scale_pixels_per_foot' => 12,
-            'area_sqft' => 240,
+            'area_sqft' => 229.61,
             'wall_height_ft' => 8,
             'vertices' => [
                 'format' => 'openplan3d',
@@ -239,8 +239,8 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
             ->assertOk()
             ->json())->firstWhere('id', 'room:'.$room->id);
         $proposed = BasementRoomAreaImportMapper::proposedQuantities($opt ?? [], 8, 'drywall');
-        $this->assertEqualsWithDelta(512.0, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.5);
-        $this->assertEqualsWithDelta(512.0, (float) ($proposed['paint_wall_sf'] ?? 0), 0.5);
+        $this->assertEqualsWithDelta(501.5, (float) ($proposed['drywall_wall_sf'] ?? 0), 0.01);
+        $this->assertEqualsWithDelta(501.5, (float) ($proposed['paint_wall_sf'] ?? 0), 0.01);
 
         return ['query' => 'Browser paint fill room', 'proposed' => $proposed];
     }

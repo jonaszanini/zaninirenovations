@@ -141,6 +141,7 @@ jobs:
               - 'tests/Feature/Admin/*RoomArea*.php'
               - 'tests/Feature/Admin/RoomAreaEngineFeatureFlagTest.php'
               - 'tests/js/openplan3d-room-area-blade-browser.test.js'
+              - 'tests/js/openplan3d-takeoffs-panel-browser.test.js'
               - 'tests/js/room-area-main-thread-responsive.test.js'
               - 'tests/js/room-area-phone-geometry.test.js'
               - 'public/js/openplan3d-editor-bridge.js'
@@ -326,6 +327,26 @@ jobs:
           CI_JS_BROWSER_QUOTATION: ${{ needs.changes.outputs.run_browser_quotation }}
           CI_JS_BROWSER_CLIENT: ${{ needs.changes.outputs.run_browser_client }}
         run: tests/ci/run-js-browser-suite.sh
+
+      - name: Upload room area takeoffs panel screenshots
+        if: success() && needs.changes.outputs.run_browser_openplan3d == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-area-takeoffs-panel-screenshots
+          path: |
+            tests/js/artifacts/room-area-takeoffs-panel-1280.png
+            tests/js/artifacts/room-area-takeoffs-panel-390.png
+          if-no-files-found: warn
+
+      - name: Upload wall finishes drywall panel screenshots
+        if: success() && needs.changes.outputs.run_browser_openplan3d == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: room-area-wall-finishes-drywall-screenshots
+          path: |
+            storage/app/qa-screenshots/room-area-wall-finishes-drywall-1280.png
+            storage/app/qa-screenshots/room-area-wall-finishes-drywall-390.png
+          if-no-files-found: warn
 
   mysql:
     needs: changes

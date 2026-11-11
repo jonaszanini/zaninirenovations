@@ -3,6 +3,7 @@
 const assert = require('assert');
 const lib = require('../../public/js/room-area-lib.js');
 const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
+const ext = require('../../public/js/openplan3d-zanini-extensions.js');
 
 console.log('Running openPlan3D Measurement Bridge JavaScript Parity Tests...');
 
@@ -36,17 +37,20 @@ const rectPlan = {
 };
 
 const rectMetrics = bridge.layoutMetrics(rectPlan, 'r1', { wall_height_ft: 8.0 });
-assert.strictEqual(rectMetrics.area_sqft, 120.0, '10x12 rectangle area is 120 sqft');
-assert.strictEqual(rectMetrics.perimeter_lf, 44.0, '10x12 rectangle perimeter is 44 ft');
-assert.strictEqual(rectMetrics.baseboard_lf, 44.0, 'No openings, baseboard equals perimeter');
-assert.strictEqual(rectMetrics.wall_area_sqft, 352.0, '44 * 8 = 352 sqft gross/net wall area');
-assert.strictEqual(rectMetrics.ceiling_area_sqft, 120.0);
+// 10×12 ft centerline rectangle, 4.5″ walls → ~9.625×11.625 ft interior face (111.89 sf); perimeter walks inset ring (42.5 lf); drywall uses interior-face spans (42.5 lf × 8 ft = 340 sf).
+assert.strictEqual(rectMetrics.area_sqft, 111.89, '10x12 rectangle interior floor area');
+assert.strictEqual(rectMetrics.perimeter_lf, 42.5, '10x12 rectangle clear perimeter');
+assert.strictEqual(rectMetrics.baseboard_lf, 42.5, 'No openings, baseboard equals perimeter');
+assert.strictEqual(rectMetrics.wall_area_sqft, 340, 'interior-face wall edges × 8 ft wall height');
+assert.strictEqual(rectMetrics.ceiling_area_sqft, 111.89);
+// Exterior footprint from interior ring + half wall per edge → 128.39 sf (not centerline + full thickness).
+assert.strictEqual(rectMetrics.outside_area_sqft, 128.39, 'outer footprint uses exterior wall faces');
 assert.strictEqual(rectMetrics.inside_corners, 4);
 assert.strictEqual(rectMetrics.outside_corners, 0);
 assert.strictEqual(rectMetrics.partition_lf, 0.0);
 
-// Test 3: Rectangle with door (32"x80") and window (36"x48", 4-side casing)
-// Door: 32" = 81.28 cm, 80" = 203.2 cm
+// Test 3: Rectangle with door (36"x80") and window (36"x48", 4-side casing)
+// Door: 36" = 91.44 cm, 80" = 203.2 cm
 // Window: 36" = 91.44 cm, 48" = 121.92 cm
 const rectWithOpenings = {
   format: 'openplan3d',
@@ -54,7 +58,7 @@ const rectWithOpenings = {
   walls: rectPlan.walls,
   rooms: rectPlan.rooms,
   doors: [
-    { id: 'd1', wallId: 'w1', position: 0.5, width: 81.28, height: 203.2, type: 'single', details: { casing_sides: 2 } }
+    { id: 'd1', wallId: 'w1', position: 0.5, width: 91.44, height: 203.2, type: 'single', details: { casing_sides: 2 } }
   ],
   windows: [
     { id: 'win1', wallId: 'w2', position: 0.5, width: 91.44, height: 121.92, sillHeight: 91.44, type: 'standard', details: { casing_sides: 4 } }
@@ -65,17 +69,29 @@ const rectWithOpeningsMetrics = bridge.layoutMetrics(rectWithOpenings, 'r1', { w
 assert.strictEqual(rectWithOpeningsMetrics.door_count, 1);
 assert.strictEqual(rectWithOpeningsMetrics.window_count, 1);
 assert.strictEqual(rectWithOpeningsMetrics.drywall_openings, 2);
-// Door casing: 2 * (32 + 2*80) / 12 = 2 * 192 / 12 = 32.0 LF
-// Window casing: (2*36 + 2*48) / 12 = 168 / 12 = 14.0 LF
-// Total casing: 46.0 LF
-assert.strictEqual(rectWithOpeningsMetrics.casing_lf, 46.0, 'Total casing LF is 46.0');
-// Baseboard: 44 - (32 / 12 = 2.67) = 41.33 LF
-assert.strictEqual(rectWithOpeningsMetrics.baseboard_lf, 41.33, 'Baseboard is 41.33 LF');
+// Door casing: 2 * (36 + 2*80) / 12 = 32.67 LF
+// Window casing: (2*36 + 2*48) / 12 = 14.0 LF
+// Total casing: 46.67 LF
+assert.strictEqual(rectWithOpeningsMetrics.casing_lf, 46.67, 'Total casing LF is 46.67');
+// Baseboard: 42.5 lf perimeter − 36″ door (3 lf) = 39.5 lf
+assert.strictEqual(rectWithOpeningsMetrics.baseboard_lf, 39.5, 'Baseboard is 39.5 LF');
+const rectFinishPlan = Object.assign({}, rectWithOpenings, {
+  zanini: {
+    wallFinishes: {
+      w1: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w2: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w3: { baseboard: true, drywall: true, insulation: true, paint: true },
+      w4: { baseboard: true, drywall: true, insulation: true, paint: true },
+    },
+  },
+});
+const rectFinishMetrics = bridge.layoutMetrics(rectFinishPlan, 'r1', { wall_height_ft: 8.0, ceiling_height_ft: 8.0 });
+assert.strictEqual(rectFinishMetrics.finish_baseboard_lf, 39.5, 'finish_baseboard_lf deducts door on boundary walls');
 
-// Door area: (32/12) * (80/12) = 17.78 sqft
+// Door area: (36/12) * (80/12) = 20.00 sqft
 // Window area: (36/12) * (48/12) = 12.00 sqft
-// Net wall area: 352 - 17.78 - 12.00 = 322.22 sqft
-assert.strictEqual(rectWithOpeningsMetrics.wall_area_sqft, 322.22, 'Net wall area is 322.22 sqft');
+// Net wall area: 340 − 20.00 − 12.00 = 308 sqft
+assert.strictEqual(rectWithOpeningsMetrics.wall_area_sqft, 308, 'Net wall area is 308 sqft');
 
 // Test 4: L-Shape 16x12 ft (return 6x4 ft)
 // Vertices in ft: (0,0), (16,0), (16,12), (10,12), (10,8), (0,8)
@@ -98,8 +114,8 @@ const lShapePlan = {
 };
 
 const lMetrics = bridge.layoutMetrics(lShapePlan, 'r_l', { wall_height_ft: 8.0 });
-assert.strictEqual(lMetrics.area_sqft, 168.0, 'L shape area is 168 sqft');
-assert.strictEqual(lMetrics.perimeter_lf, 56.0, 'L shape perimeter is 56 ft');
+assert.strictEqual(lMetrics.area_sqft, 157.64, 'L shape interior floor area');
+assert.strictEqual(lMetrics.perimeter_lf, 54.5, 'L shape clear perimeter (interior-face ring walk)');
 assert.strictEqual(lMetrics.inside_corners, 5, 'L shape has 5 inside corners');
 assert.strictEqual(lMetrics.outside_corners, 1, 'L shape has 1 outside corner');
 
@@ -193,10 +209,35 @@ const lShapeWithPartitionsPlan = {
 
 const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall_height_ft: 8.0 });
 assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
-assert.strictEqual(lPartMetrics.area_sqft, 300.0, 'Floor area matches L-shape without partitions (300 sq ft)');
-assert.strictEqual(lPartMetrics.perimeter_lf, 80.0, 'Perimeter matches outer loop (80 lf)');
-assert.strictEqual(lPartMetrics.net_wall_area_sqft, 832.0, 'Net wall area includes both faces of partitions (832 sq ft)');
+assert.strictEqual(lPartMetrics.area_sqft, 286.98, 'Interior L-shape floor area (~10 cm walls; was 300 centerline)');
+assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter');
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811,
+  'Net wall area with boundary + single-face partition butt overlap at T junctions');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
+assert.strictEqual(lPartMetrics.partition_lf, 11.67, 'Partition framing stays full length (T butts do not shorten studs)');
+(function lPartFinishBaseboardPin() {
+  const finishes = {};
+  const boundary = new Set((lPartMetrics.boundary_wall_ids || []).map(String));
+  (lPartMetrics.walls || []).forEach(function (w) {
+    finishes[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: boundary.has(String(w.id)),
+      studs: !boundary.has(String(w.id)),
+    };
+  });
+  const finished = ext.applyToMetrics(
+    lPartMetrics,
+    Object.assign({}, lShapeWithPartitionsPlan, { zanini: { wallFinishes: finishes } }),
+    {},
+    cmPerFt
+  );
+  assert.strictEqual(finished.finish_baseboard_lf, 101.37,
+    'Partition–partition T butt applies once to p1 baseboard (both faces), not twice');
+  assert.strictEqual(finished.finish_drywall_sqft, 811,
+    'L-part all-drywall rollup matches net wall area');
+  assert.strictEqual(finished.finish_drywall_sqft, finished.net_wall_area_sqft);
+})();
 
 // Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
 function basementStubRegressionPlan(stubYOffsetCm) {
@@ -247,8 +288,9 @@ function basementStubRegressionPlan(stubYOffsetCm) {
 const basementPlan = basementStubRegressionPlan(0);
 const basementMetrics = bridge.layoutMetrics(basementPlan, 'r1', { wall_height_ft: 8.0 });
 assert.ok(!basementMetrics.geometry_unmeasurable, 'Basement stubs with bad stored polygon is measurable');
-assert.strictEqual(basementMetrics.area_sqft, 600.0, 'Floor area uses outer loop (30x20 = 600 sq ft)');
-assert.strictEqual(basementMetrics.partition_lf, 20.0, 'Interior stub partitions total 20 lf');
+assert.strictEqual(basementMetrics.area_sqft, 583.7, 'Interior floor area from outer loop (30×20 ft shell inset; was 600 centerline)');
+assert.strictEqual(basementMetrics.outside_area_sqft, 616.51, '30×20 exterior footprint without 1/16′ vertex rounding');
+assert.strictEqual(basementMetrics.partition_lf, 19.67, 'Interior stub partitions total 19.67 lf (T-junction trim)');
 const basementLoop = bridge.extractOuterLoopAndPartitions(basementPlan.floor.walls, 1.0);
 assert.strictEqual(basementLoop.partition_walls.length, 2, 'Two interior stub partitions detected');
 assert.ok(
@@ -264,7 +306,7 @@ assert.ok(
 const basementOffsetPlan = basementStubRegressionPlan(15);
 const basementOffsetMetrics = bridge.layoutMetrics(basementOffsetPlan, 'r1', { wall_height_ft: 8.0 });
 assert.ok(!basementOffsetMetrics.geometry_unmeasurable, 'Stub endpoints 15cm off perimeter still measurable');
-assert.strictEqual(basementOffsetMetrics.area_sqft, 600.0, 'Offset stubs still yield 600 sq ft floor area');
+assert.strictEqual(basementOffsetMetrics.area_sqft, 583.7, 'Offset stubs still yield interior shell floor area');
 const offsetLoop = bridge.extractOuterLoopAndPartitions(basementOffsetPlan.floor.walls, 1.0);
 assert.strictEqual(offsetLoop.partition_walls.length, 2, 'Near-miss T-junction stubs count as partitions');
 
@@ -273,8 +315,179 @@ const hand0Plan = JSON.parse(
   require('fs').readFileSync(require('path').join(__dirname, '../fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8')
 );
 const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0 });
-assert.ok(hand0Metrics.area_sqft > 1300 && hand0Metrics.area_sqft < 1360,
-  'Drawn basement plan area ~1346 sq ft, got ' + hand0Metrics.area_sqft);
+assert.strictEqual(hand0Metrics.area_sqft, 1307.52,
+  'Drawn basement interior floor area (was ~1346 centerline / 1300–1360 range)');
+assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear perimeter (interior-face ring walk)');
+(function partitionSpanFinishBaseboard() {
+  var cm = 30.48;
+  var plan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w3', start: { x: 20 * cm, y: 10 * cm }, end: { x: 0, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w4', start: { x: 0, y: 10 * cm }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'p1', start: { x: 10 * cm, y: 0 }, end: { x: 10 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+      ],
+      rooms: [],
+    },
+  };
+  var metrics0 = bridge.layoutMetrics(plan, null, { wall_height_ft: 8.0 });
+  var boundarySet = {};
+  (metrics0.boundary_wall_ids || []).forEach(function (id) { boundarySet[String(id)] = true; });
+  var wf = {};
+  (metrics0.walls || []).forEach(function (w) {
+    var isBoundary = !!boundarySet[String(w.id)];
+    wf[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: isBoundary,
+      studs: !isBoundary,
+    };
+  });
+  var finished = ext.applyToMetrics(metrics0, Object.assign({}, plan, { zanini: { wallFinishes: wf } }), {}, cm);
+  assert.strictEqual(finished.finish_baseboard_lf, 77.0,
+    '20x10 partition: boundary 57.75 lf (58.5 - 2x0.375 butt) + partition both faces 19.25 lf');
+  assert.strictEqual(finished.finish_drywall_sqft, 616,
+    '20x10 shell drywall (perimeter + partition both faces) × 8 ft');
+  assert.strictEqual(finished.finish_insulation_sqft, 462,
+    '20x10 shell insulation on boundary faces only');
+  var twoRoomPlan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: plan.floor.walls,
+      rooms: [
+        { id: 'ra', name: 'West', walls: ['w1', 'p1', 'w4', 'w3'] },
+        { id: 'rb', name: 'East', walls: ['w1', 'w2', 'w3', 'p1'] },
+      ],
+    },
+  };
+  var metrics2 = bridge.layoutMetrics(twoRoomPlan, null, { wall_height_ft: 8.0 });
+  var finished2 = ext.applyToMetrics(metrics2, Object.assign({}, twoRoomPlan, { zanini: { wallFinishes: wf } }), {}, cm);
+  assert.strictEqual(finished2.finish_drywall_sqft, 616, 'Two saved rooms: floor drywall dedupes per wall id');
+  assert.strictEqual(finished2.finish_insulation_sqft, 462, 'Two saved rooms: floor insulation dedupes per wall id');
+  assert.strictEqual(finished2.finish_baseboard_lf, 77, 'Two saved rooms: floor baseboard includes partition both faces');
+})();
+
+(function collinearNorthSplitLengths() {
+  var cm = 30.48;
+  var t = 11.43;
+  var plan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: [
+        { id: 'n1', start: { x: 0, y: 0 }, end: { x: 3 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'n2', start: { x: 3 * cm, y: 0 }, end: { x: 7 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'n3', start: { x: 7 * cm, y: 0 }, end: { x: 10 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'e', start: { x: 10 * cm, y: 0 }, end: { x: 10 * cm, y: 12 * cm }, thickness: t, height: 243.84 },
+        { id: 's', start: { x: 10 * cm, y: 12 * cm }, end: { x: 0, y: 12 * cm }, thickness: t, height: 243.84 },
+        { id: 'w', start: { x: 0, y: 12 * cm }, end: { x: 0, y: 0 }, thickness: t, height: 243.84 },
+      ],
+      rooms: [{ id: 'r1', walls: ['n1', 'n2', 'n3', 'e', 's', 'w'] }],
+    },
+  };
+  var m = bridge.layoutMetrics(plan, 'r1', { wall_height_ft: 8.0 });
+  var byId = {};
+  (m.walls || []).forEach(function (w) { byId[w.id] = w.length_lf; });
+  assert.strictEqual(byId.n1, 2.81, 'north 3 ft collinear end keeps remainder share');
+  assert.strictEqual(byId.n2, 4.0, 'north 4 ft middle segment uses centerline lf');
+  assert.strictEqual(byId.n3, 2.81, 'north 3 ft collinear end keeps remainder share');
+  assert.strictEqual(m.perimeter_lf, 42.5, 'perimeter unchanged with collinear split');
+})();
+
+(function hand0FinishPins() {
+  var boundarySet = {};
+  (hand0Metrics.boundary_wall_ids || []).forEach(function (id) { boundarySet[String(id)] = true; });
+  var wf = {};
+  (hand0Metrics.walls || []).forEach(function (w) {
+    var isBoundary = !!boundarySet[String(w.id)];
+    wf[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: isBoundary,
+      studs: !isBoundary,
+    };
+  });
+  var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
+  assert.strictEqual(finished.finish_baseboard_lf, 199.53, 'hand0 finish_baseboard_lf with vertex + collinear-split butt rules');
+  assert.strictEqual(hand0Metrics.net_wall_area_sqft, 1596.21, 'hand0 net wall area matches exact per-wall rollup');
+  assert.strictEqual(finished.finish_drywall_sqft, 1596.21, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
+  assert.strictEqual(finished.finish_drywall_sqft, finished.net_wall_area_sqft,
+    'hand0 all-drywall finishes must match net wall area on takeoffs');
+  const interiorGeom = require('../../public/js/room-area-interior-geometry.js');
+  const hand0Floor = hand0Plan.floors && hand0Plan.floors[0] ? hand0Plan.floors[0] : hand0Plan.floor;
+  const hand0Walls = (hand0Floor && hand0Floor.walls) || [];
+  const ed9Wall = hand0Walls.find(function (w) { return w.id === 'ed9b3bxc'; });
+  const x83Wall = hand0Walls.find(function (w) { return w.id === 'x83nxa0q'; });
+  assert.ok(ed9Wall && x83Wall, 'hand0 north collinear walls exist in fixture');
+  const cmPer = bridge.cmPerUnitForPlan(hand0Plan);
+  const cmPerFt = bridge.CM_PER_FOOT || 30.48;
+  assert.ok(
+    Math.abs(interiorGeom.wallPlanEdgeLengthCm(ed9Wall, hand0Walls, cmPer, true) / cmPerFt - 3.035) < 0.02,
+    'hand0 top stub ed9b3bxc interior edge span ~3.035 lf'
+  );
+  assert.ok(
+    Math.abs(interiorGeom.wallPlanEdgeLengthCm(x83Wall, hand0Walls, cmPer, true) / cmPerFt - 15.338) < 0.02,
+    'hand0 top run x83nxa0q interior edge span ~15.338 lf'
+  );
+  var byLf = {};
+  (hand0Metrics.walls || []).forEach(function (w) {
+    byLf[w.id] = w;
+  });
+  var topNorthIds = ['ed9b3bxc', '1jr475cr', 'memtgvve', 'su7a1f0m', 'x83nxa0q'];
+  var topExact = [3.035, 3.281, 6.562, 13.123, 15.338];
+  var topSum = 0;
+  topNorthIds.forEach(function (id, idx) {
+    assert.ok(byLf[id], 'hand0 north collinear wall ' + id);
+    assert.ok(
+      Math.abs(byLf[id].length_lf_exact - topExact[idx]) < 0.005,
+      'hand0 north ' + id + ' length_lf_exact pin'
+    );
+    topSum += byLf[id].length_lf_exact;
+    if (id === 'ed9b3bxc' || id === 'x83nxa0q') {
+      assert.ok(Math.abs(byLf[id].length_lf - topExact[idx]) < 0.02, 'hand0 north ' + id + ' length_lf display pin');
+    }
+  });
+  assert.ok(Math.abs(topSum - 41.339) < 0.01, 'hand0 north collinear interior spans sum ~41.339 lf');
+})();
+
+(function detectedTwoRoomLabels() {
+  var cm = 30.48;
+  var px = 8;
+  var plan = {
+    unit: 'cm',
+    floor: {
+      walls: [
+        { id: 'w1', start: { x: 0, y: 0 }, end: { x: 20 * cm, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'w2', start: { x: 20 * cm, y: 0 }, end: { x: 20 * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w3', start: { x: 20 * cm, y: 10 * cm }, end: { x: 0, y: 10 * cm }, thickness: 11.43, height: 243.84 },
+        { id: 'w4', start: { x: 0, y: 10 * cm }, end: { x: 0, y: 0 }, thickness: 11.43, height: 243.84 },
+        { id: 'p1', start: { x: px * cm, y: 0 }, end: { x: px * cm, y: 10 * cm }, thickness: 11.43, height: 243.84 }
+      ],
+      rooms: []
+    }
+  };
+  var entries = bridge.canvasFillRoomEntries(plan.floor, plan);
+  assert.strictEqual(entries.length, 2, '20×10 with 8 ft partition yields two detected rooms');
+  entries.sort(function (a, b) {
+    return a.room.area - b.room.area;
+  });
+  var sf = entries.map(function (e) {
+    var parsed = parseFloat(
+      bridge.formatOnPlanRoomArea(e.room, e.polygon, [], plan.floor, { units: 'imperial' })
+    );
+    return parsed;
+  });
+  assert.ok(Math.abs(sf[0] - 73.39) < 0.15, 'smaller detected room label ~73.39 sf, got ' + sf[0]);
+  assert.ok(Math.abs(sf[1] - 111.89) < 0.15, 'larger detected room label ~111.89 sf, got ' + sf[1]);
+  assert.strictEqual(bridge.layoutMetrics(plan, null, { wall_height_ft: 8.0 }).area_sqft, 188.89,
+    'whole-floor layout must not replace per-room labels');
+})();
+assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
 
 // Test 11: True bowtie polygon flags unmeasurable but keeps perimeter baseboard
@@ -291,7 +504,8 @@ const bowtieOnlyPlan = {
   }
 };
 const bowtieMetrics = bridge.layoutMetrics(bowtieOnlyPlan, 'r1', { wall_height_ft: 8.0 });
-assert.strictEqual(bowtieMetrics.area_sqft, 100.0, 'Valid wall outer loop replaces bowtie stored polygon');
+assert.strictEqual(bowtieMetrics.area_sqft, 92.64, '10×10 ft wall loop replaces bowtie polygon (92.64 sf interior; 107.64 sf exterior)');
+assert.strictEqual(bowtieMetrics.outside_area_sqft, 107.64, '10×10 exterior footprint from interior ring');
 assert.ok(!bowtieMetrics.geometry_unmeasurable, 'Bowtie stored polygon must not block measurement when walls form a closed loop');
 assert.ok(bowtieMetrics.baseboard_lf > 0, 'Recovered loop should expose baseboard LF from outline');
 
@@ -318,8 +532,8 @@ for (var oi = 0; oi < independentOffsetsCm.length; oi++) {
     var noisyIndependent = jitterIndependentEndpoints(hand0Plan, maxCm);
     var independentMetrics = bridge.layoutMetrics(noisyIndependent, null, { wall_height_ft: 8.0 });
     assert.ok(
-      independentMetrics.area_sqft > 1300 && independentMetrics.area_sqft < 1380 && !independentMetrics.geometry_unmeasurable,
-      'Independent ±' + maxCm + ' cm jitter trial ' + trial + ' must stay measurable (~1346 sq ft), got ' + independentMetrics.area_sqft
+      independentMetrics.area_sqft > 1297 && independentMetrics.area_sqft < 1322 && !independentMetrics.geometry_unmeasurable,
+      'Independent ±' + maxCm + ' cm jitter trial ' + trial + ' must stay measurable (~1307.52 sf interior), got ' + independentMetrics.area_sqft
     );
   }
 }
@@ -424,6 +638,6 @@ activeF2Plan.floors.push({
   rooms: [{ id: 'r2', name: 'Upstairs', polygon: [] }]
 });
 var activeF2Metrics = bridge.layoutMetrics(activeF2Plan, 'r2', { wall_height_ft: 8.0 });
-assert.ok(activeF2Metrics.area_sqft > 90 && activeF2Metrics.area_sqft < 110, 'active f2 square must measure ~100 sq ft, got ' + activeF2Metrics.area_sqft);
+assert.strictEqual(activeF2Metrics.area_sqft, 92.64, '10×10 ft centerline upstairs room (92.64 sf interior; was ~100 centerline)');
 
 console.log('All openPlan3D Measurement Bridge JavaScript parity tests PASSED!');

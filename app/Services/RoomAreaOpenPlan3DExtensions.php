@@ -21,7 +21,7 @@ class RoomAreaOpenPlan3DExtensions
 
         $metrics = $this->applyExcludedZones($metrics, $zanini, $cmPerUnit, $finish);
         $metrics = $this->applyBulkheadMetrics($metrics, $zanini, $cmPerUnit);
-        $metrics = $this->applyWallFinishMetrics($metrics, $zanini);
+        $metrics = $this->applyWallFinishMetrics($metrics, $zanini, $plan, $cmPerUnit);
 
         return $metrics;
     }
@@ -270,15 +270,97 @@ class RoomAreaOpenPlan3DExtensions
     }
 
     /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function resolveDrywallFaces(array $flags, bool $isBoundaryWall): string
+    {
+        if ($isBoundaryWall) {
+            return 'both';
+        }
+        $faces = isset($flags['drywallFaces']) ? strtolower((string) $flags['drywallFaces']) : 'both';
+        if ($faces === 'a' || $faces === 'b') {
+            return $faces;
+        }
+
+        return 'both';
+    }
+
+    /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function drywallFinishAreaSqFt(float $netSqFt, array $flags, bool $isBoundaryWall, int $roomTouchCount = 0): float
+    {
+        if ($isBoundaryWall) {
+            return $netSqFt;
+        }
+        $faces = $this->resolveDrywallFaces($flags, false);
+        if ($faces === 'a' || $faces === 'b') {
+            return $netSqFt / 2.0;
+        }
+        if ($roomTouchCount >= 2) {
+            return $netSqFt;
+        }
+
+        return $netSqFt;
+    }
+
+  /**
+     * @param  array<string, mixed>|null  $floor
+     */
+    public function roomTouchCountForWall(string $wallId, ?array $floor): int
+    {
+        if ($floor === null || ! is_array($floor['rooms'] ?? null)) {
+            return 0;
+        }
+        $count = 0;
+        foreach ($floor['rooms'] as $room) {
+            if (! is_array($room)) {
+                continue;
+            }
+            $seen = [];
+            foreach (['boundary_wall_ids', 'walls'] as $key) {
+                if (! is_array($room[$key] ?? null)) {
+                    continue;
+                }
+                foreach ($room[$key] as $id) {
+                    $seen[(string) $id] = true;
+                }
+            }
+            if (isset($seen[$wallId])) {
+                $count++;
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * @param  array<string, mixed>  $flags
+     */
+    public function resolveBaseboardSides(array $flags, bool $isBoundaryWall, int $roomTouchCount = 0): int
+    {
+        if ($isBoundaryWall) {
+            return 1;
+        }
+        $sides = (int) ($flags['baseboardSides'] ?? 2);
+        if ($roomTouchCount >= 2 && $sides === 1 && ! array_key_exists('baseboardSides', $flags)) {
+            $sides = 2;
+        }
+
+        return max(1, min(2, $sides === 1 ? 1 : 2));
+    }
+
+    /**
      * @param  array<string, mixed>  $metrics
      * @param  array<string, mixed>  $zanini
      */
-    private function applyWallFinishMetrics(array $metrics, array $zanini): array
+    private function applyWallFinishMetrics(array $metrics, array $zanini, array $plan, float $cmPerUnit): array
     {
         $walls = is_array($metrics['walls'] ?? null) ? $metrics['walls'] : [];
         $boundaryIds = array_map('strval', is_array($metrics['boundary_wall_ids'] ?? null) ? $metrics['boundary_wall_ids'] : []);
         $boundaryMap = array_fill_keys($boundaryIds, true);
         $finishes = is_array($zanini['wallFinishes'] ?? null) ? $zanini['wallFinishes'] : [];
+        $floor = $this->resolveActiveFloor($plan);
 
         $drywall = 0.0;
         $insulation = 0.0;
@@ -297,17 +379,32 @@ class RoomAreaOpenPlan3DExtensions
                 }
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
-                $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
-                $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
+                $studLen = $this->wallStudLengthLf($wall);
+                $netSqFt = (float) ($wall['net_area_sqft_exact'] ?? $wall['net_area_sqft'] ?? 0.0);
+                $touchCount = $this->roomTouchCountForWall($wallId, $floor);
                 $drywall += $netSqFt;
                 $paintUnassigned++;
                 if ($isBoundary) {
                     $insulation += $netSqFt;
                 } else {
-                    $studs += $lengthLf;
+                    $studs += $studLen;
+                }
+                $runLf = isset($wall['finish_run_lf']) && is_numeric($wall['finish_run_lf'])
+                    ? (float) $wall['finish_run_lf']
+                    : $studLen;
+                if (! is_numeric($wall['finish_run_lf'] ?? null) && $isBoundary) {
+                    $runLf = max(0.0, $runLf - (float) ($wall['interior_butt_deduction_lf'] ?? 0.0));
+                }
+                if ($isBoundary) {
+                    $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
+                }
+                $sides = $this->resolveBaseboardSides([], $isBoundary, $touchCount);
+                if ($isBoundary) {
+                    $baseboard += $runLf * (float) $sides;
+                } else {
+                    $baseboard += $this->partitionBaseboardLf($wall, (int) $sides);
                 }
             }
-            $baseboard = (float) ($metrics['baseboard_lf'] ?? 0.0);
         } else {
             foreach ($walls as $wall) {
                 if (! is_array($wall)) {
@@ -315,18 +412,21 @@ class RoomAreaOpenPlan3DExtensions
                 }
                 $wallId = (string) ($wall['id'] ?? '');
                 $isBoundary = isset($boundaryMap[$wallId]);
-                $lengthLf = (float) ($wall['length_lf'] ?? 0.0);
-                $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
+                $runLf = $this->wallStudLengthLf($wall);
+                $studLen = $this->wallStudLengthLf($wall);
+                $netSqFt = (float) ($wall['net_area_sqft_exact'] ?? $wall['net_area_sqft'] ?? 0.0);
                 $flags = is_array($finishes[$wallId] ?? null) ? $finishes[$wallId] : [];
 
+                $touchCount = $this->roomTouchCountForWall($wallId, $floor);
+                $finishNetSqFt = $this->drywallFinishAreaSqFt($netSqFt, $flags, $isBoundary, $touchCount);
                 if ($this->flagEnabled($flags, 'drywall', true)) {
-                    $drywall += $netSqFt;
+                    $drywall += $finishNetSqFt;
                 }
                 if (array_key_exists('paint', $flags)) {
                     $paintSeen = true;
                     if ($this->flagEnabled($flags, 'paint', false)) {
                         $paintMarked++;
-                        $paint += $netSqFt;
+                        $paint += $finishNetSqFt;
                     } else {
                         $paintOff++;
                     }
@@ -337,14 +437,22 @@ class RoomAreaOpenPlan3DExtensions
                     $insulation += $netSqFt;
                 }
                 if ($this->flagEnabled($flags, 'studs', ! $isBoundary)) {
-                    $studs += $lengthLf;
+                    $studs += $studLen;
                 }
                 if ($this->flagEnabled($flags, 'baseboard', true)) {
-                    $sides = $isBoundary ? 1 : (int) ($flags['baseboardSides'] ?? 2);
-                    if (! $isBoundary) {
-                        $sides = max(1, min(2, $sides));
+                    $sides = $this->resolveBaseboardSides($flags, $isBoundary, $touchCount);
+                    if ($isBoundary) {
+                        $finishRun = $wall['finish_run_lf'] ?? null;
+                        if (is_numeric($finishRun)) {
+                            $runLf = (float) $finishRun;
+                        } else {
+                            $runLf = max(0.0, $runLf - (float) ($wall['interior_butt_deduction_lf'] ?? 0.0));
+                        }
+                        $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
+                        $baseboard += $runLf * (float) $sides;
+                    } else {
+                        $baseboard += $this->partitionBaseboardLf($wall, (int) $sides);
                     }
-                    $baseboard += $lengthLf * (float) $sides;
                 }
             }
         }
@@ -552,8 +660,101 @@ class RoomAreaOpenPlan3DExtensions
     }
 
     /**
-     * @param  array<string, mixed>  $flags
+     * @param  array<string, mixed>  $wall
      */
+    private function wallStudLengthLf(array $wall): float
+    {
+        if (array_key_exists('length_lf_exact', $wall)) {
+            return (float) $wall['length_lf_exact'];
+        }
+
+        return (float) ($wall['length_lf'] ?? 0.0);
+    }
+
+    /**
+     * @param  array<string, mixed>  $wall
+     */
+    private function partitionBaseboardLf(array $wall, int $sides): float
+    {
+        $studLen = $this->wallStudLengthLf($wall);
+        $partButt = (float) ($wall['interior_butt_deduction_lf'] ?? 0.0);
+        if ($sides <= 0) {
+            return 0.0;
+        }
+        if ($sides === 1) {
+            return max(0.0, $studLen - $partButt);
+        }
+
+        return max(0.0, $studLen * (float) $sides - $partButt);
+    }
+
+    /**
+     * @param  array<string, bool>  $boundaryMap
+     * @param  array<string, mixed>  $floor
+     */
+    /**
+     * @param  array<string, mixed>  $plan
+     * @return list<list<array<string, mixed>>>
+     */
+    private function openingLists(?array $floor, array $plan): array
+    {
+        $pick = function (string $key) use ($floor, $plan): array {
+            if (is_array($floor[$key] ?? null) && $floor[$key] !== []) {
+                return $floor[$key];
+            }
+            if (is_array($plan[$key] ?? null) && $plan[$key] !== []) {
+                return $plan[$key];
+            }
+            if (is_array($plan['floor'][$key] ?? null) && $plan['floor'][$key] !== []) {
+                return $plan['floor'][$key];
+            }
+
+            return [];
+        };
+
+        return [$pick('doors'), $pick('windows'), $pick('openings')];
+    }
+
+    /**
+     * @param  array<string, bool>  $boundaryMap
+     * @param  array<string, mixed>  $plan
+     */
+    private function boundaryOpeningDeductionLf(string $wallId, array $floor, array $boundaryMap, float $cmPerUnit, array $plan): float
+    {
+        if (! isset($boundaryMap[$wallId])) {
+            return 0.0;
+        }
+        $dedIn = 0.0;
+        $lists = $this->openingLists($floor !== [] ? $floor : null, $plan);
+        foreach ($lists as $idx => $list) {
+            if ($idx === 1) {
+                continue;
+            }
+            foreach ($list as $op) {
+                if (! is_array($op)) {
+                    continue;
+                }
+                $wid = (string) ($op['wallId'] ?? $op['wall_id'] ?? '');
+                if ($wid !== $wallId) {
+                    continue;
+                }
+                if ($idx === 2) {
+                    $type = strtolower((string) ($op['type'] ?? 'opening'));
+                    if ($type !== 'door' && $type !== 'opening') {
+                        continue;
+                    }
+                }
+                $wCm = isset($op['width']) ? (float) $op['width'] * $cmPerUnit : 0.0;
+                if (isset($op['width_in'])) {
+                    $wCm = (float) $op['width_in'] * 2.54;
+                }
+                $dedIn += max(0.0, $wCm / 2.54);
+            }
+        }
+
+        return $dedIn / 12.0;
+    }
+
     private function flagEnabled(array $flags, string $key, bool $default): bool
     {
         if (! array_key_exists($key, $flags)) {

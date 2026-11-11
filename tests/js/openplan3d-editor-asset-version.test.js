@@ -22,6 +22,25 @@ function localeShimContentVersion() {
   return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
 }
 
+function jsContentVersion(relPath) {
+  const data = fs.readFileSync(path.join(ROOT, relPath), 'utf8').replace(/\r\n/g, '\n');
+  return crypto.createHash('sha256').update(data).digest('hex').slice(0, 16);
+}
+
+function assertVersionedScriptSrc(html, basename, label) {
+  const expected = jsContentVersion(`public/js/${basename}`);
+  assert.doesNotMatch(
+    html,
+    new RegExp(`${basename.replace('.', '\\.')}(?!\\?v=)`),
+    `${label} must not load ${basename} without ?v=`
+  );
+  assert.match(
+    html,
+    new RegExp(`${basename.replace('.', '\\.')}\\?v=${expected}`),
+    `${label} ${basename} ?v= must match content hash (${expected})`
+  );
+}
+
 function assertVersionedBridgeSrc(html, label) {
   assert.doesNotMatch(
     html,
@@ -73,6 +92,10 @@ assertVersionedBridgeSrc(fs.readFileSync(INDEX, 'utf8'), 'editor index.html');
 assertVersionedBridgeSrc(fs.readFileSync(EMBED, 'utf8'), 'editor embed fixture');
 
 const indexHtml = fs.readFileSync(INDEX, 'utf8');
+assertVersionedScriptSrc(indexHtml, 'room-area-interior-geometry.js', 'editor index.html');
+assertVersionedScriptSrc(indexHtml, 'openplan3d-measurement-bridge.js', 'editor index.html');
+assertVersionedScriptSrc(indexHtml, 'openplan3d-zanini-extensions.js', 'editor index.html');
+assertVersionedScriptSrc(indexHtml, 'openplan3d-zanini-tools.js', 'editor index.html');
 const localeShimV = localeShimContentVersion();
 assert.match(
   indexHtml,

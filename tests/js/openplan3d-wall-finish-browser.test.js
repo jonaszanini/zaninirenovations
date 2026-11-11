@@ -163,6 +163,188 @@ async function main() {
 
     const shotsDir = path.join(ROOT, 'storage/app/qa-screenshots');
     fs.mkdirSync(shotsDir, { recursive: true });
+
+    const partitionPlan = (() => {
+      const cm = 30.48;
+      const t = 11.43;
+      const W = 20 * cm;
+      const H = 10 * cm;
+      const M = 10 * cm;
+      return {
+        id: 'p-rooms',
+        activeFloorId: 'f1',
+        floors: [
+          {
+            id: 'f1',
+            walls: [
+              { id: 'w1', start: { x: 0, y: 0 }, end: { x: W, y: 0 }, thickness: t, height: 243.84 },
+              { id: 'w2', start: { x: W, y: 0 }, end: { x: W, y: H }, thickness: t, height: 243.84 },
+              { id: 'w3', start: { x: W, y: H }, end: { x: 0, y: H }, thickness: t, height: 243.84 },
+              { id: 'w4', start: { x: 0, y: H }, end: { x: 0, y: 0 }, thickness: t, height: 243.84 },
+              { id: 'p1', start: { x: M, y: 0 }, end: { x: M, y: H }, thickness: t, height: 243.84 },
+            ],
+            rooms: [
+              { id: 'r-bed', name: 'Bedroom', walls: ['w4', 'w1', 'p1', 'w3'] },
+              { id: 'r-off', name: 'Office', walls: ['p1', 'w2', 'w3', 'w1'] },
+            ],
+          },
+        ],
+        zanini: { version: 1, zones: [], bulkheads: [], wallFinishes: {} },
+      };
+    })();
+
+    await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), partitionPlan);
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('p1');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['p1']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await page.waitForSelector('[data-finish-drywall-faces]', { timeout: 15000 });
+    const drywallPanel = await page.evaluate(() => {
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      const heading = host ? (host.querySelector('div')?.textContent || '') : '';
+      const sel = host ? host.querySelector('[data-finish-drywall-faces]') : null;
+      return {
+        heading,
+        hasDrywallFaces: !!sel,
+        options: sel ? [...sel.options].map((o) => o.textContent) : [],
+      };
+    });
+    assert.ok(drywallPanel.hasDrywallFaces, 'partition between two rooms must show Drywall faces control');
+    assert.ok(!/Wall finishes · p1/i.test(drywallPanel.heading), 'heading must not show raw wall id');
+    assert.ok(drywallPanel.options.some((o) => /Bedroom side/i.test(o)), 'drywall face options name adjacent room');
+
+    const finishHost = await page.$('#openplan3d-zanini-finish-host');
+    assert.ok(finishHost, 'finish host for drywall screenshot');
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    const tipViewport1280 = await page.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      if (!btn) return { ok: false };
+      btn.click();
+      const wrap = btn.closest('.admin-info-tip-wrap');
+      const bubble = wrap && wrap.querySelector('.admin-info-tip__bubble');
+      if (!bubble) return { ok: false };
+      const r = bubble.getBoundingClientRect();
+      const vw = window.innerWidth;
+      return {
+        ok: wrap.classList.contains('is-open') && r.left >= 10 && r.right <= vw - 10,
+        left: r.left,
+        right: r.right,
+        vw,
+      };
+    });
+    assert.ok(tipViewport1280.ok, '1280 drywall tip open must stay inside viewport');
+    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280-open.png') });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      if (btn) btn.click();
+    });
+    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png') });
+
+    const mobilePage = await browser.newPage();
+    mobilePage.setDefaultTimeout(60000);
+    await mobilePage.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    await mobilePage.goto(`http://127.0.0.1:${port}${VENDOR_PREFIX}/editor/index.html`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 120000,
+    });
+    await mobilePage.waitForSelector('canvas', { timeout: 120000 });
+  await mobilePage.waitForFunction(
+      () => window.__openPlan3D && window.OpenPlan3DZaniniTools && typeof window.OpenPlan3DZaniniTools.renderFinishPanel === 'function',
+      { timeout: 120000 }
+    );
+    await mobilePage.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), partitionPlan);
+    await mobilePage.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('p1');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['p1']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
+    await mobilePage.waitForSelector('[data-finish-drywall-tip]', { timeout: 15000 });
+    const bubbleClosed = await mobilePage.evaluate(() => {
+      const wrap = document.querySelector('[data-finish-drywall-tip-wrap]');
+      const bubble = wrap && wrap.querySelector('.admin-info-tip__bubble');
+      const btn = wrap && wrap.querySelector('[data-finish-drywall-tip]');
+      return {
+        wrapOpen: !!(wrap && wrap.classList.contains('is-open')),
+        hidden: bubble ? bubble.hidden : null,
+        expanded: btn ? btn.getAttribute('aria-expanded') : null,
+      };
+    });
+    assert.strictEqual(bubbleClosed.wrapOpen, false, 'drywall help bubble closed by default at 390');
+    assert.strictEqual(bubbleClosed.expanded, 'false');
+    assert.strictEqual(bubbleClosed.hidden, true, 'drywall bubble hidden by default');
+
+    const mobileFinishTap = await mobilePage.evaluate(() => {
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      const cb = host && host.querySelector('input[type="checkbox"]');
+      if (!cb) return { ok: false, reason: 'no checkbox' };
+      const r = cb.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const top = document.elementFromPoint(x, y);
+      return {
+        ok: !!(top && (top === cb || (host && host.contains(top)))),
+        w: r.width,
+        h: r.height,
+        viewportW: window.innerWidth,
+      };
+    });
+    assert.ok(mobileFinishTap.viewportW === 390, '390 drywall screenshot must use real 390px viewport');
+    assert.ok(mobileFinishTap.ok, 'Wall finishes panel must be above properties sheet at 390');
+    assert.ok(mobileFinishTap.w >= 44 && mobileFinishTap.h >= 44, 'finish checkboxes need >=44px tap targets at 390');
+    const tipGlyph = await mobilePage.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      const svg = btn && btn.querySelector('svg.openplan3d-finish-info-glyph');
+      const rect = svg && svg.getBoundingClientRect();
+      return { hasSvg: !!svg, w: rect ? rect.width : 0, h: rect ? rect.height : 0 };
+    });
+    assert.ok(tipGlyph.hasSvg && tipGlyph.w > 8 && tipGlyph.h > 8, 'drywall help icon must render SVG glyph at 390');
+    const mobileFinishHost = await mobilePage.$('#openplan3d-zanini-finish-host');
+    await mobileFinishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png') });
+    await mobilePage.close();
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    try {
+      fs.mkdirSync('/opt/cursor/artifacts', { recursive: true });
+      fs.copyFileSync(
+        path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png'),
+        '/opt/cursor/artifacts/room-area-wall-finishes-drywall-1280.png'
+      );
+      fs.copyFileSync(
+        path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png'),
+        '/opt/cursor/artifacts/room-area-wall-finishes-drywall-390.png'
+      );
+    } catch (e) { /* optional artifacts dir */ }
+
+    await page.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), wallPlan(true));
+    await page.evaluate(
+      async ({ storeChunk, vendorPrefix }) => {
+        const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
+        const sel = [...document.querySelectorAll('button')].find((b) =>
+          /Select mode \(V\)/i.test(b.getAttribute('title') || '')
+        );
+        if (sel) sel.click();
+        mod.X.set('pw0');
+        if (mod.bg && typeof mod.bg.set === 'function') mod.bg.set(new Set(['pw0']));
+        window.OpenPlan3DZaniniTools.renderFinishPanel();
+      },
+      { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
+    );
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await page.screenshot({ path: path.join(shotsDir, 'room-area-paint-ui-1280.png') });
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });

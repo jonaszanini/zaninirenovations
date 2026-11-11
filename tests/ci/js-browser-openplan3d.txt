@@ -1,10 +1,13 @@
 tests/js/openplan3d-kr-ortho-drag.test.js
 tests/js/openplan3d-browser.test.js
 tests/js/openplan3d-room-area-blade-browser.test.js
+tests/js/openplan3d-takeoffs-panel-browser.test.js
 tests/js/room-area-main-thread-responsive.test.js
 tests/js/openplan3d-editor-browser.test.js
 tests/js/openplan3d-editor-index-mount.test.js
 tests/js/openplan3d-room-canvas-fill-browser.test.js
 tests/js/openplan3d-cache-store-singleton-browser.test.js
+tests/js/openplan3d-room-interior-label-browser.test.js
 tests/js/openplan3d-wall-finish-browser.test.js
+tests/js/openplan3d-finish-chips-browser.test.js
 tests/js/openplan3d-zone-coords.test.js

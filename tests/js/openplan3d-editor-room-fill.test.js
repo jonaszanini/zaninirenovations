@@ -12,6 +12,8 @@ const hand0 = JSON.parse(
 console.log('openplan3d-editor-room-fill tests');
 
 assert.strictEqual(typeof bridge.syncEditorRoomBoundariesForCanvasFill, 'function');
+assert.strictEqual(bridge.cmPerUnitForPlan({ unit: 'cm', floors: [{ unit: 'cm' }] }), 1.0, 'cm plans keep 1.0 scale (coords already cm)');
+assert.strictEqual(bridge.cmPerUnitForPlan({ unit: 'ft' }), bridge.CM_PER_FOOT, 'ft plans scale to cm');
 
 function planWithAllWallsOnRoom(source) {
   const plan = JSON.parse(JSON.stringify(source));
@@ -54,7 +56,8 @@ assert.strictEqual(created.plan.floors[0].rooms[0].floorTexture, 'hardwood');
 
 const vendorStyle = planWithAllWallsOnRoom(hand0);
 const beforeMetrics = bridge.layoutMetrics(vendorStyle, 'r1', { wall_height_ft: 8.0 });
-assert.ok(beforeMetrics.area_sqft > 1300, 'takeoffs stay positive with vendor-style room.walls');
+assert.strictEqual(beforeMetrics.area_sqft, 1307.52, 'hand0 vendor-style room.walls yield interior floor area');
+assert.strictEqual(beforeMetrics.perimeter_lf, 158.79, 'hand0 clear perimeter');
 
 const synced = bridge.syncEditorRoomBoundariesForCanvasFill(vendorStyle);
 assert.strictEqual(synced.changed, false, 'must not rewrite saved room id/name/walls on load');
@@ -112,7 +115,8 @@ assert.strictEqual(splitSync.plan.floors[0].rooms.length, 2, 'must not collapse 
 const areas = splitSync.plan.floors[0].rooms.map((r) =>
   bridge.layoutMetrics(splitSync.plan, r.id, { wall_height_ft: 8.0 }).area_sqft
 );
-assert.ok(Math.abs(areas[0] - 800) < 2 && Math.abs(areas[1] - 800) < 2, 'each closed half ~800 sf');
+assert.strictEqual(areas[0], 777.64, 'first 40×40 half interior floor area');
+assert.strictEqual(areas[1], 777.64, 'second 40×40 half interior floor area');
 
 const syncedPerim = bridge.syncEditorRoomBoundariesForCanvasFill(perimeterOnly).plan;
 const openPlan = JSON.parse(JSON.stringify(syncedPerim));

@@ -35,6 +35,8 @@ tests/Unit/Services/Millwork/MillworkDimensionParserTest.php
 tests/Unit/Services/MillworkQuotationCalculatorTest.php
 tests/Unit/Services/MillworkSavedQuoteMainFixtureTest.php
 tests/Unit/Services/OpenPlan3DParityTest.php
+tests/Unit/Services/PolygonAreaServiceTest.php
+tests/Unit/Services/RoomAreaInteriorGeometryTest.php
 tests/Unit/Services/OpenPlan3DPlanValidatorTest.php
 tests/Unit/Services/PavingMarbleCalculatorTest.php
 tests/Unit/Services/QuotationWorkDescriptionFenceContextTest.php
@@ -47,6 +49,7 @@ tests/Unit/Services/RoomAreaClosingErrorTest.php
 tests/Unit/Services/RoomAreaFinishMathTest.php
 tests/Unit/Services/RoomAreaFormulaParserTest.php
 tests/Unit/Services/RoomAreaMeasurementParserTest.php
+tests/Unit/Services/RoomAreaOpenPlan3DExtensionsTest.php
 tests/Unit/Services/RoomAreaQuotePrefillTest.php
 tests/Unit/Services/RoomAreaQuoteQuantitiesTest.php
 tests/Unit/Services/RoomAreaSharedWallsTest.php

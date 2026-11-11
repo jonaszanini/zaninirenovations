@@ -145,6 +145,37 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(0.0, $out['excluded_area_sqft']);
     }
 
+    public function test_partition_drywall_one_face_side_a(): void
+    {
+        $metrics = [
+            'area_sqft' => 200.0,
+            'inside_area_sqft' => 200.0,
+            'ceiling_area_sqft' => 200.0,
+            'casing_lf' => 0.0,
+            'boundary_wall_ids' => ['w1', 'w2'],
+            'walls' => [
+                ['id' => 'w1', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w2', 'length_lf' => 10.0, 'net_area_sqft' => 80.0],
+                ['id' => 'w3', 'length_lf' => 8.0, 'net_area_sqft' => 128.0],
+            ],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => [
+                'wallFinishes' => [
+                    'w3' => ['drywallFaces' => 'a'],
+                ],
+            ],
+        ];
+
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
+
+        $this->assertSame(224.0, $out['finish_drywall_sqft']);
+        $this->assertSame(64.0, $this->extensions->drywallFinishAreaSqFt(128.0, ['drywallFaces' => 'a'], false));
+        $this->assertSame(80.0, $this->extensions->drywallFinishAreaSqFt(80.0, ['drywallFaces' => 'a'], true));
+    }
+
     public function test_explicit_partition_baseboard_counts_two_sides(): void
     {
         $metrics = [
@@ -161,6 +192,12 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $plan = [
             'format' => 'openplan3d',
             'units' => 'cm',
+            'floor' => [
+                'rooms' => [
+                    ['id' => 'r1', 'walls' => ['w1', 'w3']],
+                    ['id' => 'r2', 'walls' => ['w3']],
+                ],
+            ],
             'zanini' => [
                 'wallFinishes' => [
                     'w3' => ['baseboard' => true],
@@ -207,7 +244,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(160.0 + 128.0, $out['finish_drywall_sqft']);
         $this->assertSame(160.0, $out['finish_insulation_sqft']);
         $this->assertSame(8.0, $out['finish_stud_lf']);
-        $this->assertSame(20.0, $out['finish_baseboard_lf']);
+        $this->assertSame(36.0, $out['finish_baseboard_lf']);
         $this->assertSame(12.5, $out['finish_casing_lf']);
         $this->assertArrayNotHasKey('finish_paint_sqft', $out);
     }
@@ -460,7 +497,90 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(175.0, $out['excluded_area_sqft']);
     }
 
-    public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void
+    public function test_two_saved_rooms_floor_finishes_match_shell(): void
+    {
+        $ft = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $walls = [
+            ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $ft, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w2', 'start' => ['x' => 20 * $ft, 'y' => 0], 'end' => ['x' => 20 * $ft, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w3', 'start' => ['x' => 20 * $ft, 'y' => 10 * $ft], 'end' => ['x' => 0, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w4', 'start' => ['x' => 0, 'y' => 10 * $ft], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'p1', 'start' => ['x' => 10 * $ft, 'y' => 0], 'end' => ['x' => 10 * $ft, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => $walls,
+                'rooms' => [
+                    ['id' => 'ra', 'walls' => ['w1', 'p1', 'w4', 'w3']],
+                    ['id' => 'rb', 'walls' => ['w1', 'w2', 'w3', 'p1']],
+                ],
+            ],
+        ];
+        $bridge = app(OpenPlan3DMeasurementBridge::class);
+        $metrics = $bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $boundary = array_flip(array_map('strval', $metrics['boundary_wall_ids'] ?? []));
+        $finishes = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (! is_array($wall)) {
+                continue;
+            }
+            $wallId = (string) ($wall['id'] ?? '');
+            $isBoundary = isset($boundary[$wallId]);
+            $finishes[$wallId] = [
+                'drywall' => true,
+                'baseboard' => true,
+                'insulation' => $isBoundary,
+                'studs' => ! $isBoundary,
+            ];
+        }
+        $out = $this->extensions->applyToMetrics(
+            $metrics,
+            array_merge($plan, ['zanini' => ['wallFinishes' => $finishes]]),
+            [],
+            $ft
+        );
+
+        $this->assertSame(616.0, $out['finish_drywall_sqft']);
+        $this->assertSame(462.0, $out['finish_insulation_sqft']);
+        $this->assertSame(77.0, $out['finish_baseboard_lf']);
+    }
+
+    public function test_hand0_all_finishes_baseboard_and_drywall_pins(): void
+    {
+        $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
+        $hand0 = json_decode((string) file_get_contents($hand0Path), true);
+        $metrics = app(OpenPlan3DMeasurementBridge::class)->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]);
+        $finishes = [];
+        $boundary = array_flip(array_map('strval', $metrics['boundary_wall_ids'] ?? []));
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (! is_array($wall)) {
+                continue;
+            }
+            $wallId = (string) ($wall['id'] ?? '');
+            $isBoundary = isset($boundary[$wallId]);
+            $finishes[$wallId] = [
+                'drywall' => true,
+                'baseboard' => true,
+                'insulation' => $isBoundary,
+                'studs' => ! $isBoundary,
+            ];
+        }
+        $plan = array_merge($hand0, [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'zanini' => ['wallFinishes' => $finishes],
+        ]);
+        $out = $this->extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
+
+        $this->assertEqualsWithDelta(199.53, $out['finish_baseboard_lf'], 0.02);
+        $this->assertSame(1596.21, (float) $metrics['net_wall_area_sqft']);
+        $this->assertSame(1596.21, $out['finish_drywall_sqft']);
+        $this->assertSame($out['finish_drywall_sqft'], $out['net_wall_area_sqft']);
+    }
+
+    public function test_default_baseboard_per_wall_when_no_wall_finishes(): void
     {
         $metrics = [
             'area_sqft' => 200.0,
@@ -479,7 +599,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
 
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
 
-        $this->assertSame(171.99, $out['finish_baseboard_lf']);
+        $this->assertSame(220.32, $out['finish_baseboard_lf']);
     }
 
     /**

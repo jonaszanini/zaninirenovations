@@ -1111,7 +1111,7 @@
     var netWall = firstFiniteMetric(metrics, ['net_wall_area_sqft', 'wall_area_sqft', 'net_wall_sf'], 0);
     var ceiling = firstFiniteMetric(metrics, ['ceiling_area_sqft', 'ceiling_sf'], floor);
     var perimeter = firstFiniteMetric(metrics, ['perimeter_lf', 'perimeter'], 0);
-    var baseboard = firstFiniteMetric(metrics, ['baseboard_lf', 'baseboard'], perimeter);
+    var baseboard = firstFiniteMetric(metrics, ['finish_baseboard_lf', 'baseboard_lf', 'baseboard'], perimeter);
     var casing = firstFiniteMetric(metrics, ['casing_lf', 'casing'], 0);
     var doors = firstFiniteMetric(metrics, ['door_count', 'doors'], 0);
     var windows = firstFiniteMetric(metrics, ['window_count', 'windows'], 0);

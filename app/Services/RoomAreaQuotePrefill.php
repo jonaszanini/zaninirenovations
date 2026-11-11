@@ -61,7 +61,11 @@ class RoomAreaQuotePrefill
     {
         $area = round(max(0.0, (float) ($option['area_sqft'] ?? 0)), 2);
         $perimeter = round(max(0.0, (float) ($option['perimeter_lf'] ?? 0)), 2);
-        $baseboard = round(max(0.0, (float) ($option['baseboard_lf'] ?? $perimeter)), 2);
+        $baseboard = round(max(0.0, (float) (
+            ($option['finish_baseboard_lf'] ?? 0) > 0
+                ? $option['finish_baseboard_lf']
+                : ($option['baseboard_lf'] ?? $perimeter)
+        )), 2);
         $netWall = round(max(0.0, (float) ($option['net_wall_area_sqft'] ?? $option['wall_area_sqft'] ?? 0)), 2);
         $ceilingArea = round(max(0.0, (float) ($option['ceiling_area_sqft'] ?? $area)), 2);
         $waste = round(max(0.0, (float) ($option['flooring_waste_percent'] ?? RoomAreaFinishMath::DEFAULT_WASTE_PERCENT)), 2);

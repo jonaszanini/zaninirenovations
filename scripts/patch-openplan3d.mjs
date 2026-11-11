@@ -24,7 +24,7 @@ const OUT = path.join(ROOT, 'public/vendor', OUT_SLUG);
 const MANIFEST = path.join(__dirname, 'openplan3d-h1.json');
 const EDITOR_INDEX = path.join(OUT, 'editor/index.html');
 /** Active immutable graph suffix (must not reuse previously served -h3.js bytes for patches). */
-const IMMUTABLE_GRAPH_SUFFIX = 'h4';
+const IMMUTABLE_GRAPH_SUFFIX = 'h5';
 const PATCHED_STORE_CHUNK_BASENAME = `1VjVcrjm-${IMMUTABLE_GRAPH_SUFFIX}.js`;
 const PATCHED_EDITOR_CHUNK_BASENAME = `CgAQI-i0-${IMMUTABLE_GRAPH_SUFFIX}.js`;
 const LEGACY_IMMUTABLE_SUFFIX = 'h3';
@@ -298,6 +298,90 @@ function patchStoreChunk(source) {
     process.exit(1);
   }
 
+  const thickOld = 'thickness:15,height:280';
+  const thickNew = 'thickness:11.43,height:280';
+  const thickCount = countMatches(s, thickOld);
+  if (thickCount > 0) {
+    s = replaceAllExpected(s, thickOld, thickNew, 'store chunk: default new wall thickness 4.5 in', thickCount);
+  } else if (!s.includes(thickNew)) {
+    console.error('patch-openplan3d: store chunk: new wall thickness pattern not found');
+    process.exit(1);
+  }
+
+  const areaShoelaceOld =
+    'let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniRoomUse={...__zaniniRoom,area:Math.round(Math.abs(__zaniniPt)/100)/100,floorTexture:__zaniniRoom.floorTexture||"hardwood"};';
+  const areaInteriorNew =
+    'let __zaniniArea=0;if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt==="function"){const __zaniniWalls={};for(const __zw of e.walls||[]){if(__zw&&__zw.id)__zaniniWalls[String(__zw.id)]=__zw}const __zaniniSqFt=window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt(e,__zaniniPoly,__zaniniRoom.boundary_wall_ids||__zaniniRoom.walls||[],__zaniniWalls);__zaniniArea=(Math.round(__zaniniSqFt*100)/100)/10.7639}else{let __zaniniPt=0;for(let __i=0;__i<__zaniniPoly.length;__i++){const __o=(__i+1)%__zaniniPoly.length;__zaniniPt+=__zaniniPoly[__i].x*__zaniniPoly[__o].y-__zaniniPoly[__o].x*__zaniniPoly[__i].y}__zaniniPt/=2;__zaniniArea=Math.round(Math.abs(__zaniniPt)/100)/100}__zaniniRoomUse={...__zaniniRoom,area:__zaniniArea,floorTexture:__zaniniRoom.floorTexture||"hardwood"};';
+  if (s.includes(areaShoelaceOld)) {
+    s = replaceExpected(s, areaShoelaceOld, areaInteriorNew, 'store chunk: va() interior room label area', 1);
+  } else if (!s.includes('interiorRoomLabelAreaSqFt')) {
+    console.error('patch-openplan3d: store chunk: va() interior area pattern not found');
+    process.exit(1);
+  }
+  const areaM2RoundVaOld =
+    '__zaniniArea=Math.round((__zaniniSqFt/10.7639)*100)/100}else{';
+  const areaM2RoundVaNew =
+    '__zaniniArea=(Math.round(__zaniniSqFt*100)/100)/10.7639}else{';
+  if (s.includes(areaM2RoundVaOld)) {
+    s = replaceExpected(s, areaM2RoundVaOld, areaM2RoundVaNew, 'store chunk: va() room.area m² without round-trip', 1);
+  }
+
+  const ooReturnAreaOld =
+    'return s.map((h,u)=>({...h,area:Math.round((Math.abs(pt(r[u]))-d[u].reduce((f,g)=>f+Math.abs(pt(g)),0))/100)/100}))}function Sa(e,t=[]){return Ro(e,t,vt(e.walls))}';
+  const ooReturnAreaNew =
+    'return s.map((h,u)=>{let __area=Math.round((Math.abs(pt(r[u]))-d[u].reduce((f,g)=>f+Math.abs(pt(g)),0))/100)/100;if(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt==="function"&&floor){const __walls={};for(const __w of floor.walls||[]){if(__w&&__w.id)__walls[String(__w.id)]=__w}const __sq=window.OpenPlan3DMeasurementBridge.interiorRoomLabelAreaSqFt(floor,r[u],h.walls||[],__walls);__area=(Math.round(__sq*100)/100)/10.7639}return{...h,area:__area}})}function Sa(e,t=[]){return Ro(e,t,vt(e.walls))}';
+  if (s.includes(ooReturnAreaOld)) {
+    s = replaceExpected(s, ooReturnAreaOld, ooReturnAreaNew, 'store chunk: Oo() interior room label area', 1);
+  } else if (!s.includes('interiorRoomLabelAreaSqFt(floor,r[u]')) {
+    console.error('patch-openplan3d: store chunk: Oo() area pattern not found');
+    process.exit(1);
+  }
+  const areaM2RoundOoOld = '__area=Math.round((__sq/10.7639)*100)/100}return{...h,area:__area}}';
+  const areaM2RoundOoNew = '__area=(Math.round(__sq*100)/100)/10.7639}return{...h,area:__area}}';
+  if (s.includes(areaM2RoundOoOld)) {
+    s = replaceExpected(s, areaM2RoundOoOld, areaM2RoundOoNew, 'store chunk: Oo() room.area m² without round-trip', 1);
+  }
+
+  const ooCallOld = '(e.walls.length<2?[]:Oo(n))';
+  const ooCallNew = '(e.walls.length<2?[]:Oo(n,e))';
+  if (s.includes(ooCallOld)) {
+    s = replaceExpected(s, ooCallOld, ooCallNew, 'store chunk: Ro() pass floor into Oo()', 1);
+  }
+
+  const ooSigOld = 'function Oo(e){const t=[],n=[];';
+  const ooSigNew = 'function Oo(e,floor){const t=[],n=[];';
+  if (s.includes(ooSigOld)) {
+    s = replaceExpected(s, ooSigOld, ooSigNew, 'store chunk: Oo(e,floor) floor arg', 1);
+  }
+
+  const roomLabelOverlayOld =
+    'const y=p.measureText(`${u.name} (${Ao(u.area,t.units??"metric")})`);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
+  const roomLabelOverlayNew =
+    'const __zaniniLbl=(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?(`${u.name} (${window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(u,f,d[h],e,{units:e.units||e.unit||t.units||"metric"})})`):`${u.name} (${Ao(u.area,t.units??"metric")})`);const y=p.measureText(__zaniniLbl);o(g.x-(y.actualBoundingBoxLeft??y.width/2)/b,g.y-(y.actualBoundingBoxAscent??m)/b),o(g.x+(y.actualBoundingBoxRight??y.width/2)/b,g.y+(y.actualBoundingBoxDescent??m)/b)}}finally{t.context.restore()}';
+  if (s.includes(roomLabelOverlayOld)) {
+    s = replaceExpected(s, roomLabelOverlayOld, roomLabelOverlayNew, 'store chunk: room label overlay draw + interior area', 1);
+  } else if (!s.includes('__zaniniLbl')) {
+    console.error('patch-openplan3d: store chunk: room label overlay pattern not found');
+    process.exit(1);
+  }
+
+  const planAreaLabelOld = 'l.fillText(`${f.name} (${Ao(f.area,s.units)})`,T.x,T.y)';
+  const planAreaLabelNew =
+    'l.fillText(`${f.name} (${typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(f,g,h[u],t,s):Ao(f.area,s.units)})`,T.x,T.y)';
+  if (s.includes(planAreaLabelOld)) {
+    s = replaceExpected(s, planAreaLabelOld, planAreaLabelNew, 'store chunk: on-plan interior area label', 1);
+  } else if (!s.includes('formatOnPlanRoomArea')) {
+    console.error('patch-openplan3d: store chunk: on-plan area label pattern not found');
+    process.exit(1);
+  }
+
+  const aoImperialOld = 'function Ao(e,t){return t==="imperial"?`${(e*10.7639).toFixed(1)} ft²`:`${e.toFixed(1)} m²`}';
+  const aoImperialNew =
+    'function Ao(e,t){return t==="imperial"?`${(Math.round(e*10.7639*100)/100).toFixed(2)} ft²`:`${(Math.round(e*100)/100).toFixed(2)} m²`}';
+  if (s.includes(aoImperialOld)) {
+    s = replaceExpected(s, aoImperialOld, aoImperialNew, 'store chunk: Ao() area uses 2 dp', 1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
@@ -354,6 +438,26 @@ function patchEditorCanvasChunk(source) {
     process.exit(1);
   }
 
+  const roomPropsAreaOld = '()=>Go(t(I).area,t(p).units)';
+  const roomPropsAreaNew =
+    '()=>(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(t(I),t(I).polygon,t(I).holes||[],t(Ce),t(p)):Go(t(I).area,t(p).units))';
+  if (s.includes(roomPropsAreaOld)) {
+    s = replaceExpected(s, roomPropsAreaOld, roomPropsAreaNew, 'editor chunk: room properties area matches on-plan label', 1);
+  } else if (!s.includes('formatOnPlanRoomArea(t(I),t(I).polygon')) {
+    console.error('patch-openplan3d: editor chunk: room properties area pattern not found');
+    process.exit(1);
+  }
+
+  const canvasStatusAreaOld = '()=>Go(t(ir).reduce((xt,Ut)=>xt+Ut.area,0),o().units)';
+  const canvasStatusAreaNew =
+    '()=>(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanCanvasStatusArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanCanvasStatusArea(t(ir),t(bt),o(),De,_r):Go(t(ir).reduce((xt,Ut)=>xt+Ut.area,0),o().units))';
+  if (s.includes(canvasStatusAreaOld)) {
+    s = replaceExpected(s, canvasStatusAreaOld, canvasStatusAreaNew, 'editor chunk: canvas status bar interior area', 1);
+  } else if (!s.includes('formatOnPlanCanvasStatusArea(t(ir),t(bt)')) {
+    console.error('patch-openplan3d: editor chunk: canvas status bar area pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,
@@ -374,23 +478,42 @@ function fileContentVersion16(absPath) {
 function patchHostedEditorIndexBoot() {
   let html = fs.readFileSync(EDITOR_INDEX, 'utf8');
   const localeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-hosted-locale.js'));
+  const interiorV = fileContentVersion16(path.join(ROOT, 'public/js/room-area-interior-geometry.js'));
   const measureV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-measurement-bridge.js'));
   const bridgeV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-editor-bridge.js'));
   const extV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-extensions.js'));
   const toolsV = fileContentVersion16(path.join(ROOT, 'public/js/openplan3d-zanini-tools.js'));
+  const infoTipV = fileContentVersion16(path.join(ROOT, 'public/js/admin-info-tip.js'));
 
   html = html.replace(
     /openplan3d-editor-bridge\.js\?v=[A-Za-z0-9]+/,
     `openplan3d-editor-bridge.js?v=${bridgeV}`
   );
 
+  const interiorTag = `<script src="/js/room-area-interior-geometry.js?v=${interiorV}"></script>`;
   const measureTag = `<script src="/js/openplan3d-measurement-bridge.js?v=${measureV}"></script>`;
-  if (!html.includes('openplan3d-measurement-bridge.js')) {
+  const bridgeTag = `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`;
+  const hostedBoot = `${interiorTag}\n\t\t${measureTag}\n\t\t${bridgeTag}`;
+
+  if (html.includes(measureTag.split('?')[0]) && html.includes(interiorTag.split('?')[0])) {
     html = html.replace(
-      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
-      `${measureTag}\n\t\t<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`
+      new RegExp(
+        `${interiorTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${measureTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`
+      ),
+      hostedBoot
     );
+    html = html.replace(
+      new RegExp(
+        `${measureTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${interiorTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`
+      ),
+      hostedBoot
+    );
+    html = html.replace(/room-area-interior-geometry\.js\?v=[A-Za-z0-9]+/, `room-area-interior-geometry.js?v=${interiorV}`);
+    html = html.replace(/openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/, `openplan3d-measurement-bridge.js?v=${measureV}`);
+  } else if (!html.includes('room-area-interior-geometry.js')) {
+    html = html.replace(bridgeTag, hostedBoot);
   } else {
+    html = html.replace(/room-area-interior-geometry\.js\?v=[A-Za-z0-9]+/, `room-area-interior-geometry.js?v=${interiorV}`);
     html = html.replace(/openplan3d-measurement-bridge\.js\?v=[A-Za-z0-9]+/, `openplan3d-measurement-bridge.js?v=${measureV}`);
   }
 
@@ -404,13 +527,30 @@ function patchHostedEditorIndexBoot() {
     html = html.replace(/openplan3d-zanini-extensions\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-extensions.js?v=${extV}`);
   }
 
+  const infoTipTag = `<script src="/js/admin-info-tip.js?v=${infoTipV}"></script>`;
   const toolsTag = `<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`;
   if (!html.includes('openplan3d-zanini-tools.js')) {
     html = html.replace(
       `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>`,
-      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>\n\t\t${toolsTag}`
+      `<script src="/js/openplan3d-editor-bridge.js?v=${bridgeV}"></script>\n\t\t${infoTipTag}\n\t\t${toolsTag}`
     );
   } else {
+    if (!html.includes('admin-info-tip.js')) {
+      html = html.replace(toolsTag.split('?')[0], `${infoTipTag}\n\t\t${toolsTag.split('?')[0]}`);
+      html = html.replace(
+        new RegExp(`<script src="/js/openplan3d-zanini-tools\\.js\\?v=[A-Za-z0-9]+"></script>`),
+        `${infoTipTag}\n\t\t<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`
+      );
+    }
+    html = html.replace(/<script src="\/js\/admin-info-tip\.js\?v=[A-Za-z0-9]+"><\/script>\s*/g, '');
+    if (!html.includes('admin-info-tip.js')) {
+      html = html.replace(
+        new RegExp(`<script src="/js/openplan3d-zanini-tools\\.js\\?v=[A-Za-z0-9]+"></script>`),
+        `${infoTipTag}\n\t\t<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`
+      );
+    } else {
+      html = html.replace(/admin-info-tip\.js\?v=[A-Za-z0-9]+/, `admin-info-tip.js?v=${infoTipV}`);
+    }
     html = html.replace(/openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-tools.js?v=${toolsV}`);
   }
 
@@ -432,6 +572,8 @@ function patchHostedEditorIndexBoot() {
       'if (settingsStore) {\r\n\t\t\t\t\t\t\tbridge.installHostedSnapGrid(settingsStore);\r\n\t\t\t\t\t\t\tif (typeof bridge.installHostedWallMeasureSettings === \'function\') {\r\n\t\t\t\t\t\t\t\tbridge.installHostedWallMeasureSettings(settingsStore);\r\n\t\t\t\t\t\t\t}\r\n\t\t\t\t\t\t}'
     );
   }
+  const bridgeEsc = bridgeTag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  html = html.replace(new RegExp(`(?:${bridgeEsc}\\s*){2,}`, 'g'), `${bridgeTag}\n\t\t`);
   fs.writeFileSync(EDITOR_INDEX, html);
 
   const embedPath = path.join(ROOT, 'tests/js/fixtures/openplan3d-editor-embed.html');
@@ -558,6 +700,7 @@ function main() {
   restoreLegacyImmutableGraphFromMain();
 
   rewriteHtmlEntryChunkSlugs(OUT, '-h2.js', `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
+  rewriteHtmlEntryChunkSlugs(OUT, '-h4.js', `-${IMMUTABLE_GRAPH_SUFFIX}.js`);
 
   patchHostedEditorIndexBoot();
   syncEditorIndexStoreImport(storeChunk);

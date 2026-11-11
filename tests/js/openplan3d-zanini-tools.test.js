@@ -19,6 +19,8 @@ global.document = {
 };
 
 const tools = require('../../public/js/openplan3d-zanini-tools.js');
+const bridge = require('../../public/js/openplan3d-measurement-bridge.js');
+const hand0 = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '../fixtures/openplan3d-hand0-drawn-plan.json'), 'utf8'));
 
 console.log('openplan3d-zanini-tools tests');
 
@@ -179,10 +181,11 @@ global.window.__openPlan3D = {
         walls: [
           { id: 'inner1', start: { x: 0, y: 0 }, end: { x: 10, y: 0 } },
           { id: 'mtn32xy9', start: { x: 0, y: 0 }, end: { x: 20, y: 0 } },
+          { id: 'partA', start: { x: 10, y: 0 }, end: { x: 10, y: 8 } },
         ],
         rooms: [
-          { id: 'r-living', walls: ['inner1'] },
-          { id: 'r-basement', boundary_wall_ids: ['mtn32xy9'], walls: ['mtn32xy9'] },
+          { id: 'r-living', walls: ['inner1', 'partA'] },
+          { id: 'r-basement', boundary_wall_ids: ['mtn32xy9'], walls: ['mtn32xy9', 'partA'] },
         ],
       }],
     };
@@ -190,16 +193,44 @@ global.window.__openPlan3D = {
   setProject: function () {},
 };
 assert.strictEqual(tools.wallIsBoundary('mtn32xy9'), true, 'perimeter wall on non-first room must be boundary');
-assert.strictEqual(tools.wallIsBoundary('inner1'), true, 'room.walls list still marks boundary membership');
+assert.strictEqual(tools.wallIsBoundary('inner1'), false, 'interior segment on shared edge is not an exterior boundary wall');
 assert.strictEqual(tools.wallIsBoundary('unknown'), false, 'interior-only id is not boundary');
+(function () {
+  var boundaryIds = bridge.floorBoundaryWallIds(hand0.floor, hand0);
+  var handFloor = {
+    id: 'f1',
+    walls: hand0.floor.walls,
+    rooms: [{ id: 'r-detected', boundary_wall_ids: boundaryIds }],
+  };
+  var prevPlan = global.window.__openPlan3D;
+  global.window.__openPlan3D = {
+    getProject: function () {
+      return { activeFloorId: 'f1', floors: [handFloor], unit: hand0.unit, units: hand0.units };
+    },
+    setProject: function () {},
+  };
+  try {
+    assert.strictEqual(tools.wallIsBoundary('memtgvve'), true, 'memtgvve is exterior on detected hand0 room');
+    assert.strictEqual(
+      tools.friendlyWallFinishHeading(['memtgvve'], handFloor),
+      'Wall finishes · exterior',
+      'memtgvve finish panel heading must say exterior not partition'
+    );
+  } finally {
+    global.window.__openPlan3D = prevPlan;
+  }
+})();
 assert.strictEqual(tools.finishDefaultsForWall('mtn32xy9').studs, false, 'boundary default studs off');
 assert.strictEqual(tools.finishDefaultsForWall('unknown').studs, true, 'partition default studs on');
 
+var partitionFloor = global.window.__openPlan3D.getProject().floors[0];
 assert.deepStrictEqual(
-  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA']),
+  tools.wallsEligibleForBaseboardSidesControl(['mtn32xy9', 'inner1', 'partA'], partitionFloor),
   ['partA'],
-  'perimeter walls excluded from baseboard sides control'
+  'only interior partitions (2+ rooms) get sides control'
 );
+assert.ok(tools.wallIsInteriorPartition('partA', partitionFloor), 'partition between two rooms');
+assert.strictEqual(tools.wallIsInteriorPartition('inner1', partitionFloor), false, 'single-room wall is not a partition');
 assert.strictEqual(
   tools.readBaseboardSidesForWall({ mtn32xy9: { baseboardSides: 2 } }, 'mtn32xy9'),
   1,
