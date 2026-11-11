@@ -3,6 +3,8 @@
 .dash-page {
   max-width: 1400px;
   margin: 0 auto;
+  min-width: 0;
+  overflow-x: clip;
 }
 
 .dash-toolbar {
@@ -21,8 +23,11 @@
 }
 
 .dash-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 1.05rem;
-  color: var(--admin-heading);
+  color: var(--admin-primary);
 }
 
 .dash-toolbar-actions {
@@ -33,12 +38,23 @@
 }
 
 .dash-block-title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: var(--admin-muted);
+  color: var(--admin-primary);
   margin: 0 0 0.5rem;
+}
+
+.dash-title-icon {
+  color: inherit;
+  font-size: 0.95em;
+  width: 1.15em;
+  text-align: center;
+  flex-shrink: 0;
 }
 
 .dash-grid {
@@ -75,17 +91,58 @@
   flex-direction: column;
   justify-content: flex-start;
   gap: 0.3rem;
+  padding: 0.9rem 0.7rem;
 }
 
 .dash-card--stat .dash-stat-label {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--admin-muted);
+  letter-spacing: 0.02em;
+  color: var(--admin-primary);
   display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  justify-content: flex-start;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.dash-card--stat .dash-stat-label .dash-title-icon {
+  flex: 0 0 auto;
+  width: 1em;
+  font-size: 0.9em;
+}
+
+.dash-stat-label__copy {
+  flex: 0 1 auto;
+  min-width: 0;
+  display: block;
+  max-width: 100%;
+}
+
+.admin-content .dash-card--stat .dash-stat-label > .admin-info-tip-wrap,
+.admin-content .dash-stat-label__copy > .admin-info-tip-wrap {
+  display: inline-flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: center;
+  position: relative;
+  vertical-align: middle;
+  flex: 0 0 12px;
+  width: 12px;
+  min-width: 12px;
+  max-width: 12px;
+  height: 12px;
+  min-height: 12px;
+  overflow: visible;
+  margin-left: 2px;
+}
+
+/* 44px hit target, laid out as 12px so it stays on the title row. */
+.admin-content .dash-card--stat .dash-stat-label .admin-info-tip-wrap > .admin-info-tip {
+  width: 44px;
+  height: 44px;
+  margin: -16px;
 }
 
 .dash-card--stat .dash-stat-value {
@@ -116,7 +173,7 @@
 .dash-section-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--admin-text);
+  color: var(--admin-primary);
   margin: 0 0 0.75rem;
   display: flex;
   align-items: center;
@@ -226,7 +283,7 @@
 
 .dash-panel--attention .dash-link,
 .dash-panel--recent-activity .dash-link,
-.dash-chase-list .dash-link {
+.dash-compact-list .dash-link {
   color: var(--admin-primary);
   font-weight: 600;
   text-decoration: none;
@@ -236,56 +293,141 @@
 
 .dash-panel--attention .dash-link:hover,
 .dash-panel--recent-activity .dash-link:hover,
-.dash-chase-list .dash-link:hover {
+.dash-compact-list .dash-link:hover {
   color: var(--admin-primary-hover);
   border-bottom-color: var(--admin-primary-ring);
 }
 
 .dash-panel--attention .dash-link:visited,
 .dash-panel--recent-activity .dash-link:visited,
-.dash-chase-list .dash-link:visited {
+.dash-compact-list .dash-link:visited {
   color: var(--admin-primary);
 }
 
 .dash-panel--attention .dash-link:focus-visible,
 .dash-panel--recent-activity .dash-link:focus-visible,
-.dash-chase-list .dash-link:focus-visible {
+.dash-compact-list .dash-link:focus-visible {
   outline: 2px solid var(--admin-primary-ring);
   outline-offset: 2px;
   border-radius: 2px;
 }
 
-.dash-attention-list,
-.dash-chase-list {
+.dash-compact-list {
+  list-style: none;
   margin: 0;
-  padding-left: 1.1rem;
-  font-size: 0.9rem;
+  padding: 0;
+  min-width: 0;
 }
 
-.dash-attention-list--compact {
-  font-size: 0.88rem;
+.dash-compact-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--admin-border);
 }
 
-.dash-attention-list li,
-.dash-chase-list li {
-  margin-bottom: 0.5rem;
+.dash-compact-row:first-child {
+  padding-top: 0;
 }
 
-.dash-attention-list li:last-child,
-.dash-chase-list li:last-child {
-  margin-bottom: 0;
+.dash-compact-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
-.dash-attention-meta {
-  color: var(--admin-text);
-  font-weight: 400;
+.dash-compact-row__icon {
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  font-size: 0.78rem;
+  margin-top: 0.05rem;
+}
+
+.dash-compact-row__icon--alert {
+  background: var(--admin-danger-soft);
+  color: var(--admin-danger);
+}
+
+.dash-compact-row__body {
+  flex: 1;
+  min-width: 0;
+}
+
+.dash-compact-row__top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  min-width: 0;
+}
+
+.dash-compact-row__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dash-compact-row__amt {
+  flex-shrink: 0;
+  font-weight: 700;
+  color: var(--admin-heading);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin-left: auto;
+  text-align: right;
+}
+
+.dash-compact-row__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  margin-top: 0.2rem;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dash-compact-row__client {
+  margin-left: auto;
+  text-align: right;
+  color: var(--admin-muted);
+  font-weight: 500;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.dash-row-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 0.08rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1.35;
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary);
+  overflow-wrap: anywhere;
 }
 
 .dash-attention-subheading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.9rem;
   margin: 1rem 0 0.5rem;
   font-weight: 700;
-  color: var(--admin-text);
+  color: var(--admin-primary);
 }
 
 .dash-empty {
@@ -632,6 +774,15 @@
 }
 
 @media (max-width: 700px) {
+  .dash-compact-row__top {
+    flex-wrap: wrap;
+  }
+
+  .dash-compact-row__amt {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
   .dash-table--stack thead {
     position: absolute;
     width: 1px;

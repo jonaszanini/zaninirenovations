@@ -208,9 +208,13 @@ jobs:
               - 'resources/views/admin/layouts/**'
               - 'resources/views/admin/partials/**'
               - 'resources/views/admin/clients/**'
+              - 'resources/views/admin/dashboard/**'
               - 'resources/views/components/admin/info-tip.blade.php'
               - 'tests/js/admin-*'
               - 'tests/js/**/*admin*browser*'
+              - 'tests/Feature/Admin/Dashboard*.php'
+              - 'tests/Feature/Admin/dashboard-*.js'
+              - 'tests/Unit/Views/AdminDashboard*.php'
             browser_openplan3d:
               - 'public/js/openplan3d-**'
               - 'public/js/room-area/**'

@@ -358,12 +358,15 @@ const cases = [
     },
   },
   {
-    name: 'admin dashboard blade fail-open browser',
-    paths: ['resources/views/admin/dashboard/index.blade.php'],
+    name: 'admin dashboard layout browser',
+    paths: ['resources/views/admin/dashboard/index.blade.php', 'public/css/admin-dashboard.css'],
     expect: {
       run_browser: 'true',
-      run_browser_openplan3d: 'true',
+      run_browser_admin: 'true',
+      run_browser_openplan3d: 'false',
       run_php_unit: 'true',
+      run_js_unit: 'true',
+      run_unit_js: 'true',
       global_test_deps: 'false',
     },
   },
