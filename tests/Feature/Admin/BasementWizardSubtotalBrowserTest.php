@@ -183,21 +183,12 @@ class BasementWizardSubtotalBrowserTest extends IntegrationTestCase
         $hand = $this->handComputedSectionLiterals($proposed);
 
         return [
-<<<<<<< HEAD
             'wall_sf' => 501.52,
             'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 501.52),
             'ceiling_sf' => 229.61,
             'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 229.61),
-            'painting_section_pre_hst' => self::LITERAL_PAINTING_AFTER_IMPORT_PRE_HST,
-            'flooring_section_pre_hst' => self::LITERAL_FLOORING_AT_800_PRE_HST,
-=======
-            'wall_sf' => 512.0,
-            'drywall_wall_sf' => (float) ($proposed['drywall_wall_sf'] ?? 512.0),
-            'ceiling_sf' => 240.0,
-            'paint_ceiling_sf' => (float) ($proposed['paint_ceiling_sf'] ?? 240.0),
             'painting_section_pre_hst' => $hand['painting_section_pre_hst'],
             'flooring_section_pre_hst' => $hand['flooring_section_pre_hst'],
->>>>>>> origin/main
         ];
     }
 
