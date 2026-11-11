@@ -349,6 +349,10 @@ class BlogPostsIndexLayoutTest extends IntegrationTestCase
         );
         $this->assertStringContainsString("e.key === 'Escape'", $js);
         $this->assertStringContainsString('returnFocus && focusInside', $js);
+        $this->assertMatchesRegularExpression(
+            "/addEventListener\\('click',[\\s\\S]{0,900},\\s*true\\)/",
+            $js
+        );
     }
 
     public function test_published_badge_and_dark_tabs_meet_aa_contrast_tokens(): void
