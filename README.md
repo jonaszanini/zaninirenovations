@@ -89,6 +89,17 @@ A Gmail inbox watcher can capture Interac notifications without logging in. Noti
 
 The API never marks an invoice paid. Full contract: [docs/ETRANSFER_API.md](docs/ETRANSFER_API.md).
 
+## CI
+
+Pull request pushes run a **path-filtered** Tests workflow (PHP unit, MySQL feature lists, JS, and browser screenshot jobs only when those areas changed). Docs/`lang`/Markdown-only PRs skip the heavy jobs.
+
+Before merge, run the **full** suite once on the PR head so every `tests/ci` list runs (including main-only MySQL tests such as `RoomAreaOpenPlan3DQuotationTest`):
+
+1. Add the `full-ci` label to the PR, or
+2. Run **Actions → Full CI → Run workflow** and pass the PR number.
+
+That posts a `full-ci` check on the exact head SHA (re-run after further pushes). Details: [docs/ci.md](docs/ci.md).
+
 ## License
 
 MIT

@@ -15,7 +15,7 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertMatchesRegularExpression(
-            '/concurrency:\s*\n\s+group:\s+tests-\$\{\{\s*github\.workflow\s*\}\}-\$\{\{\s*github\.ref\s*\}\}\s*\n\s+cancel-in-progress:\s+\$\{\{\s*github\.ref\s*!=\s*[\'"]refs\/heads\/main[\'"]\s*\}\}/m',
+            '/concurrency:\s*\n\s+group:\s+tests-\$\{\{\s*github\.workflow\s*\}\}-\$\{\{\s*github\.ref\s*\}\}-\$\{\{\s*inputs\.full_suite\s*&&\s*[\'"]full[\'"]\s*\|\|\s*[\'"]scoped[\'"]\s*\}\}\s*\n\s+cancel-in-progress:\s+\$\{\{\s*github\.ref\s*!=\s*[\'"]refs\/heads\/main[\'"]\s*\}\}/m',
             $yaml
         );
         $this->assertStringContainsString('dorny/paths-filter@v3', $yaml);
@@ -49,6 +49,14 @@ class DeployDependsOnTestsTest extends TestCase
             $yaml
         );
         $this->assertStringContainsString('workflow_dispatch:', $yaml);
+        $this->assertStringContainsString('workflow_call:', $yaml);
+        $this->assertStringContainsString('run_unit_js', $yaml);
+        $this->assertStringContainsString('run_php_unit', $yaml);
+        $this->assertStringContainsString('run_js_unit', $yaml);
+        $this->assertStringContainsString('cache: composer', $yaml);
+        $this->assertStringContainsString('cache: npm', $yaml);
+        $this->assertStringContainsString('actions/cache@v4', $yaml);
+        $this->assertStringContainsString('PUPPETEER_CACHE_DIR', $yaml);
         $unitList = (string) file_get_contents(base_path('tests/ci/js-unit-paths.txt'));
         $this->assertStringContainsString(
             'openplan3d-editor-bridge.test.js',
@@ -195,6 +203,75 @@ class DeployDependsOnTestsTest extends TestCase
             $full = base_path($path);
             $this->assertTrue(is_file($full) || is_dir($full), $path.' is listed but missing on disk');
         }
+    }
+
+    public function test_full_mysql_suite_unions_every_ci_database_list_including_main_only_extended(): void
+    {
+        $extended = $this->pathsFile('tests/ci/database-extended.txt');
+        $this->assertContains(
+            'tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php',
+            $extended,
+            'RoomAreaOpenPlan3DQuotationTest stays on the main/full list; PR144 test fixes land separately'
+        );
+
+        $roomAreaFilter = $this->pathsFile('tests/ci/database-filter-room-area.txt');
+        $this->assertNotContains(
+            'tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php',
+            $roomAreaFilter,
+            'Do not pull the OpenPlan3D quotation test onto every room-area PR push'
+        );
+
+        exec(
+            'CI_MYSQL_SUITE=full bash '.escapeshellarg(base_path('tests/ci/select-database-paths.sh')),
+            $full,
+            $fullCode
+        );
+        $this->assertSame(0, $fullCode, 'select-database-paths.sh failed for full suite');
+        $this->assertContains('tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php', $full);
+
+        foreach (glob(base_path('tests/ci/database-filter-*.txt')) ?: [] as $listFile) {
+            foreach ($this->pathsFile('tests/ci/'.basename($listFile)) as $path) {
+                if (is_dir(base_path($path))) {
+                    continue;
+                }
+                $this->assertContains(
+                    $path,
+                    $full,
+                    basename($listFile).' path '.$path.' must run in CI_MYSQL_SUITE=full'
+                );
+            }
+        }
+
+        exec('bash '.escapeshellarg(base_path('tests/ci/report-full-ci-check.test.sh')).' 2>&1', $checkOut, $checkCode);
+        $this->assertSame(0, $checkCode, implode("\n", $checkOut));
+    }
+
+    public function test_full_ci_workflow_pins_head_sha_and_reuses_tests_suite(): void
+    {
+        $yaml = $this->workflow('full-ci.yml');
+        $this->assertStringContainsString('name: Full CI', $yaml);
+        $this->assertMatchesRegularExpression('/pull_request:\s*\n\s+types:\s*\[labeled\]/', $yaml);
+        $this->assertStringContainsString('workflow_dispatch:', $yaml);
+        $this->assertStringContainsString('pr_number:', $yaml);
+        $this->assertStringContainsString("github.event.label.name == 'full-ci'", $yaml);
+        $this->assertStringContainsString('uses: ./.github/workflows/tests.yml', $yaml);
+        $this->assertStringContainsString('full_suite: true', $yaml);
+        $this->assertStringContainsString('checkout_ref:', $yaml);
+        $this->assertStringContainsString('report-full-ci-check.sh', $yaml);
+        $this->assertStringContainsString('CHECK_NAME:-full-ci', (string) file_get_contents(base_path('.github/scripts/report-full-ci-check.sh')));
+        $this->assertMatchesRegularExpression(
+            '/concurrency:\s*\n\s+group:\s+full-ci-pr-/m',
+            $yaml
+        );
+        $this->assertStringContainsString('cancel-in-progress: true', $yaml);
+        $this->assertStringContainsString('checks: write', $yaml);
+
+        $tests = $this->workflow('tests.yml');
+        $this->assertStringContainsString('inputs.full_suite', $tests);
+        $this->assertStringContainsString("CI_MYSQL_SUITE:", $tests);
+        $this->assertStringContainsString("inputs.full_suite == true", $tests);
+        $this->assertStringContainsString('needs.changes.outputs.run_unit_js', $tests);
+        $this->assertStringContainsString("docs_only != 'true'", $tests);
     }
 
     public function test_room_area_engine_feature_flag_runs_on_pr_when_room_area_filter_matches(): void

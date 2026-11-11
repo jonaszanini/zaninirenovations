@@ -11,6 +11,10 @@ lists=("$ROOT/tests/ci/database-core.txt")
 
 if [[ "${CI_MYSQL_SUITE:-pr}" == "full" ]]; then
   lists+=("$ROOT/tests/ci/database-extended.txt")
+  # Every filter list must still run in the full suite (union, not extended-only).
+  for filter_list in "$ROOT/tests/ci"/database-filter-*.txt; do
+    lists+=("$filter_list")
+  done
 else
   [[ "${CI_MYSQL_FILTER_SHARED_PRICES:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-shared-prices.txt")
   [[ "${CI_MYSQL_FILTER_ROOM_AREA:-false}" == "true" ]] && lists+=("$ROOT/tests/ci/database-filter-room-area.txt")

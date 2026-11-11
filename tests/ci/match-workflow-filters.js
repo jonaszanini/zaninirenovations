@@ -37,6 +37,8 @@ const FILTER_ENV_BY_AGG = [
   ['FILTER_BROWSER_CLIENT', 'browser_client'],
   ['FILTER_ROUTES', 'routes_smoke'],
   ['FILTER_SEO', 'seo'],
+  ['FILTER_PHP_UNIT', 'php_unit'],
+  ['FILTER_JS_UNIT', 'js_unit'],
 ];
 
 function loadFilters() {
@@ -117,6 +119,8 @@ function envFromAggregate(agg) {
   env.FILTER_BROWSER_CLIENT = agg.browser_client ? 'true' : 'false';
   env.FILTER_ROUTES = agg.routes_smoke ? 'true' : 'false';
   env.FILTER_SEO = agg.seo ? 'true' : 'false';
+  env.FILTER_PHP_UNIT = agg.php_unit ? 'true' : 'false';
+  env.FILTER_JS_UNIT = agg.js_unit ? 'true' : 'false';
   return env;
 }
 

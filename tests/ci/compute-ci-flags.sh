@@ -18,8 +18,13 @@ if [[ "${GITHUB_REF:-}" == "refs/heads/main" ]]; then
 fi
 
 slow_input=false
-if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]] && truthy "${SLOW_INPUT:-false}"; then
+if truthy "${SLOW_INPUT:-false}"; then
   slow_input=true
+fi
+
+full_suite=false
+if truthy "${CI_FULL_SUITE:-false}"; then
+  full_suite=true
 fi
 
 docs_only=false
@@ -52,7 +57,73 @@ apply_analyze_line() {
   esac
 }
 
-if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" ]]; then
+emit() {
+  local key=$1
+  local val=$2
+  echo "$key=$val"
+  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+    echo "$key=$val" >> "$GITHUB_OUTPUT"
+  fi
+}
+
+emit_all() {
+  emit run_database "$run_database"
+  emit run_browser "$run_browser"
+  emit run_browser_admin "$run_browser_admin"
+  emit run_browser_openplan3d "$run_browser_openplan3d"
+  emit run_browser_quotation "$run_browser_quotation"
+  emit run_browser_client "$run_browser_client"
+  emit run_mysql_node "$run_mysql_node"
+  emit run_shared_prices_geometry "$run_shared"
+  emit run_room_area_live "$run_ra"
+  emit run_blog_live "$run_bl"
+  emit run_millwork_fuzz "$run_mf"
+  emit filter_shared_prices "$filter_sp_out"
+  emit filter_room_area "$filter_ra_out"
+  emit filter_blog "$filter_bl_out"
+  emit filter_seo "$filter_seo_out"
+  emit filter_millwork "$filter_mf_out"
+  emit filter_quotation "$filter_quotation_out"
+  emit filter_routes_smoke "$filter_routes_out"
+  emit broad_run "$broad_run"
+  emit browser_fail_open "$browser_fail_open"
+  emit matcher_failed "$matcher_failed"
+  emit global_test_deps "$global_deps"
+  emit run_php_unit "$run_php_unit"
+  emit run_js_unit "$run_js_unit"
+  emit run_unit_js "$run_unit_js"
+  echo "CI flags: database=$run_database unit_js=$run_unit_js (php=$run_php_unit js=$run_js_unit) browser=$run_browser (admin=$run_browser_admin openplan3d=$run_browser_openplan3d quotation=$run_browser_quotation client=$run_browser_client) mysql_node=$run_mysql_node broad=$broad_run global=$global_deps full=$full_suite"
+}
+
+# Docs/content-only PR pushes skip every heavy job (no matcher/Node required).
+if [[ "$docs_only" == true && "$is_main" != true && "$full_suite" != true && "$slow_input" != true ]]; then
+  run_database=false
+  run_browser=false
+  run_browser_admin=false
+  run_browser_openplan3d=false
+  run_browser_quotation=false
+  run_browser_client=false
+  run_mysql_node=false
+  run_shared=false
+  run_ra=false
+  run_bl=false
+  run_mf=false
+  filter_sp_out=false
+  filter_ra_out=false
+  filter_bl_out=false
+  filter_seo_out=false
+  filter_mf_out=false
+  filter_quotation_out=false
+  filter_routes_out=false
+  global_deps=false
+  run_php_unit=false
+  run_js_unit=false
+  run_unit_js=false
+  emit_all
+  exit 0
+fi
+
+if [[ -n "${CHANGED_FILES_FILE:-}" && -f "$CHANGED_FILES_FILE" && "$full_suite" != true ]]; then
   set +e
   analyze_out=$(node "$MATCHER_JS" --analyze-changed "$CHANGED_FILES_FILE" 2>&1)
   analyze_rc=$?
@@ -80,12 +151,12 @@ if truthy "${FILTER_GLOBAL:-false}" || [[ "$broad_run" == true ]] || [[ "$matche
 fi
 
 run_all_heavy=false
-if [[ "$is_main" == true ]] || [[ "$slow_input" == true ]] || [[ "$global_deps" == true ]]; then
+if [[ "$is_main" == true ]] || [[ "$slow_input" == true ]] || [[ "$full_suite" == true ]] || [[ "$global_deps" == true ]]; then
   run_all_heavy=true
 fi
 
 run_database=false
-if [[ "$is_main" == true ]] || [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
+if [[ "$is_main" == true ]] || [[ "$full_suite" == true ]] || [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
   run_database=true
 fi
 if [[ "${GITHUB_EVENT_NAME:-}" == "pull_request" ]] && [[ "$docs_only" != true ]] && [[ "$has_code_changes" == true ]]; then
@@ -186,36 +257,26 @@ if [[ "$run_database" == true ]] || [[ "$run_ra" == true ]] || [[ "$run_bl" == t
   run_mysql_node=true
 fi
 
-emit() {
-  local key=$1
-  local val=$2
-  echo "$key=$val"
-  if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
-    echo "$key=$val" >> "$GITHUB_OUTPUT"
-  fi
-}
+run_php_unit=false
+if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_PHP_UNIT:-false}"; then
+  run_php_unit=true
+fi
 
-emit run_database "$run_database"
-emit run_browser "$run_browser"
-emit run_browser_admin "$run_browser_admin"
-emit run_browser_openplan3d "$run_browser_openplan3d"
-emit run_browser_quotation "$run_browser_quotation"
-emit run_browser_client "$run_browser_client"
-emit run_mysql_node "$run_mysql_node"
-emit run_shared_prices_geometry "$run_shared"
-emit run_room_area_live "$run_ra"
-emit run_blog_live "$run_bl"
-emit run_millwork_fuzz "$run_mf"
-emit filter_shared_prices "$filter_sp_out"
-emit filter_room_area "$filter_ra_out"
-emit filter_blog "$filter_bl_out"
-emit filter_seo "$filter_seo_out"
-emit filter_millwork "$filter_mf_out"
-emit filter_quotation "$filter_quotation_out"
-emit filter_routes_smoke "$filter_routes_out"
-emit broad_run "$broad_run"
-emit browser_fail_open "$browser_fail_open"
-emit matcher_failed "$matcher_failed"
-emit global_test_deps "$global_deps"
+run_js_unit=false
+if [[ "$run_all_heavy" == true ]] || truthy "${FILTER_JS_UNIT:-false}" || [[ "$run_browser" == true ]]; then
+  run_js_unit=true
+fi
 
-echo "CI flags: database=$run_database browser=$run_browser (admin=$run_browser_admin openplan3d=$run_browser_openplan3d quotation=$run_browser_quotation client=$run_browser_client) mysql_node=$run_mysql_node broad=$broad_run global=$global_deps"
+# Manual Tests dispatch (without full_suite) keeps PHP + JS unit, matching the
+# previous always-on unit_js job. Full suite already set run_all_heavy.
+if [[ "${GITHUB_EVENT_NAME:-}" == "workflow_dispatch" ]]; then
+  run_php_unit=true
+  run_js_unit=true
+fi
+
+run_unit_js=false
+if [[ "$run_php_unit" == true ]] || [[ "$run_js_unit" == true ]] || [[ "$run_browser" == true ]]; then
+  run_unit_js=true
+fi
+
+emit_all
