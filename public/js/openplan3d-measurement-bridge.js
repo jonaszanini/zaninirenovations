@@ -1546,18 +1546,12 @@
       var netArea = netWallAreaSqFt(finishLenFt, ceilingHeight, dedRaw);
       totalNetWallArea += netArea;
 
-      var displayLenFt = wLenFt;
-      if (bObj && interiorGeom) {
-        var displayEdgeCm = interiorGeom.wallPlanEdgeLengthCm(bObj, allWallsList, cmPerUnit, true);
-        if (displayEdgeCm > 0) displayLenFt = displayEdgeCm / CM_PER_FOOT;
-      }
-
       perWallNetAreas.push({
         id: bw.id,
         index: wallIdx,
         label: 'W' + wallIdx,
-        length_lf: roundTo(displayLenFt, 2),
-        length_lf_exact: displayLenFt,
+        length_lf: roundTo(wLenFt, 2),
+        length_lf_exact: wLenFt,
         interior_butt_deduction_lf: roundTo(buttLf, 2),
         finish_run_lf: finishLenFt,
         opening_area_sqft: roundTo(dedRaw, 2),
@@ -2326,6 +2320,20 @@
           cm,
           false
         );
+      }
+      if (floor && room && room.id && wallList.length >= 3) {
+        try {
+          var metricsPlan = {
+            floor: floor,
+            floors: [floor],
+            unit: floor.unit,
+            units: floor.units || floor.unit
+          };
+          var live = layoutMetrics(metricsPlan, room.id, {});
+          if (live && Number(live.area_sqft) > 0) {
+            sqFt = Number(live.area_sqft);
+          }
+        } catch (ignore) { /* keep polygon-derived area */ }
       }
       sqFt = Math.round(sqFt * 100) / 100;
       if (imperial) {

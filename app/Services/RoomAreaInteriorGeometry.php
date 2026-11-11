@@ -213,7 +213,8 @@ class RoomAreaInteriorGeometry
             if ($matched === []) {
                 continue;
             }
-            $collinear = $this->distributeCollinearEdgeLengthsFt($matched, $edgeLenFt, $cmPerUnit);
+            $allWallsList = array_values($wallsById);
+            $collinear = $this->distributeCollinearEdgeLengthsFt($matched, $edgeLenFt, $cmPerUnit, $allWallsList);
             if (is_array($collinear) && $collinear !== []) {
                 foreach ($collinear as $cid => $len) {
                     $out[(string) $cid] = $len;
@@ -241,57 +242,27 @@ class RoomAreaInteriorGeometry
      * @param  list<array<string, mixed>>  $matched
      * @return array<string, float>|null
      */
-    private function distributeCollinearEdgeLengthsFt(array $matched, float $edgeLenFt, float $cmPerUnit): ?array
-    {
+    private function distributeCollinearEdgeLengthsFt(
+        array $matched,
+        float $edgeLenFt,
+        float $cmPerUnit,
+        array $allWallsList = []
+    ): ?array {
         if (count($matched) < 2) {
             return null;
         }
-        if (count($matched) === 2) {
-            $outTwo = [];
-            $totalEdgeCm = 0.0;
-            foreach ($matched as $mw) {
-                $totalEdgeCm += $this->wallPlanEdgeLengthCm($mw, $matched, $cmPerUnit, true);
-            }
-            if ($totalEdgeCm <= 0) {
-                return null;
-            }
-            foreach ($matched as $mw) {
-                $edgeCm = $this->wallPlanEdgeLengthCm($mw, $matched, $cmPerUnit, true);
-                $outTwo[(string) ($mw['id'] ?? '')] = $edgeLenFt * ($edgeCm / $totalEdgeCm);
-            }
-
-            return $outTwo;
-        }
+        $ctx = $allWallsList !== [] ? $allWallsList : $matched;
         $out = [];
-        $interiorFt = 0.0;
-        $endWalls = [];
-        foreach ($matched as $w) {
-            $touch = $this->wallEndpointTouchesOther($w, $matched, $cmPerUnit);
-            $centerFt = $this->wallCenterlineLengthCm($w, $cmPerUnit) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
-            if ($touch['start'] && $touch['end']) {
-                $out[(string) ($w['id'] ?? '')] = $centerFt;
-                $interiorFt += $centerFt;
-            } else {
-                $endWalls[] = ['wall' => $w, 'centerFt' => $centerFt];
-            }
+        $totalEdgeCm = 0.0;
+        foreach ($matched as $mw) {
+            $totalEdgeCm += $this->wallPlanEdgeLengthCm($mw, $ctx, $cmPerUnit, true);
         }
-        if ($endWalls === []) {
+        if ($totalEdgeCm <= 0) {
             return null;
         }
-        $remainder = $edgeLenFt - $interiorFt;
-        if ($remainder < 0) {
-            $remainder = 0.0;
-        }
-        $endCenter = 0.0;
-        foreach ($endWalls as $entry) {
-            $endCenter += $entry['centerFt'];
-        }
-        if ($endCenter <= 0) {
-            return $out;
-        }
-        foreach ($endWalls as $entry) {
-            $frac = $entry['centerFt'] / $endCenter;
-            $out[(string) ($entry['wall']['id'] ?? '')] = $remainder * $frac;
+        foreach ($matched as $mw) {
+            $edgeCm = $this->wallPlanEdgeLengthCm($mw, $ctx, $cmPerUnit, true);
+            $out[(string) ($mw['id'] ?? '')] = $edgeLenFt * ($edgeCm / $totalEdgeCm);
         }
 
         return $out;

@@ -532,7 +532,15 @@ function patchHostedEditorIndexBoot() {
         `${infoTipTag}\n\t\t<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`
       );
     }
-    html = html.replace(/admin-info-tip\.js\?v=[A-Za-z0-9]+/, `admin-info-tip.js?v=${infoTipV}`);
+    html = html.replace(/<script src="\/js\/admin-info-tip\.js\?v=[A-Za-z0-9]+"><\/script>\s*/g, '');
+    if (!html.includes('admin-info-tip.js')) {
+      html = html.replace(
+        new RegExp(`<script src="/js/openplan3d-zanini-tools\\.js\\?v=[A-Za-z0-9]+"></script>`),
+        `${infoTipTag}\n\t\t<script src="/js/openplan3d-zanini-tools.js?v=${toolsV}"></script>`
+      );
+    } else {
+      html = html.replace(/admin-info-tip\.js\?v=[A-Za-z0-9]+/, `admin-info-tip.js?v=${infoTipV}`);
+    }
     html = html.replace(/openplan3d-zanini-tools\.js\?v=[A-Za-z0-9]+/, `openplan3d-zanini-tools.js?v=${toolsV}`);
   }
 

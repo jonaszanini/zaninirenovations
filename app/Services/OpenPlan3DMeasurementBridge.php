@@ -437,13 +437,6 @@ class OpenPlan3DMeasurementBridge
             $bObj = $walls[(string) $wId] ?? null;
             $buttLf = is_array($bObj) ? (float) ($buttByBoundaryId[(string) $wId] ?? 0.0) : 0.0;
             $finishLenFt = max(0.0, $lengthFt - $buttLf);
-            $displayLenFt = $lengthFt;
-            if (is_array($bObj)) {
-                $displayEdgeCm = $this->interiorGeometry->wallPlanEdgeLengthCm($bObj, $allWallsList, $cmPerUnit, true);
-                if ($displayEdgeCm > 0) {
-                    $displayLenFt = $displayEdgeCm / self::CM_PER_FOOT;
-                }
-            }
             $wallLengthIn = $finishLenFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
 
@@ -468,8 +461,8 @@ class OpenPlan3DMeasurementBridge
                 'id' => $wId,
                 'index' => $wallIdx,
                 'label' => 'W'.$wallIdx,
-                'length_lf' => $this->roundTo($displayLenFt, 2),
-                'length_lf_exact' => $displayLenFt,
+                'length_lf' => $this->roundTo($lengthFt, 2),
+                'length_lf_exact' => $lengthFt,
                 'interior_butt_deduction_lf' => $this->roundTo($buttLf, 2),
                 'finish_run_lf' => $finishLenFt,
                 'opening_area_sqft' => $deductSqFt,

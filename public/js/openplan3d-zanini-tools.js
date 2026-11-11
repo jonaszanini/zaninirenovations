@@ -712,8 +712,9 @@
       '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}',
       '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
       '.admin-info-tip{min-width:24px;min-height:24px;width:24px;height:24px;padding:0;border:1px solid #94a3b8;border-radius:50%;background:#fff;color:#334155;font-size:14px;line-height:22px;text-align:center;cursor:pointer;}',
-      '.admin-info-tip__bubble{position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(calc(100vw - 24px),320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '.admin-info-tip__bubble{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(calc(100vw - 24px),320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble{display:block;}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
       '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}',
       '#openplan3d-zanini-finish-host .openplan3d-finish-row label{min-height:44px;display:flex;align-items:center;gap:8px;}',
       '#openplan3d-zanini-finish-host input[type=checkbox],#openplan3d-zanini-finish-host button.admin-info-tip{min-width:44px;min-height:44px;}',
@@ -1162,18 +1163,8 @@
         '<button type="button" class="admin-info-tip" data-finish-perimeter-tip aria-label="Perimeter baseboard help">&#9432;</button>' +
         '<span class="admin-info-tip__bubble" role="tooltip" hidden>Exterior walls measure baseboard on the interior face only. The outside face has none.</span></span>';
       host.appendChild(perimeterRow);
-      var perTip = perimeterRow.querySelector('[data-finish-perimeter-tip-wrap]');
-      if (perTip) {
-        var perBtn = perTip.querySelector('.admin-info-tip');
-        var perBubble = perTip.querySelector('.admin-info-tip__bubble');
-        if (perBtn && perBubble) {
-          perBtn.addEventListener('click', function (ev) {
-            ev.preventDefault();
-            ev.stopPropagation();
-            var open = perTip.classList.toggle('is-open');
-            perBubble.hidden = !open;
-          });
-        }
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
+        window.AdminInfoTip.sealClosed(perimeterRow);
       }
     }
     if (sidesEligible.length > 0) {
@@ -1208,7 +1199,7 @@
         '<svg class="openplan3d-finish-info-glyph" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
         '<circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
         '<text x="8" y="11.5" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">i</text></svg></button>' +
-        '<span class="admin-info-tip__bubble openplan3d-finish-drywall-tip__bubble" role="tooltip">Interior partitions default to drywall on both faces. ' +
+        '<span class="admin-info-tip__bubble openplan3d-finish-drywall-tip__bubble" role="tooltip" hidden>Interior partitions default to drywall on both faces. ' +
         'Choose a single face when only one room gets drywall; labels match adjacent rooms (' + sideInfo.tipRooms + '). ' +
         'Exterior perimeter walls always measure the interior face only.</span></span>' +
         '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
@@ -1218,6 +1209,9 @@
       host.appendChild(drywallRow);
       if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshControlIds === 'function') {
         window.AdminInfoTip.refreshControlIds(host);
+      }
+      if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
+        window.AdminInfoTip.sealClosed(drywallRow);
       }
       var drywallSel = host.querySelector('[data-finish-drywall-faces]');
       if (drywallSel) {

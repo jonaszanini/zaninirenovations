@@ -62,7 +62,7 @@
         @if ((float) ($option['casing_lf'] ?? 0) > 0)
           <div><dt>Casing</dt><dd>{{ $fmt((float) $option['casing_lf']) }} lf</dd></div>
         @endif
-        <div><dt>Baseboard</dt><dd>{{ $fmt((float) ($option['baseboard_lf'] ?? 0)) }} lf</dd></div>
+        <div><dt>Baseboard</dt><dd>{{ $fmt((float) (($option['finish_baseboard_lf'] ?? 0) > 0 ? $option['finish_baseboard_lf'] : ($option['baseboard_lf'] ?? 0))) }} lf</dd></div>
         @if ((float) ($option['framing_lf'] ?? 0) > 0 && (float) ($option['shared_wall_lf'] ?? 0) > 0)
           <div><dt>Framing</dt><dd>{{ $fmt((float) $option['framing_lf']) }} lf</dd></div>
         @endif
@@ -94,8 +94,13 @@
           @foreach ($trades as $key => $trade)
             @php
               $base = (float) ($option[$trade['metric']] ?? 0);
-              if ($key === 'baseboard' && $base <= 0) {
-                  $base = (float) ($option['perimeter_lf'] ?? 0);
+              if ($key === 'baseboard') {
+                  $finishBb = (float) ($option['finish_baseboard_lf'] ?? 0);
+                  if ($finishBb > 0) {
+                      $base = $finishBb;
+                  } elseif ($base <= 0) {
+                      $base = (float) ($option['perimeter_lf'] ?? 0);
+                  }
               }
               $waste = old('waste.'.$key, $trade['default_waste']);
             @endphp

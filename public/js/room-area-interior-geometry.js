@@ -337,44 +337,18 @@
     return { start: touchesStart, end: touchesEnd };
   }
 
-  function distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit) {
+  function distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit, allWallsList) {
     if (!matched || matched.length < 2) return null;
-    if (matched.length === 2) {
-      var outTwo = {};
-      var totalEdgeCm = 0;
-      for (var ti = 0; ti < matched.length; ti++) {
-        totalEdgeCm += wallPlanEdgeLengthCm(matched[ti], matched, cmPerUnit, true);
-      }
-      if (!(totalEdgeCm > 0)) return null;
-      for (var tj = 0; tj < matched.length; tj++) {
-        var edgeCm = wallPlanEdgeLengthCm(matched[tj], matched, cmPerUnit, true);
-        outTwo[String(matched[tj].id)] = edgeLenFt * (edgeCm / totalEdgeCm);
-      }
-      return outTwo;
-    }
+    var ctx = (allWallsList && allWallsList.length) ? allWallsList : matched;
     var out = {};
-    var interiorFt = 0;
-    var endWalls = [];
-    for (var i = 0; i < matched.length; i++) {
-      var w = matched[i];
-      var touch = wallEndpointTouchesOther(w, matched, cmPerUnit);
-      var centerFt = wallCenterlineLengthCm(w, cmPerUnit) / CM_PER_FOOT;
-      if (touch.start && touch.end) {
-        out[String(w.id)] = centerFt;
-        interiorFt += centerFt;
-      } else {
-        endWalls.push({ wall: w, centerFt: centerFt });
-      }
+    var totalEdgeCm = 0;
+    for (var ti = 0; ti < matched.length; ti++) {
+      totalEdgeCm += wallPlanEdgeLengthCm(matched[ti], ctx, cmPerUnit, true);
     }
-    if (!endWalls.length) return null;
-    var remainder = edgeLenFt - interiorFt;
-    if (remainder < 0) remainder = 0;
-    var endCenter = 0;
-    for (var j = 0; j < endWalls.length; j++) endCenter += endWalls[j].centerFt;
-    if (!(endCenter > 0)) return out;
-    for (var e = 0; e < endWalls.length; e++) {
-      var frac = endWalls[e].centerFt / endCenter;
-      out[String(endWalls[e].wall.id)] = remainder * frac;
+    if (!(totalEdgeCm > 0)) return null;
+    for (var tj = 0; tj < matched.length; tj++) {
+      var edgeCm = wallPlanEdgeLengthCm(matched[tj], ctx, cmPerUnit, true);
+      out[String(matched[tj].id)] = edgeLenFt * (edgeCm / totalEdgeCm);
     }
     return out;
   }
@@ -407,7 +381,11 @@
         if (wallOverlapsRingEdge(w, ax, ay, bx, by, cmPerUnit)) matched.push(w);
       }
       if (!matched.length) continue;
-      var collinear = distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit);
+      var allWallsList = [];
+      for (var wk in wallsById) {
+        if (Object.prototype.hasOwnProperty.call(wallsById, wk)) allWallsList.push(wallsById[wk]);
+      }
+      var collinear = distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit, allWallsList);
       if (collinear) {
         for (var cid in collinear) out[cid] = collinear[cid];
         continue;

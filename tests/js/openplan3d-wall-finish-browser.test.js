@@ -225,6 +225,28 @@ async function main() {
     const finishHost = await page.$('#openplan3d-zanini-finish-host');
     assert.ok(finishHost, 'finish host for drywall screenshot');
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    const tipViewport1280 = await page.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      if (!btn) return { ok: false };
+      btn.click();
+      const wrap = btn.closest('.admin-info-tip-wrap');
+      const bubble = wrap && wrap.querySelector('.admin-info-tip__bubble');
+      if (!bubble) return { ok: false };
+      const r = bubble.getBoundingClientRect();
+      const vw = window.innerWidth;
+      return {
+        ok: wrap.classList.contains('is-open') && r.left >= 10 && r.right <= vw - 10,
+        left: r.left,
+        right: r.right,
+        vw,
+      };
+    });
+    assert.ok(tipViewport1280.ok, '1280 drywall tip open must stay inside viewport');
+    await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280-open.png') });
+    await page.evaluate(() => {
+      const btn = document.querySelector('[data-finish-drywall-tip]');
+      if (btn) btn.click();
+    });
     await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png') });
 
     const mobilePage = await browser.newPage();
@@ -254,6 +276,19 @@ async function main() {
       { storeChunk: STORE_CHUNK, vendorPrefix: VENDOR_PREFIX }
     );
     await mobilePage.waitForSelector('[data-finish-drywall-tip]', { timeout: 15000 });
+    const bubbleClosed = await mobilePage.evaluate(() => {
+      const wrap = document.querySelector('[data-finish-drywall-tip-wrap]');
+      const bubble = wrap && wrap.querySelector('.admin-info-tip__bubble');
+      const btn = wrap && wrap.querySelector('[data-finish-drywall-tip]');
+      return {
+        wrapOpen: !!(wrap && wrap.classList.contains('is-open')),
+        hidden: bubble ? bubble.hidden : null,
+        expanded: btn ? btn.getAttribute('aria-expanded') : null,
+      };
+    });
+    assert.strictEqual(bubbleClosed.wrapOpen, false, 'drywall help bubble closed by default at 390');
+    assert.strictEqual(bubbleClosed.expanded, 'false');
+    assert.strictEqual(bubbleClosed.hidden, true, 'drywall bubble hidden by default');
 
     const mobileFinishTap = await mobilePage.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
