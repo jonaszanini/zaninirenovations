@@ -315,8 +315,8 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
   });
   var finished = ext.applyToMetrics(metrics0, Object.assign({}, plan, { zanini: { wallFinishes: wf } }), {}, cm);
-  assert.strictEqual(finished.finish_baseboard_lf, 77.75,
-    '20x10 partition: perimeter 58.5 lf + both faces of p1 interior 9.625 ft = 77.75 lf');
+  assert.strictEqual(finished.finish_baseboard_lf, 77.0,
+    '20x10 partition: boundary 57.75 lf (58.5 - 2x0.375 butt) + partition both faces 19.25 lf');
 })();
 
 (function collinearNorthSplitLengths() {
@@ -352,8 +352,8 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
   });
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
-  assert.ok(Math.abs(finished.finish_baseboard_lf - 200.51) < 0.02, 'hand0 finish_baseboard_lf ~200.51 lf with all finishes');
-  assert.ok(Math.abs(finished.finish_drywall_sqft - 1604.08) < 1.5, 'hand0 finish_drywall_sqft ~1604.08 sf');
+  assert.strictEqual(finished.finish_baseboard_lf, 200.02, 'hand0 finish_baseboard_lf with interior butt deductions');
+  assert.strictEqual(finished.finish_drywall_sqft, 1600.15, 'hand0 finish_drywall_sqft with interior butt deductions');
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');

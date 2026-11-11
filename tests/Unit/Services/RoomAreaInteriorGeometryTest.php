@@ -234,7 +234,7 @@ class RoomAreaInteriorGeometryTest extends TestCase
             'zanini' => ['wallFinishes' => $finishes],
         ]);
         $out = $extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
-        $this->assertEqualsWithDelta(200.51, $out['finish_baseboard_lf'], 0.02, 'hand0 all finishes baseboard includes both faces on interior stubs');
+        $this->assertEqualsWithDelta(200.02, $out['finish_baseboard_lf'], 0.02, 'hand0 all finishes baseboard with interior butt deductions on stubs');
     }
 
     /**

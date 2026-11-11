@@ -96,7 +96,7 @@
         <div class="admin-form-group" style="margin:0;">
           @include('admin.partials.checkbox', [
               'name' => 'delete_flooring_type_ids[]',
-              'value' => (string) $type->id,
+              'checkboxValue' => (string) $type->id,
               'checked' => false,
               'label' => 'Delete',
           ])

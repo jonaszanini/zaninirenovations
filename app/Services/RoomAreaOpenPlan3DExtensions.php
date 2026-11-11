@@ -427,6 +427,12 @@ class RoomAreaOpenPlan3DExtensions
                 if ($this->flagEnabled($flags, 'baseboard', true)) {
                     $sides = $this->resolveBaseboardSides($flags, $isBoundary, $touchCount);
                     if ($isBoundary) {
+                        $finishRun = $wall['finish_run_lf'] ?? null;
+                        if (is_numeric($finishRun)) {
+                            $runLf = (float) $finishRun;
+                        } else {
+                            $runLf = max(0.0, $runLf - (float) ($wall['interior_butt_deduction_lf'] ?? 0.0));
+                        }
                         $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
                     }
                     $baseboard += $runLf * (float) $sides;

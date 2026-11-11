@@ -419,7 +419,36 @@ class BasementQuotationController extends Controller
         $merged = $this->mergeDebrisRemovalIntoPersistence($merged, $debris, 'final_quote_total');
         $additional = $this->additionalCostsPersistenceFromRequest($request, $existing, 'basement_quotations');
 
-        return $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+        $merged = $this->mergeAdditionalCostsIntoPersistence($merged, $additional, 'final_quote_total');
+
+        return $this->syncPublishedClientScopeAllowances($merged, ! $draft);
+    }
+
+    /**
+     * @param  array<string, mixed>  $persistence
+     * @return array<string, mixed>
+     */
+    protected function syncPublishedClientScopeAllowances(array $persistence, bool $publish): array
+    {
+        if (! $publish) {
+            return $persistence;
+        }
+        $inputs = is_array($persistence['inputs'] ?? null) ? $persistence['inputs'] : [];
+        $calculation = is_array($persistence['calculation'] ?? null) ? $persistence['calculation'] : [];
+        $stored = trim((string) ($inputs['client_scope_allowances'] ?? ''));
+        $generated = (string) ($calculation['client_scope']['generated']['allowances'] ?? '');
+        if ($stored === '' || $generated === '') {
+            return $persistence;
+        }
+        $synced = \App\Services\BasementClientScope::syncAllowanceAmounts($stored, $generated);
+        if ($synced === \App\Services\BasementClientScope::normalizeAllowanceText($stored)) {
+            return $persistence;
+        }
+        $inputs['client_scope_allowances'] = $synced;
+        $persistence['inputs'] = $inputs;
+        $persistence['calculation'] = (new BasementQuotationCalculator)->calculate($inputs);
+
+        return $persistence;
     }
 
     /**
@@ -510,7 +539,16 @@ class BasementQuotationController extends Controller
         $rawHeaderLf = $request->input('header_lf');
         $parsedHeaderLf = is_string($rawHeaderLf) ? str_replace([',', '$', ' '], '', $rawHeaderLf) : $rawHeaderLf;
         $postedHeaderLf = is_numeric($parsedHeaderLf) ? (float) $parsedHeaderLf : 0.0;
-        if ($storedHeaderLegacy && $postedHeaderLf <= 0) {
+        if ($request->exists('header_lf')) {
+            $rawHeaderTrim = trim((string) $request->input('header_lf', ''));
+            if ($storedHeaderLegacy && $rawHeaderTrim === '') {
+                $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
+                unset($out['header_lf']);
+            } else {
+                $out['header_lf'] = round(max(0, $postedHeaderLf), 4);
+                $out['header_qty'] = 0;
+            }
+        } elseif ($storedHeaderLegacy) {
             $out['header_qty'] = max(0, (int) ($storedInputs['header_qty'] ?? 0));
             unset($out['header_lf']);
         } else {
@@ -562,7 +600,15 @@ class BasementQuotationController extends Controller
             }
         }
         foreach ($strings as $key) {
-            $out[$key] = trim((string) $request->input($key, $defaults[$key]));
+            $fallback = $defaults[$key] ?? '';
+            if ($storedInputs !== null && array_key_exists($key, $storedInputs) && ! $request->exists($key)) {
+                $fallback = $storedInputs[$key];
+            }
+            $value = trim((string) $request->input($key, $fallback));
+            if ($key === 'client_scope_allowances') {
+                $value = \App\Services\BasementClientScope::normalizeAllowanceText($value);
+            }
+            $out[$key] = $value;
         }
         if (! in_array($out['lighting_type'], ['fixture', 'spot', 'both'], true)) {
             $out['lighting_type'] = 'spot';
@@ -598,8 +644,12 @@ class BasementQuotationController extends Controller
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
-        $out['electrical_lines'] = AdditionalCostsService::normalizeRows($request->input('electrical_lines', []), 'Electrical work');
-        $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($request->input('plumbing_lines', []), 'Plumbing work');
+        $storedElec = is_array($storedInputs['electrical_lines'] ?? null) ? $storedInputs['electrical_lines'] : [];
+        $storedPlumb = is_array($storedInputs['plumbing_lines'] ?? null) ? $storedInputs['plumbing_lines'] : [];
+        $elecRaw = $request->exists('electrical_lines') ? $request->input('electrical_lines', []) : $storedElec;
+        $plumbRaw = $request->exists('plumbing_lines') ? $request->input('plumbing_lines', []) : $storedPlumb;
+        $out['electrical_lines'] = AdditionalCostsService::normalizeRows($elecRaw, 'Electrical work');
+        $out['plumbing_lines'] = AdditionalCostsService::normalizeRows($plumbRaw, 'Plumbing work');
 
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'contractor_fee_percent');
         $out = $this->mergeExplicitPercent($out, $request, $storedInputs, 'flooring_waste_percent');

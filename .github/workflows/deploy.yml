@@ -44,7 +44,8 @@ jobs:
           set -euo pipefail
           MAIN_SHA="$(gh api "repos/${REPO}/commits/main" --jq .sha)"
           export EVENT_NAME WORKFLOW_RUN_SHA DISPATCH_SHA MAIN_SHA
-          PINNED="$(bash .github/scripts/pin-deploy-sha.sh | awk -F= '/^sha=/{print $2; exit}')"
+          PIN_OUTPUT="$(bash .github/scripts/pin-deploy-sha.sh)"
+          PINNED="$(printf '%s\n' "$PIN_OUTPUT" | awk -F= '/^sha=/{print $2; exit}')"
           if [ -z "$PINNED" ]; then
             echo "pin-deploy-sha.sh did not emit sha="
             exit 1

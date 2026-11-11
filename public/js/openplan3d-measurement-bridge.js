@@ -61,6 +61,53 @@
     };
   }
 
+  function wallThicknessFt(wall, cmPerUnit) {
+    var ig = interiorGeomRuntime();
+    var thickCm = ig
+      ? ig.wallThicknessCm(wall && wall.thickness, cmPerUnit)
+      : (Number(wall && wall.thickness != null ? wall.thickness : 11.43) * Math.max(cmPerUnit, 1e-9));
+    return thickCm / CM_PER_FOOT;
+  }
+
+  /**
+   * Interior (partition) walls that T into a boundary segment deduct their thickness
+   * from baseboard / drywall runs on that exterior wall (not at corners).
+   */
+  function interiorButtDeductionLfOnBoundaryWall(boundaryWall, allWalls, boundaryIdMap, cmPerUnit) {
+    if (!boundaryWall || !boundaryWall.start || !boundaryWall.end) return 0;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var eps = partitionToleranceCm(allWalls, cmPerUnit);
+    var ax = boundaryWall.start.x * unit;
+    var ay = boundaryWall.start.y * unit;
+    var bx = boundaryWall.end.x * unit;
+    var by = boundaryWall.end.y * unit;
+    var edx = bx - ax;
+    var edy = by - ay;
+    var elen = hypot(edx, edy) || 1;
+    var ded = 0.0;
+    var seen = {};
+    for (var i = 0; i < allWalls.length; i++) {
+      var other = allWalls[i];
+      if (!other || !other.start || !other.end) continue;
+      var oid = String(other.id);
+      if (oid === String(boundaryWall.id)) continue;
+      if (boundaryIdMap[oid]) continue;
+      function checkPoint(px, py) {
+        var cross = Math.abs(edx * (py - ay) - edy * (px - ax)) / elen;
+        if (cross > eps) return;
+        var t = ((px - ax) * edx + (py - ay) * edy) / (elen * elen);
+        if (t <= eps / elen || t >= 1 - eps / elen) return;
+        var key = oid + '@' + Math.round(t * 10000);
+        if (seen[key]) return;
+        seen[key] = true;
+        ded += wallThicknessFt(other, cmPerUnit);
+      }
+      checkPoint(other.start.x * unit, other.start.y * unit);
+      checkPoint(other.end.x * unit, other.end.y * unit);
+    }
+    return ded;
+  }
+
   function partitionToleranceCm(wallsList, cmPerUnit) {
     var baseCm = 20.0;
     var maxCm = 30.0;
@@ -1353,7 +1400,18 @@
     }
 
     var baseboardDedLf = roundTo(baseboardDedIn / 12.0, 2);
-    var baseboardLf = Math.max(0.0, roundTo(perimeter - baseboardDedLf, 2));
+    var totalInteriorButtLf = 0.0;
+    for (var bi = 0; bi < boundaryWalls.length; bi++) {
+      var bWallObj = walls[String(boundaryWalls[bi].id)];
+      if (!bWallObj) continue;
+      totalInteriorButtLf += interiorButtDeductionLfOnBoundaryWall(
+        bWallObj,
+        allWallsList,
+        boundaryIdMap,
+        cmPerUnit
+      );
+    }
+    var baseboardLf = Math.max(0.0, roundTo(perimeter - baseboardDedLf - totalInteriorButtLf, 2));
     var casingTotalLfRounded = roundTo(casingTotalLf, 2);
 
     // Per wall net areas
@@ -1364,7 +1422,12 @@
     for (var i = 0; i < boundaryWalls.length; i++) {
       var bw = boundaryWalls[i];
       var wLenFt = bw.length_ft;
-      var wLenIn = wLenFt * 12.0;
+      var bObj = walls[String(bw.id)];
+      var buttLf = bObj
+        ? interiorButtDeductionLfOnBoundaryWall(bObj, allWallsList, boundaryIdMap, cmPerUnit)
+        : 0;
+      var finishLenFt = Math.max(0, wLenFt - buttLf);
+      var wLenIn = finishLenFt * 12.0;
       var wOpenings = openingsByWall[bw.id] || [];
 
       var rects = [];
@@ -1379,7 +1442,7 @@
       }
 
       var dedRaw = unionOpeningAreaRawSqFt(rects);
-      var netArea = netWallAreaSqFt(wLenFt, ceilingHeight, dedRaw);
+      var netArea = netWallAreaSqFt(finishLenFt, ceilingHeight, dedRaw);
       totalNetWallArea += netArea;
 
       perWallNetAreas.push({
@@ -1388,6 +1451,8 @@
         label: 'W' + wallIdx,
         length_lf: roundTo(wLenFt, 2),
         length_lf_exact: wLenFt,
+        interior_butt_deduction_lf: roundTo(buttLf, 2),
+        finish_run_lf: finishLenFt,
         opening_area_sqft: roundTo(dedRaw, 2),
         net_area_sqft: netArea
       });
@@ -2119,6 +2184,7 @@
     floorBoundaryWallIds: floorBoundaryWallIds,
     wallSeparatesTwoSpaces: wallSeparatesTwoSpaces,
     geometryRoomTouchCount: geometryRoomTouchCount,
+    interiorButtDeductionLfOnBoundaryWall: interiorButtDeductionLfOnBoundaryWall,
     formatOnPlanRoomArea: function (room, polygonCm, holeRings, floor, settings) {
       var units = String(
         (settings && settings.units) || (floor && floor.units) || (floor && floor.unit) || 'metric'

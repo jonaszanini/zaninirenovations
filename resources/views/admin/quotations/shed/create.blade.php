@@ -173,7 +173,7 @@
                 @endif
                 @include('admin.partials.checkbox', [
                   'name' => 'client_provides_sections[]',
-                  'value' => $key,
+                  'checkboxValue' => $key,
                   'checked' => in_array($key, $provideSections, true),
                   'label' => $label,
                   'info' => 'Client buys materials for '.$label.'; labor stays.',

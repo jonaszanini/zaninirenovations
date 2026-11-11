@@ -70,7 +70,8 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
             (float) $summary['contractor_fee_hst'],
             0.01
         );
-        $this->assertSame('Contractor fee 10%', $summary['contractor_fee_label']);
+        $this->assertStringStartsWith('Contractor fee 10%', $summary['contractor_fee_label']);
+        $this->assertStringContainsString('on CA$', $summary['contractor_fee_label']);
 
         $laborOnly = BasementQuotationCalculator::contractorFeeBreakdown(
             10,
@@ -93,7 +94,7 @@ class BasementQuotationFeeWasteScopeTest extends TestCase
         ]), $this->settings());
 
         $this->assertSame(0.0, (float) $zero['summary']['contractor_fee_pre_hst']);
-        $this->assertSame('Contractor fee 15%', $fifteen['summary']['contractor_fee_label']);
+        $this->assertStringStartsWith('Contractor fee 15%', $fifteen['summary']['contractor_fee_label']);
         $this->assertEqualsWithDelta(
             round((float) $fifteen['summary']['contractor_fee_base_pre_hst'] * 0.15, 2),
             (float) $fifteen['summary']['contractor_fee_pre_hst'],

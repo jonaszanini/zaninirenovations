@@ -33,6 +33,23 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('name="bulkhead_lf"', $html);
     }
 
+    public function test_client_provides_section_checkbox_posts_trade_key_not_literal_one(): void
+    {
+        $html = view('admin.partials.checkbox', [
+            'name' => 'client_provides_sections[]',
+            'checkboxValue' => 'flooring',
+            'checked' => false,
+            'label' => 'Flooring',
+            'inputClass' => 'admin-checkbox__input br-preview',
+        ])->render();
+
+        $this->assertMatchesRegularExpression(
+            '/type="checkbox"[^>]*name="client_provides_sections\[\]"[^>]*value="flooring"/',
+            $html
+        );
+        $this->assertStringNotContainsString('value="1"', $html);
+    }
+
     public function test_wizard_trade_steps_include_live_section_subtotal_markup(): void
     {
         $inputs = BasementQuotationCalculator::defaultInputs();
@@ -43,6 +60,30 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('data-br-section-subtotal="flooring"', $html);
         $this->assertStringContainsString('Section subtotal', $html);
         $this->assertStringNotContainsString('data-br-section-subtotal="overview"', $html);
+    }
+
+    public function test_ceiling_step_includes_drywall_hang_priced_note_markup(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'full', $enabledNow))->render();
+
+        $this->assertStringContainsString('id="br-ceiling-drywall-priced-note"', $html);
+        $this->assertStringContainsString('br-ceiling-drywall-note', $html);
+        $this->assertStringContainsString(
+            'Hang, tape and mud for this ceiling are priced in Drywall / Mud / Tape / Sand.',
+            $html
+        );
+        if (preg_match('/<details class="br-acc admin-card" data-br-step="ceiling"[\s\S]*?<\/details>/', $html, $m)) {
+            $this->assertStringContainsString('id="br-ceiling-drywall-priced-note"', $m[0]);
+        } else {
+            $this->fail('Ceiling step details block not found in wizard markup');
+        }
+
+        $js = file_get_contents(public_path('js/admin-basement-quotation.js'));
+        $this->assertStringContainsString('updateCeilingDrywallPricedNote', $js);
+        $this->assertStringContainsString('ceilingHangPricedInDrywallSection', $js);
+        $this->assertStringContainsString("v === 'drywall' || v === 'paint'", $js);
     }
 
     public function test_full_preset_section_nums_match_footer_denominator_including_client_scope(): void

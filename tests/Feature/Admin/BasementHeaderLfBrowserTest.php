@@ -14,7 +14,7 @@ class BasementHeaderLfBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8056;
+    private int $serverPort = 8061;
 
     public function test_framing_header_lf_label_and_info_tip_at_1280_and_390(): void
     {

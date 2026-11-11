@@ -169,12 +169,12 @@
       'include_cleaning' => 'Final broom/vacuum, wipe, and dust so the space is handover-ready.',
       'include_touchups' => 'Small paint and caulk fixes on a punch list after the main work.',
       'include_building_permit' => 'Optional extra-charge municipal building-permit fee (city hall disbursement). Not included by default. Leave off unless you are pricing that city fee on this quotation. The contractor fee does not apply to this amount.',
-      'building_permit_amount' => 'Municipal / city-hall permit fee in CAD$ before HST (pass-through). Use 0 if you only want the reminder without a price. This city fee is not marked up with the contractor fee. Engineer signing is not this amount — that professional service belongs on BCIN drawings.',
+      'building_permit_amount' => 'Municipal / city-hall permit fee in CA$ before HST (pass-through). Use 0 if you only want the reminder without a price. This city fee is not marked up with the contractor fee. Engineer signing is not this amount, that professional service belongs on BCIN drawings.',
       'include_bcin_drawings' => 'Optional extra-charge service for BCIN drawings. A BCIN qualified designer is not the same credential as a professional engineer. When a professional engineer must sign or stamp, that signing service is part of this extra. Not included by default.',
-      'bcin_drawings_amount' => 'BCIN drawings extra-charge in CAD$ before HST. Treated as a subcontracted professional service for the contractor fee, including engineer signing when required. Not the municipal permit fee.',
+      'bcin_drawings_amount' => 'BCIN drawings extra-charge in CA$ before HST. Treated as a subcontracted professional service for the contractor fee, including engineer signing when required. Not the municipal permit fee.',
       'flooring_waste_percent' => 'Ordering buffer for finish flooring only. Defaults: vinyl (LVP) 7%, wood (hardwood / engineered / laminate) 8%, tile 10%. Drywall sheets, batt bags, and studs at 16 inch centres still use the global material waste below. No carpet.',
       'material_waste_percent' => 'Ordering buffer on bulk materials other than finish flooring (drywall sheets, lumber, paint, insulation batts, trim). Doors and toilets stay exact. Default 10%. Finish flooring has its own waste on the Flooring step.',
-      'client_provides_all' => 'Labour only — you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
+      'client_provides_all' => 'Labour only, you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
   ];
 @endphp
 
@@ -711,6 +711,9 @@
       @endif
     </div>
     @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'ceiling'])
+    <p class="admin-form-help br-ceiling-drywall-note" id="br-ceiling-drywall-priced-note" hidden>
+      Hang, tape and mud for this ceiling are priced in Drywall / Mud / Tape / Sand.
+    </p>
   </div>
 </details>
 

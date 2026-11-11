@@ -14,7 +14,7 @@ class BasementCornerBeadBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8057;
+    private int $serverPort = 8062;
 
     public function test_drywall_corner_bead_info_and_subtotal_at_1280_and_390(): void
     {

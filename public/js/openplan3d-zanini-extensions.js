@@ -684,7 +684,13 @@
         if (flagEnabled(flags, 'studs', !isB)) studs += studLen;
         if (flagEnabled(flags, 'baseboard', true)) {
           var sides = resolveBaseboardSides(flags, isB, touchCount);
-          var runLf = len;
+          var runLf = Number(w.finish_run_lf);
+          if (!isFinite(runLf)) {
+            runLf = len;
+            if (isB) {
+              runLf = Math.max(0, runLf - (Number(w.interior_butt_deduction_lf) || 0));
+            }
+          }
           if (isB) {
             runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(id, floor, boundaryMap, cmPerUnit, plan));
           }
