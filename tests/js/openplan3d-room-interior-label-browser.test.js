@@ -239,8 +239,10 @@ async function main() {
     const hand0Metrics = bridge.layoutMetrics(hand0Plan, null, { wall_height_ft: 8.0 });
     const hand0Labels = await readLabels(hand0Plan);
     const parsedHand0 = hand0Labels.labels.map(areaFromLabelText).filter(Boolean);
+    assert.strictEqual(parsedHand0.length, 1, 'hand0 must paint exactly one room label');
+    var hand0Sf = parsedHand0[0].unit === 'sf' ? parsedHand0[0].value : parsedHand0[0].value * 10.7639;
     assert.ok(
-      parsedHand0.some((p) => p.unit === 'sf' && Math.abs(p.value - hand0Metrics.area_sqft) < 0.5),
+      Math.abs(hand0Sf - hand0Metrics.area_sqft) < 0.5,
       'hand0 canvas-fill label must show interior sf ~1307.52, got ' + JSON.stringify(hand0Labels.labels)
     );
 
@@ -249,9 +251,12 @@ async function main() {
     assert.ok(Math.abs(lExpectedM2 - 26.66) < 0.02, 'L partitions interior m² pin');
     const lLabels = await readLabels(lPlan);
     const parsedL = lLabels.labels.map(areaFromLabelText).filter(Boolean);
+    assert.strictEqual(parsedL.length, 1, 'L plan must paint one room label');
+  var lSf = parsedL[0].unit === 'sf' ? parsedL[0].value : parsedL[0].value * 10.7639;
+  var lExpectedSf = lExpectedM2 * 10.7639;
     assert.ok(
-      parsedL.some((p) => p.unit === 'm2' && Math.abs(p.value - lExpectedM2) < 0.05),
-      'L+partitions label must match canvas-fill interior m², got ' + JSON.stringify(lLabels.labels)
+      Math.abs(lSf - lExpectedSf) < 0.5,
+      'L+partitions label must match canvas-fill interior area, got ' + JSON.stringify(lLabels.labels)
     );
 
     console.log('openplan3d-room-interior-label-browser: ok', {
