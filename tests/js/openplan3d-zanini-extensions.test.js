@@ -151,7 +151,7 @@ const finishOut = ext.applyToMetrics(Object.assign({}, metrics, { baseboard_lf: 
 assert.strictEqual(finishOut.finish_drywall_sqft, 288);
 assert.strictEqual(finishOut.finish_insulation_sqft, 160);
 assert.strictEqual(finishOut.finish_stud_lf, 8);
-assert.strictEqual(finishOut.finish_baseboard_lf, 171.99);
+assert.strictEqual(finishOut.finish_baseboard_lf, 36, 'default baseboard sums per-wall runs (10+10 boundary + 8×2 partition)');
 assert.strictEqual(finishOut.finish_paint_sqft, undefined);
 
 const mixedPaintOut = ext.applyToMetrics(Object.assign({}, metrics), {

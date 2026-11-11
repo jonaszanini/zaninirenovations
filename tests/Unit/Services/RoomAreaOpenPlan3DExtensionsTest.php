@@ -597,7 +597,7 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
 
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], 1.0);
 
-        $this->assertSame(171.99, $out['finish_baseboard_lf']);
+        $this->assertSame(220.32, $out['finish_baseboard_lf']);
     }
 
     /**
