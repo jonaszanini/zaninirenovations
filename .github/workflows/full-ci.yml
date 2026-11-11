@@ -1,0 +1,118 @@
+name: Full CI
+
+# One full suite per PR at merge time. Reports a check named "full-ci" on the
+# exact PR head SHA so branch protection can require it. Does not replace the
+# Tests workflow on main (deploy still pins a green Tests run to that SHA).
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Pull request number whose head SHA receives the full-ci check
+        required: true
+        type: string
+      slow:
+        description: Run the millwork 3k fuzz and live layout checks
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  pull-requests: read
+  checks: write
+
+concurrency:
+  group: full-ci-pr-${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+  cancel-in-progress: true
+
+jobs:
+  pin:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'full-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.pin.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/scripts/report-full-ci-check.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Resolve PR head SHA
+        id: pin
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
+          LABELED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PR_NUMBER:-}" ]; then
+            echo "PR number is required to pin the full-ci check." >&2
+            exit 1
+          fi
+          if [ -n "${LABELED_SHA:-}" ]; then
+            SHA="$LABELED_SHA"
+          else
+            SHA="$(gh api "repos/${REPO}/pulls/${PR_NUMBER}" --jq .head.sha)"
+          fi
+          if [ -z "$SHA" ] || [ "$SHA" = "null" ]; then
+            echo "Could not resolve head SHA for PR ${PR_NUMBER}" >&2
+            exit 1
+          fi
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "Full CI pinned to ${SHA} (PR ${PR_NUMBER})"
+
+      - name: Mark full-ci pending on the head SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ steps.pin.outputs.sha }}
+          STATUS: in_progress
+          TITLE: Full CI running
+          SUMMARY: Running every tests/ci list on this PR head.
+          DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/scripts/report-full-ci-check.sh
+
+  suite:
+    needs: pin
+    uses: ./.github/workflows/tests.yml
+    with:
+      full_suite: true
+      slow: ${{ github.event_name == 'workflow_dispatch' && inputs.slow || false }}
+      checkout_ref: ${{ needs.pin.outputs.sha }}
+    permissions:
+      contents: read
+      pull-requests: read
+
+  report:
+    needs: [pin, suite]
+    if: always() && needs.pin.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      checks: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.pin.outputs.sha }}
+          sparse-checkout: |
+            .github/scripts/report-full-ci-check.sh
+          sparse-checkout-cone-mode: false
+
+      - name: Publish full-ci check on the PR head SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ needs.pin.outputs.sha }}
+          STATUS: completed
+          CONCLUSION: ${{ needs.suite.result == 'success' && 'success' || 'failure' }}
+          TITLE: ${{ needs.suite.result == 'success' && 'Full CI passed' || 'Full CI failed' }}
+          SUMMARY: Full suite (PHP unit, every MySQL list including main-only extended, JS unit, every browser screenshot job) on ${{ needs.pin.outputs.sha }}.
+          DETAILS_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: bash .github/scripts/report-full-ci-check.sh

@@ -131,6 +131,9 @@ const cases = [
       run_browser_admin: 'true',
       run_browser_openplan3d: 'false',
       run_browser_quotation: 'true',
+      run_php_unit: 'false',
+      run_js_unit: 'true',
+      run_unit_js: 'true',
       browserIncludes: ['tests/js/admin-hotkey-save-browser.test.js', 'tests/js/quotation-redraft-hotkey-lock-browser.test.js'],
       browserExcludes: ['tests/js/openplan3d-browser.test.js'],
     },
@@ -349,7 +352,8 @@ const cases = [
     expect: {
       run_browser: 'true',
       run_browser_openplan3d: 'true',
-      global_test_deps: 'true',
+      run_php_unit: 'true',
+      global_test_deps: 'false',
     },
   },
   {
@@ -358,6 +362,8 @@ const cases = [
     expect: {
       filter_seo: 'true',
       run_browser: 'false',
+      run_php_unit: 'true',
+      run_js_unit: 'false',
       global_test_deps: 'false',
     },
   },
@@ -384,10 +390,30 @@ const cases = [
     },
   },
   {
-    name: 'negative random app model without filter',
+    name: 'php model runs php unit not browser',
     paths: ['app/Models/Supplier.php'],
     expect: {
-      global_test_deps: 'true',
+      global_test_deps: 'false',
+      run_php_unit: 'true',
+      run_js_unit: 'false',
+      run_browser: 'false',
+      run_unit_js: 'true',
+      run_database: 'true',
+    },
+  },
+  {
+    name: 'docs only skips heavy jobs',
+    paths: ['README.md'],
+    extraEnv: {
+      DOCS_ONLY: 'true',
+      HAS_CODE_CHANGES: 'false',
+    },
+    expect: {
+      run_database: 'false',
+      run_unit_js: 'false',
+      run_php_unit: 'false',
+      run_js_unit: 'false',
+      run_browser: 'false',
     },
   },
 ];
@@ -413,6 +439,9 @@ for (const tc of cases) {
     }
     for (const p of tc.paths) {
       if (tc.expect.global_test_deps === 'true') {
+        continue;
+      }
+      if (p.endsWith('.md') || p.startsWith('docs/') || p.startsWith('lang/')) {
         continue;
       }
       const hits = matchFiltersForPath(p, loadFilters());

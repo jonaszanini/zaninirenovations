@@ -8,6 +8,7 @@
     "phpunit.xml",
     "phpunit.*.xml",
     ".github/workflows/**",
+    ".github/scripts/**",
     "tests/ci/**",
     "config/**",
     "bootstrap/**",
@@ -165,5 +166,27 @@
     "app/Support/LlmsTxtGenerator.php",
     "app/Support/RobotsTxtGenerator.php",
     "tests/Feature/OnPageSeo*.php"
+  ],
+  "php_unit": [
+    "app/**",
+    "bootstrap/**",
+    "composer.json",
+    "composer.lock",
+    "phpunit.xml",
+    "phpunit.*.xml",
+    "routes/**",
+    "database/**",
+    "resources/views/**",
+    "tests/Unit/**",
+    "tests/Feature/**",
+    "tests/TestCase.php"
+  ],
+  "js_unit": [
+    "public/js/**",
+    "public/css/**",
+    "tests/js/**",
+    "package.json",
+    "package-lock.json",
+    "scripts/**"
   ]
 }
