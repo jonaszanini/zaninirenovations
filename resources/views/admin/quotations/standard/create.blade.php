@@ -362,10 +362,12 @@
       </button>
     </div>
 
-    {{-- Grand summary -------------------------------------------- --}}
-    @include('admin.quotations._building', ['quotation' => $quotation])
-    @include('admin.quotations._commute_debris_row')
-    @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+    {{-- Option cards: 2-col from 1024px, one column on phones. --}}
+    <div class="sq-option-grid">
+      @include('admin.quotations._building', ['quotation' => $quotation])
+      @include('admin.quotations._commute_debris_row')
+      @include('admin.quotations._payment_schedule', ['quotation' => $quotation])
+    </div>
 
     <div class="admin-card sq-grand-card">
       <h3 class="sq-grand-card__title">Totals</h3>

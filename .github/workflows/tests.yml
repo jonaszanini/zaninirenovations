@@ -208,6 +208,7 @@ jobs:
               - 'public/css/admin.css'
               - 'tests/js/quotation-**'
               - 'tests/js/fixtures/quotation-redraft-hotkey-lock.html'
+              - 'tests/js/fixtures/quotation-standard-option-grid.html'
               - 'tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php'
               - 'tests/Feature/Admin/QuotationLifecycleBrowserTest.php'
               - 'tests/Feature/Admin/quotation-lifecycle-browser.js'
@@ -346,6 +347,16 @@ jobs:
           path: |
             storage/app/qa-screenshots/room-area-wall-finishes-drywall-1280.png
             storage/app/qa-screenshots/room-area-wall-finishes-drywall-390.png
+          if-no-files-found: warn
+
+      - name: Upload standard quotation option grid screenshots
+        if: success() && needs.changes.outputs.run_browser_quotation == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: standard-quotation-option-grid-screenshots
+          path: |
+            tests/js/artifacts/standard-quotation-option-grid-1280.png
+            tests/js/artifacts/standard-quotation-option-grid-390.png
           if-no-files-found: warn
 
   mysql:

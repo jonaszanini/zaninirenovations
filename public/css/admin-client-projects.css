@@ -7721,6 +7721,124 @@ body.cp-modal-open {
   padding: 14px 16px;
 }
 
+/* Standard quotation editor: pair option cards in two columns from 1024px. */
+.sq-option-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid .q-expense-pair {
+  display: contents;
+}
+.sq-option-grid .q-building-card,
+.sq-option-grid .q-commute-card,
+.sq-option-grid .q-debris-card,
+.sq-option-grid .q-payment-schedule-card {
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: 0;
+  padding: 12px 14px;
+  box-sizing: border-box;
+}
+.sq-option-grid .q-commute-card__title,
+.sq-option-grid .q-debris-card__title,
+.sq-option-grid .q-payment-schedule-card__title {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+.sq-option-grid .q-commute-choice {
+  margin-bottom: 8px;
+  gap: 6px;
+}
+.sq-option-grid .q-commute-choice__option {
+  padding: 6px 10px;
+}
+.sq-option-grid .q-building-percent-wrap {
+  padding-top: 8px;
+  gap: 8px;
+}
+.sq-option-grid .q-building-field,
+.sq-option-grid .q-debris-amount-group,
+.sq-option-grid .q-commute-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 0;
+}
+.sq-option-grid .q-building-field > .admin-label-with-tip,
+.sq-option-grid .q-debris-amount-group > .admin-label-with-tip,
+.sq-option-grid .q-commute-field > .admin-label-with-tip,
+.sq-option-grid .q-commute-field > label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0;
+  flex: 0 1 auto;
+}
+.sq-option-grid .q-commute-card__metrics {
+  margin-bottom: 8px;
+  gap: 6px;
+}
+.sq-option-grid .q-commute-metric {
+  padding: 8px 10px;
+}
+.sq-option-grid .q-commute-card__fields {
+  gap: 8px;
+}
+.sq-option-grid .q-debris-card__body {
+  padding: 8px 10px;
+}
+.sq-option-grid .q-payment-schedule-options {
+  gap: 8px;
+}
+.sq-option-grid .q-payment-schedule-option {
+  padding: 8px 10px;
+  gap: 8px;
+}
+.sq-option-grid .q-payment-schedule-panels {
+  margin-top: 8px;
+}
+.sq-option-grid .q-payment-schedule-panel {
+  padding: 10px 12px;
+}
+.sq-option-grid .q-payment-schedule-panel__title {
+  margin-bottom: 8px;
+}
+.sq-option-grid .q-pct-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.sq-option-grid .q-pct-group > label {
+  margin-bottom: 0;
+}
+@media (max-width: 700px) {
+  .sq-option-grid .q-commute-choice {
+    flex-direction: row;
+  }
+  .sq-option-grid .q-commute-choice__option {
+    flex: 1 1 0;
+    width: auto;
+    min-width: 0;
+  }
+}
+@media (max-width: 480px) {
+  .sq-option-grid .q-commute-card__metrics {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 1024px) {
+  .sq-option-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 10px 12px;
+    align-items: start;
+  }
+}
+
 /* Quotation editors — commute expense (shown when “Yes — charge commute fuel” is selected) */
 .q-commute-card {
   margin-bottom: 16px;

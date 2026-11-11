@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Standard quotation option sections</title>
+  <link rel="stylesheet" href="/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="/css/admin-client-projects.css">
+  <link rel="stylesheet" href="/css/admin-dark.css">
+  <style id="blade-inline"></style>
+</head>
+<body class="admin-body">
+  <div class="admin-app" id="admin-app">
+    <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
+      <div class="admin-sidebar-brand">
+        <a href="#">Zanini Renovations</a>
+        <span>Admin</span>
+      </div>
+    </aside>
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div class="admin-topbar-inner">
+          <h1>New standard quotation</h1>
+        </div>
+      </header>
+      <div class="admin-content">
+        <form id="sq-standard-form" data-quotation-editor>
+          <div class="sq-option-grid">
+            <div class="admin-card q-building-card" id="q-building">
+              <input type="hidden" name="include_building" value="0">
+              <span class="admin-label-with-tip">
+                <label class="cp-visit-toggle" for="q-building-include">
+                  <input type="checkbox" name="include_building" value="1" id="q-building-include" aria-controls="q-building-expandable" checked>
+                  <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+                  <span class="cp-visit-toggle__label">Building extra labour</span>
+                </label>
+                <span class="admin-info-tip-wrap">
+                  <button type="button" class="admin-info-tip" aria-label="About Building extra labour" aria-expanded="false" aria-controls="tip-building" aria-describedby="tip-building">
+                    <i class="fa fa-info-circle" aria-hidden="true"></i>
+                  </button>
+                  <span id="tip-building" class="admin-info-tip__bubble" role="tooltip">For condominiums and multi-unit residential or commercial buildings. Adds a labour surcharge for elevator, parking, and loading-bay access. Hidden from the client PDF. Folded into labour.</span>
+                </span>
+              </span>
+              <div id="q-building-expandable" class="cp-visit-expandable is-open" aria-hidden="false">
+                <div class="cp-visit-expandable__inner">
+                  <div class="q-building-percent-wrap" id="q-building-percent-wrap">
+                    <div class="admin-form-group q-building-field">
+                      <span class="admin-label-with-tip">
+                        <label for="q-building-percent">Additional labour</label>
+                        <span class="admin-info-tip-wrap">
+                          <button type="button" class="admin-info-tip" aria-label="About Additional labour" aria-expanded="false" aria-controls="tip-building-pct" aria-describedby="tip-building-pct">
+                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                          </button>
+                          <span id="tip-building-pct" class="admin-info-tip__bubble" role="tooltip">Default 30%. Applies to labour only, not materials.</span>
+                        </span>
+                      </span>
+                      <div class="q-building-percent-row">
+                        <input type="number" id="q-building-percent" name="building_labor_percent" class="admin-input" min="0" max="100" step="0.5" inputmode="decimal" autocomplete="off" value="30" aria-label="Additional labour percent for buildings">
+                        <span class="q-building-percent-suffix">%</span>
+                      </div>
+                    </div>
+                    <div class="q-building-added" id="q-building-added" aria-live="polite">
+                      <span class="q-building-added__label">Added to this quotation</span>
+                      <strong class="q-building-added__amount" id="q-building-added-amount">CA$0.00</strong>
+                      <p class="admin-form-help q-building-added__detail" id="q-building-added-detail">30% of labour</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="q-expense-pair">
+              <div class="admin-card q-commute-card" id="q-commute-expense" data-cp-commute-expense data-travel-url-template="/admin/client-projects/__ID__/travel-estimate" data-initial-project-id="12" data-saved-round-trip="18.40">
+                <h3 class="q-commute-card__title"><i class="fa fa-road" aria-hidden="true"></i> Charge Commute expense? <span class="cp-required">*</span></h3>
+                <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include commute fuel">
+                  <legend class="util-sr-only">Include commute fuel in this quotation?</legend>
+                  <label class="q-commute-choice__option is-selected">
+                    <input type="radio" name="include_commute" value="1" class="q-commute-choice__input" data-cp-commute-include-yes checked required>
+                    <span class="q-commute-choice__text">Yes</span>
+                  </label>
+                  <label class="q-commute-choice__option">
+                    <input type="radio" name="include_commute" value="0" class="q-commute-choice__input" data-cp-commute-include-no required>
+                    <span class="q-commute-choice__text">No</span>
+                  </label>
+                </fieldset>
+                <div class="q-commute-card__body" data-cp-commute-body>
+                  <div class="q-commute-card__metrics">
+                    <div class="q-commute-metric">
+                      <span class="q-commute-metric__label">Round trip (fuel)</span>
+                      <span class="q-commute-metric__value" data-cp-commute-round-trip>CA$18.40</span>
+                      <span class="admin-form-help" data-cp-commute-round-trip-help hidden></span>
+                    </div>
+                    <div class="q-commute-metric">
+                      <span class="q-commute-metric__label">Added to quotation</span>
+                      <span class="q-commute-metric__value q-commute-metric__value--hl" data-cp-commute-added>CA$18.40</span>
+                    </div>
+                  </div>
+                  <p class="admin-form-help" data-cp-commute-status hidden></p>
+                  <div class="q-commute-card__fields">
+                    <div class="admin-form-group q-commute-field q-commute-field--pct">
+                      <span class="admin-label-with-tip">
+                        <label for="q-commute-percent">% of round trip</label>
+                        <span class="admin-info-tip-wrap">
+                          <button type="button" class="admin-info-tip" aria-label="About % of round trip" aria-expanded="false" aria-controls="tip-commute-pct" aria-describedby="tip-commute-pct">
+                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                          </button>
+                          <span id="tip-commute-pct" class="admin-info-tip__bubble" role="tooltip">100% = full round-trip fuel cost per trip.</span>
+                        </span>
+                      </span>
+                      <div class="q-commute-field__inline">
+                        <input type="text" inputmode="decimal" id="q-commute-percent" name="commute_trip_percent" class="admin-input" maxlength="6" autocomplete="off" value="100" data-cp-commute-percent>
+                        <span class="q-commute-field__suffix">%</span>
+                      </div>
+                    </div>
+                    <div class="admin-form-group q-commute-field">
+                      <label for="q-commute-trips">Estimated trips</label>
+                      <input type="number" id="q-commute-trips" name="commute_estimated_trips" class="admin-input" min="1" max="999" step="1" value="1" data-cp-commute-trips>
+                    </div>
+                  </div>
+                </div>
+                <input type="hidden" name="commute_round_trip_cost" value="18.40" data-cp-commute-round-trip-hidden>
+              </div>
+
+              <div class="admin-card q-debris-card" id="q-debris-removal" data-cp-debris-removal>
+                <h3 class="q-debris-card__title"><i class="fa fa-trash" aria-hidden="true"></i> Charge Debris removal? <span class="cp-required">*</span></h3>
+                <fieldset class="q-commute-choice" role="radiogroup" aria-label="Include debris removal">
+                  <legend class="util-sr-only">Include debris removal in this quotation?</legend>
+                  <label class="q-commute-choice__option is-selected">
+                    <input type="radio" name="include_debris_removal" value="1" class="q-commute-choice__input" data-cp-debris-include-yes checked required>
+                    <span class="q-commute-choice__text">Yes</span>
+                  </label>
+                  <label class="q-commute-choice__option">
+                    <input type="radio" name="include_debris_removal" value="0" class="q-commute-choice__input" data-cp-debris-include-no required>
+                    <span class="q-commute-choice__text">No</span>
+                  </label>
+                </fieldset>
+                <div class="q-debris-card__body" data-cp-debris-body>
+                  <div class="admin-form-group q-debris-amount-group">
+                    <span class="admin-label-with-tip">
+                      <label for="q-debris-amount">Amount to charge</label>
+                      <span class="admin-label-with-tip__end">
+                        <span class="cp-required">*</span>
+                        <span class="admin-info-tip-wrap">
+                          <button type="button" class="admin-info-tip" aria-label="About Amount to charge" aria-expanded="false" aria-controls="tip-debris" aria-describedby="tip-debris">
+                            <i class="fa fa-info-circle" aria-hidden="true"></i>
+                          </button>
+                          <span id="tip-debris" class="admin-info-tip__bubble" role="tooltip">Incl. HST. Folded into Labour on the client PDF (not shown as its own line).</span>
+                        </span>
+                      </span>
+                    </span>
+                    <input type="text" id="q-debris-amount" name="debris_removal_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" placeholder="0.00" value="150.00" data-cp-debris-amount required data-cp-money-entry="direct">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-card q-payment-schedule-card" id="q-payment-schedule" data-initial-total="1250">
+              <h3 class="q-payment-schedule-card__title"><i class="fa fa-calendar-check-o" aria-hidden="true"></i> Payment schedule <span class="cp-required">*</span></h3>
+              <div class="q-payment-schedule-options" role="radiogroup" aria-label="Payment installments">
+                <label class="q-payment-schedule-option" data-plan-card="1" title="1 installment">
+                  <input type="radio" name="payment_installments" value="1" class="q-payment-schedule-option__input" required>
+                  <span class="q-payment-schedule-option__body">
+                    <span class="q-payment-schedule-option__label">1 installment</span>
+                    <span class="q-payment-schedule-option__summary" data-plan-summary="1">100%</span>
+                  </span>
+                </label>
+                <label class="q-payment-schedule-option is-selected" data-plan-card="2" title="2 installments">
+                  <input type="radio" name="payment_installments" value="2" class="q-payment-schedule-option__input" checked required>
+                  <span class="q-payment-schedule-option__body">
+                    <span class="q-payment-schedule-option__label">2 installments</span>
+                    <span class="q-payment-schedule-option__summary" data-plan-summary="2">50% / 50%</span>
+                  </span>
+                </label>
+                <label class="q-payment-schedule-option" data-plan-card="3" title="3 installments">
+                  <input type="radio" name="payment_installments" value="3" class="q-payment-schedule-option__input" required>
+                  <span class="q-payment-schedule-option__body">
+                    <span class="q-payment-schedule-option__label">3 installments</span>
+                    <span class="q-payment-schedule-option__summary" data-plan-summary="3">40% / 30% / 30%</span>
+                  </span>
+                </label>
+                <label class="q-payment-schedule-option" data-plan-card="4" title="4 installments">
+                  <input type="radio" name="payment_installments" value="4" class="q-payment-schedule-option__input" required>
+                  <span class="q-payment-schedule-option__body">
+                    <span class="q-payment-schedule-option__label">4 installments</span>
+                    <span class="q-payment-schedule-option__summary" data-plan-summary="4">30% / 30% / 20% / 20%</span>
+                  </span>
+                </label>
+              </div>
+              <div class="q-payment-schedule-panels">
+                <div class="q-payment-schedule-panel" data-plan-panel="2">
+                  <div class="q-payment-schedule-panel__title">Customize 2 Installments Percentage Split</div>
+                  <div class="q-payment-schedule-pct-grid q-pct-grid-2">
+                    <div class="admin-form-group q-pct-group">
+                      <label for="q-pct-2-0">Deposit (%)</label>
+                      <div class="q-pct-input-wrap">
+                        <input type="number" id="q-pct-2-0" name="payment_percentages[2][0]" class="admin-input q-pct-input" step="0.01" min="0" max="100" value="50" data-plan="2" data-index="0">
+                        <span class="q-pct-suffix">%</span>
+                      </div>
+                      <div class="q-pct-amount" data-pct-amount>CA$625.00</div>
+                    </div>
+                    <div class="admin-form-group q-pct-group">
+                      <label for="q-pct-2-1">Completion (%)</label>
+                      <div class="q-pct-input-wrap">
+                        <input type="number" id="q-pct-2-1" name="payment_percentages[2][1]" class="admin-input q-pct-input" step="0.01" min="0" max="100" value="50" data-plan="2" data-index="1">
+                        <span class="q-pct-suffix">%</span>
+                      </div>
+                      <div class="q-pct-amount" data-pct-amount>CA$625.00</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+  <script src="/js/admin-info-tip.js"></script>
+</body>
+</html>

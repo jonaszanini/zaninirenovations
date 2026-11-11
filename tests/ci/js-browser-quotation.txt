@@ -1,2 +1,3 @@
 tests/js/quotation-redraft-confirm-browser.test.js
 tests/js/quotation-redraft-hotkey-lock-browser.test.js
+tests/js/quotation-standard-option-grid-browser.test.js
