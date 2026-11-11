@@ -92,10 +92,12 @@ async function measure(page, width) {
       const icon = label.querySelector('.dash-title-icon');
       const copy = label.querySelector('.dash-stat-label__copy');
       const tipBtn = label.querySelector('.admin-info-tip');
+      const tipWrap = label.querySelector('.admin-info-tip-wrap');
       const labelBox = label.getBoundingClientRect();
       const iconBox = icon ? icon.getBoundingClientRect() : null;
       const copyBox = copy ? copy.getBoundingClientRect() : null;
-      const tipBox = tipBtn ? tipBtn.getBoundingClientRect() : null;
+      const wrapBox = tipWrap ? tipWrap.getBoundingClientRect() : null;
+      const tipBox = wrapBox || (tipBtn ? tipBtn.getBoundingClientRect() : null);
       const copyStyle = copy ? getComputedStyle(copy) : null;
       const lineHeight = copyStyle ? parseFloat(copyStyle.lineHeight) || 0 : 0;
       let titleLineCount = 0;
@@ -126,6 +128,8 @@ async function measure(page, width) {
         titleLineCount,
         labelWidth: Math.round(labelBox.width),
         copyWidth: copyBox ? Math.round(copyBox.width) : null,
+        wrapWidth: wrapBox ? Math.round(wrapBox.width) : null,
+        wrapHeight: wrapBox ? Math.round(wrapBox.height) : null,
         iconCy: iconBox ? iconBox.top + iconBox.height / 2 : null,
         copyCy: copyBox ? copyBox.top + copyBox.height / 2 : null,
         tipCy: tipBox ? tipBox.top + tipBox.height / 2 : null,
@@ -303,13 +307,11 @@ async function capture(page, port, width, height, dark, label, fullPage) {
         assert.ok(kpi.titleLineCount >= 1 && kpi.titleLineCount <= 2, `${key} KPI ${idx} title split across ${kpi.titleLineCount} lines`);
         assert.ok(!kpi.tipDropped, `${key} KPI ${idx} info tip dropped under the title`);
         assert.ok(!kpi.tipParkedRight, `${key} KPI ${idx} info tip parked at the far right of the card`);
+        assert.ok(kpi.wrapWidth >= 8 && kpi.wrapWidth <= 16, `${key} KPI ${idx} tip wrap is ${kpi.wrapWidth}px, expected 12px layout slot`);
+        assert.ok(kpi.wrapHeight >= 8 && kpi.wrapHeight <= 16, `${key} KPI ${idx} tip wrap height ${kpi.wrapHeight}px, expected 12px layout slot`);
+        assert.ok(kpi.copyHeight <= kpi.lineHeight + 14, `${key} KPI ${idx} title+tip block is ${kpi.copyHeight}px tall (line ${kpi.lineHeight})`);
         assert.ok(kpi.tipLeft - kpi.copyRight < 28, `${key} KPI ${idx} tip too far from title end`);
-        if (kpi.titleLineCount === 1) {
-          assert.ok(Math.abs(kpi.tipCy - kpi.iconCy) < 18, `${key} KPI ${idx} tip not on the same row as the icon (iconCy=${kpi.iconCy} tipCy=${kpi.tipCy})`);
-        } else {
-          assert.ok(kpi.tipTop < kpi.copyBottom, `${key} KPI ${idx} tip left the title block`);
-          assert.ok(kpi.tipLeft + 2 >= kpi.copyLeft, `${key} KPI ${idx} tip not with the wrapped title`);
-        }
+        assert.ok(Math.abs(kpi.tipCy - kpi.iconCy) < 18, `${key} KPI ${idx} tip not on the same row as the icon (iconCy=${kpi.iconCy} tipCy=${kpi.tipCy} lines=${kpi.titleLineCount} copyH=${kpi.copyHeight})`);
       }
     });
     const active = row.kpiLabels.find((k) => /active projects/i.test(k.text));

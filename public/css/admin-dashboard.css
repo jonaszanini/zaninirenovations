@@ -121,15 +121,28 @@
   max-width: 100%;
 }
 
-.dash-card--stat .dash-stat-label > .admin-info-tip-wrap,
-.dash-stat-label__copy > .admin-info-tip-wrap {
+.admin-content .dash-card--stat .dash-stat-label > .admin-info-tip-wrap,
+.admin-content .dash-stat-label__copy > .admin-info-tip-wrap {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
   vertical-align: middle;
-  flex-shrink: 0;
-  width: 1em;
-  height: 1em;
+  flex: 0 0 12px;
+  width: 12px;
+  min-width: 12px;
+  max-width: 12px;
+  height: 12px;
+  min-height: 12px;
   overflow: visible;
-  margin-left: 0.1em;
+  margin-left: 2px;
+}
+
+/* 44px hit target, laid out as 12px so it stays on the title row. */
+.admin-content .dash-card--stat .dash-stat-label .admin-info-tip-wrap > .admin-info-tip {
+  width: 44px;
+  height: 44px;
+  margin: -16px;
 }
 
 .dash-card--stat .dash-stat-value {

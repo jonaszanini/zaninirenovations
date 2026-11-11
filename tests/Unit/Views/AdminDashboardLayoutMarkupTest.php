@@ -87,6 +87,14 @@ class AdminDashboardLayoutMarkupTest extends TestCase
             '/\.dash-stat-label__copy\s*\{[^}]*flex:\s*0 1 auto/s',
             $css
         );
+        $this->assertMatchesRegularExpression(
+            '/\.dash-stat-label__copy > \.admin-info-tip-wrap\s*\{[^}]*max-width:\s*12px/s',
+            $css
+        );
+        $this->assertStringContainsString(
+            '.admin-content .dash-card--stat .dash-stat-label .admin-info-tip-wrap > .admin-info-tip',
+            $css
+        );
         $this->assertStringContainsString('.dash-compact-row', $css);
         $this->assertStringContainsString('.dash-compact-row__amt', $css);
         $this->assertStringContainsString('margin-left: auto', $css);
