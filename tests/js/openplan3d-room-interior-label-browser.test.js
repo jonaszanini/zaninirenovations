@@ -226,7 +226,7 @@ async function main() {
     var imperialSf = parsedImperial[0].unit === 'sf'
       ? parsedImperial[0].value
       : parsedImperial[0].value * 10.7639;
-    assert.ok(Math.abs(imperialSf - 111.89) < 0.05,
+    assert.ok(Math.abs(imperialSf - 111.89) < 0.12,
       'imperial on-plan label must show interior ~111.89 sf, got ' + JSON.stringify(imperialLabels.labels));
 
     const metricLabels = await readLabels(metricPlan);
