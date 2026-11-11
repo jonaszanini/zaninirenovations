@@ -315,6 +315,57 @@
     return hi - lo > eps / elen;
   }
 
+  function wallEndpointTouchesOther(wall, others, cmPerUnit) {
+    if (!wall || !wall.start || !wall.end) return { start: false, end: false };
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var eps = WALL_JOIN_TOLERANCE_CM;
+    function near(point, px, py) {
+      return hypot(point.x * unit - px, point.y * unit - py) < eps;
+    }
+    var touchesStart = false;
+    var touchesEnd = false;
+    for (var i = 0; i < others.length; i++) {
+      var o = others[i];
+      if (!o || o.id === wall.id || !o.start || !o.end) continue;
+      var osx = o.start.x * unit;
+      var osy = o.start.y * unit;
+      var oex = o.end.x * unit;
+      var oey = o.end.y * unit;
+      if (near(wall.start, osx, osy) || near(wall.start, oex, oey)) touchesStart = true;
+      if (near(wall.end, osx, osy) || near(wall.end, oex, oey)) touchesEnd = true;
+    }
+    return { start: touchesStart, end: touchesEnd };
+  }
+
+  function distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit) {
+    if (!matched || matched.length < 3) return null;
+    var out = {};
+    var interiorFt = 0;
+    var endWalls = [];
+    for (var i = 0; i < matched.length; i++) {
+      var w = matched[i];
+      var touch = wallEndpointTouchesOther(w, matched, cmPerUnit);
+      var centerFt = wallCenterlineLengthCm(w, cmPerUnit) / CM_PER_FOOT;
+      if (touch.start && touch.end) {
+        out[String(w.id)] = centerFt;
+        interiorFt += centerFt;
+      } else {
+        endWalls.push({ wall: w, centerFt: centerFt });
+      }
+    }
+    if (!endWalls.length) return null;
+    var remainder = edgeLenFt - interiorFt;
+    if (remainder < 0) remainder = 0;
+    var endCenter = 0;
+    for (var j = 0; j < endWalls.length; j++) endCenter += endWalls[j].centerFt;
+    if (!(endCenter > 0)) return out;
+    for (var e = 0; e < endWalls.length; e++) {
+      var frac = endWalls[e].centerFt / endCenter;
+      out[String(endWalls[e].wall.id)] = remainder * frac;
+    }
+    return out;
+  }
+
   function distributeBoundaryLengthsFt(centerlineRingCm, interiorRingCm, boundaryWallIds, wallsById, cmPerUnit) {
     var out = {};
     var matchRing = centerlineRingCm && centerlineRingCm.length >= 3 ? centerlineRingCm : interiorRingCm;
@@ -343,6 +394,11 @@
         if (wallOverlapsRingEdge(w, ax, ay, bx, by, cmPerUnit)) matched.push(w);
       }
       if (!matched.length) continue;
+      var collinear = distributeCollinearEdgeLengthsFt(matched, edgeLenFt, cmPerUnit);
+      if (collinear) {
+        for (var cid in collinear) out[cid] = collinear[cid];
+        continue;
+      }
       var totalCenterCm = 0;
       for (var mi = 0; mi < matched.length; mi++) {
         totalCenterCm += wallCenterlineLengthCm(matched[mi], cmPerUnit);

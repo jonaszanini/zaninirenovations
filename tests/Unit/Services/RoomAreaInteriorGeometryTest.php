@@ -261,7 +261,36 @@ class RoomAreaInteriorGeometryTest extends TestCase
         ];
     }
 
-  /**
+    public function test_collinear_north_split_interior_edge_lengths(): void
+    {
+        $cm = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $t = 11.43;
+        $plan = [
+            'unit' => 'cm',
+            'floor' => [
+                'walls' => [
+                    ['id' => 'n1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 3 * $cm, 'y' => 0], 'thickness' => $t],
+                    ['id' => 'n2', 'start' => ['x' => 3 * $cm, 'y' => 0], 'end' => ['x' => 7 * $cm, 'y' => 0], 'thickness' => $t],
+                    ['id' => 'n3', 'start' => ['x' => 7 * $cm, 'y' => 0], 'end' => ['x' => 10 * $cm, 'y' => 0], 'thickness' => $t],
+                    ['id' => 'e', 'start' => ['x' => 10 * $cm, 'y' => 0], 'end' => ['x' => 10 * $cm, 'y' => 12 * $cm], 'thickness' => $t],
+                    ['id' => 's', 'start' => ['x' => 10 * $cm, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 12 * $cm], 'thickness' => $t],
+                    ['id' => 'w', 'start' => ['x' => 0, 'y' => 12 * $cm], 'end' => ['x' => 0, 'y' => 0], 'thickness' => $t],
+                ],
+                'rooms' => [['id' => 'r1', 'walls' => ['n1', 'n2', 'n3', 'e', 's', 'w']]],
+            ],
+        ];
+        $metrics = $this->bridge->layoutMetrics($plan, 'r1', ['wall_height_ft' => 8.0]);
+        $byId = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            $byId[(string) ($wall['id'] ?? '')] = (float) ($wall['length_lf'] ?? 0);
+        }
+        $this->assertEqualsWithDelta(2.81, $byId['n1'], 0.01);
+        $this->assertEqualsWithDelta(4.0, $byId['n2'], 0.01);
+        $this->assertEqualsWithDelta(2.81, $byId['n3'], 0.01);
+        $this->assertEqualsWithDelta(42.5, $metrics['perimeter_lf'] ?? 0, 0.02);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function lRoomPlan(): array

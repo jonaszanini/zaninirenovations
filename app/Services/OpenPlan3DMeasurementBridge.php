@@ -1792,7 +1792,7 @@ class OpenPlan3DMeasurementBridge
         }
         $useRingEdges = count($interiorRingCm) >= 3 && count($wallIds) === count($interiorRingCm);
         $distributedFt = [];
-        if (count($interiorRingCm) >= 3 && count($wallIds) > 0 && count($wallIds) !== count($interiorRingCm)) {
+        if (count($interiorRingCm) >= 3 && count($wallIds) > 0) {
             $distributedFt = $this->interiorGeometry->distributeBoundaryLengthsFt(
                 $centerlineRingCm !== [] ? $centerlineRingCm : $interiorRingCm,
                 $interiorRingCm,

@@ -213,6 +213,14 @@ class RoomAreaInteriorGeometry
             if ($matched === []) {
                 continue;
             }
+            $collinear = $this->distributeCollinearEdgeLengthsFt($matched, $edgeLenFt, $cmPerUnit);
+            if (is_array($collinear) && $collinear !== []) {
+                foreach ($collinear as $cid => $len) {
+                    $out[(string) $cid] = $len;
+                }
+
+                continue;
+            }
             $totalCenterCm = 0.0;
             foreach ($matched as $mw) {
                 $totalCenterCm += $this->wallCenterlineLengthCm($mw, $cmPerUnit);
@@ -227,6 +235,89 @@ class RoomAreaInteriorGeometry
         }
 
         return $out;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $matched
+     * @return array<string, float>|null
+     */
+    private function distributeCollinearEdgeLengthsFt(array $matched, float $edgeLenFt, float $cmPerUnit): ?array
+    {
+        if (count($matched) < 3) {
+            return null;
+        }
+        $out = [];
+        $interiorFt = 0.0;
+        $endWalls = [];
+        foreach ($matched as $w) {
+            $touch = $this->wallEndpointTouchesOther($w, $matched, $cmPerUnit);
+            $centerFt = $this->wallCenterlineLengthCm($w, $cmPerUnit) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+            if ($touch['start'] && $touch['end']) {
+                $out[(string) ($w['id'] ?? '')] = $centerFt;
+                $interiorFt += $centerFt;
+            } else {
+                $endWalls[] = ['wall' => $w, 'centerFt' => $centerFt];
+            }
+        }
+        if ($endWalls === []) {
+            return null;
+        }
+        $remainder = $edgeLenFt - $interiorFt;
+        if ($remainder < 0) {
+            $remainder = 0.0;
+        }
+        $endCenter = 0.0;
+        foreach ($endWalls as $entry) {
+            $endCenter += $entry['centerFt'];
+        }
+        if ($endCenter <= 0) {
+            return $out;
+        }
+        foreach ($endWalls as $entry) {
+            $frac = $entry['centerFt'] / $endCenter;
+            $out[(string) ($entry['wall']['id'] ?? '')] = $remainder * $frac;
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $others
+     * @return array{start: bool, end: bool}
+     */
+    private function wallEndpointTouchesOther(array $wall, array $others, float $cmPerUnit): array
+    {
+        if (! isset($wall['start'], $wall['end'])) {
+            return ['start' => false, 'end' => false];
+        }
+        $unit = max($cmPerUnit, 1e-9);
+        $eps = self::WALL_JOIN_TOLERANCE_CM;
+        $touchesStart = false;
+        $touchesEnd = false;
+        foreach ($others as $o) {
+            if (! is_array($o) || ! isset($o['start'], $o['end'])) {
+                continue;
+            }
+            if ((string) ($o['id'] ?? '') === (string) ($wall['id'] ?? '')) {
+                continue;
+            }
+            $osx = (float) $o['start']['x'] * $unit;
+            $osy = (float) $o['start']['y'] * $unit;
+            $oex = (float) $o['end']['x'] * $unit;
+            $oey = (float) $o['end']['y'] * $unit;
+            $wsx = (float) $wall['start']['x'] * $unit;
+            $wsy = (float) $wall['start']['y'] * $unit;
+            $wex = (float) $wall['end']['x'] * $unit;
+            $wey = (float) $wall['end']['y'] * $unit;
+            if (hypot($wsx - $osx, $wsy - $osy) < $eps || hypot($wsx - $oex, $wsy - $oey) < $eps) {
+                $touchesStart = true;
+            }
+            if (hypot($wex - $osx, $wey - $osy) < $eps || hypot($wex - $oex, $wey - $oey) < $eps) {
+                $touchesEnd = true;
+            }
+        }
+
+        return ['start' => $touchesStart, 'end' => $touchesEnd];
     }
 
     /**

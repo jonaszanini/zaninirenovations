@@ -315,7 +315,35 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
   });
   var finished = ext.applyToMetrics(metrics0, Object.assign({}, plan, { zanini: { wallFinishes: wf } }), {}, cm);
-  assert.ok(Math.abs(finished.finish_baseboard_lf - 77.0) < 1.0, '20x10 spanning partition all finishes ~77 lf');
+  assert.strictEqual(finished.finish_baseboard_lf, 77.75,
+    '20x10 partition: perimeter 58.5 lf + both faces of p1 interior 9.625 ft = 77.75 lf');
+})();
+
+(function collinearNorthSplitLengths() {
+  var cm = 30.48;
+  var t = 11.43;
+  var plan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: [
+        { id: 'n1', start: { x: 0, y: 0 }, end: { x: 3 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'n2', start: { x: 3 * cm, y: 0 }, end: { x: 7 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'n3', start: { x: 7 * cm, y: 0 }, end: { x: 10 * cm, y: 0 }, thickness: t, height: 243.84 },
+        { id: 'e', start: { x: 10 * cm, y: 0 }, end: { x: 10 * cm, y: 12 * cm }, thickness: t, height: 243.84 },
+        { id: 's', start: { x: 10 * cm, y: 12 * cm }, end: { x: 0, y: 12 * cm }, thickness: t, height: 243.84 },
+        { id: 'w', start: { x: 0, y: 12 * cm }, end: { x: 0, y: 0 }, thickness: t, height: 243.84 },
+      ],
+      rooms: [{ id: 'r1', walls: ['n1', 'n2', 'n3', 'e', 's', 'w'] }],
+    },
+  };
+  var m = bridge.layoutMetrics(plan, 'r1', { wall_height_ft: 8.0 });
+  var byId = {};
+  (m.walls || []).forEach(function (w) { byId[w.id] = w.length_lf; });
+  assert.strictEqual(byId.n1, 2.81, 'north 3 ft collinear end keeps remainder share');
+  assert.strictEqual(byId.n2, 4.0, 'north 4 ft middle segment uses centerline lf');
+  assert.strictEqual(byId.n3, 2.81, 'north 3 ft collinear end keeps remainder share');
+  assert.strictEqual(m.perimeter_lf, 42.5, 'perimeter unchanged with collinear split');
 })();
 
 (function hand0FinishPins() {

@@ -1191,12 +1191,7 @@
     var trimBoundaryCorners = !alreadyInterior;
     var useRingEdges = interiorRingCm.length >= 3 && bWallIds.length === interiorRingCm.length;
     var distributedFt = null;
-    if (
-      interiorGeom &&
-      interiorRingCm.length >= 3 &&
-      bWallIds.length > 0 &&
-      bWallIds.length !== interiorRingCm.length
-    ) {
+    if (interiorGeom && interiorRingCm.length >= 3 && bWallIds.length > 0) {
       distributedFt = interiorGeom.distributeBoundaryLengthsFt(
         polyVertices,
         interiorRingCm,
@@ -1793,7 +1788,8 @@
         false
       );
       if (sqFt > 0) {
-        area = Math.round((sqFt / 10.7639) * 100) / 100;
+        var sqFtRounded = Math.round(sqFt * 100) / 100;
+        area = sqFtRounded / 10.7639;
       }
     }
     return {
