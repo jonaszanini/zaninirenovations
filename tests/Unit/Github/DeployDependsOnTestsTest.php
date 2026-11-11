@@ -265,6 +265,7 @@ class DeployDependsOnTestsTest extends TestCase
         $sharedFilter = $this->pathsFile('tests/ci/database-filter-shared-prices.txt');
         $this->assertContains('tests/Unit/Services/BasementQuotationProductivityOverlayTest.php', $sharedFilter);
         $this->assertContains('tests/Unit/Services/TrimmingQuotationCalculatorTest.php', $sharedFilter);
+        $this->assertContains('tests/Unit/Services/SharedWorkCatalogMaterialPriceTest.php', $sharedFilter);
         $this->assertNotContains('tests/Unit/Services/BasementQuotationCalculatorTest.php', $sharedFilter);
     }
 

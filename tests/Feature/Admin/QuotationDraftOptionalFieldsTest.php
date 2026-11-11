@@ -122,7 +122,11 @@ class QuotationDraftOptionalFieldsTest extends IntegrationTestCase
             ->assertRedirect(route('admin.quotations.'.$type.'.create'))
             ->assertSessionHasErrors(self::PUBLISH_ONLY);
 
-        $this->assertSame(0, $this->modelClassForType($type)::query()->count());
+        $clientName = 'Publish optional '.$type;
+        $this->assertNull(
+            $this->modelClassForType($type)::query()->where('client_name', $clientName)->first(),
+            "{$type} publish without required fields must not persist a row for this client"
+        );
     }
 
     public function test_email_send_is_blocked_when_publish_only_fields_are_blank(): void

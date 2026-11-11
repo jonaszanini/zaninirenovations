@@ -14,7 +14,7 @@ class BasementTrimMaterialLfBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8058;
+    private int $serverPort = 8065;
 
     public function test_doors_trim_baseboard_material_per_lf_in_preview_at_1280_and_390(): void
     {

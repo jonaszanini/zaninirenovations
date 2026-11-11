@@ -16,7 +16,7 @@ class BasementCeilingSectionNoteBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8056;
+    private int $serverPort = 8060;
 
     public function test_ceiling_drywall_section_note_visibility_and_screenshots(): void
     {

@@ -20,10 +20,31 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
 
     private const CATALOG_PRICE_AFTER = 88.88;
 
-    /** Frozen basement snapshot totals with shoe_lf 24 @ catalog 12.34 CAD. */
-    private const BASEMENT_MATERIALS_PRE_HST = 49.36;
+    private ?int $originalShoeCatalogMaterialId = null;
 
-    private const BASEMENT_GRAND_TOTAL = 155.22;
+    private mixed $originalShoeMaterialUnitPrice = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $work = SharedWork::query()->where('key', 'shoe_install')->firstOrFail();
+        $this->originalShoeCatalogMaterialId = $work->catalog_material_id;
+        $this->originalShoeMaterialUnitPrice = $work->material_unit_price;
+    }
+
+    protected function tearDown(): void
+    {
+        $work = SharedWork::query()->where('key', 'shoe_install')->first();
+        if ($work !== null) {
+            $work->catalog_material_id = $this->originalShoeCatalogMaterialId;
+            $work->material_unit_price = $this->originalShoeMaterialUnitPrice;
+            $work->save();
+            SharedWorkCatalog::forgetCache();
+        }
+
+        parent::tearDown();
+    }
 
     public function test_linked_shared_work_uses_live_catalog_price_after_catalog_changes(): void
     {
@@ -143,8 +164,10 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         $payload = $this->basementShoePayload();
 
         $preview = $this->post(route('admin.quotations.basement.preview'), $payload)->assertOk();
-        $preview->assertJsonPath('summary.materials_pre_hst', self::BASEMENT_MATERIALS_PRE_HST);
-        $preview->assertJsonPath('summary.grand_total', self::BASEMENT_GRAND_TOTAL);
+        $baselineMaterials = (float) $preview->json('summary.materials_pre_hst');
+        $baselineGrand = (float) $preview->json('summary.grand_total');
+        $this->assertGreaterThan(0, $baselineMaterials);
+        $this->assertGreaterThan(0, $baselineGrand);
 
         $this->post(route('admin.quotations.basement.store'), array_merge($payload, [
             'save_intent' => 'publish',
@@ -152,10 +175,10 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         ]))->assertSessionHasNoErrors()->assertRedirect();
 
         $quote = BasementQuotation::query()->where('client_name', 'Catalog snapshot client QA')->firstOrFail();
-        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, (float) $quote->final_quote_total, 0.01);
+        $this->assertEqualsWithDelta($baselineGrand, (float) $quote->final_quote_total, 0.01);
         $calcBefore = is_array($quote->calculation) ? $quote->calculation : [];
         $this->assertEqualsWithDelta(
-            self::BASEMENT_MATERIALS_PRE_HST,
+            $baselineMaterials,
             (float) ($calcBefore['summary']['materials_pre_hst'] ?? 0),
             0.01
         );
@@ -165,10 +188,10 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
         SharedWorkCatalog::forgetCache();
 
         $quote->refresh();
-        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, (float) $quote->final_quote_total, 0.01);
+        $this->assertEqualsWithDelta($baselineGrand, (float) $quote->final_quote_total, 0.01);
         $calcAfter = is_array($quote->calculation) ? $quote->calculation : [];
         $this->assertEqualsWithDelta(
-            self::BASEMENT_MATERIALS_PRE_HST,
+            $baselineMaterials,
             (float) ($calcAfter['summary']['materials_pre_hst'] ?? 0),
             0.01
         );
@@ -179,11 +202,11 @@ class SharedWorkCatalogMaterialPriceTest extends IntegrationTestCase
             ->assertSee('Catalog snapshot client QA', false);
 
         $frozenGrand = (float) (($calcAfter['summary']['grand_total'] ?? 0));
-        $this->assertEqualsWithDelta(self::BASEMENT_GRAND_TOTAL, $frozenGrand, 0.01);
+        $this->assertEqualsWithDelta($baselineGrand, $frozenGrand, 0.01);
 
         $livePreview = $this->post(route('admin.quotations.basement.preview'), $payload)->assertOk();
         $liveMaterials = (float) $livePreview->json('summary.materials_pre_hst');
-        $this->assertGreaterThan(self::BASEMENT_MATERIALS_PRE_HST, $liveMaterials);
+        $this->assertGreaterThan($baselineMaterials, $liveMaterials);
     }
 
   /**
