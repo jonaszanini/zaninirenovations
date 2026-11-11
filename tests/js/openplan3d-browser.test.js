@@ -86,6 +86,7 @@ function startServer() {
           saveCount += 1;
           const delay = saveDelayMs;
           const fail = failNextSave;
+          const bodySnap = body;
           saveDelayMs = 0;
           failNextSave = false;
           setTimeout(() => {
@@ -93,11 +94,11 @@ function startServer() {
               sendJson(res, 500, { ok: false, message: 'save failed' });
               return;
             }
-            const metrics = lastSavedBody.plan ? host.computeMetrics(lastSavedBody.plan) : null;
+            const metrics = bodySnap && bodySnap.plan ? host.computeMetrics(bodySnap.plan) : null;
             const planArea = metrics && metrics.area_sqft != null ? Number(metrics.area_sqft) : 180.0;
             sendJson(res, 200, {
               ok: true,
-              room: { id: lastSavedBody.id || 10, name: lastSavedBody.name, area_sqft: planArea },
+              room: { id: bodySnap.id || 10, name: bodySnap.name, area_sqft: planArea },
             });
           }, delay);
         });
