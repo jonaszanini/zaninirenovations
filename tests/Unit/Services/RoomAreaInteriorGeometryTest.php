@@ -213,6 +213,16 @@ class RoomAreaInteriorGeometryTest extends TestCase
         $x83 = $this->geom->wallPlanEdgeLengthCm($byId['x83nxa0q'], $walls, $cmPerUnit, true) / OpenPlan3DMeasurementBridge::CM_PER_FOOT;
         $this->assertEqualsWithDelta(3.035, $ed9, 0.02);
         $this->assertEqualsWithDelta(15.338, $x83, 0.02);
+
+        $metrics = $this->bridge->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]);
+        $layoutById = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (is_array($wall) && isset($wall['id'])) {
+                $layoutById[(string) $wall['id']] = $wall;
+            }
+        }
+        $this->assertEqualsWithDelta(3.035, (float) ($layoutById['ed9b3bxc']['length_lf_exact'] ?? 0), 0.02);
+        $this->assertEqualsWithDelta(15.338, (float) ($layoutById['x83nxa0q']['length_lf_exact'] ?? 0), 0.02);
     }
 
     public function test_boundary_wall_lengths_sum_to_interior_perimeter(): void
@@ -232,9 +242,11 @@ class RoomAreaInteriorGeometryTest extends TestCase
                 if (! in_array($wall['id'] ?? '', $boundaryIds, true)) {
                     continue;
                 }
-                $sum += (float) ($wall['length_lf_exact'] ?? $wall['length_lf'] ?? 0);
+                $runLf = (float) ($wall['finish_run_lf'] ?? $wall['length_lf_exact'] ?? $wall['length_lf'] ?? 0);
+                $buttLf = (float) ($wall['interior_butt_deduction_lf'] ?? 0);
+                $sum += $runLf + $buttLf;
             }
-            $this->assertEqualsWithDelta($perimeter, $sum, 0.02, 'Boundary interior spans must sum to polygon perimeter');
+            $this->assertEqualsWithDelta($perimeter, $sum, 0.02, 'Boundary finish runs + butt deductions must sum to polygon perimeter');
         }
     }
 

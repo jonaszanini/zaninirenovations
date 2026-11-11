@@ -438,6 +438,16 @@ function patchEditorCanvasChunk(source) {
     process.exit(1);
   }
 
+  const roomPropsAreaOld = '()=>Go(t(I).area,t(p).units)';
+  const roomPropsAreaNew =
+    '()=>(typeof window!=="undefined"&&window.OpenPlan3DMeasurementBridge&&typeof window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea==="function"?window.OpenPlan3DMeasurementBridge.formatOnPlanRoomArea(t(I),t(I).polygon,t(I).holes||[],t(Ce),t(p)):Go(t(I).area,t(p).units))';
+  if (s.includes(roomPropsAreaOld)) {
+    s = replaceExpected(s, roomPropsAreaOld, roomPropsAreaNew, 'editor chunk: room properties area matches on-plan label', 1);
+  } else if (!s.includes('formatOnPlanRoomArea(t(I),t(I).polygon')) {
+    console.error('patch-openplan3d: editor chunk: room properties area pattern not found');
+    process.exit(1);
+  }
+
   if (!s.includes('/*__ZANINI_OPENPLAN3D_PATCH__*/')) {
     s = replaceExpected(
       s,

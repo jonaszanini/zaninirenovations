@@ -1546,12 +1546,18 @@
       var netArea = netWallAreaSqFt(finishLenFt, ceilingHeight, dedRaw);
       totalNetWallArea += netArea;
 
+      var displayLenFt = wLenFt;
+      if (bObj && interiorGeom) {
+        var displayEdgeCm = interiorGeom.wallPlanEdgeLengthCm(bObj, allWallsList, cmPerUnit, true);
+        if (displayEdgeCm > 0) displayLenFt = displayEdgeCm / CM_PER_FOOT;
+      }
+
       perWallNetAreas.push({
         id: bw.id,
         index: wallIdx,
         label: 'W' + wallIdx,
-        length_lf: roundTo(wLenFt, 2),
-        length_lf_exact: wLenFt,
+        length_lf: roundTo(displayLenFt, 2),
+        length_lf_exact: displayLenFt,
         interior_butt_deduction_lf: roundTo(buttLf, 2),
         finish_run_lf: finishLenFt,
         opening_area_sqft: roundTo(dedRaw, 2),

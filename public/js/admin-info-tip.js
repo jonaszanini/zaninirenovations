@@ -127,30 +127,23 @@
     bubble.style.top = Math.round(top) + 'px';
     bubble.style.left = Math.round(left) + 'px';
 
-    var finalRect = bubble.getBoundingClientRect();
     var vw = window.innerWidth || 0;
     var vh = window.innerHeight || 0;
-    var clampLeft = finalRect.left;
-    if (finalRect.right > vw - PAD) {
-      clampLeft -= finalRect.right - (vw - PAD);
+    var popW = popRect.width;
+    if (left + popW > vw - PAD) {
+      left = Math.max(PAD, vw - PAD - popW);
+      bubble.style.left = Math.round(left) + 'px';
+    } else if (left < PAD) {
+      bubble.style.left = Math.round(PAD) + 'px';
     }
-    if (clampLeft < PAD) {
-      clampLeft = PAD;
-    }
-    if (Math.abs(clampLeft - finalRect.left) > 0.5) {
-      bubble.style.left = Math.round(left + (clampLeft - finalRect.left)) + 'px';
-    }
-    finalRect = bubble.getBoundingClientRect();
-    var clampTop = finalRect.top;
-    if (finalRect.bottom > vh - PAD) {
-      clampTop -= finalRect.bottom - (vh - PAD);
-    }
-    if (clampTop < PAD) {
-      clampTop = PAD;
-    }
-    if (Math.abs(clampTop - finalRect.top) > 0.5) {
-      bubble.style.top = Math.round(top + (clampTop - finalRect.top)) + 'px';
-    }
+    var placedBelow = top >= btnRect.bottom - 4;
+  var popBottom = top + need;
+  if (placedBelow && popBottom > vh - PAD) {
+    top = Math.max(PAD, vh - PAD - need);
+    bubble.style.top = Math.round(top) + 'px';
+  } else if (!placedBelow && top < PAD) {
+    bubble.style.top = Math.round(PAD) + 'px';
+  }
   }
 
   function repositionOpenTips() {

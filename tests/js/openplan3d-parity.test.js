@@ -428,6 +428,12 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     Math.abs(interiorGeom.wallPlanEdgeLengthCm(x83Wall, hand0Walls, cmPer, true) / cmPerFt - 15.338) < 0.02,
     'hand0 top run x83nxa0q interior edge span ~15.338 lf'
   );
+  var layoutById = {};
+  (hand0Metrics.walls || []).forEach(function (w) { layoutById[w.id] = w; });
+  assert.ok(Math.abs((layoutById.ed9b3bxc && layoutById.ed9b3bxc.length_lf_exact) - 3.035) < 0.02,
+    'hand0 layout length_lf_exact ed9b3bxc ~3.035 lf');
+  assert.ok(Math.abs((layoutById.x83nxa0q && layoutById.x83nxa0q.length_lf_exact) - 15.338) < 0.02,
+    'hand0 layout length_lf_exact x83nxa0q ~15.338 lf');
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');
