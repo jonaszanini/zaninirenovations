@@ -206,7 +206,9 @@ jobs:
               - 'public/js/admin-dialog.js'
               - 'public/js/admin-info-tip.js'
               - 'public/css/admin.css'
+              - 'public/css/admin-client-projects.css'
               - 'tests/js/quotation-**'
+              - 'tests/js/helpers/render-standard-quotation-editor.php'
               - 'tests/js/fixtures/quotation-redraft-hotkey-lock.html'
               - 'tests/js/fixtures/quotation-standard-option-grid.html'
               - 'tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php'
@@ -357,6 +359,10 @@ jobs:
           path: |
             tests/js/artifacts/standard-quotation-option-grid-1280.png
             tests/js/artifacts/standard-quotation-option-grid-390.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1024.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1280.png
+            tests/js/artifacts/standard-quotation-option-grid-real-390.png
+            tests/js/artifacts/standard-quotation-option-grid-real-1440.png
           if-no-files-found: warn
 
   mysql:

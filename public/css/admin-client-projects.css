@@ -7766,6 +7766,23 @@ body.cp-modal-open {
 .sq-option-grid .q-building-percent-wrap {
   padding-top: 8px;
   gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+.sq-option-grid .q-building-added {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: auto;
+  max-width: 100%;
+  margin-left: 0;
+  box-sizing: border-box;
+}
+.sq-option-grid .q-building-added__label,
+.sq-option-grid .q-building-added__amount,
+.sq-option-grid .q-building-added__detail {
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 .sq-option-grid .q-building-field,
 .sq-option-grid .q-debris-amount-group,
@@ -7814,14 +7831,22 @@ body.cp-modal-open {
 .sq-option-grid .q-payment-schedule-panel__title {
   margin-bottom: 8px;
 }
+.sq-option-grid .q-payment-schedule-pct-grid {
+  grid-template-columns: 1fr;
+}
 .sq-option-grid .q-pct-group {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 4px 8px;
+  min-width: 0;
 }
 .sq-option-grid .q-pct-group > label {
   margin-bottom: 0;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: manual;
 }
 @media (max-width: 700px) {
   .sq-option-grid .q-commute-choice {
@@ -7836,6 +7861,11 @@ body.cp-modal-open {
 @media (max-width: 480px) {
   .sq-option-grid .q-commute-card__metrics {
     grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 641px) {
+  .sq-option-grid .q-payment-schedule-pct-grid {
+    grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
   }
 }
 @media (min-width: 1024px) {

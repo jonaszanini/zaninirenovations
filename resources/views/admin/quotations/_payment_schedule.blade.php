@@ -198,7 +198,9 @@
     margin-bottom: 4px;
     display: block;
     line-height: 1.25;
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
+    word-break: normal;
+    hyphens: manual;
   }
   .q-pct-input-wrap {
     position: relative;

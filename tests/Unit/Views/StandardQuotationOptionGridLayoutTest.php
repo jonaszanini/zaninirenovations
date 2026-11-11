@@ -84,6 +84,22 @@ class StandardQuotationOptionGridLayoutTest extends TestCase
             '/\.sq-option-grid\s+\.q-expense-pair\s*\{[^}]*display:\s*contents/s',
             $chunk
         );
+        $this->assertMatchesRegularExpression(
+            '/\.sq-option-grid\s+\.q-building-added\s*\{[^}]*min-width:\s*0/s',
+            $chunk
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.sq-option-grid\s+\.q-building-added\s*\{[^}]*width:\s*max-content/s',
+            $chunk
+        );
+        $this->assertMatchesRegularExpression(
+            '/@media\s*\(min-width:\s*641px\)\s*\{[\s\S]*\.sq-option-grid\s+\.q-payment-schedule-pct-grid\s*\{[^}]*minmax\(9\.5rem,\s*1fr\)/s',
+            $chunk
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.sq-option-grid\s+\.q-pct-group\s*>\s*label\s*\{[^}]*overflow-wrap:\s*break-word/s',
+            $chunk
+        );
     }
 
     public function test_option_partials_keep_saved_field_hooks(): void
@@ -100,6 +116,16 @@ class StandardQuotationOptionGridLayoutTest extends TestCase
         $this->assertStringContainsString('name="building_labor_percent"', $building);
         $this->assertStringContainsString('id="q-building-added-amount"', $building);
         $this->assertStringContainsString('Added to this quotation', $building);
+        $this->assertStringContainsString('min-width: 0', $building);
+        $this->assertStringNotContainsString('width: max-content', $building);
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.q-pct-group\s+label\s*\{[^}]*overflow-wrap:\s*anywhere/s',
+            $pay
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.q-pct-group\s+label\s*\{[^}]*overflow-wrap:\s*break-word/s',
+            $pay
+        );
 
         $this->assertStringContainsString('id="q-commute-expense"', $commute);
         $this->assertStringContainsString('name="include_commute"', $commute);

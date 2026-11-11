@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const { execFileSync } = require('child_process');
 const fs = require('fs');
 const http = require('http');
 const path = require('path');
@@ -8,9 +9,11 @@ const puppeteer = require('puppeteer');
 
 const ROOT = path.resolve(__dirname, '../..');
 const FIXTURE = path.join(__dirname, 'fixtures/quotation-standard-option-grid.html');
+const RENDER_PHP = path.join(__dirname, 'helpers/render-standard-quotation-editor.php');
 const publicDir = path.join(ROOT, 'public');
 const shotsDir = path.join(__dirname, 'artifacts');
 const ARTIFACT_DIRS = [shotsDir, '/opt/cursor/artifacts'];
+const LEFT_CARD_IDS = ['q-building', 'q-commute-expense', 'q-debris-removal', 'q-payment-schedule'];
 
 function extractBladeStyles() {
   const files = [
@@ -25,21 +28,28 @@ function extractBladeStyles() {
   }).join('\n');
 }
 
-function pageHtml() {
+function fixtureHtml() {
   return fs.readFileSync(FIXTURE, 'utf8').replace(
     '<style id="blade-inline"></style>',
     `<style id="blade-inline">${extractBladeStyles()}</style>`
   );
 }
 
-function startServer() {
+function renderBladeEditor() {
+  return execFileSync('php', [RENDER_PHP], {
+    encoding: 'utf8',
+    maxBuffer: 20 * 1024 * 1024,
+    cwd: ROOT,
+  });
+}
+
+function startServer(pages) {
   return new Promise((resolve, reject) => {
-    const html = pageHtml();
     const server = http.createServer((req, res) => {
       const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
-      if (urlPath === '/' || urlPath === '/quotation-standard-option-grid.html') {
+      if (Object.prototype.hasOwnProperty.call(pages, urlPath)) {
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(html);
+        res.end(pages[urlPath]);
         return;
       }
       const file = path.join(publicDir, urlPath.replace(/^\//, '').split('?')[0]);
@@ -93,6 +103,108 @@ function copyShot(fromPath, filename) {
       throw err;
     }
   }
+}
+
+function overflowScript() {
+  return () => {
+    function isSkipped(el) {
+      if (el.hasAttribute('hidden') || el.getAttribute('aria-hidden') === 'true') return true;
+      const st = getComputedStyle(el);
+      if (st.display === 'none' || st.visibility === 'hidden') return true;
+      if (st.position === 'absolute' || st.position === 'fixed') return true;
+      return false;
+    }
+    function cardOverflows(card) {
+      const cr = card.getBoundingClientRect();
+      const hits = [];
+      if (card.scrollWidth > card.clientWidth + 1) {
+        hits.push({
+          kind: 'scroll',
+          id: card.id,
+          scrollWidth: card.scrollWidth,
+          clientWidth: card.clientWidth,
+        });
+      }
+      const walk = (el) => {
+        for (const child of el.children) {
+          if (isSkipped(child)) continue;
+          const r = child.getBoundingClientRect();
+          if (r.width < 0.5 && r.height < 0.5) continue;
+          if (r.right > cr.right + 1.5 || r.left < cr.left - 1.5) {
+            hits.push({
+              kind: 'box',
+              id: child.id || String(child.className || ''),
+              text: (child.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 90),
+              left: Math.round(r.left),
+              right: Math.round(r.right),
+              cardLeft: Math.round(cr.left),
+              cardRight: Math.round(cr.right),
+            });
+          }
+          walk(child);
+        }
+      };
+      walk(card);
+      return hits;
+    }
+    function midWordBreak(el) {
+      const node = [...el.childNodes].find((n) => n.nodeType === 3 && n.textContent.trim());
+      if (!node) return null;
+      const text = node.textContent;
+      const range = document.createRange();
+      let lastTop = null;
+      for (let i = 0; i < text.length; i++) {
+        range.setStart(node, i);
+        range.setEnd(node, i + 1);
+        const r = range.getBoundingClientRect();
+        if (r.width === 0 && r.height === 0) continue;
+        if (lastTop != null && Math.abs(r.top - lastTop) > 2) {
+          const prev = text[i - 1];
+          const cur = text[i];
+          if (prev && cur && /[A-Za-z]/.test(prev) && /[A-Za-z]/.test(cur)) {
+            return { text: text.trim(), at: i, prev, cur };
+          }
+        }
+        lastTop = r.top;
+      }
+      return null;
+    }
+    const leftHits = {};
+    ['q-building', 'q-commute-expense', 'q-debris-removal', 'q-payment-schedule'].forEach((id) => {
+      const card = document.getElementById(id);
+      leftHits[id] = card ? cardOverflows(card) : [{ kind: 'missing', id }];
+    });
+    const labels = [...document.querySelectorAll('.q-pct-group label')].map((el) => ({
+      text: (el.textContent || '').trim(),
+      break: midWordBreak(el),
+    }));
+    const added = document.getElementById('q-building-added');
+    const addedCss = added
+      ? {
+          width: getComputedStyle(added).width,
+          maxWidth: getComputedStyle(added).maxWidth,
+          minWidth: getComputedStyle(added).minWidth,
+          wrap: getComputedStyle(added).flexWrap,
+          detail: (document.getElementById('q-building-added-detail') || {}).textContent || '',
+        }
+      : null;
+    return { leftHits, labels, addedCss };
+  };
+}
+
+function assertNoLeftOverflow(report, width) {
+  Object.entries(report.leftHits).forEach(([id, hits]) => {
+    assert.deepStrictEqual(hits, [], `${width}px ${id} overflow ${JSON.stringify(hits)}`);
+  });
+}
+
+function assertNoMidWordLabelBreak(report, width) {
+  const broken = report.labels.filter((row) => row.break);
+  assert.deepStrictEqual(
+    broken,
+    [],
+    `${width}px payment label mid-word break ${JSON.stringify(broken)}`
+  );
 }
 
 async function capture(width, height, filename, port) {
@@ -208,7 +320,7 @@ async function capture(width, height, filename, port) {
   fs.mkdirSync(shotsDir, { recursive: true });
   const outPath = path.join(shotsDir, filename);
   const grid = await page.$('.sq-lower-grid');
-  assert.ok(grid, 'lower grid missing for screenshot');
+  assert.ok(grid, 'option grid missing for screenshot');
   await grid.screenshot({ path: outPath });
   copyShot(outPath, filename);
 
@@ -224,12 +336,104 @@ async function capture(width, height, filename, port) {
   return layout;
 }
 
+async function captureBlade(width, height, filename, port) {
+  const browser = await launch();
+  const page = await browser.newPage();
+  await page.setViewport({ width, height, deviceScaleFactor: 1 });
+  await page.goto(`http://127.0.0.1:${port}/blade`, { waitUntil: 'networkidle0', timeout: 60000 });
+  await page.waitForSelector('.sq-lower-grid', { timeout: 8000 });
+  assert.ok(
+    await page.$('#admin-sidebar'),
+    'real Blade editor must include the admin sidebar'
+  );
+  assert.ok(
+    await page.$('link[href*="admin-client-projects.css"]'),
+    'real Blade editor must load admin-client-projects.css'
+  );
+
+  const include = await page.$('#q-building-include');
+  assert.ok(include, 'building include missing');
+  const checked = await page.$eval('#q-building-include', (el) => el.checked);
+  if (!checked) {
+    await include.click();
+  }
+  await page.waitForFunction(() => {
+    const wrap = document.getElementById('q-building-expandable');
+    return wrap && wrap.classList.contains('is-open') && wrap.classList.contains('is-settled');
+  }, { timeout: 4000 });
+
+  const plan3 = await page.$('input[name="payment_installments"][value="3"]');
+  assert.ok(plan3, '3 installments option missing');
+  await plan3.click();
+  await page.waitForSelector('[data-plan-panel="3"]:not([hidden])', { timeout: 4000 });
+
+  await page.waitForFunction(() => window.QuotationBuildingLaborUi, { timeout: 4000 });
+  await page.evaluate(() => {
+    window.QuotationBuildingLaborUi.setLabourBase(2000);
+  });
+  await page.waitForFunction(() => {
+    const el = document.getElementById('q-building-added-detail');
+    return el && /CA\$600\.00 before HST/.test(el.textContent || '');
+  }, { timeout: 4000 });
+  await page.evaluate(() => {
+    window.QuotationBuildingLaborUi.setLabourBase(2000);
+  });
+
+  const report = await page.evaluate(overflowScript());
+  assert.ok(
+    /30% of labour \(CA\$600\.00 before HST\)/.test(report.addedCss.detail),
+    `expected long building added detail, got ${JSON.stringify(report.addedCss.detail)}`
+  );
+  assert.notStrictEqual(report.addedCss.minWidth, 'max-content', 'added row must not use max-content');
+  assert.ok(
+    report.labels.some((row) => /commencement/i.test(row.text)),
+    'COMMENCEMENT (%) must be visible on the 3-installment plan'
+  );
+
+  if (width >= 1024) {
+    assertNoLeftOverflow(report, width);
+    assertNoMidWordLabelBreak(report, width);
+    LEFT_CARD_IDS.forEach((id) => {
+      assert.ok(report.leftHits[id], `${id} missing from overflow report`);
+    });
+  }
+
+  await page.evaluate(() => {
+    document.querySelectorAll('.qh-sticky-footer').forEach((el) => {
+      el.style.setProperty('display', 'none');
+    });
+  });
+
+  fs.mkdirSync(shotsDir, { recursive: true });
+  const outPath = path.join(shotsDir, filename);
+  const grid = await page.$('.sq-lower-grid');
+  assert.ok(grid, 'lower grid missing for real Blade screenshot');
+  await grid.screenshot({ path: outPath });
+  copyShot(outPath, filename);
+
+  await browser.close();
+  return { width, sidebar: true, added: report.addedCss.detail, labels: report.labels.map((l) => l.text) };
+}
+
 async function main() {
-  const { server, port } = await startServer();
+  const bladeHtml = renderBladeEditor();
+  assert.ok(bladeHtml.includes('id="admin-sidebar"'), 'rendered Blade must include admin sidebar');
+  assert.ok(bladeHtml.includes('sq-lower-grid'), 'rendered Blade must include the lower grid');
+  assert.ok(bladeHtml.includes('q-building-added'), 'rendered Blade must include building added row');
+
+  const { server, port } = await startServer({
+    '/': fixtureHtml(),
+    '/quotation-standard-option-grid.html': fixtureHtml(),
+    '/blade': bladeHtml,
+  });
   const results = [];
   try {
     results.push(await capture(1280, 1100, 'standard-quotation-option-grid-1280.png', port));
     results.push(await capture(390, 1600, 'standard-quotation-option-grid-390.png', port));
+    results.push(await captureBlade(1024, 2400, 'standard-quotation-option-grid-real-1024.png', port));
+    results.push(await captureBlade(1280, 2400, 'standard-quotation-option-grid-real-1280.png', port));
+    results.push(await captureBlade(1440, 2400, 'standard-quotation-option-grid-real-1440.png', port));
+    results.push(await captureBlade(390, 2400, 'standard-quotation-option-grid-real-390.png', port));
   } finally {
     server.close();
   }
