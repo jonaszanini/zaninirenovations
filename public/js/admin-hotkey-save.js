@@ -1239,7 +1239,7 @@
       var expected = consumeExpect(env);
       var doc = env.document;
       var quotationEditor = !!(doc && doc.querySelector && (
-        doc.querySelector('[data-qh-flash-toast]') || doc.querySelector('[data-qh-header]')
+        doc.querySelector('[data-qh-header]') || doc.querySelector('[data-qh-editor-toast]')
       ));
       var announce = expected || quotationEditor;
       if (payload.fields && payload.fields.length) {

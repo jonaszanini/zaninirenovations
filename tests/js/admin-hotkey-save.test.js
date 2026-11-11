@@ -50,7 +50,7 @@ function matches(el, sel) {
   if (sel === 'label') return el.tagName === 'LABEL';
   if (sel === '[data-hotkey-save]') return el.hasAttribute('data-hotkey-save');
   if (sel === '[data-admin-toast-host]') return el.hasAttribute('data-admin-toast-host');
-  if (sel === '[data-qh-flash-toast]') return el.hasAttribute('data-qh-flash-toast');
+  if (sel === '[data-qh-editor-toast]') return el.hasAttribute('data-qh-editor-toast');
   if (sel === '[data-qh-header]') return el.hasAttribute('data-qh-header');
   if (sel === '[data-qh-flash-status]') return el.hasAttribute('data-qh-flash-status');
   if (sel.indexOf('[role="dialog"]') === 0) return el.getAttribute('role') === 'dialog';
@@ -1299,7 +1299,7 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
 })();
 
 (function quotationToastPinsTopRightAndLastsSixSeconds() {
-  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-flash-toast': '', 'data-qh-flash-duration': '6000' });
+  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-editor-toast': '' });
   host.hidden = true;
   const doc = makeDoc([host]);
   const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
@@ -1308,11 +1308,13 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
   assert.strictEqual(host.getAttribute('data-placement'), 'top-right');
   assert.strictEqual(host.getAttribute('aria-live'), 'polite');
   assert.ok(String(host.className).indexOf('admin-toast--top-right') !== -1);
+  assert.ok(host.classList.contains('is-entering'), 'quotation toast slides in');
   assert.strictEqual(toast.QUOTE_MS, 6000);
+  assert.ok(String(host.innerHTML).indexOf('data-admin-toast-close') !== -1, 'existing AdminToast close button');
 })();
 
 (function quotationSessionFlashDoesNotNeedExpect() {
-  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-flash-toast': '' });
+  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-editor-toast': '' });
   host.hidden = true;
   const banner = makeEl('div', { 'data-admin-flash': 'success', id: 'flash' });
   banner.textContent = 'Standard quotation SQ-1 saved and linked to this project.';

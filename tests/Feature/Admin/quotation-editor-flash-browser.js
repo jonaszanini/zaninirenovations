@@ -43,20 +43,30 @@ async function shot(page, name) {
 }
 
 async function showFlash(page, message) {
-  await page.waitForFunction(() => !!(window.AdminToast && window.AdminQuotationFlash && document.querySelector('[data-qh-flash-toast]')));
+  await page.waitForFunction(() => !!(window.AdminToast && window.AdminQuotationFlash && document.querySelector('[data-admin-toast-host]')));
   await page.evaluate((text) => {
     window.AdminToast.show({ type: 'success', title: text, sticky: false });
     if (window.AdminQuotationFlash && window.AdminQuotationFlash.sync) {
       window.AdminQuotationFlash.sync('success', text);
     }
   }, message);
-  await page.waitForSelector('[data-qh-flash-toast]:not([hidden]) .admin-toast--success');
+  await page.waitForSelector('[data-admin-toast-host]:not([hidden]) .admin-toast--success');
   await page.waitForSelector('[data-qh-flash-status]:not([hidden])');
+  await page.evaluate(() => new Promise((resolve) => {
+    const toast = document.querySelector('[data-qh-editor-toast]') || document.querySelector('[data-admin-toast-host]');
+    if (!toast) {
+      resolve();
+      return;
+    }
+    const done = function () { resolve(); };
+    toast.addEventListener('animationend', done, { once: true });
+    setTimeout(done, 700);
+  }));
 }
 
 async function metrics(page) {
   return page.evaluate(() => {
-    const toast = document.querySelector('[data-qh-flash-toast]');
+    const toast = document.querySelector('[data-qh-editor-toast]') || document.querySelector('[data-admin-toast-host]');
     const card = toast && toast.querySelector('.admin-toast__card');
     const status = document.querySelector('[data-qh-flash-status]');
     const header = document.querySelector('[data-qh-header]');
@@ -80,6 +90,7 @@ async function metrics(page) {
       vw: window.innerWidth,
       ariaLive: toast ? toast.getAttribute('aria-live') : null,
       hasClose: !!(toast && toast.querySelector('[data-admin-toast-close]')),
+      entering: !!(toast && toast.classList && toast.classList.contains('is-entering')),
       bg: styles ? styles.backgroundColor : '',
     };
   });

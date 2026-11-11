@@ -21,28 +21,36 @@ class QuotationEditorFlashMarkupTest extends TestCase
         $this->assertStringContainsString('admin.partials.quotation_flash_status', $header);
         $this->assertStringContainsString('admin.partials.quotation_flash_toast', $header);
 
-        $this->assertStringContainsString('data-qh-flash-toast', $toast);
         $this->assertStringContainsString('data-admin-toast-host', $toast);
+        $this->assertStringContainsString('data-qh-editor-toast', $toast);
         $this->assertStringContainsString('aria-live="polite"', $toast);
-        $this->assertStringContainsString('data-admin-toast-close', $toast);
-        $this->assertStringContainsString('data-qh-flash-duration="6000"', $toast);
+        $this->assertStringContainsString('hidden', $toast);
+        $this->assertStringNotContainsString('admin-toast__card', $toast);
+        $this->assertStringNotContainsString('data-admin-toast-close', $toast);
 
         $this->assertStringContainsString('QuotationEditorFlash::isEditorRequest()', $layout);
         $this->assertStringContainsString('@unless (\App\Support\QuotationEditorFlash::isEditorRequest())', $layout);
         $this->assertStringContainsString('admin-quotation-flash.js', $layout);
+        $this->assertStringContainsString('admin-toast.js', $layout);
+        $this->assertStringContainsString('id="admin-toast-flash"', $layout);
 
         $this->assertStringContainsString('QUOTE_MS', $toastJs);
-        $this->assertStringContainsString('data-qh-flash-toast', $toastJs);
+        $this->assertStringContainsString('data-qh-editor-toast', $toastJs);
         $this->assertStringContainsString('mouseenter', $toastJs);
         $this->assertStringContainsString("applyPlacement(node, 'top-right')", $toastJs);
+        $this->assertStringContainsString('is-entering', $toastJs);
 
-        $this->assertStringContainsString('[data-qh-flash-toast]', $css);
+        $this->assertStringContainsString('[data-qh-editor-toast]', $css);
+        $this->assertStringContainsString('qh-admin-toast-slide', $css);
+        $this->assertStringContainsString('prefers-reduced-motion', $css);
+        $this->assertStringContainsString('qh-admin-toast-fade', $css);
         $this->assertStringContainsString('backdrop-filter', $css);
         $this->assertStringContainsString('.qh-flash-status', $css);
         $this->assertStringContainsString('.qh-crumb-row', $css);
 
         $this->assertStringContainsString('Saved and linked to this project', $js);
         $this->assertStringContainsString('Saved as a draft', $js);
+        $this->assertStringContainsString('AdminToast', $js);
         $this->assertDoesNotMatchRegularExpression('/[—–]/u', $js);
         $this->assertDoesNotMatchRegularExpression('/[—–]/u', $status.$toast);
     }

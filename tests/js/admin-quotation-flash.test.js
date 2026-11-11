@@ -21,13 +21,28 @@ assert.strictEqual(toast.QUOTE_MS, 6000);
 assert.strictEqual(toast.SUCCESS_MS, 2500);
 
 const css = fs.readFileSync(path.resolve(__dirname, '../../public/css/admin.css'), 'utf8');
-assert.ok(css.indexOf('[data-qh-flash-toast]') !== -1, 'quotation toast CSS is shared');
+assert.ok(css.indexOf('[data-qh-editor-toast]') !== -1, 'quotation toast CSS targets the existing AdminToast host');
+assert.ok(css.indexOf('qh-admin-toast-slide') !== -1, 'toast slides in from the right');
+assert.ok(css.indexOf('prefers-reduced-motion') !== -1, 'reduced motion uses a fade');
+assert.ok(css.indexOf('qh-admin-toast-fade') !== -1, 'reduced motion fade keyframes');
 assert.ok(css.indexOf('backdrop-filter') !== -1, 'toast uses backdrop blur');
 assert.ok(css.indexOf('.qh-flash-status') !== -1, 'compact status CSS is shared');
-assert.ok(/@media \(max-width: 700px\)\s*\{[^}]*\[data-qh-flash-toast\]/s.test(css), '390px toast is full width minus margins');
+assert.ok(/@media \(max-width: 700px\)\s*\{[^}]*\[data-qh-editor-toast\]/s.test(css), '390px toast is full width minus margins');
 
 const dark = fs.readFileSync(path.resolve(__dirname, '../../public/css/admin-dark.css'), 'utf8');
-assert.ok(dark.indexOf('html.admin-dark [data-qh-flash-toast] .admin-toast--success') !== -1);
+assert.ok(dark.indexOf('html.admin-dark [data-qh-editor-toast] .admin-toast--success') !== -1);
 assert.ok(dark.indexOf('html.admin-dark .qh-flash-status') !== -1);
+
+const toastJs = fs.readFileSync(path.resolve(__dirname, '../../public/js/admin-toast.js'), 'utf8');
+assert.ok(toastJs.indexOf("applyPlacement(node, 'top-right')") !== -1);
+assert.ok(toastJs.indexOf('data-qh-editor-toast') !== -1);
+assert.ok(toastJs.indexOf('is-entering') !== -1);
+
+const partial = fs.readFileSync(
+  path.resolve(__dirname, '../../resources/views/admin/partials/quotation_flash_toast.blade.php'),
+  'utf8'
+);
+assert.ok(partial.indexOf('data-admin-toast-host') !== -1, 'reuses the existing AdminToast host');
+assert.ok(partial.indexOf('admin-toast__card') === -1, 'does not render a second toast card');
 
 console.log('admin-quotation-flash: ok');

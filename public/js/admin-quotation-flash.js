@@ -1,7 +1,6 @@
 /**
- * Quotation editor save flash: compact breadcrumb status + toast auto-hide.
- * Toast markup lives in admin.partials.quotation_flash_toast; AdminToast
- * renders into that host on AJAX and session flash.
+ * Compact breadcrumb status for quotation editors.
+ * Reuses AdminToast (public/js/admin-toast.js) for the viewport message.
  */
 (function (root, factory) {
   var api = factory(root);
@@ -65,31 +64,6 @@
     return status;
   }
 
-  function cardType(host) {
-    if (!host || !host.querySelector) return 'success';
-    var card = host.querySelector('.admin-toast__card');
-    var cls = card && card.className ? String(card.className) : '';
-    if (cls.indexOf('admin-toast--error') !== -1) return 'error';
-    if (cls.indexOf('admin-toast--warning') !== -1) return 'warning';
-    return 'success';
-  }
-
-  function adoptVisibleToast(env) {
-    var doc = envDoc(env);
-    if (!doc) return;
-    var host = doc.querySelector('[data-qh-flash-toast]');
-    if (!host || host.hidden) return;
-    var titleEl = host.querySelector('.admin-toast__title');
-    var title = titleEl ? String(titleEl.textContent || '').trim() : '';
-    if (!title) return;
-    var type = cardType(host);
-    sync(type, title, env);
-    var toast = env && env.toast ? env.toast : root.AdminToast;
-    if (toast && typeof toast.show === 'function') {
-      toast.show({ type: type, title: title, sticky: false }, env || {});
-    }
-  }
-
   function hookToast() {
     var toast = root.AdminToast;
     if (!toast || toast.__qhFlashHooked) return;
@@ -112,7 +86,6 @@
   function bind(env) {
     env = env || {};
     hookToast();
-    adoptVisibleToast(env);
     return true;
   }
 
@@ -122,6 +95,5 @@
     sync: sync,
     bind: bind,
     hookToast: hookToast,
-    adoptVisibleToast: adoptVisibleToast,
   };
 });

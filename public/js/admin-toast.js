@@ -79,25 +79,31 @@
       .replace(/"/g, '&quot;');
   }
 
+  function isQuotationEditor(doc, node) {
+    if (node && node.hasAttribute && node.hasAttribute('data-qh-editor-toast')) return true;
+    doc = doc || (node && node.ownerDocument) || null;
+    return !!(doc && doc.querySelector && doc.querySelector('[data-qh-header]'));
+  }
+
   function isQuotationHost(node) {
-    return !!(node && node.hasAttribute && node.hasAttribute('data-qh-flash-toast'));
+    return isQuotationEditor(node && node.ownerDocument, node);
   }
 
   function quotationDuration(node) {
-    if (!isQuotationHost(node)) return SUCCESS_MS;
-    var raw = node.getAttribute && node.getAttribute('data-qh-flash-duration');
-    var ms = parseInt(raw, 10);
-    return ms > 0 ? ms : QUOTE_MS;
+    return isQuotationHost(node) ? QUOTE_MS : SUCCESS_MS;
   }
 
   function ensureHost(env) {
     var doc = envDoc(env);
     if (!doc) return null;
-    host = doc.querySelector('[data-qh-flash-toast]') || doc.querySelector('[data-admin-toast-host]');
+    host = doc.querySelector('[data-qh-editor-toast]') || doc.querySelector('[data-admin-toast-host]');
     if (!host) {
       host = doc.createElement('div');
       host.className = 'admin-toast';
       host.setAttribute('data-admin-toast-host', '');
+      if (isQuotationEditor(doc, null)) {
+        host.setAttribute('data-qh-editor-toast', '');
+      }
       host.hidden = true;
       (doc.body || doc.documentElement).appendChild(host);
     }
@@ -176,7 +182,8 @@
 
   function applyPlacement(node, name) {
     node.setAttribute('data-placement', name);
-    node.className = 'admin-toast admin-toast--' + name + (isQuotationHost(node) ? ' qh-flash-toast' : '');
+    var entering = node.classList && node.classList.contains('is-entering') ? ' is-entering' : '';
+    node.className = 'admin-toast admin-toast--' + name + entering;
     if (node.style) {
       node.style.top = '';
       node.style.bottom = '';
@@ -417,7 +424,7 @@
     hidePaused = false;
     hideRemaining = 0;
     var node = host || (envDoc(env) && (
-      envDoc(env).querySelector('[data-qh-flash-toast]') || envDoc(env).querySelector('[data-admin-toast-host]')
+      envDoc(env).querySelector('[data-qh-editor-toast]') || envDoc(env).querySelector('[data-admin-toast-host]')
     ));
     if (node) {
       node.hidden = true;
@@ -482,10 +489,7 @@
       type = options.warning ? 'warning' : 'error';
     }
     var quoteHost = isQuotationHost(host);
-    var sticky = options.sticky;
-    if (sticky == null) {
-      sticky = quoteHost ? false : type !== 'success';
-    }
+    var sticky = quoteHost ? false : (options.sticky == null ? type !== 'success' : options.sticky);
     var title = options.title || (type === 'success' ? 'Saved' : 'Could not save');
     var live = type === 'success' || quoteHost ? 'status' : 'alert';
 
@@ -515,6 +519,11 @@
     bindFieldLinks(env);
     if (options.fields) highlightFields(options.fields, true);
     pickPlacement(env);
+    if (quoteHost && host.classList) {
+      host.classList.remove('is-entering');
+      if (host.offsetWidth) { /* restart slide/fade */ }
+      host.classList.add('is-entering');
+    }
     if (options.fields && options.fields[0] && options.fields[0].el) {
       focusField(options.fields[0], env);
     }
@@ -524,21 +533,13 @@
       scheduleHide(env, duration);
       if (quoteHost) bindHoverPause(host, env);
     }
-    if (quoteHost) {
-      var flashApi = (typeof globalThis !== 'undefined' && globalThis.AdminQuotationFlash)
-        || (typeof window !== 'undefined' && window.AdminQuotationFlash)
-        || null;
-      if (flashApi && typeof flashApi.sync === 'function') {
-        try { flashApi.sync(type, title, env); } catch (err) { /* ignore */ }
-      }
-    }
     return host;
   }
 
   function saved(env, message) {
     var text = message && String(message).trim();
     var plain = !text || /^(saved\.?|changes saved\.?)$/i.test(text);
-    return show({
+    return api.show({
       type: 'success',
       title: plain ? 'Saved' : text,
       sticky: false,
@@ -546,7 +547,7 @@
   }
 
   function error(message, env, title) {
-    return show({
+    return api.show({
       type: 'error',
       title: title || 'Could not save',
       message: message || 'The server could not save your changes.',
@@ -557,7 +558,7 @@
   function validation(fields, opts, env) {
     opts = opts || {};
     var warning = !!opts.warning;
-    return show({
+    return api.show({
       type: warning ? 'warning' : 'error',
       title: warning ? 'Please review' : 'Please fix these fields',
       fields: fields || [],
@@ -585,7 +586,7 @@
     return false;
   }
 
-  return {
+  var api = {
     SUCCESS_MS: SUCCESS_MS,
     QUOTE_MS: QUOTE_MS,
     PLACEMENTS: PLACEMENTS,
@@ -604,4 +605,5 @@
     revealWizardFor: revealWizardFor,
     bindFieldWatch: bindFieldWatch,
   };
+  return api;
 });
