@@ -31,8 +31,15 @@ class QuotationEditorFlashTest extends IntegrationTestCase
             $payload['is_draft'] = '1';
         }
 
-        $store = $this->from(route('admin.quotations.'.$type.'.create'))
-            ->post(route('admin.quotations.'.$type.'.store'), $payload);
+        if ($type === 'painting') {
+            // New painting quotations are hidden (PR #156); save an existing one instead.
+            $existing = $this->makeExistingPaintingQuote($clientName);
+            $store = $this->from(route('admin.quotations.painting.edit', $existing))
+                ->put(route('admin.quotations.painting.update', $existing), $payload);
+        } else {
+            $store = $this->from(route('admin.quotations.'.$type.'.create'))
+                ->post(route('admin.quotations.'.$type.'.store'), $payload);
+        }
 
         $store->assertSessionDoesntHaveErrors();
         $store->assertRedirect();
@@ -130,5 +137,27 @@ class QuotationEditorFlashTest extends IntegrationTestCase
         $payload = json_decode(html_entity_decode((string) ($m[1] ?? ''), ENT_QUOTES, 'UTF-8'), true);
 
         return is_array($payload) ? $payload : [];
+    }
+
+    private function makeExistingPaintingQuote(string $clientName): \App\Models\PaintingQuotation
+    {
+        $paintLineId = \App\Models\PaintingPaintLine::query()->orderBy('id')->value('id');
+        $inputs = array_merge(\App\Services\PaintingQuotationCalculator::defaultInputs(), [
+            'total_property_sqf' => 1200,
+            'paint_line_id' => $paintLineId,
+        ]);
+        $calc = (new \App\Services\PaintingQuotationCalculator)->calculate($inputs);
+
+        return \App\Models\PaintingQuotation::query()->create([
+            'quote_number' => \App\Models\PaintingQuotation::generateNumber(),
+            'client_name' => $clientName,
+            'is_draft' => true,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => round((float) ($calc['summary']['final_quote_total'] ?? 0), 2),
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => 0,
+        ]);
     }
 }
