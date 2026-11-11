@@ -24,6 +24,8 @@ tests/Unit/Services/BasementTrimMaterialLfTest.php
 tests/Feature/Admin/BasementTrimMaterialLegacyQuoteTest.php
 tests/Feature/Admin/BasementTrimMaterialLfBrowserTest.php
 tests/Feature/Admin/PavingMarbleBrowserTest.php
+tests/Feature/Admin/QuotationEditorFlashBrowserTest.php
+tests/Feature/Admin/QuotationEditorFlashTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
 tests/Feature/Admin/QuotationEditorControlInventoryTest.php

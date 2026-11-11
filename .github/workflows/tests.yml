@@ -243,6 +243,9 @@ jobs:
               - 'tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php'
               - 'tests/Feature/Admin/QuotationLifecycleBrowserTest.php'
               - 'tests/Feature/Admin/quotation-lifecycle-browser.js'
+              - 'tests/Feature/Admin/QuotationEditorFlashTest.php'
+              - 'tests/Feature/Admin/QuotationEditorFlashBrowserTest.php'
+              - 'tests/Feature/Admin/quotation-editor-flash-browser.js'
             browser_client:
               - 'resources/views/admin/client-projects/**'
               - 'resources/views/admin/client_projects/**'
@@ -555,6 +558,18 @@ jobs:
         with:
           name: basement-wizard-qa-screenshots
           path: storage/app/qa-screenshots/basement-*.png
+          if-no-files-found: warn
+
+      - name: Upload quotation flash toast screenshots
+        if: success() && needs.changes.outputs.filter_quotation == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: quotation-flash-toast-screenshots
+          path: |
+            storage/app/qa-screenshots/quotation-flash-standard-1280.png
+            storage/app/qa-screenshots/quotation-flash-standard-390.png
+            storage/app/qa-screenshots/quotation-flash-basement-1280.png
+            storage/app/qa-screenshots/quotation-flash-basement-390.png
           if-no-files-found: warn
 
       - name: Upload Shared prices geometry

@@ -351,6 +351,7 @@
       </header>
       @endunless
       <main class="admin-content">
+        @unless (\App\Support\QuotationEditorFlash::isEditorRequest())
         @if (session('success'))
           <div class="admin-flash admin-flash--success" data-admin-flash="success">{{ session('success') }}</div>
         @endif
@@ -370,6 +371,7 @@
             </ul>
           </div>
         @endif
+        @endunless
         @yield('content')
       </main>
     </div>
@@ -511,6 +513,9 @@
   <script type="application/json" id="admin-toast-flash">{!! json_encode($adminToastFlash, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE) !!}</script>
   <script src="{{ asset('js/admin-toast.js') }}?v={{ @filemtime(public_path('js/admin-toast.js')) ?: time() }}"></script>
   <script src="{{ asset('js/admin-copy-value.js') }}?v={{ @filemtime(public_path('js/admin-copy-value.js')) ?: time() }}"></script>
+  @if (request()->routeIs('admin.quotations.*'))
+  <script src="{{ asset('js/admin-quotation-flash.js') }}?v={{ @filemtime(public_path('js/admin-quotation-flash.js')) ?: time() }}"></script>
+  @endif
   <script src="{{ asset('js/admin-hotkey-save.js') }}?v={{ @filemtime(public_path('js/admin-hotkey-save.js')) ?: time() }}"></script>
 
   {{-- Global search palette (Ctrl+K / Cmd+K) --}}

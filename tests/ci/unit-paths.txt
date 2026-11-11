@@ -72,6 +72,7 @@ tests/Unit/Support/FenceWorkDescriptionGeneratorTest.php
 tests/Unit/Support/HtmlContentSanitizerTest.php
 tests/Unit/Support/PlainTextLimiterTest.php
 tests/Unit/Support/QuotationDraftFlashTest.php
+tests/Unit/Support/QuotationEditorFlashTest.php
 tests/Unit/Support/QuotationSaveIntentTest.php
 tests/Unit/Support/QuotationWorkDescriptionStyleTest.php
 tests/Unit/Support/SafeOutboundHttpGetWebTest.php
@@ -95,6 +96,7 @@ tests/Unit/Views/HomeKitchenTileImageTest.php
 tests/Unit/Views/PublicCssLightOnlyTest.php
 tests/Unit/Views/PublicLayoutExcludesAdminHotkeySaveTest.php
 tests/Unit/Views/PublicMobileNavDropdownTest.php
+tests/Unit/Views/QuotationEditorFlashMarkupTest.php
 tests/Unit/Views/QuotationEditorFooterMarkupTest.php
 tests/Unit/Views/QuotationEditorHeaderMarkupTest.php
 tests/Unit/Views/QuotationExpensePairLayoutTest.php

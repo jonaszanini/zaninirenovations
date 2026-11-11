@@ -42,6 +42,8 @@ tests/Feature/Admin/QuotationCutListImportTest.php
 tests/Feature/Admin/QuotationDraftClientFacingGuardTest.php
 tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
 tests/Feature/Admin/QuotationEditorControlInventoryTest.php
+tests/Feature/Admin/QuotationEditorFlashBrowserTest.php
+tests/Feature/Admin/QuotationEditorFlashTest.php
 tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
 tests/Feature/Admin/QuotationEditorHeaderTest.php

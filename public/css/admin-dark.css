@@ -3757,6 +3757,36 @@ html.admin-dark .admin-toast__close:focus-visible {
   background: var(--admin-surface-hover);
 }
 
+html.admin-dark [data-qh-editor-toast] .admin-toast__card {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--success {
+  background: rgba(20, 83, 45, 0.82);
+  color: #bbf7d0;
+  border-color: rgba(22, 101, 52, 0.85);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--error {
+  background: rgba(127, 29, 29, 0.82);
+  color: #fecaca;
+  border-color: rgba(153, 27, 27, 0.85);
+}
+html.admin-dark [data-qh-editor-toast] .admin-toast--warning {
+  background: rgba(124, 45, 18, 0.82);
+  color: #fed7aa;
+  border-color: rgba(154, 52, 18, 0.85);
+}
+html.admin-dark .qh-flash-status,
+html.admin-dark .qh-flash-status--success {
+  color: #bbf7d0;
+}
+html.admin-dark .qh-flash-status--warning {
+  color: #fed7aa;
+}
+html.admin-dark .qh-flash-status--error {
+  color: #fecaca;
+}
+
 html.admin-dark .admin-input.admin-field-invalid,
 html.admin-dark input.admin-field-invalid,
 html.admin-dark textarea.admin-field-invalid,
