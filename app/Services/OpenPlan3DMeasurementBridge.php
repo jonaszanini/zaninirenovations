@@ -81,6 +81,47 @@ class OpenPlan3DMeasurementBridge
     }
 
     /**
+     * Floor-level shell metrics with no saved rooms (per-wall aggregation for multi-room floors).
+     *
+     * @param  array<string, mixed>  $plan
+     * @param  array<string, mixed>  $finish
+     * @param  array<string, mixed>  $options
+     * @return array<string, mixed>|null
+     */
+    private function layoutMetricsFloorShell(array $plan, array $finish = [], array $options = []): ?array
+    {
+        $floor = $this->resolveFloor($plan);
+        if ($floor === null) {
+            return null;
+        }
+        /** @var array<string, mixed> $clone */
+        $clone = json_decode(json_encode($plan), true);
+        $cloneFloor = $this->resolveFloor($clone);
+        if ($cloneFloor === null) {
+            return null;
+        }
+        $savedRooms = $cloneFloor['rooms'] ?? [];
+        $cloneFloor['rooms'] = [];
+        if (isset($clone['floor']) && is_array($clone['floor'])) {
+            $clone['floor']['rooms'] = [];
+        }
+        if (isset($clone['floors']) && is_array($clone['floors'])) {
+            $activeId = (string) ($cloneFloor['id'] ?? $clone['activeFloorId'] ?? '');
+            foreach ($clone['floors'] as &$fl) {
+                if (! is_array($fl)) {
+                    continue;
+                }
+                if ((string) ($fl['id'] ?? '') === $activeId) {
+                    $fl['rooms'] = [];
+                }
+            }
+            unset($fl);
+        }
+
+        return $this->layoutMetrics($clone, null, $finish, $options);
+    }
+
+    /**
      * Compute layout metrics for an openPlan3D plan (or room within the plan).
      *
      * @param  array<string, mixed>  $plan
@@ -175,24 +216,14 @@ class OpenPlan3DMeasurementBridge
             $flooringWithWasteSqFt = $this->finishMath->flooringWithWasteSqFt($totalInsideArea, $wastePercent);
 
             $library = $this->resolveLibraryMetrics($floor, $cmPerUnit);
-            $floorLoop = $this->extractOuterLoopAndPartitions(array_values($walls), $cmPerUnit);
-            $mergedWalls = [];
-            $seenWallIds = [];
-            foreach ($allWalls as $wall) {
-                $wid = (string) ($wall['id'] ?? '');
-                if ($wid === '' || isset($seenWallIds[$wid])) {
-                    continue;
-                }
-                $seenWallIds[$wid] = true;
-                $mergedWalls[] = $wall;
-            }
+            $shell = $this->layoutMetricsFloorShell($plan, $finish, $options) ?? $firstMetrics;
 
             return $this->extensions->applyToMetrics([
                 'area_sqft' => $this->roundTo($totalInsideArea, 2),
-                'perimeter_lf' => $this->roundTo($totalPerimeter, 2),
-                'baseboard_lf' => $this->roundTo($totalBaseboard, 2),
-                'wall_height_ft' => $firstMetrics['wall_height_ft'],
-                'wall_area_sqft' => $this->roundTo($totalNetWallArea, 2),
+                'perimeter_lf' => $this->roundTo((float) ($shell['perimeter_lf'] ?? $totalPerimeter), 2),
+                'baseboard_lf' => $this->roundTo((float) ($shell['baseboard_lf'] ?? $totalBaseboard), 2),
+                'wall_height_ft' => $shell['wall_height_ft'] ?? $firstMetrics['wall_height_ft'],
+                'wall_area_sqft' => $this->roundTo((float) ($shell['wall_area_sqft'] ?? $totalNetWallArea), 2),
                 'door_count' => $totalDoorCount,
                 'window_count' => $totalWindowCount,
                 'opening_count' => $totalOpeningCount,
@@ -200,12 +231,12 @@ class OpenPlan3DMeasurementBridge
                 'inside_corners' => $totalInsideCorners,
                 'outside_corners' => $totalOutsideCorners,
                 'polygon_count' => $totalPolygonCount,
-                'wall_thickness_in' => $firstMetrics['wall_thickness_in'],
+                'wall_thickness_in' => $shell['wall_thickness_in'] ?? $firstMetrics['wall_thickness_in'],
                 'inside_area_sqft' => $this->roundTo($totalInsideArea, 2),
-                'outside_area_sqft' => $this->roundTo($totalOutsideArea, 2),
-                'shared_wall_lf' => $this->roundTo($totalSharedWallLf, 2),
-                'framing_lf' => $this->roundTo($totalFramingLf, 2),
-                'partition_lf' => $this->roundTo($totalPartitionLf, 2),
+                'outside_area_sqft' => $this->roundTo((float) ($shell['outside_area_sqft'] ?? $totalOutsideArea), 2),
+                'shared_wall_lf' => $this->roundTo((float) ($shell['shared_wall_lf'] ?? $totalSharedWallLf), 2),
+                'framing_lf' => $this->roundTo((float) ($shell['framing_lf'] ?? $totalFramingLf), 2),
+                'partition_lf' => $this->roundTo((float) ($shell['partition_lf'] ?? $totalPartitionLf), 2),
                 'cabinet_base_lf' => $library['cabinet_base_lf'],
                 'cabinet_upper_lf' => $library['cabinet_upper_lf'],
                 'stairs_count' => $library['stairs_count'],
@@ -214,15 +245,15 @@ class OpenPlan3DMeasurementBridge
                 'stairs_quote_type' => $library['stairs_quote_type'],
                 'ceiling_height_ft' => $firstMetrics['ceiling_height_ft'],
                 'ceiling_area_sqft' => $this->roundTo($totalCeilingArea, 2),
-                'net_wall_area_sqft' => $this->roundTo($totalNetWallArea, 2),
-                'walls' => $mergedWalls,
-                'boundary_wall_ids' => $floorLoop['boundary_wall_ids'] ?? [],
+                'net_wall_area_sqft' => $this->roundTo((float) ($shell['net_wall_area_sqft'] ?? $totalNetWallArea), 2),
+                'walls' => $shell['walls'] ?? [],
+                'boundary_wall_ids' => $shell['boundary_wall_ids'] ?? [],
                 'flooring_waste_percent' => $wastePercent,
                 'flooring_direction' => $firstMetrics['flooring_direction'],
                 'flooring_box_sqft' => $boxSqFt,
                 'flooring_boxes' => $flooringBoxes,
                 'flooring_with_waste_sqft' => $flooringWithWasteSqFt,
-                'casing_lf' => $this->roundTo($totalCasingLf, 2),
+                'casing_lf' => $this->roundTo((float) ($shell['casing_lf'] ?? $totalCasingLf), 2),
             ], $plan, $finish, $cmPerUnit);
         }
 
@@ -368,6 +399,8 @@ class OpenPlan3DMeasurementBridge
 
         $drywallOpenings = $doorCount + $windowCount + $openingCount;
         $baseboardDeductionLf = $this->roundTo($baseboardDeductionInches / 12.0, 2);
+        $junctionDedup = [];
+        $buttByBoundaryId = [];
         $totalInteriorButtLf = 0.0;
         foreach ($boundaryWalls as $bw) {
             $wId = (string) ($bw['id'] ?? '');
@@ -375,7 +408,9 @@ class OpenPlan3DMeasurementBridge
             if (! is_array($bObj)) {
                 continue;
             }
-            $totalInteriorButtLf += $this->interiorButtDeductionLfOnBoundaryWall($bObj, $allWallsList, $boundaryWallIdMap, $cmPerUnit);
+            $bDed = $this->interiorButtDeductionLfOnBoundaryWall($bObj, $allWallsList, $boundaryWallIdMap, $cmPerUnit, $junctionDedup);
+            $buttByBoundaryId[$wId] = $bDed;
+            $totalInteriorButtLf += $bDed;
         }
         $baseboardLf = max(0.0, $this->roundTo($perimeter - $baseboardDeductionLf - $totalInteriorButtLf, 2));
 
@@ -400,9 +435,7 @@ class OpenPlan3DMeasurementBridge
             $wId = $bw['id'];
             $lengthFt = $bw['length_ft'];
             $bObj = $walls[(string) $wId] ?? null;
-            $buttLf = is_array($bObj)
-                ? $this->interiorButtDeductionLfOnBoundaryWall($bObj, $allWallsList, $boundaryWallIdMap, $cmPerUnit)
-                : 0.0;
+            $buttLf = is_array($bObj) ? (float) ($buttByBoundaryId[(string) $wId] ?? 0.0) : 0.0;
             $finishLenFt = max(0.0, $lengthFt - $buttLf);
             $wallLengthIn = $finishLenFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
@@ -440,10 +473,13 @@ class OpenPlan3DMeasurementBridge
 
         // Partition walls (interior): count both faces (2x)
         $partitionLf = 0.0;
+        $partitionJunctionDedup = [];
         foreach ($partitionWalls as $pw) {
             $wId = (string) $pw['id'];
             $lengthFt = $this->interiorGeometry->wallPlanEdgeLengthCm($pw, $allWallsList, $cmPerUnit) / self::CM_PER_FOOT;
-            $partitionLf += $lengthFt;
+            $partButt = $this->interiorButtDeductionLfOnInteriorWall($pw, $allWallsList, $boundaryWallIdMap, $cmPerUnit, $partitionJunctionDedup);
+            $finishPartLenFt = max(0.0, $lengthFt - $partButt);
+            $partitionLf += $finishPartLenFt;
             $wallLengthIn = $lengthFt * 12.0;
             $wallOpenings = $openingsByWall[$wId] ?? [];
 
@@ -461,7 +497,8 @@ class OpenPlan3DMeasurementBridge
             $deductRaw = $this->finishMath->unionOpeningAreaRawSqFt($canvasObjects, $ceilingHeightFt, $wallLengthIn);
             $deductSqFt = $this->roundTo($deductRaw * 2.0, 2);
             $netWallAreaSingle = $this->finishMath->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw);
-            $netWallArea = $this->roundTo($netWallAreaSingle * 2.0, 2);
+            $buttOverlapSqFt = $partButt > 0 ? $partButt * $ceilingHeightFt : 0.0;
+            $netWallArea = $this->roundTo(max(0.0, $netWallAreaSingle * 2.0 - $buttOverlapSqFt), 2);
             $totalNetWallArea += $netWallArea;
 
             $perWallNetAreas[] = [
@@ -470,6 +507,8 @@ class OpenPlan3DMeasurementBridge
                 'label' => 'W'.$wallIdx,
                 'length_lf' => $this->roundTo($lengthFt, 2),
                 'length_lf_exact' => $lengthFt,
+                'interior_butt_deduction_lf' => $this->roundTo($partButt, 2),
+                'finish_run_lf' => $finishPartLenFt,
                 'opening_area_sqft' => $deductSqFt,
                 'net_area_sqft' => $netWallArea,
             ];
@@ -1393,9 +1432,74 @@ class OpenPlan3DMeasurementBridge
      * @param  array<string, mixed>  $boundaryWall
      * @param  list<array<string, mixed>>  $allWalls
      * @param  array<string, true>  $boundaryIdMap
+     * @param  array<string, bool>  $junctionDedup
      */
-    private function interiorButtDeductionLfOnBoundaryWall(array $boundaryWall, array $allWalls, array $boundaryIdMap, float $cmPerUnit): float
-    {
+    private function boundaryWallCollinearNeighborAtPoint(
+        array $boundaryWall,
+        float $px,
+        float $py,
+        array $allWalls,
+        array $boundaryIdMap,
+        float $cmPerUnit,
+        float $unit
+    ): bool {
+        $eps = $this->partitionToleranceCm($allWalls, $cmPerUnit);
+        $bx0 = (float) $boundaryWall['start']['x'] * $unit;
+        $by0 = (float) $boundaryWall['start']['y'] * $unit;
+        $bx1 = (float) $boundaryWall['end']['x'] * $unit;
+        $by1 = (float) $boundaryWall['end']['y'] * $unit;
+        $atStart = hypot($px - $bx0, $py - $by0) < $eps;
+        $atEnd = hypot($px - $bx1, $py - $by1) < $eps;
+        if (! $atStart && ! $atEnd) {
+            return false;
+        }
+        $edx = $bx1 - $bx0;
+        $edy = $by1 - $by0;
+        $elen = hypot($edx, $edy) ?: 1.0;
+        $ux = $edx / $elen;
+        $uy = $edy / $elen;
+        foreach ($allWalls as $bw) {
+            if (! is_array($bw) || ! isset($bw['start'], $bw['end'])) {
+                continue;
+            }
+            $bid = (string) ($bw['id'] ?? '');
+            if ($bid === (string) ($boundaryWall['id'] ?? '') || ! isset($boundaryIdMap[$bid])) {
+                continue;
+            }
+            foreach (['start', 'end'] as $endKey) {
+                $sx = (float) $bw[$endKey]['x'] * $unit;
+                $sy = (float) $bw[$endKey]['y'] * $unit;
+                $shares = ($atStart && hypot($sx - $px, $sy - $py) < $eps)
+                    || ($atEnd && hypot($sx - $px, $sy - $py) < $eps);
+                if (! $shares) {
+                    continue;
+                }
+                $ndx = ((float) $bw['end']['x'] - (float) $bw['start']['x']) * $unit;
+                $ndy = ((float) $bw['end']['y'] - (float) $bw['start']['y']) * $unit;
+                $nlen = hypot($ndx, $ndy) ?: 1.0;
+                $dot = abs($ux * ($ndx / $nlen) + $uy * ($ndy / $nlen));
+                if ($dot > 0.995) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $boundaryWall
+     * @param  list<array<string, mixed>>  $allWalls
+     * @param  array<string, true>  $boundaryIdMap
+     * @param  array<string, bool>  $junctionDedup
+     */
+    private function interiorButtDeductionLfOnBoundaryWall(
+        array $boundaryWall,
+        array $allWalls,
+        array $boundaryIdMap,
+        float $cmPerUnit,
+        array &$junctionDedup = []
+    ): float {
         if (! isset($boundaryWall['start'], $boundaryWall['end'])) {
             return 0.0;
         }
@@ -1429,14 +1533,83 @@ class OpenPlan3DMeasurementBridge
                     continue;
                 }
                 $t = (($px - $ax) * $edx + ($py - $ay) * $edy) / ($elen * $elen);
-                if ($t <= $eps / $elen || $t >= 1 - $eps / $elen) {
+                $atEnd = $t <= $eps / $elen || $t >= 1 - $eps / $elen;
+                if ($atEnd) {
+                    if (! $this->boundaryWallCollinearNeighborAtPoint($boundaryWall, $px, $py, $allWalls, $boundaryIdMap, $cmPerUnit, $unit)) {
+                        continue;
+                    }
+                }
+                $jkey = (string) round($px * 10).','.(string) round($py * 10);
+                if (isset($junctionDedup[$jkey])) {
                     continue;
                 }
-                $key = $oid.'@'.(string) round($t * 10000);
+                $junctionDedup[$jkey] = true;
+                $key = $oid.'@'.$jkey;
                 if (isset($seen[$key])) {
                     continue;
                 }
                 $seen[$key] = true;
+                $ded += $this->interiorGeometry->wallThicknessCm($other['thickness'] ?? 11.43, $cmPerUnit) / self::CM_PER_FOOT;
+            }
+        }
+
+        return $ded;
+    }
+
+    /**
+     * @param  array<string, mixed>  $interiorWall
+     * @param  list<array<string, mixed>>  $allWalls
+     * @param  array<string, true>  $boundaryIdMap
+     * @param  array<string, bool>  $junctionDedup
+     */
+    private function interiorButtDeductionLfOnInteriorWall(
+        array $interiorWall,
+        array $allWalls,
+        array $boundaryIdMap,
+        float $cmPerUnit,
+        array &$junctionDedup = []
+    ): float {
+        if (! isset($interiorWall['start'], $interiorWall['end'])) {
+            return 0.0;
+        }
+        $wid = (string) ($interiorWall['id'] ?? '');
+        if (isset($boundaryIdMap[$wid])) {
+            return 0.0;
+        }
+        $unit = max($cmPerUnit, 1e-9);
+        $eps = $this->partitionToleranceCm($allWalls, $cmPerUnit);
+        $ax = (float) $interiorWall['start']['x'] * $unit;
+        $ay = (float) $interiorWall['start']['y'] * $unit;
+        $bx = (float) $interiorWall['end']['x'] * $unit;
+        $by = (float) $interiorWall['end']['y'] * $unit;
+        $edx = $bx - $ax;
+        $edy = $by - $ay;
+        $elen = hypot($edx, $edy) ?: 1.0;
+        $ded = 0.0;
+        foreach ($allWalls as $other) {
+            if (! is_array($other) || ! isset($other['start'], $other['end'])) {
+                continue;
+            }
+            $oid = (string) ($other['id'] ?? '');
+            if ($oid === $wid || isset($boundaryIdMap[$oid])) {
+                continue;
+            }
+            foreach (['start', 'end'] as $endKey) {
+                $px = (float) $other[$endKey]['x'] * $unit;
+                $py = (float) $other[$endKey]['y'] * $unit;
+                $cross = abs($edx * ($py - $ay) - $edy * ($px - $ax)) / $elen;
+                if ($cross > $eps) {
+                    continue;
+                }
+                $t = (($px - $ax) * $edx + ($py - $ay) * $edy) / ($elen * $elen);
+                if ($t <= $eps / $elen || $t >= 1 - $eps / $elen) {
+                    continue;
+                }
+                $jkey = 'p:'.(string) round($px * 10).','.(string) round($py * 10);
+                if (isset($junctionDedup[$jkey])) {
+                    continue;
+                }
+                $junctionDedup[$jkey] = true;
                 $ded += $this->interiorGeometry->wallThicknessCm($other['thickness'] ?? 11.43, $cmPerUnit) / self::CM_PER_FOOT;
             }
         }

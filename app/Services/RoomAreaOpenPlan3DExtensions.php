@@ -381,6 +381,7 @@ class RoomAreaOpenPlan3DExtensions
                 $isBoundary = isset($boundaryMap[$wallId]);
                 $studLen = $this->wallStudLengthLf($wall);
                 $netSqFt = (float) ($wall['net_area_sqft'] ?? 0.0);
+                $touchCount = $this->roomTouchCountForWall($wallId, $floor);
                 $drywall += $netSqFt;
                 $paintUnassigned++;
                 if ($isBoundary) {
@@ -388,8 +389,18 @@ class RoomAreaOpenPlan3DExtensions
                 } else {
                     $studs += $studLen;
                 }
+                $runLf = isset($wall['finish_run_lf']) && is_numeric($wall['finish_run_lf'])
+                    ? (float) $wall['finish_run_lf']
+                    : $studLen;
+                if (! is_numeric($wall['finish_run_lf'] ?? null) && $isBoundary) {
+                    $runLf = max(0.0, $runLf - (float) ($wall['interior_butt_deduction_lf'] ?? 0.0));
+                }
+                if ($isBoundary) {
+                    $runLf = max(0.0, $runLf - $this->boundaryOpeningDeductionLf($wallId, $floor ?? [], $boundaryMap, $cmPerUnit, $plan));
+                }
+                $sides = $this->resolveBaseboardSides([], $isBoundary, $touchCount);
+                $baseboard += $runLf * (float) $sides;
             }
-            $baseboard = (float) ($metrics['baseboard_lf'] ?? 0.0);
         } else {
             foreach ($walls as $wall) {
                 if (! is_array($wall)) {

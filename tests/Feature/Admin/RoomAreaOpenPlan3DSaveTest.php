@@ -912,7 +912,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $this->assertFalse(!empty($metrics['geometry_unmeasurable']), 'Should not be marked geometry_unmeasurable');
         $this->assertEquals(286.98, $metrics['area_sqft'], 'Interior L floor area (was 300 centerline)');
         $this->assertEquals(78.69, $metrics['perimeter_lf'], 'Perimeter walks inset outer loop');
-        $this->assertEquals(813.65, $metrics['net_wall_area_sqft'], 'Net wall area with interior butt deductions on boundary walls');
+        $this->assertEquals(811.03, $metrics['net_wall_area_sqft'], 'Net wall area with boundary + partition butt overlap');
 
         // 2. Post to store room endpoint and verify save succeeds
         $response = $this->actingAs($this->user)->postJson(
@@ -927,7 +927,7 @@ class RoomAreaOpenPlan3DSaveTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('ok', true);
         $this->assertEquals(286.98, $response->json('room.area_sqft'));
-        $this->assertEquals(813.65, $response->json('room.metrics.net_wall_area_sqft'));
+        $this->assertEquals(811.03, $response->json('room.metrics.net_wall_area_sqft'));
     }
 
     public function test_update_room_detects_conflict_when_server_has_newer_revision(): void

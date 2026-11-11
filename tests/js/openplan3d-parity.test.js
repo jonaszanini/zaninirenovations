@@ -211,7 +211,8 @@ const lPartMetrics = bridge.layoutMetrics(lShapeWithPartitionsPlan, null, { wall
 assert.ok(!lPartMetrics.geometry_unmeasurable, 'L-shape with partitions is not marked geometry_unmeasurable');
 assert.strictEqual(lPartMetrics.area_sqft, 286.98, 'Interior L-shape floor area (~10 cm walls; was 300 centerline)');
 assert.strictEqual(lPartMetrics.perimeter_lf, 78.69, 'Clear outer loop perimeter');
-assert.strictEqual(lPartMetrics.net_wall_area_sqft, 813.65, 'Net wall area with interior butt deductions on boundary walls');
+assert.strictEqual(lPartMetrics.net_wall_area_sqft, 811.03,
+  'Net wall area with boundary + single-face partition butt overlap at T junctions');
 assert.strictEqual(lPartMetrics.walls.length, 8, '8 walls total returned');
 
 // Test 9: Self-intersecting stored polygon + two top-edge stub partitions (Jonas basement regression)
@@ -310,13 +311,41 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
     },
   };
   var metrics0 = bridge.layoutMetrics(plan, null, { wall_height_ft: 8.0 });
+  var boundarySet = {};
+  (metrics0.boundary_wall_ids || []).forEach(function (id) { boundarySet[String(id)] = true; });
   var wf = {};
   (metrics0.walls || []).forEach(function (w) {
-    wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
+    var isBoundary = !!boundarySet[String(w.id)];
+    wf[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: isBoundary,
+      studs: !isBoundary,
+    };
   });
   var finished = ext.applyToMetrics(metrics0, Object.assign({}, plan, { zanini: { wallFinishes: wf } }), {}, cm);
   assert.strictEqual(finished.finish_baseboard_lf, 77.0,
     '20x10 partition: boundary 57.75 lf (58.5 - 2x0.375 butt) + partition both faces 19.25 lf');
+  assert.strictEqual(finished.finish_drywall_sqft, 616,
+    '20x10 shell drywall (perimeter + partition both faces) × 8 ft');
+  assert.strictEqual(finished.finish_insulation_sqft, 462,
+    '20x10 shell insulation on boundary faces only');
+  var twoRoomPlan = {
+    format: 'openplan3d',
+    units: 'cm',
+    floor: {
+      walls: plan.floor.walls,
+      rooms: [
+        { id: 'ra', name: 'West', walls: ['w1', 'p1', 'w4', 'w3'] },
+        { id: 'rb', name: 'East', walls: ['w1', 'w2', 'w3', 'p1'] },
+      ],
+    },
+  };
+  var metrics2 = bridge.layoutMetrics(twoRoomPlan, null, { wall_height_ft: 8.0 });
+  var finished2 = ext.applyToMetrics(metrics2, Object.assign({}, twoRoomPlan, { zanini: { wallFinishes: wf } }), {}, cm);
+  assert.strictEqual(finished2.finish_drywall_sqft, 616, 'Two saved rooms: floor drywall dedupes per wall id');
+  assert.strictEqual(finished2.finish_insulation_sqft, 462, 'Two saved rooms: floor insulation dedupes per wall id');
+  assert.strictEqual(finished2.finish_baseboard_lf, 77, 'Two saved rooms: floor baseboard includes partition both faces');
 })();
 
 (function collinearNorthSplitLengths() {
@@ -347,13 +376,21 @@ assert.strictEqual(hand0Metrics.perimeter_lf, 158.79, 'Drawn basement clear peri
 })();
 
 (function hand0FinishPins() {
+  var boundarySet = {};
+  (hand0Metrics.boundary_wall_ids || []).forEach(function (id) { boundarySet[String(id)] = true; });
   var wf = {};
   (hand0Metrics.walls || []).forEach(function (w) {
-    wf[w.id] = { drywall: true, baseboard: true, insulation: true, studs: true };
+    var isBoundary = !!boundarySet[String(w.id)];
+    wf[w.id] = {
+      drywall: true,
+      baseboard: true,
+      insulation: isBoundary,
+      studs: !isBoundary,
+    };
   });
   var finished = ext.applyToMetrics(hand0Metrics, Object.assign({}, hand0Plan, { zanini: { wallFinishes: wf } }), {}, 30.48);
-  assert.strictEqual(finished.finish_baseboard_lf, 200.02, 'hand0 finish_baseboard_lf with interior butt deductions');
-  assert.strictEqual(finished.finish_drywall_sqft, 1600.15, 'hand0 finish_drywall_sqft with interior butt deductions');
+  assert.strictEqual(finished.finish_baseboard_lf, 199.53, 'hand0 finish_baseboard_lf with vertex + collinear-split butt rules');
+  assert.strictEqual(finished.finish_drywall_sqft, 1596.22, 'hand0 finish_drywall_sqft with vertex + collinear-split butt rules');
 })();
 assert.strictEqual(hand0Metrics.outside_area_sqft, 1386.63, 'Drawn basement exterior footprint (unrounded)');
 assert.ok(!hand0Metrics.geometry_unmeasurable, 'Drawn plan must not be geometry_unmeasurable');

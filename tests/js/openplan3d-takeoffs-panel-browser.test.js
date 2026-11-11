@@ -180,8 +180,8 @@ async function captureTakeoffsPanel(width, height, filename) {
   assert.strictEqual(chipState.areaSqft, 1307.52, 'takeoffs ribbon must show measured hand0 interior floor area');
   assert.ok(chipState.finishDrywall > 0, 'drywall finish chip must be non-zero on measured hand0 plan');
   assert.ok(chipState.finishInsulation > 0, 'insulation finish chip must be non-zero on measured hand0 plan');
-  assert.ok(Math.abs(chipState.finishDrywall - 1600.15) < 1.5, 'hand0 drywall finish pin ~1600.15 sf');
-  assert.ok(Math.abs(chipState.finishBaseboard - 200.02) < 0.05, 'hand0 finish_baseboard_lf ~200.02 lf with all finishes');
+  assert.ok(Math.abs(chipState.finishDrywall - 1596.22) < 1.5, 'hand0 drywall finish pin ~1596.22 sf');
+  assert.ok(Math.abs(chipState.finishBaseboard - 199.53) < 0.05, 'hand0 finish_baseboard_lf ~199.53 lf with all finishes');
 
   const layout = await page.evaluate(() => {
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');

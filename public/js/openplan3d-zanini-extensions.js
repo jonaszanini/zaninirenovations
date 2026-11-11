@@ -647,6 +647,7 @@
         var isBoundary = !!boundaryMap[wallId];
         var studLen = wallStudLengthLf(wall);
         var netSqFt = Number(wall.net_area_sqft || 0);
+        var touchCount = roomTouchCountForWall(wallId, floor, plan);
         drywall += netSqFt;
         paintUnassigned += 1;
         if (isBoundary) {
@@ -654,8 +655,19 @@
         } else {
           studs += studLen;
         }
+        var runLf = Number(wall.finish_run_lf);
+        if (!isFinite(runLf)) {
+          runLf = studLen;
+          if (isBoundary) {
+            runLf = Math.max(0, runLf - (Number(wall.interior_butt_deduction_lf) || 0));
+          }
+        }
+        if (isBoundary) {
+          runLf = Math.max(0, runLf - boundaryOpeningDeductionLf(wallId, floor, boundaryMap, cmPerUnit, plan));
+        }
+        var sides = resolveBaseboardSides({}, isBoundary, touchCount);
+        baseboard += runLf * sides;
       }
-      baseboard = Number(metrics.baseboard_lf || 0);
     } else {
       for (var j = 0; j < walls.length; j++) {
         var w = walls[j];

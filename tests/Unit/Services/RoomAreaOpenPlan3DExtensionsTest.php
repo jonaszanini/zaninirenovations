@@ -497,21 +497,74 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $this->assertSame(175.0, $out['excluded_area_sqft']);
     }
 
+    public function test_two_saved_rooms_floor_finishes_match_shell(): void
+    {
+        $ft = OpenPlan3DMeasurementBridge::CM_PER_FOOT;
+        $walls = [
+            ['id' => 'w1', 'start' => ['x' => 0, 'y' => 0], 'end' => ['x' => 20 * $ft, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w2', 'start' => ['x' => 20 * $ft, 'y' => 0], 'end' => ['x' => 20 * $ft, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w3', 'start' => ['x' => 20 * $ft, 'y' => 10 * $ft], 'end' => ['x' => 0, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'w4', 'start' => ['x' => 0, 'y' => 10 * $ft], 'end' => ['x' => 0, 'y' => 0], 'thickness' => 11.43, 'height' => 243.84],
+            ['id' => 'p1', 'start' => ['x' => 10 * $ft, 'y' => 0], 'end' => ['x' => 10 * $ft, 'y' => 10 * $ft], 'thickness' => 11.43, 'height' => 243.84],
+        ];
+        $plan = [
+            'format' => 'openplan3d',
+            'units' => 'cm',
+            'floor' => [
+                'walls' => $walls,
+                'rooms' => [
+                    ['id' => 'ra', 'walls' => ['w1', 'p1', 'w4', 'w3']],
+                    ['id' => 'rb', 'walls' => ['w1', 'w2', 'w3', 'p1']],
+                ],
+            ],
+        ];
+        $bridge = app(OpenPlan3DMeasurementBridge::class);
+        $metrics = $bridge->layoutMetrics($plan, null, ['wall_height_ft' => 8.0]);
+        $boundary = array_flip(array_map('strval', $metrics['boundary_wall_ids'] ?? []));
+        $finishes = [];
+        foreach ($metrics['walls'] ?? [] as $wall) {
+            if (! is_array($wall)) {
+                continue;
+            }
+            $wallId = (string) ($wall['id'] ?? '');
+            $isBoundary = isset($boundary[$wallId]);
+            $finishes[$wallId] = [
+                'drywall' => true,
+                'baseboard' => true,
+                'insulation' => $isBoundary,
+                'studs' => ! $isBoundary,
+            ];
+        }
+        $out = $this->extensions->applyToMetrics(
+            $metrics,
+            array_merge($plan, ['zanini' => ['wallFinishes' => $finishes]]),
+            [],
+            $ft
+        );
+
+        $this->assertSame(616.0, $out['finish_drywall_sqft']);
+        $this->assertSame(462.0, $out['finish_insulation_sqft']);
+        $this->assertSame(77.0, $out['finish_baseboard_lf']);
+    }
+
     public function test_hand0_all_finishes_baseboard_and_drywall_pins(): void
     {
         $hand0Path = base_path('tests/fixtures/openplan3d-hand0-drawn-plan.json');
         $hand0 = json_decode((string) file_get_contents($hand0Path), true);
         $metrics = app(OpenPlan3DMeasurementBridge::class)->layoutMetrics($hand0, null, ['wall_height_ft' => 8.0]);
         $finishes = [];
+        $boundary = array_flip(array_map('strval', $metrics['boundary_wall_ids'] ?? []));
         foreach ($metrics['walls'] ?? [] as $wall) {
             if (! is_array($wall)) {
                 continue;
             }
-            $finishes[(string) ($wall['id'] ?? '')] = [
+            $wallId = (string) ($wall['id'] ?? '');
+            $isBoundary = isset($boundary[$wallId]);
+            $finishes[$wallId] = [
                 'drywall' => true,
                 'baseboard' => true,
-                'insulation' => true,
-                'studs' => true,
+                'insulation' => $isBoundary,
+                'studs' => ! $isBoundary,
             ];
         }
         $plan = array_merge($hand0, [
@@ -521,8 +574,8 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         ]);
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
 
-        $this->assertEqualsWithDelta(200.02, $out['finish_baseboard_lf'], 0.02);
-        $this->assertEqualsWithDelta(1600.15, $out['finish_drywall_sqft'], 1.5);
+        $this->assertEqualsWithDelta(199.53, $out['finish_baseboard_lf'], 0.02);
+        $this->assertEqualsWithDelta(1596.22, $out['finish_drywall_sqft'], 1.5);
     }
 
     public function test_legacy_baseboard_lf_preserved_when_no_wall_finishes(): void

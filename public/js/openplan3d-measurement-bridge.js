@@ -73,7 +73,45 @@
    * Interior (partition) walls that T into a boundary segment deduct their thickness
    * from baseboard / drywall runs on that exterior wall (not at corners).
    */
-  function interiorButtDeductionLfOnBoundaryWall(boundaryWall, allWalls, boundaryIdMap, cmPerUnit) {
+  function boundaryWallCollinearNeighborAtPoint(boundaryWall, px, py, allWalls, boundaryIdMap, cmPerUnit, unit) {
+    var eps = partitionToleranceCm(allWalls, cmPerUnit);
+    var bx0 = boundaryWall.start.x * unit;
+    var by0 = boundaryWall.start.y * unit;
+    var bx1 = boundaryWall.end.x * unit;
+    var by1 = boundaryWall.end.y * unit;
+    var atStart = hypot(px - bx0, py - by0) < eps;
+    var atEnd = hypot(px - bx1, py - by1) < eps;
+    if (!atStart && !atEnd) return false;
+    var edx = bx1 - bx0;
+    var edy = by1 - by0;
+    var elen = hypot(edx, edy) || 1;
+    var ux = edx / elen;
+    var uy = edy / elen;
+    for (var i = 0; i < allWalls.length; i++) {
+      var bw = allWalls[i];
+      if (!bw || !bw.start || !bw.end) continue;
+      var bid = String(bw.id);
+      if (bid === String(boundaryWall.id) || !boundaryIdMap[bid]) continue;
+      var sx = bw.start.x * unit;
+      var sy = bw.start.y * unit;
+      var ex = bw.end.x * unit;
+      var ey = bw.end.y * unit;
+      var shares = false;
+      if (atStart && hypot(sx - px, sy - py) < eps) shares = true;
+      if (atStart && hypot(ex - px, ey - py) < eps) shares = true;
+      if (atEnd && hypot(sx - px, sy - py) < eps) shares = true;
+      if (atEnd && hypot(ex - px, ey - py) < eps) shares = true;
+      if (!shares) continue;
+      var ndx = ex - sx;
+      var ndy = ey - sy;
+      var nlen = hypot(ndx, ndy) || 1;
+      var dot = Math.abs(ux * (ndx / nlen) + uy * (ndy / nlen));
+      if (dot > 0.995) return true;
+    }
+    return false;
+  }
+
+  function interiorButtDeductionLfOnBoundaryWall(boundaryWall, allWalls, boundaryIdMap, cmPerUnit, junctionDedup) {
     if (!boundaryWall || !boundaryWall.start || !boundaryWall.end) return 0;
     var unit = Math.max(cmPerUnit, 1e-9);
     var eps = partitionToleranceCm(allWalls, cmPerUnit);
@@ -96,10 +134,56 @@
         var cross = Math.abs(edx * (py - ay) - edy * (px - ax)) / elen;
         if (cross > eps) return;
         var t = ((px - ax) * edx + (py - ay) * edy) / (elen * elen);
-        if (t <= eps / elen || t >= 1 - eps / elen) return;
-        var key = oid + '@' + Math.round(t * 10000);
+        var atEnd = t <= eps / elen || t >= 1 - eps / elen;
+        if (atEnd) {
+          if (!boundaryWallCollinearNeighborAtPoint(boundaryWall, px, py, allWalls, boundaryIdMap, cmPerUnit, unit)) {
+            return;
+          }
+        }
+        var jkey = Math.round(px * 10) + ',' + Math.round(py * 10);
+        if (junctionDedup) {
+          if (junctionDedup[jkey]) return;
+          junctionDedup[jkey] = true;
+        }
+        var key = oid + '@' + jkey;
         if (seen[key]) return;
         seen[key] = true;
+        ded += wallThicknessFt(other, cmPerUnit);
+      }
+      checkPoint(other.start.x * unit, other.start.y * unit);
+      checkPoint(other.end.x * unit, other.end.y * unit);
+    }
+    return ded;
+  }
+
+  function interiorButtDeductionLfOnInteriorWall(interiorWall, allWalls, boundaryIdMap, cmPerUnit, junctionDedup) {
+    if (!interiorWall || !interiorWall.start || !interiorWall.end) return 0;
+    var wid = String(interiorWall.id);
+    if (boundaryIdMap[wid]) return 0;
+    var unit = Math.max(cmPerUnit, 1e-9);
+    var eps = partitionToleranceCm(allWalls, cmPerUnit);
+    var ax = interiorWall.start.x * unit;
+    var ay = interiorWall.start.y * unit;
+    var bx = interiorWall.end.x * unit;
+    var by = interiorWall.end.y * unit;
+    var edx = bx - ax;
+    var edy = by - ay;
+    var elen = hypot(edx, edy) || 1;
+    var ded = 0.0;
+    for (var i = 0; i < allWalls.length; i++) {
+      var other = allWalls[i];
+      if (!other || !other.start || !other.end) continue;
+      var oid = String(other.id);
+      if (oid === wid) continue;
+      if (boundaryIdMap[oid]) continue;
+      function checkPoint(px, py) {
+        var cross = Math.abs(edx * (py - ay) - edy * (px - ax)) / elen;
+        if (cross > eps) return;
+        var t = ((px - ax) * edx + (py - ay) * edy) / (elen * elen);
+        if (t <= eps / elen || t >= 1 - eps / elen) return;
+        var jkey = 'p:' + Math.round(px * 10) + ',' + Math.round(py * 10);
+        if (junctionDedup && junctionDedup[jkey]) return;
+        if (junctionDedup) junctionDedup[jkey] = true;
         ded += wallThicknessFt(other, cmPerUnit);
       }
       checkPoint(other.start.x * unit, other.start.y * unit);
@@ -1025,6 +1109,28 @@
     return metrics;
   }
 
+  function layoutMetricsFloorShell(plan, finish, options) {
+    var floor = resolveFloor(plan);
+    if (!floor) return null;
+    var clone = JSON.parse(JSON.stringify(plan));
+    var cloneFloor = resolveFloor(clone);
+    if (!cloneFloor) return null;
+    var savedRooms = cloneFloor.rooms;
+    cloneFloor.rooms = [];
+  if (clone.floor) clone.floor.rooms = [];
+    if (Array.isArray(clone.floors)) {
+      for (var fi = 0; fi < clone.floors.length; fi++) {
+        if (clone.floors[fi] && String(clone.floors[fi].id) === String(cloneFloor.id || clone.activeFloorId || '')) {
+          clone.floors[fi].rooms = [];
+        }
+      }
+    }
+    cloneFloor.rooms = [];
+    var shell = layoutMetrics(clone, null, finish, options);
+    if (cloneFloor) cloneFloor.rooms = savedRooms;
+    return shell;
+  }
+
   function layoutMetrics(plan, roomId, finish, options) {
     var interiorGeom = interiorGeomRuntime();
     finish = finish || {};
@@ -1085,24 +1191,15 @@
       var flBoxes = flooringBoxes(totalArea, wastePct, boxSqFt);
       var flWithWaste = flooringWithWasteSqFt(totalArea, wastePct);
       var lib = resolveLibraryMetrics(floor, cmPerUnit);
-      var floorLoop = extractOuterLoopAndPartitions(Object.values(walls), cmPerUnit);
-      var mergedWalls = [];
-      var seenWallIds = {};
-      for (var mwi = 0; mwi < allWalls.length; mwi++) {
-        var mw = allWalls[mwi];
-        if (!mw || !mw.id) continue;
-        var mid = String(mw.id);
-        if (seenWallIds[mid]) continue;
-        seenWallIds[mid] = true;
-        mergedWalls.push(mw);
-      }
+      var shell = layoutMetricsFloorShell(plan, finish, options) || firstSub || emptyLayoutMetrics();
+      var shellWalls = shell.walls || [];
 
       return applyZaniniExtensions({
         area_sqft: roundTo(totalArea, 2),
-        perimeter_lf: roundTo(totalPerimeter, 2),
-        baseboard_lf: roundTo(totalBaseboard, 2),
-        wall_height_ft: firstSub.wall_height_ft,
-        wall_area_sqft: roundTo(totalNetWall, 2),
+        perimeter_lf: roundTo(shell.perimeter_lf != null ? shell.perimeter_lf : totalPerimeter, 2),
+        baseboard_lf: roundTo(shell.baseboard_lf != null ? shell.baseboard_lf : totalBaseboard, 2),
+        wall_height_ft: shell.wall_height_ft != null ? shell.wall_height_ft : firstSub.wall_height_ft,
+        wall_area_sqft: roundTo(shell.wall_area_sqft != null ? shell.wall_area_sqft : totalNetWall, 2),
         door_count: totalDoors,
         window_count: totalWindows,
         opening_count: totalOpenings,
@@ -1110,12 +1207,12 @@
         inside_corners: totalInCorners,
         outside_corners: totalOutCorners,
         polygon_count: totalPolyCount,
-        wall_thickness_in: firstSub.wall_thickness_in,
+        wall_thickness_in: shell.wall_thickness_in != null ? shell.wall_thickness_in : firstSub.wall_thickness_in,
         inside_area_sqft: roundTo(totalArea, 2),
-        outside_area_sqft: roundTo(totalOutsideArea, 2),
-        shared_wall_lf: roundTo(totalSharedWall, 2),
-        framing_lf: roundTo(totalFraming, 2),
-        partition_lf: roundTo(totalPartition, 2),
+        outside_area_sqft: roundTo(shell.outside_area_sqft != null ? shell.outside_area_sqft : totalOutsideArea, 2),
+        shared_wall_lf: roundTo(shell.shared_wall_lf != null ? shell.shared_wall_lf : totalSharedWall, 2),
+        framing_lf: roundTo(shell.framing_lf != null ? shell.framing_lf : totalFraming, 2),
+        partition_lf: roundTo(shell.partition_lf != null ? shell.partition_lf : totalPartition, 2),
         cabinet_base_lf: lib.cabinet_base_lf,
         cabinet_upper_lf: lib.cabinet_upper_lf,
         stairs_count: lib.stairs_count,
@@ -1124,15 +1221,15 @@
         stairs_quote_type: lib.stairs_quote_type,
         ceiling_height_ft: firstSub.ceiling_height_ft,
         ceiling_area_sqft: roundTo(totalCeilingArea, 2),
-        net_wall_area_sqft: roundTo(totalNetWall, 2),
-        walls: mergedWalls,
-        boundary_wall_ids: floorLoop.boundary_wall_ids || [],
+        net_wall_area_sqft: roundTo(shell.net_wall_area_sqft != null ? shell.net_wall_area_sqft : totalNetWall, 2),
+        walls: shellWalls,
+        boundary_wall_ids: shell.boundary_wall_ids || [],
         flooring_waste_percent: wastePct,
         flooring_direction: firstSub.flooring_direction,
         flooring_box_sqft: boxSqFt,
         flooring_boxes: flBoxes,
         flooring_with_waste_sqft: flWithWaste,
-        casing_lf: roundTo(totalCasing, 2)
+        casing_lf: roundTo(shell.casing_lf != null ? shell.casing_lf : totalCasing, 2)
       }, plan, finish, options);
     }
 
@@ -1400,16 +1497,22 @@
     }
 
     var baseboardDedLf = roundTo(baseboardDedIn / 12.0, 2);
+    var junctionDedup = {};
+    var buttByBoundaryId = {};
     var totalInteriorButtLf = 0.0;
     for (var bi = 0; bi < boundaryWalls.length; bi++) {
       var bWallObj = walls[String(boundaryWalls[bi].id)];
       if (!bWallObj) continue;
-      totalInteriorButtLf += interiorButtDeductionLfOnBoundaryWall(
+      var bid = String(boundaryWalls[bi].id);
+      var bDed = interiorButtDeductionLfOnBoundaryWall(
         bWallObj,
         allWallsList,
         boundaryIdMap,
-        cmPerUnit
+        cmPerUnit,
+        junctionDedup
       );
+      buttByBoundaryId[bid] = bDed;
+      totalInteriorButtLf += bDed;
     }
     var baseboardLf = Math.max(0.0, roundTo(perimeter - baseboardDedLf - totalInteriorButtLf, 2));
     var casingTotalLfRounded = roundTo(casingTotalLf, 2);
@@ -1423,9 +1526,7 @@
       var bw = boundaryWalls[i];
       var wLenFt = bw.length_ft;
       var bObj = walls[String(bw.id)];
-      var buttLf = bObj
-        ? interiorButtDeductionLfOnBoundaryWall(bObj, allWallsList, boundaryIdMap, cmPerUnit)
-        : 0;
+      var buttLf = bObj ? (buttByBoundaryId[String(bw.id)] || 0) : 0;
       var finishLenFt = Math.max(0, wLenFt - buttLf);
       var wLenIn = finishLenFt * 12.0;
       var wOpenings = openingsByWall[bw.id] || [];
@@ -1461,6 +1562,7 @@
 
     // Partition walls (interior): count both faces (2x)
     var partitionLf = 0.0;
+    var partitionJunctionDedup = {};
     for (var i = 0; i < partitionWalls.length; i++) {
       var pw = partitionWalls[i];
       var pwId = String(pw.id);
@@ -1468,7 +1570,9 @@
         ? interiorGeom.wallPlanEdgeLengthCm(pw, allWallsList, cmPerUnit)
         : hypot((pw.end.x - pw.start.x) * cmPerUnit, (pw.end.y - pw.start.y) * cmPerUnit);
       var wLenFt = lenCm / CM_PER_FOOT;
-      partitionLf += wLenFt;
+      var partButt = interiorButtDeductionLfOnInteriorWall(pw, allWallsList, boundaryIdMap, cmPerUnit, partitionJunctionDedup);
+      var finishPartLenFt = Math.max(0, wLenFt - partButt);
+      partitionLf += finishPartLenFt;
       var wLenIn = wLenFt * 12.0;
       var wOpenings = openingsByWall[pwId] || [];
 
@@ -1485,7 +1589,8 @@
 
       var dedRaw = unionOpeningAreaRawSqFt(rects);
       var netAreaSingle = netWallAreaSqFt(wLenFt, ceilingHeight, dedRaw);
-      var netArea = roundTo(netAreaSingle * 2.0, 2);
+      var buttOverlapSqFt = partButt > 0 ? partButt * ceilingHeight : 0;
+      var netArea = roundTo(Math.max(0, netAreaSingle * 2.0 - buttOverlapSqFt), 2);
       totalNetWallArea += netArea;
 
       perWallNetAreas.push({
@@ -1494,6 +1599,8 @@
         label: 'W' + wallIdx,
         length_lf: roundTo(wLenFt, 2),
         length_lf_exact: wLenFt,
+        interior_butt_deduction_lf: roundTo(partButt, 2),
+        finish_run_lf: finishPartLenFt,
         opening_area_sqft: roundTo(dedRaw * 2.0, 2),
         net_area_sqft: netArea
       });

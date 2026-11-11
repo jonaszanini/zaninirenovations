@@ -712,9 +712,13 @@
       '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}',
       '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
       '.admin-info-tip{min-width:24px;min-height:24px;width:24px;height:24px;padding:0;border:1px solid #94a3b8;border-radius:50%;background:#fff;color:#334155;font-size:14px;line-height:22px;text-align:center;cursor:pointer;}',
-      '.admin-info-tip__bubble{position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(92vw,320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '.admin-info-tip__bubble{position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(calc(100vw - 24px),320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
-      '#openplan3d-zanini-finish-host{margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}'
+      '.openplan3d-finish-drywall-tip-wrap .openplan3d-finish-drywall-tip__bubble{left:auto;right:0;}',
+      '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}',
+      '#openplan3d-zanini-finish-host .openplan3d-finish-row label{min-height:44px;display:flex;align-items:center;gap:8px;}',
+      '#openplan3d-zanini-finish-host input[type=checkbox],#openplan3d-zanini-finish-host button.admin-info-tip{min-width:44px;min-height:44px;}',
+      '@media (max-width:519px){#openplan3d-zanini-finish-host{background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -825,8 +829,12 @@
       }
       state.finishHost = document.createElement('div');
       state.finishHost.id = 'openplan3d-zanini-finish-host';
-      state.finishHost.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);';
-      sidebar.appendChild(state.finishHost);
+      state.finishHost.style.cssText = 'position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);';
+      if (window.innerWidth < 520) {
+        sidebar.insertBefore(state.finishHost, sidebar.firstChild);
+      } else {
+        sidebar.appendChild(state.finishHost);
+      }
       state.finishPanel = state.finishHost;
     }
     return state.finishHost;

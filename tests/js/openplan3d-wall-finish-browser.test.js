@@ -227,6 +227,24 @@ async function main() {
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-1280.png') });
     await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+    const mobileFinishTap = await page.evaluate(() => {
+      const host = document.getElementById('openplan3d-zanini-finish-host');
+      const cb = host && host.querySelector('input[type="checkbox"]');
+      if (!cb) return { ok: false, reason: 'no checkbox' };
+      const r = cb.getBoundingClientRect();
+      const x = r.left + r.width / 2;
+      const y = r.top + r.height / 2;
+      const top = document.elementFromPoint(x, y);
+      return {
+        ok: !!(top && (top === cb || (host && host.contains(top)))),
+        w: r.width,
+        h: r.height,
+        viewportW: window.innerWidth,
+      };
+    });
+    assert.ok(mobileFinishTap.viewportW === 390, '390 drywall screenshot must use real 390px viewport');
+    assert.ok(mobileFinishTap.ok, 'Wall finishes panel must be above properties sheet at 390');
+    assert.ok(mobileFinishTap.w >= 44 && mobileFinishTap.h >= 44, 'finish checkboxes need >=44px tap targets at 390');
     await finishHost.screenshot({ path: path.join(shotsDir, 'room-area-wall-finishes-drywall-390.png') });
     await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
     try {
