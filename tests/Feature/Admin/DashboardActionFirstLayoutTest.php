@@ -90,6 +90,33 @@ class DashboardActionFirstLayoutTest extends IntegrationTestCase
         $response->assertSee('id="dash-chart-ytd"', false);
         $response->assertDontSee('<details class="dash-panel dash-finance-glance" id="dash-finance-glance" open', false);
         $response->assertSee('data-dash-dismiss-alert', false);
+        $html = $response->getContent();
+        $this->assertStringContainsString('fa-tachometer dash-title-icon', $html);
+        $this->assertStringContainsString('fa-credit-card dash-title-icon', $html);
+        $this->assertStringContainsString('fa-usd dash-title-icon', $html);
+        $this->assertStringContainsString('fa-exclamation-circle dash-title-icon', $html);
+        $this->assertStringContainsString('fa-briefcase dash-title-icon', $html);
+        $this->assertStringContainsString('fa-check-square-o dash-title-icon', $html);
+        $this->assertStringContainsString('fa-file-text-o dash-title-icon', $html);
+        $this->assertStringContainsString('fa-exclamation-triangle dash-title-icon', $html);
+        $this->assertStringContainsString('fa-line-chart dash-title-icon', $html);
+        $this->assertStringContainsString('fa-filter dash-title-icon', $html);
+        $this->assertStringContainsString('fa-phone dash-title-icon', $html);
+        $this->assertStringContainsString('fa-file-text dash-title-icon', $html);
+        $this->assertStringContainsString('fa-calendar dash-title-icon', $html);
+        $this->assertStringContainsString('dash-compact-row', $html);
+        $this->assertStringContainsString('dash-row-pill', $html);
+        $this->assertStringContainsString('dash-compact-row__client', $html);
+        $this->assertStringContainsString('Quote Sent', $html);
+        $this->assertStringNotContainsString('dash-attention-meta">—', $html);
+        preg_match_all('/<li class="dash-compact-row">[\s\S]*?<\/li>/', $html, $compactRows);
+        $this->assertNotEmpty($compactRows[0], 'Rendered dashboard must include compact rows');
+        foreach ($compactRows[0] as $rowHtml) {
+            $this->assertStringNotContainsString('—', $rowHtml);
+            $this->assertStringNotContainsString(' – ', $rowHtml);
+        }
+        $this->assertStringContainsString('Refresh data', $html);
+        $this->assertMatchesRegularExpression('/href="[^"]*refresh=1[^"]*"/', $html);
     }
 
     public function test_dashboard_payload_includes_overdue_total_and_chase_rows(): void

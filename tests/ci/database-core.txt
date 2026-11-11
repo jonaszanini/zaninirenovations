@@ -16,6 +16,8 @@ tests/Feature/Admin/SupplierWebsiteImportTest.php
 tests/Feature/Admin/StandardQuotationPurchaseListTest.php
 tests/Feature/Admin/MillworkQuotationRoundTripTest.php
 tests/Feature/Admin/CancelledProjectInvoiceExclusionTest.php
+tests/Feature/Admin/DashboardActionFirstLayoutTest.php
+tests/Feature/Admin/DashboardLayoutBrowserTest.php
 tests/Feature/Admin/FenceExistingPostLabourCreditTest.php
 tests/Feature/Admin/StairsQuotationPagesTest.php
 tests/Feature/Admin/QuotationPublishEditReopenPdfTest.php
