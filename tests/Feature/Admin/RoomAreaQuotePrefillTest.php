@@ -31,25 +31,14 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
             ->assertDontSee('lf walls', false);
     }
 
-    public function test_painting_wizard_prefills_walls_plus_ceiling(): void
+    public function test_painting_wizard_create_is_blocked(): void
     {
         $this->actingAsAdmin();
         $room = $this->makeRoom();
-        $metrics = $room->layoutMetrics();
-        $expected = rtrim(rtrim(number_format(
-            ($metrics['net_wall_area_sqft'] ?? $metrics['wall_area_sqft']) + ($metrics['ceiling_area_sqft'] ?? $metrics['area_sqft']),
-            2,
-            '.',
-            ''
-        ), '0'), '.');
 
         $this->get(route('admin.quotations.painting.create', [
             'room_area_import_id' => 'room:'.$room->id,
-        ]))
-            ->assertOk()
-            ->assertSee('name="total_property_sqf"', false)
-            ->assertSee('value="'.$expected.'"', false)
-            ->assertSee('Measurements filled from Room Area', false);
+        ]))->assertRedirect(route('admin.quotations.index'));
     }
 
     public function test_trimming_wizard_enables_floor_wall_from_room(): void
@@ -77,7 +66,6 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
 
         foreach ([
             'admin.quotations.flooring.create',
-            'admin.quotations.painting.create',
             'admin.quotations.trimming.create',
             'admin.quotations.tile.create',
         ] as $route) {
@@ -93,7 +81,7 @@ class RoomAreaQuotePrefillTest extends IntegrationTestCase
 
         $this->get(route('admin.quotations.painting.create', [
             'room_area_import_id' => 'room:'.$room->id,
-        ]))->assertSee('Kitchen renovation', false);
+        ]))->assertRedirect(route('admin.quotations.index'));
 
         $this->get(route('admin.quotations.trimming.create', [
             'room_area_import_id' => 'room:'.$room->id,

@@ -48,6 +48,7 @@ tests/Feature/Admin/QuotationEditorFooterBrowserTest.php
 tests/Feature/Admin/QuotationEditorFooterTest.php
 tests/Feature/Admin/QuotationEditorHeaderTest.php
 tests/Feature/Admin/QuotationHotkeySaveStateTest.php
+tests/Feature/Admin/PaintingQuotationCreateHiddenTest.php
 tests/Feature/Admin/QuotationHelpTipBrowserTest.php
 tests/Feature/Admin/RoomAreaAssemblyQuoteTest.php
 tests/Feature/Admin/RoomAreaBatch2PageTest.php
