@@ -211,14 +211,14 @@ class DeployDependsOnTestsTest extends TestCase
         $this->assertContains(
             'tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php',
             $extended,
-            'RoomAreaOpenPlan3DQuotationTest stays on the main/full list; PR144 test fixes land separately'
+            'RoomAreaOpenPlan3DQuotationTest stays on the main/full extended list'
         );
 
         $roomAreaFilter = $this->pathsFile('tests/ci/database-filter-room-area.txt');
-        $this->assertNotContains(
+        $this->assertContains(
             'tests/Feature/Admin/RoomAreaOpenPlan3DQuotationTest.php',
             $roomAreaFilter,
-            'Do not pull the OpenPlan3D quotation test onto every room-area PR push'
+            'PR #149 placed this test on the room-area PR filter; full suite still unions it via extended'
         );
 
         exec(
