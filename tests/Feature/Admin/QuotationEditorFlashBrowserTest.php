@@ -102,12 +102,21 @@ class QuotationEditorFlashBrowserTest extends IntegrationTestCase
                 $this->assertLessThan(80, (int) ($metrics['toastTop'] ?? 99), $spec['key'].' @'.$width.' toast sits at the top');
                 $this->assertFalse((bool) ($metrics['coversFooter'] ?? true), $spec['key'].' @'.$width.' toast covers sticky bar');
                 if ($width === '390') {
-                    $this->assertGreaterThanOrEqual(8, (int) ($metrics['toastLeft'] ?? -1), $spec['key'].' 390 toast left margin');
+                    $this->assertTrue((bool) ($metrics['menuVisible'] ?? false), $spec['key'].' 390 hamburger is visible');
+                    $this->assertFalse((bool) ($metrics['coversMenu'] ?? true), $spec['key'].' 390 toast overlaps the hamburger');
+                    $this->assertGreaterThan(
+                        (int) ($metrics['menuRight'] ?? 0),
+                        (int) ($metrics['toastLeft'] ?? 0),
+                        $spec['key'].' 390 toast stays to the right of the hamburger'
+                    );
+                    $this->assertLessThanOrEqual(320, (int) ($metrics['toastWidth'] ?? 999), $spec['key'].' 390 toast max width');
                     $this->assertLessThanOrEqual(
                         (int) ($metrics['vw'] ?? 0) - 8,
                         (int) ($metrics['toastRight'] ?? 0),
                         $spec['key'].' 390 toast right margin'
                     );
+                    $this->assertGreaterThanOrEqual(40, (int) ($metrics['closeWidth'] ?? 0), $spec['key'].' 390 close width');
+                    $this->assertGreaterThanOrEqual(40, (int) ($metrics['closeHeight'] ?? 0), $spec['key'].' 390 close height');
                 }
                 $shot = (string) ($row['shots'][$width] ?? '');
                 $this->assertFileExists($shot, $spec['key'].' @'.$width.' screenshot');

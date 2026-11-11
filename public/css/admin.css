@@ -5349,13 +5349,18 @@ select.admin-field-invalid,
   [data-qh-editor-toast].admin-toast--bottom-left,
   [data-qh-editor-toast].admin-toast--bottom-right,
   [data-qh-editor-toast].admin-toast--top-left {
-    left: 0.75rem;
+    left: auto;
     right: 0.75rem;
     top: 0.75rem;
     bottom: auto;
     transform: none;
-    max-width: none;
+    width: auto;
+    max-width: min(320px, calc(100vw - 5.5rem));
   }
+}
+[data-qh-editor-toast] .admin-toast__close {
+  min-width: 44px;
+  min-height: 44px;
 }
 
 /* Uniform quotation editor header */

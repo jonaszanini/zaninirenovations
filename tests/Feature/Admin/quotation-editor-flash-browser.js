@@ -68,13 +68,21 @@ async function metrics(page) {
   return page.evaluate(() => {
     const toast = document.querySelector('[data-qh-editor-toast]') || document.querySelector('[data-admin-toast-host]');
     const card = toast && toast.querySelector('.admin-toast__card');
+    const closeBtn = toast && toast.querySelector('[data-admin-toast-close]');
     const status = document.querySelector('[data-qh-flash-status]');
     const header = document.querySelector('[data-qh-header]');
     const footer = document.querySelector('.qh-sticky-footer, .br-sticky-total, #br-sticky-total');
+    const menu = document.getElementById('admin-menu-toggle');
     const tr = toast ? toast.getBoundingClientRect() : null;
     const fr = footer ? footer.getBoundingClientRect() : null;
+    const mr = menu && getComputedStyle(menu).display !== 'none' ? menu.getBoundingClientRect() : null;
+    const cr = closeBtn ? closeBtn.getBoundingClientRect() : null;
     const banner = document.querySelector('.admin-flash--success, [data-admin-flash="success"]');
     const styles = card ? getComputedStyle(card) : null;
+    const overlap = function (a, b) {
+      if (!a || !b || a.width < 1 || b.width < 1) return false;
+      return !(a.right < b.left + 1 || a.left > b.right - 1 || a.bottom < b.top + 1 || a.top > b.bottom - 1);
+    };
     return {
       toastVisible: !!(toast && !toast.hidden),
       toastText: toast ? String(toast.textContent || '').replace(/\s+/g, ' ').trim() : '',
@@ -85,11 +93,18 @@ async function metrics(page) {
       toastBottom: tr ? Math.round(tr.bottom) : null,
       toastLeft: tr ? Math.round(tr.left) : null,
       toastRight: tr ? Math.round(tr.right) : null,
+      toastWidth: tr ? Math.round(tr.width) : null,
       footerTop: fr ? Math.round(fr.top) : null,
-      coversFooter: !!(tr && fr && !(tr.bottom < fr.top - 4 || tr.top > fr.bottom + 4)),
+      coversFooter: !!(tr && fr && overlap(tr, fr)),
+      menuLeft: mr ? Math.round(mr.left) : null,
+      menuRight: mr ? Math.round(mr.right) : null,
+      menuVisible: !!(mr && mr.width > 1),
+      coversMenu: !!(tr && mr && overlap(tr, mr)),
+      closeWidth: cr ? Math.round(cr.width) : null,
+      closeHeight: cr ? Math.round(cr.height) : null,
       vw: window.innerWidth,
       ariaLive: toast ? toast.getAttribute('aria-live') : null,
-      hasClose: !!(toast && toast.querySelector('[data-admin-toast-close]')),
+      hasClose: !!closeBtn,
       entering: !!(toast && toast.classList && toast.classList.contains('is-entering')),
       bg: styles ? styles.backgroundColor : '',
     };

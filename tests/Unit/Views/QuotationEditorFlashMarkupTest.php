@@ -44,6 +44,7 @@ class QuotationEditorFlashMarkupTest extends TestCase
         $this->assertStringContainsString('qh-admin-toast-slide', $css);
         $this->assertStringContainsString('prefers-reduced-motion', $css);
         $this->assertStringContainsString('qh-admin-toast-fade', $css);
+        $this->assertStringContainsString('min(320px, calc(100vw - 5.5rem))', $css);
         $this->assertStringContainsString('backdrop-filter', $css);
         $this->assertStringContainsString('.qh-flash-status', $css);
         $this->assertStringContainsString('.qh-crumb-row', $css);

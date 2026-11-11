@@ -27,7 +27,8 @@ assert.ok(css.indexOf('prefers-reduced-motion') !== -1, 'reduced motion uses a f
 assert.ok(css.indexOf('qh-admin-toast-fade') !== -1, 'reduced motion fade keyframes');
 assert.ok(css.indexOf('backdrop-filter') !== -1, 'toast uses backdrop blur');
 assert.ok(css.indexOf('.qh-flash-status') !== -1, 'compact status CSS is shared');
-assert.ok(/@media \(max-width: 700px\)\s*\{[^}]*\[data-qh-editor-toast\]/s.test(css), '390px toast is full width minus margins');
+assert.ok(css.indexOf('min(320px, calc(100vw - 5.5rem))') !== -1, '390px toast stays a right chip, not a full-width bar');
+assert.ok(!/@media \(max-width: 700px\)\s*\{[^}]*\[data-qh-editor-toast\][^}]*max-width:\s*none/s.test(css), 'quotation toast does not stretch full width on phones');
 
 const dark = fs.readFileSync(path.resolve(__dirname, '../../public/css/admin-dark.css'), 'utf8');
 assert.ok(dark.indexOf('html.admin-dark [data-qh-editor-toast] .admin-toast--success') !== -1);
