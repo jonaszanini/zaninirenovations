@@ -20,6 +20,7 @@ use App\Models\StairsQuotation;
 use App\Models\StandardQuotation;
 use App\Models\TileQuotation;
 use App\Models\TrimmingQuotation;
+use App\Services\PaintingQuotationCalculator;
 use App\Services\StairsQuotationCalculator;
 
 trait PublishesLinkedQuotations
@@ -92,6 +93,9 @@ trait PublishesLinkedQuotations
             'status' => ClientProject::STATUS_VISIT_SCHEDULED,
             'billing_type' => ClientProject::BILLING_FIXED,
         ]);
+        if ($type === 'painting') {
+            return $this->publishLinkedPaintingQuoteWithoutStore($project);
+        }
         $payload = $this->publishPayload($type, $project->client_name);
         $storeRoute = $type === 'tile'
             ? route('admin.quotations.tile.store')
@@ -122,6 +126,43 @@ trait PublishesLinkedQuotations
         $this->assertNotNull($cpq, $type.' client quotation should exist after publish+link');
 
         return [$quote, $cpq, $payload, route('admin.quotations.'.$type.'.update', $quote)];
+    }
+
+    /**
+     * Painting GET create / POST store are blocked. Seed a published row, then link.
+     *
+     * @return array{0: object, 1: ClientProjectQuotation, 2: array<string, mixed>, 3: string}
+     */
+    protected function publishLinkedPaintingQuoteWithoutStore(ClientProject $project): array
+    {
+        $payload = $this->publishPayload('painting', $project->client_name);
+        $inputs = array_merge(PaintingQuotationCalculator::defaultInputs(), [
+            'total_property_sqf' => (float) $payload['total_property_sqf'],
+            'paint_line_id' => $payload['paint_line_id'],
+        ]);
+        $calc = (new PaintingQuotationCalculator)->calculate($inputs);
+        $quote = PaintingQuotation::query()->create([
+            'quote_number' => PaintingQuotation::generateNumber(),
+            'client_name' => $project->client_name,
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => round((float) ($calc['summary']['final_quote_total'] ?? 0), 2),
+            'payment_installments' => 3,
+            'include_debris_removal' => 0,
+            'ask_reply_to_accept' => 0,
+        ]);
+        $this->post(route('admin.quotations.painting.link', $quote), [
+            'client_project_id' => $project->id,
+        ]);
+        $quote->refresh();
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_PAINTING)
+            ->where('source_id', $quote->id)
+            ->first();
+        $this->assertNotNull($cpq, 'painting client quotation should exist after model create+link');
+
+        return [$quote, $cpq, $payload, route('admin.quotations.painting.update', $quote)];
     }
 
     /**

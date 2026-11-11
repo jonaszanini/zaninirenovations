@@ -33,6 +33,9 @@ class PaintingQuotationController extends Controller
     use HandlesQuotationPaymentSchedule;
     use ResolvesQuotationProjectLink;
 
+    /** Shown when GET create is redirected to the quotations hub. POST store returns 404. */
+    public const CREATE_DISABLED_NOTICE = 'New painting quotations are not offered. Existing painting quotes stay available from a project or a saved quote link.';
+
     public function index(Request $request)
     {
         $quotations = $this->applyUnlinkedOnlyQuotationIndexFilter(
@@ -49,38 +52,19 @@ class PaintingQuotationController extends Controller
 
     public function create(Request $request)
     {
-        return $this->formView(null, $request);
-    }
-
-    public function store(Request $request)
-    {
-        $intent = QuotationSaveIntent::fromRequest($request);
-        $calc = $this->validatedCalculation($request, $intent, null);
-
-        if ($replay = $this->rejectReplaySubmit($request)) {
-            return $replay;
+        $query = [];
+        if ($request->filled('project')) {
+            $query['project'] = (int) $request->query('project');
         }
 
-        $quote = PaintingQuotation::create(array_merge($calc, [
-            'quote_number' => PaintingQuotation::generateNumber(),
-            'version' => 1,
-        ]));
-        $this->rememberSubmitSucceeded($request);
+        return redirect()
+            ->route('admin.quotations.index', $query)
+            ->with('info', self::CREATE_DISABLED_NOTICE);
+    }
 
-        $warnings = [];
-        $hubProjectRequested = $this->quotationLinkCandidateProject($request);
-        $newlyLinked = $this->autoLinkPaintingIfRequested($quote->fresh(), $request, $warnings);
-        $linkedNow = $newlyLinked && $hubProjectRequested;
-
-        $resp = redirect()
-            ->route('admin.quotations.painting.edit', $quote->fresh())
-            ->with('success', $intent === 'draft'
-                ? ($linkedNow ? 'Painting quotation saved as draft and linked.' : 'Painting quotation saved as draft.')
-                : ($linkedNow
-                    ? 'Painting quotation '.$quote->quote_number.' saved and linked to this project.'
-                    : 'Painting quotation '.$quote->quote_number.' saved.'));
-
-        return QuotationAfterSaveRedirect::apply($request, $warnings === [] ? $resp : $resp->with('warning', implode(' ', $warnings)));
+    public function store()
+    {
+        abort(404);
     }
 
     public function edit(Request $request, PaintingQuotation $painting_quotation)

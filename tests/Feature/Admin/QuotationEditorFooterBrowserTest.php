@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Models\PaintingQuotation;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Tests\IntegrationTestCase;
@@ -27,6 +28,16 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
         ]);
         $this->actingAs($user);
 
+        $painting = PaintingQuotation::query()->create([
+            'quote_number' => PaintingQuotation::generateNumber(),
+            'client_name' => 'Footer Painting Browser',
+            'is_draft' => true,
+            'inputs' => [],
+            'calculation' => [],
+            'final_quote_total' => 0,
+        ]);
+        $paintingHref = route('admin.quotations.painting.edit', $painting, false);
+
         $base = $this->startServer();
         $script = base_path('tests/Feature/Admin/quotation-editor-footer-browser.js');
         $out = storage_path('app/qh-footer-browser.json');
@@ -42,6 +53,7 @@ class QuotationEditorFooterBrowserTest extends IntegrationTestCase
             'QH_FOOTER_OUT' => $out,
             'QH_FOOTER_SHOTS' => $shots,
             'QH_FOOTER_SHA' => $sha,
+            'QH_FOOTER_PAINTING_HREF' => $paintingHref,
             'PUPPETEER_EXECUTABLE_PATH' => (string) (getenv('PUPPETEER_EXECUTABLE_PATH') ?: '/usr/bin/google-chrome'),
         ], $output);
         $this->stopServer();

@@ -32,7 +32,6 @@ class QuotationEditorHeaderTest extends IntegrationTestCase
             'millwork' => ['millwork', 'admin.quotations.millwork.create', 'Millwork', true, 'mw-btn-draft'],
             'flooring' => ['flooring', 'admin.quotations.flooring.create', 'Flooring', true, 'fl-btn-draft'],
             'trimming' => ['trimming', 'admin.quotations.trimming.create', 'Trim', true, 'tm-btn-draft'],
-            'painting' => ['painting', 'admin.quotations.painting.create', 'Painting', true, 'pt-btn-draft'],
             'shed' => ['shed', 'admin.quotations.shed.create', 'Shed', true, 'sh-btn-draft'],
             'tile' => ['tile', 'admin.quotations.tile.create', 'Tile', true, 'tl-btn-draft'],
             'fence' => ['fence', 'admin.quotations.fence.create', 'Fence', true, 'fq-btn-draft'],

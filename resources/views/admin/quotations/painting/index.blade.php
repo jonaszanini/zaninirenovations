@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Painting services quotations')
+@section('heading', 'Painting quotation archive')
 
 @section('content')
   @php $qpid = request('project'); @endphp
@@ -13,10 +13,8 @@
         <i class="fa fa-cog"></i> Price configuration
       </a>
     </div>
-    <a href="{{ route('admin.quotations.painting.create', $qpid ? ['project' => $qpid] : []) }}" class="admin-btn admin-btn--primary">
-      <i class="fa fa-plus"></i> New painting quotation
-    </a>
   </div>
+  <p class="admin-form-help" style="margin:0 0 16px;">New painting quotations are not offered. Existing quotes stay available here.</p>
 
   @include('admin.quotations._index_project_context')
 
@@ -24,9 +22,9 @@
     <div class="admin-card" style="text-align:center;padding:36px 24px;">
       <p class="admin-form-help cp-form-help-flush">
         @if ($filterUnlinkedOnly ?? false)
-          No unlinked painting quotations available. Click <strong>New painting quotation</strong> to build one for this project.
+          No unlinked painting quotations in this archive.
         @else
-          No painting quotations yet. Open the calculator to build an estimate from your painting price database.
+          No painting quotations in this archive.
         @endif
       </p>
     </div>

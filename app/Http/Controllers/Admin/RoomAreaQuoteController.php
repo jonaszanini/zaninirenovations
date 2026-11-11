@@ -60,7 +60,6 @@ class RoomAreaQuoteController extends Controller
             'trades' => RoomAreaQuoteQuantities::trades(),
             'wizardUrls' => [
                 'flooring' => route('admin.quotations.flooring.create', $wizardQuery),
-                'painting' => route('admin.quotations.painting.create', $wizardQuery),
                 'trimming' => route('admin.quotations.trimming.create', $wizardQuery),
                 'tile' => route('admin.quotations.tile.create', $wizardQuery),
                 'millwork' => route('admin.quotations.millwork.create', $wizardQuery),

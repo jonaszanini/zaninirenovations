@@ -696,7 +696,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
     Route::delete('quotations/stairs/{stairs_quotation}', [StairsQuotationController::class, 'destroy'])
         ->name('quotations.stairs.destroy');
 
-    // Painting services quotations (residential interior painting calculator).
+    // Painting quotations: create/store are blocked (GET create redirects to the hub).
+    // Existing quotes remain on index/edit/update/link/PDF.
     Route::get('quotations/painting', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'index'])
         ->name('quotations.painting.index');
     Route::get('quotations/painting/create', [\App\Http\Controllers\Admin\PaintingQuotationController::class, 'create'])
