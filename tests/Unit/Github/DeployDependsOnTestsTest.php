@@ -233,6 +233,16 @@ class DeployDependsOnTestsTest extends TestCase
             $quotationFilter,
             'Publish / Save as draft label PRs must run QuotationEditorControlInventoryTest on the quotation filter'
         );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFlashTest.php',
+            $quotationFilter,
+            'Quotation save toast PRs must run QuotationEditorFlashTest on the quotation filter'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFlashBrowserTest.php',
+            $quotationFilter,
+            'Quotation save toast PRs must run QuotationEditorFlashBrowserTest on the quotation filter'
+        );
         exec(
             'CI_MYSQL_SUITE=pr CI_MYSQL_FILTER_QUOTATION=true bash '
             .escapeshellarg(base_path('tests/ci/select-database-paths.sh')),
@@ -254,6 +264,16 @@ class DeployDependsOnTestsTest extends TestCase
             'tests/Feature/Admin/QuotationEditorControlInventoryTest.php',
             $selected,
             'quotation-filter PRs must actually select QuotationEditorControlInventoryTest'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFlashTest.php',
+            $selected,
+            'quotation-filter PRs must actually select QuotationEditorFlashTest'
+        );
+        $this->assertContains(
+            'tests/Feature/Admin/QuotationEditorFlashBrowserTest.php',
+            $selected,
+            'quotation-filter PRs must actually select QuotationEditorFlashBrowserTest'
         );
         $core = $this->pathsFile('tests/ci/database-core.txt');
         $this->assertContains('tests/Feature/Admin/StairsQuotationPagesTest.php', $core);

@@ -1237,28 +1237,33 @@
     function consumeFlash(payload) {
       payload = payload || {};
       var expected = consumeExpect(env);
+      var doc = env.document;
+      var quotationEditor = !!(doc && doc.querySelector && (
+        doc.querySelector('[data-qh-flash-toast]') || doc.querySelector('[data-qh-header]')
+      ));
+      var announce = expected || quotationEditor;
       if (payload.fields && payload.fields.length) {
         showValidation(fieldsFromPayload(payload.fields, env), { warning: !!payload.warning });
         hideDuplicateFlash('error', env);
         return;
       }
       if (payload.error) {
-        if (expected) {
+        if (announce) {
           showError(payload.error, 'Could not save');
           hideDuplicateFlash('error', env);
         }
         return;
       }
-      if (expected && payload.warning) {
+      if (announce && payload.warning) {
         var tw = toast();
-        if (tw && tw.show) tw.show({ type: 'warning', title: payload.warning, sticky: true }, env);
+        if (tw && tw.show) tw.show({ type: 'warning', title: payload.warning, sticky: !quotationEditor }, env);
         hideDuplicateFlash('warning', env);
         return;
       }
-      if (expected && payload.success) {
+      if (announce && payload.success) {
         var text = payload.success === true ? 'Saved' : String(payload.success);
         showSaved(text);
-        if (isPlainSaved(text)) hideDuplicateFlash('success', env);
+        if (quotationEditor || isPlainSaved(text)) hideDuplicateFlash('success', env);
       }
     }
 

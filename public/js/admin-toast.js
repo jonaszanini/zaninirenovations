@@ -15,6 +15,7 @@
   root.AdminToast = api;
 })(typeof window !== 'undefined' ? window : globalThis, function () {
   var SUCCESS_MS = 2500;
+  var QUOTE_MS = 6000;
   var AVOID_PAD = 14;
   var PLACEMENTS = [
     'bottom-center',
@@ -57,6 +58,10 @@
   var fieldWatchBound = false;
   var keyBound = false;
   var lastEnv = null;
+  var hidePaused = false;
+  var hideRemaining = 0;
+  var hideStartedAt = 0;
+  var hoverBoundHost = null;
 
   function envDoc(env) {
     return (env && env.document) || (typeof document !== 'undefined' ? document : null);
@@ -74,10 +79,21 @@
       .replace(/"/g, '&quot;');
   }
 
+  function isQuotationHost(node) {
+    return !!(node && node.hasAttribute && node.hasAttribute('data-qh-flash-toast'));
+  }
+
+  function quotationDuration(node) {
+    if (!isQuotationHost(node)) return SUCCESS_MS;
+    var raw = node.getAttribute && node.getAttribute('data-qh-flash-duration');
+    var ms = parseInt(raw, 10);
+    return ms > 0 ? ms : QUOTE_MS;
+  }
+
   function ensureHost(env) {
     var doc = envDoc(env);
     if (!doc) return null;
-    host = doc.querySelector('[data-admin-toast-host]');
+    host = doc.querySelector('[data-qh-flash-toast]') || doc.querySelector('[data-admin-toast-host]');
     if (!host) {
       host = doc.createElement('div');
       host.className = 'admin-toast';
@@ -160,7 +176,7 @@
 
   function applyPlacement(node, name) {
     node.setAttribute('data-placement', name);
-    node.className = 'admin-toast admin-toast--' + name;
+    node.className = 'admin-toast admin-toast--' + name + (isQuotationHost(node) ? ' qh-flash-toast' : '');
     if (node.style) {
       node.style.top = '';
       node.style.bottom = '';
@@ -215,6 +231,10 @@
     var win = envWin(env);
     var node = ensureHost(env);
     if (!node || !doc) return 'bottom-center';
+    if (isQuotationHost(node)) {
+      applyPlacement(node, 'top-right');
+      return 'top-right';
+    }
     var rects = avoidRects(doc, win);
     var best = null;
     for (var i = 0; i < PLACEMENTS.length; i++) {
@@ -394,7 +414,11 @@
 
   function close(env) {
     clearTimer();
-    var node = host || (envDoc(env) && envDoc(env).querySelector('[data-admin-toast-host]'));
+    hidePaused = false;
+    hideRemaining = 0;
+    var node = host || (envDoc(env) && (
+      envDoc(env).querySelector('[data-qh-flash-toast]') || envDoc(env).querySelector('[data-admin-toast-host]')
+    ));
     if (node) {
       node.hidden = true;
       node.innerHTML = '';
@@ -403,6 +427,38 @@
       highlightFields(lastOptions.fields, false);
     }
     lastOptions = null;
+  }
+
+  function scheduleHide(env, ms) {
+    clearTimer();
+    hideRemaining = ms;
+    hideStartedAt = Date.now ? Date.now() : 0;
+    hideTimer = setTimeout(function () {
+      hideTimer = null;
+      if (hidePaused) return;
+      close(env);
+    }, ms);
+  }
+
+  function bindHoverPause(node, env) {
+    if (!node || hoverBoundHost === node || typeof node.addEventListener !== 'function') return;
+    hoverBoundHost = node;
+    node.addEventListener('mouseenter', function () {
+      if (!hideTimer && hideRemaining <= 0) return;
+      hidePaused = true;
+      if (hideTimer && hideStartedAt) {
+        var elapsed = (Date.now ? Date.now() : hideStartedAt) - hideStartedAt;
+        hideRemaining = Math.max(0, hideRemaining - elapsed);
+      }
+      clearTimer();
+    });
+    node.addEventListener('mouseleave', function () {
+      if (!hidePaused) return;
+      hidePaused = false;
+      if (hideRemaining > 0 && host && !host.hidden) {
+        scheduleHide(env, hideRemaining);
+      }
+    });
   }
 
   function show(options, env) {
@@ -425,17 +481,18 @@
     if (type === 'validation') {
       type = options.warning ? 'warning' : 'error';
     }
+    var quoteHost = isQuotationHost(host);
     var sticky = options.sticky;
     if (sticky == null) {
-      sticky = type !== 'success';
+      sticky = quoteHost ? false : type !== 'success';
     }
     var title = options.title || (type === 'success' ? 'Saved' : 'Could not save');
-    var live = type === 'success' ? 'status' : 'alert';
+    var live = type === 'success' || quoteHost ? 'status' : 'alert';
 
     lastOptions = options;
     host.hidden = false;
     host.setAttribute('role', live);
-    host.setAttribute('aria-live', type === 'success' ? 'polite' : 'assertive');
+    host.setAttribute('aria-live', quoteHost || type === 'success' ? 'polite' : 'assertive');
     host.innerHTML =
       '<div class="admin-toast__card admin-toast--' + type + '">' +
         '<i class="fa ' + iconFor(type) + ' admin-toast__icon" aria-hidden="true"></i>' +
@@ -463,9 +520,17 @@
     }
 
     if (!sticky) {
-      hideTimer = setTimeout(function () {
-        close(env);
-      }, options.duration || SUCCESS_MS);
+      var duration = options.duration || (quoteHost ? quotationDuration(host) : SUCCESS_MS);
+      scheduleHide(env, duration);
+      if (quoteHost) bindHoverPause(host, env);
+    }
+    if (quoteHost) {
+      var flashApi = (typeof globalThis !== 'undefined' && globalThis.AdminQuotationFlash)
+        || (typeof window !== 'undefined' && window.AdminQuotationFlash)
+        || null;
+      if (flashApi && typeof flashApi.sync === 'function') {
+        try { flashApi.sync(type, title, env); } catch (err) { /* ignore */ }
+      }
     }
     return host;
   }
@@ -477,7 +542,6 @@
       type: 'success',
       title: plain ? 'Saved' : text,
       sticky: false,
-      duration: SUCCESS_MS,
     }, env);
   }
 
@@ -523,6 +587,7 @@
 
   return {
     SUCCESS_MS: SUCCESS_MS,
+    QUOTE_MS: QUOTE_MS,
     PLACEMENTS: PLACEMENTS,
     AVOID_SEL: AVOID_SEL,
     PRIORITY_AVOID_SEL: PRIORITY_AVOID_SEL,

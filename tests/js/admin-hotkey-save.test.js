@@ -50,6 +50,9 @@ function matches(el, sel) {
   if (sel === 'label') return el.tagName === 'LABEL';
   if (sel === '[data-hotkey-save]') return el.hasAttribute('data-hotkey-save');
   if (sel === '[data-admin-toast-host]') return el.hasAttribute('data-admin-toast-host');
+  if (sel === '[data-qh-flash-toast]') return el.hasAttribute('data-qh-flash-toast');
+  if (sel === '[data-qh-header]') return el.hasAttribute('data-qh-header');
+  if (sel === '[data-qh-flash-status]') return el.hasAttribute('data-qh-flash-status');
   if (sel.indexOf('[role="dialog"]') === 0) return el.getAttribute('role') === 'dialog';
   if (sel.indexOf('[role="alertdialog"]') === 0) return el.getAttribute('role') === 'alertdialog';
   if (sel.charAt(0) === '#') return el.id === sel.slice(1) || el.getAttribute('id') === sel.slice(1);
@@ -1293,6 +1296,44 @@ assert.ok(toast.AVOID_SEL.indexOf('#br-next') !== -1, 'toast avoids Next');
     'success toast title uses the server flash text');
   toast.saved(env, 'Saved');
   assert.ok(String(host.innerHTML).indexOf('Saved') !== -1);
+})();
+
+(function quotationToastPinsTopRightAndLastsSixSeconds() {
+  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-flash-toast': '', 'data-qh-flash-duration': '6000' });
+  host.hidden = true;
+  const doc = makeDoc([host]);
+  const env = { document: doc, window: { innerWidth: 1024, innerHeight: 800, addEventListener() {} } };
+  toast.saved(env, 'Standard quotation SQ-2026-0407 saved and linked to this project.');
+  assert.strictEqual(host.hidden, false);
+  assert.strictEqual(host.getAttribute('data-placement'), 'top-right');
+  assert.strictEqual(host.getAttribute('aria-live'), 'polite');
+  assert.ok(String(host.className).indexOf('admin-toast--top-right') !== -1);
+  assert.strictEqual(toast.QUOTE_MS, 6000);
+})();
+
+(function quotationSessionFlashDoesNotNeedExpect() {
+  const host = makeEl('div', { 'data-admin-toast-host': '', 'data-qh-flash-toast': '' });
+  host.hidden = true;
+  const banner = makeEl('div', { 'data-admin-flash': 'success', id: 'flash' });
+  banner.textContent = 'Standard quotation SQ-1 saved and linked to this project.';
+  banner.hidden = false;
+  const doc = makeDoc([host, banner]);
+  const toasts = [];
+  const inst = hotkey.create({
+    document: doc,
+    window: { navigator: { platform: 'Linux' } },
+    now() { return 1000; },
+    toast: {
+      saved(_env, message) { toasts.push(message || 'Saved'); },
+      error() {},
+      validation() {},
+    },
+    storage: { getItem() { return null; }, setItem() {}, removeItem() {} },
+  });
+  inst.consumeFlash({ success: 'Standard quotation SQ-1 saved and linked to this project.' });
+  assert.deepStrictEqual(toasts, ['Standard quotation SQ-1 saved and linked to this project.']);
+  assert.strictEqual(banner.hidden, true, 'quotation banner is hidden when the toast host is present');
+  inst.reset();
 })();
 
 (function darkCardOpacityIsSolid() {
