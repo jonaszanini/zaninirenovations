@@ -374,6 +374,7 @@ class RoomAreaFinishMath
                     $wallId = $this->canvas()->wallId($polyId, $i, $j);
                     $lengthFt = hypot((float) $b['x'] - (float) $a['x'], (float) $b['y'] - (float) $a['y']) / $pixelsPerFoot;
                     $deductRaw = $this->unionOpeningAreaRawSqFt($objectsByWall[$wallId] ?? [], $ceilingHeightFt, $lengthFt * 12.0);
+                    $netExact = max(0.0, $lengthFt * $ceilingHeightFt - max(0.0, $deductRaw));
                     $index++;
                     $walls[] = [
                         'id' => $wallId,
@@ -381,7 +382,8 @@ class RoomAreaFinishMath
                         'label' => 'W'.$index,
                         'length_lf' => round($lengthFt, 2),
                         'opening_area_sqft' => $this->roundTo($deductRaw, 2),
-                        'net_area_sqft' => $this->netWallAreaSqFt($lengthFt, $ceilingHeightFt, $deductRaw),
+                        'net_area_sqft' => $this->roundTo($netExact, 2),
+                        'net_area_sqft_exact' => $netExact,
                     ];
                 }
             }
@@ -397,7 +399,7 @@ class RoomAreaFinishMath
     {
         $total = 0.0;
         foreach ($walls as $wall) {
-            $total += (float) ($wall['net_area_sqft'] ?? 0);
+            $total += (float) ($wall['net_area_sqft_exact'] ?? $wall['net_area_sqft'] ?? 0);
         }
 
         return round($total, 2);

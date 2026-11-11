@@ -1545,7 +1545,7 @@
       var dedRaw = unionOpeningAreaRawSqFt(rects);
       var netAreaExact = Math.max(0.0, finishLenFt * ceilingHeight - Math.max(0.0, dedRaw || 0.0));
       var netArea = roundTo(netAreaExact, 2);
-      totalNetWallArea += netArea;
+      totalNetWallArea += netAreaExact;
 
       perWallNetAreas.push({
         id: bw.id,
@@ -1594,7 +1594,7 @@
       var buttOverlapSqFt = partButt > 0 ? partButt * ceilingHeight : 0;
       var netAreaExact = Math.max(0, netAreaSingle * 2.0 - buttOverlapSqFt);
       var netArea = roundTo(netAreaExact, 2);
-      totalNetWallArea += netArea;
+      totalNetWallArea += netAreaExact;
 
       perWallNetAreas.push({
         id: pwId,

@@ -456,7 +456,7 @@ class OpenPlan3DMeasurementBridge
             $deductSqFt = $this->roundTo($deductRaw, 2);
             $netWallAreaExact = max(0.0, $finishLenFt * $ceilingHeightFt - max(0.0, $deductRaw));
             $netWallArea = $this->roundTo($netWallAreaExact, 2);
-            $totalNetWallArea += $netWallArea;
+            $totalNetWallArea += $netWallAreaExact;
 
             $perWallNetAreas[] = [
                 'id' => $wId,
@@ -502,7 +502,7 @@ class OpenPlan3DMeasurementBridge
             $buttOverlapSqFt = $partButt > 0 ? $partButt * $ceilingHeightFt : 0.0;
             $netWallAreaExact = max(0.0, $netWallAreaSingle * 2.0 - $buttOverlapSqFt);
             $netWallArea = $this->roundTo($netWallAreaExact, 2);
-            $totalNetWallArea += $netWallArea;
+            $totalNetWallArea += $netWallAreaExact;
 
             $perWallNetAreas[] = [
                 'id' => $wId,

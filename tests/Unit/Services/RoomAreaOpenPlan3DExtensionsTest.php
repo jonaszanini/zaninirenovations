@@ -575,7 +575,9 @@ class RoomAreaOpenPlan3DExtensionsTest extends TestCase
         $out = $this->extensions->applyToMetrics($metrics, $plan, [], OpenPlan3DMeasurementBridge::CM_PER_FOOT);
 
         $this->assertEqualsWithDelta(199.53, $out['finish_baseboard_lf'], 0.02);
+        $this->assertSame(1596.21, (float) $metrics['net_wall_area_sqft']);
         $this->assertSame(1596.21, $out['finish_drywall_sqft']);
+        $this->assertSame($out['finish_drywall_sqft'], $out['net_wall_area_sqft']);
     }
 
     public function test_default_baseboard_per_wall_when_no_wall_finishes(): void
