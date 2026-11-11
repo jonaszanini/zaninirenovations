@@ -136,7 +136,6 @@ async function captureTakeoffsPanel(width, height, filename) {
         studs: true,
         baseboard: true,
         drywallFaces: 'both',
-        baseboardSides: 1,
       };
     }
   }
