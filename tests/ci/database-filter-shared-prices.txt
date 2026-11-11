@@ -2,4 +2,5 @@ tests/Feature/SharedPricesLayoutTest.php
 tests/Unit/Services/BasementQuotationProductivityOverlayTest.php
 tests/Unit/Services/FlooringQuotationCalculatorTest.php
 tests/Unit/Services/SharedWorkCatalogTest.php
+tests/Unit/Services/SharedWorkCatalogMaterialPriceTest.php
 tests/Unit/Services/TrimmingQuotationCalculatorTest.php

@@ -19,7 +19,7 @@ class BasementClientProvidesBathBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8057;
+    private int $serverPort = 8063;
 
     public function test_bathroom_client_provides_items_enabled_and_tick_lowers_total(): void
     {

@@ -19,7 +19,7 @@ class BasementAllowancesResetBrowserTest extends IntegrationTestCase
     /** @var resource|null */
     private $serverProcess = null;
 
-    private int $serverPort = 8058;
+    private int $serverPort = 8064;
 
     public function test_reset_restores_missing_permit_line_and_clears_stale_banner(): void
     {
