@@ -377,7 +377,7 @@
         <div class="dash-panel--split dash-panel--split-2">
           <div>
             <h3 class="dash-section-title">
-              <span class="dash-section-title__text">Profit projection — next 6 months <x-admin.info-tip label="Profit projection">Based on scheduled payment plans and invoice due dates. Actuals may vary.</x-admin.info-tip></span>
+              <span class="dash-section-title__text">Profit projection, next 6 months <x-admin.info-tip label="Profit projection">Based on scheduled payment plans and invoice due dates. Actuals may vary.</x-admin.info-tip></span>
             </h3>
             <div class="dash-chart-wrap">
               <canvas id="dash-chart-projection" aria-label="Projected revenue and profit chart"></canvas>

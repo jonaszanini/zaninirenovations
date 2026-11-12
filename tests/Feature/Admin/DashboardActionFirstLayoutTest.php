@@ -69,7 +69,7 @@ class DashboardActionFirstLayoutTest extends IntegrationTestCase
             'Who to chase',
             'Upcoming (30 days)',
             'Finance glance',
-            'Profit projection — next 6 months',
+            'Profit projection, next 6 months',
             'Gross margin (YTD)',
             'Quick actions',
             'Project status overview',
