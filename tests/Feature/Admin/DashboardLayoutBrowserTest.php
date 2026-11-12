@@ -111,6 +111,15 @@ class DashboardLayoutBrowserTest extends IntegrationTestCase
             $this->assertTrue((bool) ($report[$key]['tipOpen'] ?? false), "{$key} info tip did not open");
         }
 
+        foreach ([
+            'sidebar_light' => 'admin-sidebar-groups-1280-light.png',
+            'sidebar_dark' => 'admin-sidebar-groups-1280-dark.png',
+        ] as $key => $name) {
+            $shot = (string) ($report[$key]['shot'] ?? '');
+            $this->assertFileExists($shot, "Missing {$key} sidebar screenshot");
+            $this->writeArtifact($shot, $name);
+        }
+
         $this->writeArtifactString('dashboard-layout-browser.json', $raw);
     }
 

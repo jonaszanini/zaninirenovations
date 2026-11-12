@@ -120,6 +120,7 @@ async function measure(page, width) {
         justify: getComputedStyle(label).justifyContent,
         copyDisplay: copyStyle ? copyStyle.display : '',
         copyWhiteSpace: copyStyle ? copyStyle.whiteSpace : '',
+        iconLeft: iconBox ? Math.round(iconBox.left) : null,
         iconRight: iconBox ? Math.round(iconBox.right) : null,
         copyLeft: copyBox ? Math.round(copyBox.left) : null,
         copyRight: copyBox ? Math.round(copyBox.right) : null,
@@ -271,6 +272,35 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   report.w390_light = await capture(page, port, 390, 844, false, 'admin-dashboard-action-390-light', true);
   report.w390_dark = await capture(page, port, 390, 844, true, 'admin-dashboard-action-390-dark', true);
 
+  async function shootSidebar(dark, label) {
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.goto(`http://127.0.0.1:${port}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.evaluate((isDark) => {
+      document.documentElement.classList.toggle('admin-dark', isDark);
+      document.body.classList.toggle('admin-dark', isDark);
+      document.querySelectorAll('.admin-nav-details').forEach((el) => { el.open = true; });
+      const sidebar = document.querySelector('.admin-sidebar');
+      if (sidebar) {
+        sidebar.style.height = 'auto';
+        sidebar.style.overflow = 'visible';
+        sidebar.style.position = 'relative';
+      }
+      const nav = document.querySelector('.admin-nav');
+      if (nav) {
+        nav.style.overflow = 'visible';
+        nav.style.maxHeight = 'none';
+      }
+    }, dark);
+    await new Promise((r) => setTimeout(r, 200));
+    const sidebar = await page.$('#admin-sidebar');
+    const dest = path.join(outDir, `${label}.png`);
+    await sidebar.screenshot({ path: dest });
+    return dest;
+  }
+
+  const sidebarLight = await shootSidebar(false, 'admin-sidebar-groups-1280-light');
+  const sidebarDark = await shootSidebar(true, 'admin-sidebar-groups-1280-dark');
+
   await browser.close();
   server.close();
 
@@ -278,6 +308,7 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
   for (const [key, row] of Object.entries(report)) {
+    if (!String(key).startsWith('w')) continue;
     assert.ok(row.iconCount >= 12, `${key} missing title icons (${row.iconCount})`);
     assert.ok(row.compactCount >= 2, `${key} missing compact rows (${row.compactCount})`);
     assert.ok(row.hasRemind, `${key} lost Remind`);
@@ -302,7 +333,7 @@ async function capture(page, port, width, height, dark, label, fullPage) {
     row.kpiLabels.forEach((kpi, idx) => {
       assert.ok(kpi.hasCopy, `${key} KPI ${idx} missing dash-stat-label__copy`);
       assert.strictEqual(kpi.flexWrap, 'nowrap', `${key} KPI ${idx} label must not wrap flex items`);
-      assert.ok(kpi.copyLeft - kpi.iconRight >= -2 && kpi.copyLeft - kpi.iconRight < 20, `${key} KPI ${idx} icon/title gap ${kpi.copyLeft - kpi.iconRight}`);
+      assert.ok(kpi.iconLeft > kpi.copyLeft + 8, `${key} KPI ${idx} icon should sit to the right of the label (iconLeft=${kpi.iconLeft} copyLeft=${kpi.copyLeft})`);
       if (kpi.hasTip) {
         assert.ok(kpi.titleLineCount >= 1 && kpi.titleLineCount <= 2, `${key} KPI ${idx} title split across ${kpi.titleLineCount} lines`);
         assert.ok(!kpi.tipDropped, `${key} KPI ${idx} info tip dropped under the title`);
@@ -334,8 +365,12 @@ async function capture(page, port, width, height, dark, label, fullPage) {
 
   const phone = report.w390_light;
   assert.ok(columnCount(phone.twoCol) <= 1, '390 today stack: ' + phone.twoCol);
-  assert.ok(columnCount(phone.cardCols) === 2, '390 KPI cards should be two across: ' + phone.cardCols);
+  assert.ok(columnCount(phone.cardCols) === 1, '390 KPI cards should stack in one column: ' + phone.cardCols);
   assert.ok(phone.sidebarLeft < 0 || (phone.sidebarTransform && phone.sidebarTransform !== 'none'), '390 sidebar should be off-canvas');
+
+  report.sidebar_light = { shot: sidebarLight };
+  report.sidebar_dark = { shot: sidebarDark };
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
   console.log('dashboard-layout-browser: ok');
   console.log(JSON.stringify({

@@ -54,8 +54,13 @@
     <div class="admin-nav-backdrop" id="admin-nav-backdrop" aria-hidden="true" hidden></div>
     <aside class="admin-sidebar" id="admin-sidebar" aria-label="Admin navigation">
       <div class="admin-sidebar-brand">
-        <a href="{{ route('admin.dashboard') }}">Zanini Renovations</a>
-        <span>Admin</span>
+        <a href="{{ route('admin.dashboard') }}" class="admin-sidebar-brand__lockup">
+          <span class="admin-sidebar-brand__mark" aria-hidden="true">ZR</span>
+          <span class="admin-sidebar-brand__copy">
+            <span class="admin-sidebar-brand__name">Zanini Renovations</span>
+            <span class="admin-sidebar-brand__role">Admin</span>
+          </span>
+        </a>
       </div>
       @php
         $isCalendar = request()->routeIs('admin.client-projects.calendar');
@@ -81,15 +86,15 @@
       <ul class="admin-nav">
         <li>
           <a href="{{ route('admin.dashboard') }}" class="{{ request()->routeIs('admin.dashboard') ? 'is-active' : '' }}">
-            <i class="fa fa-tachometer"></i>
-            Dashboard
+            <span class="admin-nav-icon admin-nav-icon--sky"><i class="fa fa-home" aria-hidden="true"></i></span>
+            <span class="admin-nav-label">Dashboard</span>
           </a>
         </li>
 
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $projectsOpen ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $projectsOpen ? 'is-active' : '' }}">
-              <i class="fa fa-briefcase"></i>
+              <span class="admin-nav-icon admin-nav-icon--indigo"><i class="fa fa-briefcase" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Projects</span>
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
@@ -118,15 +123,15 @@
 
         <li>
           <a href="{{ route('admin.clients.index') }}" class="{{ request()->routeIs('admin.clients.*') ? 'is-active' : '' }}">
-            <i class="fa fa-address-book"></i>
-            Clients
+            <span class="admin-nav-icon admin-nav-icon--emerald"><i class="fa fa-users" aria-hidden="true"></i></span>
+            <span class="admin-nav-label">Clients</span>
           </a>
         </li>
 
         <li>
           <a href="{{ route('admin.tasks.index') }}" class="{{ request()->routeIs('admin.tasks.*') ? 'is-active' : '' }}">
-            <i class="fa fa-check-square-o"></i>
-            Tasks
+            <span class="admin-nav-icon admin-nav-icon--amber"><i class="fa fa-check-square-o" aria-hidden="true"></i></span>
+            <span class="admin-nav-label">Tasks</span>
             @if ($sidebarOpenTaskCount > 0)
               <span class="admin-nav-badge">{{ $sidebarOpenTaskCount }}</span>
             @endif
@@ -136,7 +141,7 @@
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isBlog ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isBlog ? 'is-active' : '' }}">
-              <i class="fa fa-rss"></i>
+              <span class="admin-nav-icon admin-nav-icon--purple"><i class="fa fa-newspaper-o" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Blog</span>
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
@@ -175,7 +180,7 @@
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isQuotation ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isQuotation ? 'is-active' : '' }}">
-              <i class="fa fa-calculator"></i>
+              <span class="admin-nav-icon admin-nav-icon--sky"><i class="fa fa-file-text-o" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Quotations</span>
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
@@ -198,15 +203,15 @@
 
         <li>
           <a href="{{ route('admin.materials.index') }}" class="{{ $isMaterials ? 'is-active' : '' }}">
-            <i class="fa fa-cubes"></i>
-            Materials
+            <span class="admin-nav-icon admin-nav-icon--orange"><i class="fa fa-cube" aria-hidden="true"></i></span>
+            <span class="admin-nav-label">Materials</span>
           </a>
         </li>
 
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isFinancials ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isFinancials ? 'is-active' : '' }}">
-              <i class="fa fa-money"></i>
+              <span class="admin-nav-icon admin-nav-icon--teal"><i class="fa fa-usd" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Financials</span>
               @if (($sidebarPendingEtransferCount ?? 0) > 0)
                 <span class="admin-nav-badge">{{ $sidebarPendingEtransferCount }}</span>
@@ -248,7 +253,7 @@
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isComms ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isComms ? 'is-active' : '' }}">
-              <i class="fa fa-comments"></i>
+              <span class="admin-nav-icon admin-nav-icon--pink"><i class="fa fa-comments" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Communication</span>
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
@@ -266,7 +271,7 @@
         <li class="admin-nav-group">
           <details class="admin-nav-details" {{ $isUtilities ? 'open' : '' }}>
             <summary class="admin-nav-parent {{ $isUtilities ? 'is-active' : '' }}">
-              <i class="fa fa-cogs"></i>
+              <span class="admin-nav-icon admin-nav-icon--cyan"><i class="fa fa-wrench" aria-hidden="true"></i></span>
               <span class="admin-nav-parent__label">Tools</span>
               <i class="fa fa-chevron-down admin-nav-caret" aria-hidden="true"></i>
             </summary>
@@ -302,8 +307,8 @@
         @if (auth()->user()?->isAdmin())
           <li>
             <a href="{{ route('admin.users.index') }}" class="{{ request()->routeIs('admin.users.*') ? 'is-active' : '' }}">
-              <i class="fa fa-users"></i>
-              Team
+              <span class="admin-nav-icon admin-nav-icon--violet"><i class="fa fa-id-badge" aria-hidden="true"></i></span>
+              <span class="admin-nav-label">Team</span>
             </a>
           </li>
         @endif
@@ -325,10 +330,13 @@
             <span class="admin-theme-toggle__switch" aria-hidden="true"></span>
           </button>
         </div>
-        <div class="admin-sidebar-user">{{ auth()->user()->email }}</div>
+        <div class="admin-sidebar-user" title="{{ auth()->user()->email }}">{{ auth()->user()->email }}</div>
         <form action="{{ route('admin.logout') }}" method="post">
           @csrf
-          <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm admin-sidebar-logout">Log out</button>
+          <button type="submit" class="admin-sidebar-logout">
+            <i class="fa fa-sign-out" aria-hidden="true"></i>
+            <span>Log out</span>
+          </button>
         </form>
       </div>
     </aside>
@@ -344,7 +352,7 @@
           <h1>@yield('heading')</h1>
           <button type="button" class="admin-global-search-btn" onclick="AdminSearchPalette.open()" title="Search (Ctrl+K or Cmd+K)">
             <i class="fa fa-search admin-global-search__icon" aria-hidden="true"></i>
-            <span class="admin-global-search__text">Search…</span>
+            <span class="admin-global-search__text">Search projects, clients…</span>
             <kbd class="admin-global-search__kbd">⌘K</kbd>
           </button>
         </div>

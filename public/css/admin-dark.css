@@ -74,19 +74,108 @@ html.admin-dark .admin-checkbox-row .admin-checkbox__text {
   color: inherit;
 }
 
+html.admin-dark .admin-sidebar {
+  background: #0b1120;
+  border-right-color: rgba(30, 41, 59, 0.9);
+  box-shadow: none;
+}
+
 html.admin-dark .admin-sidebar-brand {
-  background: #024768;
+  background: linear-gradient(90deg, rgba(8, 47, 73, 0.72), #0b1120 72%);
+  border-bottom-color: rgba(30, 41, 59, 0.9);
+}
+
+html.admin-dark .admin-sidebar-brand__name {
+  color: #fff;
+}
+
+html.admin-dark .admin-sidebar-brand__role {
+  color: #38bdf8;
+  background: rgba(14, 165, 233, 0.15);
+  border-color: rgba(14, 165, 233, 0.28);
+}
+
+html.admin-dark .admin-nav a,
+html.admin-dark .admin-nav-details > summary {
+  color: #cbd5e1;
 }
 
 html.admin-dark .admin-nav a:hover,
 html.admin-dark .admin-nav-details > summary:hover {
-  color: var(--admin-primary);
+  color: #fff;
+  background: rgba(30, 41, 59, 0.65);
 }
 
-html.admin-dark .admin-nav a.is-active,
+html.admin-dark .admin-nav > li > a.is-active {
+  color: #fff;
+  background: linear-gradient(90deg, rgba(14, 165, 233, 0.22), rgba(37, 99, 235, 0.06));
+  border-color: rgba(56, 189, 248, 0.35);
+}
+
+html.admin-dark .admin-nav > li > a.is-active::after {
+  background: #38bdf8;
+}
+
 html.admin-dark .admin-nav-parent.is-active {
-  color: var(--admin-primary);
-  background: var(--admin-primary-soft);
+  color: #fff;
+  background: transparent;
+}
+
+html.admin-dark .admin-nav .admin-subnav a {
+  color: #94a3b8;
+}
+
+html.admin-dark .admin-nav .admin-subnav a:hover,
+html.admin-dark .admin-nav .admin-subnav a.is-active {
+  color: #38bdf8;
+  background: transparent;
+}
+
+html.admin-dark .admin-nav .admin-subnav a.is-active {
+  color: #7dd3fc;
+}
+
+html.admin-dark .admin-nav-icon--sky { background: rgba(14, 165, 233, 0.16); color: #38bdf8; }
+html.admin-dark .admin-nav-icon--indigo { background: rgba(99, 102, 241, 0.16); color: #a5b4fc; }
+html.admin-dark .admin-nav-icon--emerald { background: rgba(16, 185, 129, 0.16); color: #34d399; }
+html.admin-dark .admin-nav-icon--amber { background: rgba(245, 158, 11, 0.16); color: #fbbf24; }
+html.admin-dark .admin-nav-icon--purple { background: rgba(168, 85, 247, 0.16); color: #c084fc; }
+html.admin-dark .admin-nav-icon--orange { background: rgba(249, 115, 22, 0.16); color: #fb923c; }
+html.admin-dark .admin-nav-icon--teal { background: rgba(20, 184, 166, 0.16); color: #2dd4bf; }
+html.admin-dark .admin-nav-icon--pink { background: rgba(236, 72, 153, 0.16); color: #f472b6; }
+html.admin-dark .admin-nav-icon--cyan { background: rgba(6, 182, 212, 0.16); color: #22d3ee; }
+html.admin-dark .admin-nav-icon--violet { background: rgba(139, 92, 246, 0.16); color: #a78bfa; }
+
+html.admin-dark .admin-sidebar-footer {
+  background: rgba(11, 17, 32, 0.94);
+  border-top-color: rgba(30, 41, 59, 0.9);
+}
+
+html.admin-dark .admin-sidebar .admin-theme-toggle__btn {
+  background: rgba(30, 41, 59, 0.55);
+  border-color: rgba(51, 65, 85, 0.8);
+  color: #e2e8f0;
+}
+
+html.admin-dark .admin-sidebar-user {
+  color: #94a3b8;
+}
+
+html.admin-dark .admin-sidebar-logout {
+  border-color: rgba(51, 65, 85, 0.9);
+  color: #cbd5e1;
+  background: transparent;
+}
+
+html.admin-dark .admin-sidebar-logout:hover {
+  border-color: rgba(244, 63, 94, 0.5);
+  background: rgba(244, 63, 94, 0.1);
+  color: #fda4af;
+}
+
+html.admin-dark .admin-app::before {
+  background: #0b1120;
+  border-right-color: rgba(30, 41, 59, 0.9);
 }
 
 html.admin-dark .admin-btn--primary,
@@ -122,7 +211,7 @@ html.admin-dark .admin-btn--secondary {
 html.admin-dark .admin-sidebar .admin-theme-toggle__switch,
 html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch,
 html.admin-dark .admin-theme-toggle__btn[aria-checked="true"] .admin-theme-toggle__switch {
-  background: #024768;
+  background: #0ea5e9;
 }
 html.admin-dark .admin-sidebar .admin-theme-toggle__switch::after,
 html.admin-dark .admin-theme-toggle__btn[aria-pressed="true"] .admin-theme-toggle__switch::after,
@@ -3695,13 +3784,68 @@ html.admin-dark .dash-etransfer-today {
   border-color: var(--admin-border);
 }
 
-html.admin-dark .admin-content .dash-toolbar-title,
-html.admin-dark .admin-content .dash-block-title,
-html.admin-dark .admin-content .dash-section-title,
-html.admin-dark .admin-content .dash-attention-subheading,
-html.admin-dark .admin-content .dash-card--stat .dash-stat-label,
+html.admin-dark .admin-content .dash-toolbar-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-content .dash-block-title {
+  color: #38bdf8;
+}
+
+html.admin-dark .admin-content .dash-section-title {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .admin-content .dash-attention-subheading {
+  color: #34d399;
+}
+
+html.admin-dark .admin-content .dash-card--stat .dash-stat-label {
+  color: #38bdf8;
+}
+
 html.admin-dark .admin-content .dash-title-icon {
-  color: var(--admin-primary);
+  color: inherit;
+}
+
+html.admin-dark .admin-content .dash-card--emerald .dash-stat-label,
+html.admin-dark .admin-content .dash-card--emerald .dash-title-icon {
+  color: #34d399;
+}
+
+html.admin-dark .admin-content .dash-card--rose .dash-stat-label,
+html.admin-dark .admin-content .dash-card--rose .dash-title-icon,
+html.admin-dark .admin-content .dash-card--alert .dash-stat-label,
+html.admin-dark .admin-content .dash-card--alert .dash-title-icon {
+  color: #fb7185;
+}
+
+html.admin-dark .admin-content .dash-card--violet .dash-stat-label,
+html.admin-dark .admin-content .dash-card--violet .dash-title-icon {
+  color: #a78bfa;
+}
+
+html.admin-dark .dash-page .dash-card,
+html.admin-dark .dash-page .dash-panel,
+html.admin-dark .dash-page .dash-finance-glance {
+  background: linear-gradient(180deg, rgba(22, 32, 51, 0.92) 0%, rgba(15, 23, 42, 0.96) 100%);
+  border-color: rgba(148, 163, 184, 0.14);
+  box-shadow: 0 10px 30px -12px rgba(0, 0, 0, 0.55);
+}
+
+html.admin-dark .dash-page .dash-card--alert {
+  background: linear-gradient(180deg, rgba(69, 10, 20, 0.55) 0%, rgba(15, 23, 42, 0.96) 100%);
+  border-color: rgba(244, 63, 94, 0.45);
+}
+
+html.admin-dark body.admin-body:has(.dash-page),
+html.admin-dark .admin-main:has(.dash-page) {
+  background: #070b14;
+}
+
+html.admin-dark .admin-main:has(.dash-page) .admin-topbar {
+  background: rgba(7, 11, 20, 0.88);
+  border-bottom-color: rgba(148, 163, 184, 0.12);
 }
 
 html.admin-dark .dash-compact-row__icon {
