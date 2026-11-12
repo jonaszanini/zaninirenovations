@@ -75,6 +75,20 @@
               </span>
             </label>
           @endforeach
+          @foreach ($inactiveHelpers ?? collect() as $helper)
+            <div class="admin-checkbox admin-checkbox--block admin-checkbox-tile cp-helper-assign-option cp-helper-assign-option--inactive">
+              <span class="admin-checkbox__mark admin-checkbox__mark--disabled" aria-hidden="true"></span>
+              <span class="admin-checkbox__text cp-helper-assign-option__body">
+                <strong>{{ $helper->name }}</strong>
+                <span class="cp-helper-assign-option__meta">
+                  {{ \App\Models\ClientProject::formatMoney((float) $helper->hourly_rate) }}/h · Inactive
+                </span>
+                <a href="{{ route('admin.helpers.edit', ['helper' => $helper, 'return_project' => $project->id]) }}" class="cp-helper-assign-option__activate">
+                  Edit to activate
+                </a>
+              </span>
+            </div>
+          @endforeach
         </div>
         <div class="cp-helper-assign-row__action">
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Save Helpers</button>

@@ -7711,6 +7711,29 @@ body.cp-modal-open {
   color: var(--admin-muted);
   word-break: break-word;
 }
+.cp-helper-assign-option--inactive {
+  opacity: 0.65;
+  cursor: default;
+  background: #f9fafb;
+}
+.cp-helper-assign-option--inactive .admin-checkbox__mark--disabled {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1.5px solid #d1d5db;
+  background: #e5e7eb;
+}
+.cp-helper-assign-option__activate {
+  display: inline-block;
+  font-size: 12px;
+  color: var(--admin-primary, #024768);
+  text-decoration: underline;
+  margin-top: 2px;
+}
+.cp-helper-assign-option__activate:hover {
+  color: var(--admin-primary-dark, #013a56);
+}
 .cp-helper-pay-toolbar {
   display: flex;
   flex-wrap: wrap;
