@@ -149,6 +149,55 @@ async function measure(page, width) {
     const refresh = [...document.querySelectorAll('a')].find((a) => (a.textContent || '').includes('Refresh data'));
     const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
     const sidebarBox = sidebar ? sidebar.getBoundingClientRect() : null;
+    function measureUpcomingOverflow() {
+      const table = document.querySelector('.dash-table--stack');
+      const card = table ? table.closest('.dash-panel') : null;
+      if (!table || !card) {
+        return { missing: true, bad: ['upcoming table missing'] };
+      }
+      const cardBox = card.getBoundingClientRect();
+      const bad = [];
+      const scroll = table.closest('.admin-table-scroll');
+      if (scroll && scroll.scrollWidth > scroll.clientWidth + 2) {
+        bad.push('horizontal scroll ' + scroll.scrollWidth + '>' + scroll.clientWidth);
+      }
+      const tableBox = table.getBoundingClientRect();
+      if (tableBox.right > cardBox.right + 1 || tableBox.left < cardBox.left - 1) {
+        bad.push('table outside card');
+      }
+      table.querySelectorAll('tbody td').forEach((cell) => {
+        const box = cell.getBoundingClientRect();
+        if (box.width < 1 || box.height < 1) return;
+        const label = (cell.getAttribute('data-label') || cell.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+        if (box.right > cardBox.right + 1 || box.left < cardBox.left - 1) {
+          bad.push(label + ' cell outside card');
+        }
+        if (cell.scrollWidth > cell.clientWidth + 2) {
+          bad.push(label + ' text clipped ' + cell.scrollWidth + '>' + cell.clientWidth);
+        }
+        cell.querySelectorAll('*').forEach((el) => {
+          const inner = el.getBoundingClientRect();
+          if (inner.width < 1 || inner.height < 1) return;
+          if (inner.right > cardBox.right + 1 || inner.left < cardBox.left - 1) {
+            bad.push(label + ' child outside card');
+          }
+        });
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          const raw = walker.currentNode.textContent || '';
+          if (!raw.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(walker.currentNode);
+          [...range.getClientRects()].forEach((rect) => {
+            if (rect.width < 1 || rect.height < 1) return;
+            if (rect.right > cardBox.right + 1 || rect.left < cardBox.left - 1) {
+              bad.push(label + ' text outside card: ' + raw.trim().slice(0, 40));
+            }
+          });
+        }
+      });
+      return { missing: false, bad };
+    }
     return {
       viewport: vp,
       scrollWidth: doc.scrollWidth,
@@ -177,6 +226,7 @@ async function measure(page, width) {
       titleLeft: firstTitle ? Math.round(firstTitle.getBoundingClientRect().left) : null,
       rowText: compact.slice(0, 8).map((row) => (row.textContent || '').replace(/\s+/g, ' ').trim()),
       kpiLabels,
+      upcomingOverflow: measureUpcomingOverflow(),
     };
   }, width);
 }
@@ -362,6 +412,13 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   assert.ok(columnCount(mid.twoCol) >= 2, '1024 today columns should sit side by side: ' + mid.twoCol);
   assert.ok(mid.sidebarWidth > 200, '1024 sidebar should stay open');
   assert.ok(mid.sidebarLeft >= -1 && mid.sidebarLeft < 40, '1024 sidebar should be on-screen');
+
+  ['w1024_light', 'w1024_dark', 'w1280_light', 'w1280_dark'].forEach((key) => {
+    const row = report[key];
+    const overflow = row.upcomingOverflow || { missing: true, bad: ['not measured'] };
+    assert.ok(!overflow.missing, `${key} upcoming table was not measured`);
+    assert.deepStrictEqual(overflow.bad, [], `${key} upcoming table overflows its card: ${JSON.stringify(overflow.bad)}`);
+  });
 
   const phone = report.w390_light;
   assert.ok(columnCount(phone.twoCol) <= 1, '390 today stack: ' + phone.twoCol);
