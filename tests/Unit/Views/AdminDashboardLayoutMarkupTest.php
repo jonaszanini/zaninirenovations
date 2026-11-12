@@ -64,19 +64,22 @@ class AdminDashboardLayoutMarkupTest extends TestCase
         $css = file_get_contents(public_path('css/admin-dashboard.css'));
         $this->assertNotFalse($css);
 
-        foreach ([
-            '.dash-toolbar-title',
-            '.dash-block-title',
-            '.dash-section-title',
-            '.dash-attention-subheading',
-            '.dash-card--stat .dash-stat-label',
-        ] as $selector) {
-            $this->assertMatchesRegularExpression(
-                '/'.preg_quote($selector, '/').'\s*\{[^}]*color:\s*var\(--admin-primary\)/s',
-                $css,
-                "{$selector} must use Yale Blue family token --admin-primary"
-            );
-        }
+        $this->assertMatchesRegularExpression(
+            '/\.dash-toolbar-title\s*\{[^}]*color:\s*var\(--admin-heading\)/s',
+            $css
+        );
+        $this->assertMatchesRegularExpression(
+            '/\.dash-block-title\s*\{[^}]*color:\s*var\(--dash-sky\)/s',
+            $css
+        );
+        $this->assertStringContainsString('.dash-card--rose', $css);
+        $this->assertStringContainsString('.dash-card--emerald', $css);
+        $this->assertStringContainsString('.dash-section-title--indigo', $css);
+        $this->assertMatchesRegularExpression(
+            '/\.dash-grid--cards\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/s',
+            $css
+        );
+        $this->assertStringContainsString('repeat(4, minmax(0, 1fr))', $css);
 
         $this->assertMatchesRegularExpression(
             '/\.dash-card--stat \.dash-stat-label\s*\{[^}]*flex-wrap:\s*nowrap/s',

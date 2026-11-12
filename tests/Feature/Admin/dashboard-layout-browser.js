@@ -120,6 +120,7 @@ async function measure(page, width) {
         justify: getComputedStyle(label).justifyContent,
         copyDisplay: copyStyle ? copyStyle.display : '',
         copyWhiteSpace: copyStyle ? copyStyle.whiteSpace : '',
+        iconLeft: iconBox ? Math.round(iconBox.left) : null,
         iconRight: iconBox ? Math.round(iconBox.right) : null,
         copyLeft: copyBox ? Math.round(copyBox.left) : null,
         copyRight: copyBox ? Math.round(copyBox.right) : null,
@@ -148,6 +149,55 @@ async function measure(page, width) {
     const refresh = [...document.querySelectorAll('a')].find((a) => (a.textContent || '').includes('Refresh data'));
     const sidebarStyle = sidebar ? getComputedStyle(sidebar) : null;
     const sidebarBox = sidebar ? sidebar.getBoundingClientRect() : null;
+    function measureUpcomingOverflow() {
+      const table = document.querySelector('.dash-table--stack');
+      const card = table ? table.closest('.dash-panel') : null;
+      if (!table || !card) {
+        return { missing: true, bad: ['upcoming table missing'] };
+      }
+      const cardBox = card.getBoundingClientRect();
+      const bad = [];
+      const scroll = table.closest('.admin-table-scroll');
+      if (scroll && scroll.scrollWidth > scroll.clientWidth + 2) {
+        bad.push('horizontal scroll ' + scroll.scrollWidth + '>' + scroll.clientWidth);
+      }
+      const tableBox = table.getBoundingClientRect();
+      if (tableBox.right > cardBox.right + 1 || tableBox.left < cardBox.left - 1) {
+        bad.push('table outside card');
+      }
+      table.querySelectorAll('tbody td').forEach((cell) => {
+        const box = cell.getBoundingClientRect();
+        if (box.width < 1 || box.height < 1) return;
+        const label = (cell.getAttribute('data-label') || cell.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 48);
+        if (box.right > cardBox.right + 1 || box.left < cardBox.left - 1) {
+          bad.push(label + ' cell outside card');
+        }
+        if (cell.scrollWidth > cell.clientWidth + 2) {
+          bad.push(label + ' text clipped ' + cell.scrollWidth + '>' + cell.clientWidth);
+        }
+        cell.querySelectorAll('*').forEach((el) => {
+          const inner = el.getBoundingClientRect();
+          if (inner.width < 1 || inner.height < 1) return;
+          if (inner.right > cardBox.right + 1 || inner.left < cardBox.left - 1) {
+            bad.push(label + ' child outside card');
+          }
+        });
+        const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        while (walker.nextNode()) {
+          const raw = walker.currentNode.textContent || '';
+          if (!raw.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(walker.currentNode);
+          [...range.getClientRects()].forEach((rect) => {
+            if (rect.width < 1 || rect.height < 1) return;
+            if (rect.right > cardBox.right + 1 || rect.left < cardBox.left - 1) {
+              bad.push(label + ' text outside card: ' + raw.trim().slice(0, 40));
+            }
+          });
+        }
+      });
+      return { missing: false, bad };
+    }
     return {
       viewport: vp,
       scrollWidth: doc.scrollWidth,
@@ -176,6 +226,7 @@ async function measure(page, width) {
       titleLeft: firstTitle ? Math.round(firstTitle.getBoundingClientRect().left) : null,
       rowText: compact.slice(0, 8).map((row) => (row.textContent || '').replace(/\s+/g, ' ').trim()),
       kpiLabels,
+      upcomingOverflow: measureUpcomingOverflow(),
     };
   }, width);
 }
@@ -271,6 +322,35 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   report.w390_light = await capture(page, port, 390, 844, false, 'admin-dashboard-action-390-light', true);
   report.w390_dark = await capture(page, port, 390, 844, true, 'admin-dashboard-action-390-dark', true);
 
+  async function shootSidebar(dark, label) {
+    await page.setViewport({ width: 1280, height: 900, deviceScaleFactor: 1 });
+    await page.goto(`http://127.0.0.1:${port}/dashboard`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.evaluate((isDark) => {
+      document.documentElement.classList.toggle('admin-dark', isDark);
+      document.body.classList.toggle('admin-dark', isDark);
+      document.querySelectorAll('.admin-nav-details').forEach((el) => { el.open = true; });
+      const sidebar = document.querySelector('.admin-sidebar');
+      if (sidebar) {
+        sidebar.style.height = 'auto';
+        sidebar.style.overflow = 'visible';
+        sidebar.style.position = 'relative';
+      }
+      const nav = document.querySelector('.admin-nav');
+      if (nav) {
+        nav.style.overflow = 'visible';
+        nav.style.maxHeight = 'none';
+      }
+    }, dark);
+    await new Promise((r) => setTimeout(r, 200));
+    const sidebar = await page.$('#admin-sidebar');
+    const dest = path.join(outDir, `${label}.png`);
+    await sidebar.screenshot({ path: dest });
+    return dest;
+  }
+
+  const sidebarLight = await shootSidebar(false, 'admin-sidebar-groups-1280-light');
+  const sidebarDark = await shootSidebar(true, 'admin-sidebar-groups-1280-dark');
+
   await browser.close();
   server.close();
 
@@ -278,6 +358,7 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
   for (const [key, row] of Object.entries(report)) {
+    if (!String(key).startsWith('w')) continue;
     assert.ok(row.iconCount >= 12, `${key} missing title icons (${row.iconCount})`);
     assert.ok(row.compactCount >= 2, `${key} missing compact rows (${row.compactCount})`);
     assert.ok(row.hasRemind, `${key} lost Remind`);
@@ -302,7 +383,7 @@ async function capture(page, port, width, height, dark, label, fullPage) {
     row.kpiLabels.forEach((kpi, idx) => {
       assert.ok(kpi.hasCopy, `${key} KPI ${idx} missing dash-stat-label__copy`);
       assert.strictEqual(kpi.flexWrap, 'nowrap', `${key} KPI ${idx} label must not wrap flex items`);
-      assert.ok(kpi.copyLeft - kpi.iconRight >= -2 && kpi.copyLeft - kpi.iconRight < 20, `${key} KPI ${idx} icon/title gap ${kpi.copyLeft - kpi.iconRight}`);
+      assert.ok(kpi.iconLeft > kpi.copyLeft + 8, `${key} KPI ${idx} icon should sit to the right of the label (iconLeft=${kpi.iconLeft} copyLeft=${kpi.copyLeft})`);
       if (kpi.hasTip) {
         assert.ok(kpi.titleLineCount >= 1 && kpi.titleLineCount <= 2, `${key} KPI ${idx} title split across ${kpi.titleLineCount} lines`);
         assert.ok(!kpi.tipDropped, `${key} KPI ${idx} info tip dropped under the title`);
@@ -332,10 +413,21 @@ async function capture(page, port, width, height, dark, label, fullPage) {
   assert.ok(mid.sidebarWidth > 200, '1024 sidebar should stay open');
   assert.ok(mid.sidebarLeft >= -1 && mid.sidebarLeft < 40, '1024 sidebar should be on-screen');
 
+  ['w1024_light', 'w1024_dark', 'w1280_light', 'w1280_dark'].forEach((key) => {
+    const row = report[key];
+    const overflow = row.upcomingOverflow || { missing: true, bad: ['not measured'] };
+    assert.ok(!overflow.missing, `${key} upcoming table was not measured`);
+    assert.deepStrictEqual(overflow.bad, [], `${key} upcoming table overflows its card: ${JSON.stringify(overflow.bad)}`);
+  });
+
   const phone = report.w390_light;
   assert.ok(columnCount(phone.twoCol) <= 1, '390 today stack: ' + phone.twoCol);
-  assert.ok(columnCount(phone.cardCols) === 2, '390 KPI cards should be two across: ' + phone.cardCols);
+  assert.ok(columnCount(phone.cardCols) === 1, '390 KPI cards should stack in one column: ' + phone.cardCols);
   assert.ok(phone.sidebarLeft < 0 || (phone.sidebarTransform && phone.sidebarTransform !== 'none'), '390 sidebar should be off-canvas');
+
+  report.sidebar_light = { shot: sidebarLight };
+  report.sidebar_dark = { shot: sidebarDark };
+  fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
   console.log('dashboard-layout-browser: ok');
   console.log(JSON.stringify({

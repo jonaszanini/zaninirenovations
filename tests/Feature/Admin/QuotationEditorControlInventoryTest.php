@@ -161,9 +161,10 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
     }
 
     /**
-     * True parent of #72 (`84b3b2b2`): the last editors before the toolbar
-     * moved into shared partials. Live `main` is the new layout, so the
-     * inventory must not `git show` it.
+     * Pre-#72 editors, before the toolbar moved into shared partials.
+     * Live main is the new layout, so the inventory must not read it.
+     * The pin is not an ancestor of main after history rewrites, so CI
+     * falls back to tests/fixtures/quotation-toolbar-baseline.
      */
     private const TOOLBAR_BASELINE = '86e68a3e0185e1af7e4793200d770ffa9b80f923';
 
@@ -231,6 +232,10 @@ class QuotationEditorControlInventoryTest extends IntegrationTestCase
     {
         $path = 'resources/views/admin/quotations/'.$relative;
         $html = (string) shell_exec('git show '.escapeshellarg(self::TOOLBAR_BASELINE.':'.$path).' 2>/dev/null');
+        if ($html === '') {
+            $fixture = base_path('tests/fixtures/quotation-toolbar-baseline/'.$relative);
+            $html = is_file($fixture) ? (string) file_get_contents($fixture) : '';
+        }
         $this->assertNotSame(
             '',
             $html,
