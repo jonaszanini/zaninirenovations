@@ -3,10 +3,13 @@
 namespace Tests\Feature\QuoteAcceptance;
 
 use App\Mail\ClientProjectQuoteAcceptedAdmin;
+use App\Mail\ClientProjectQuoteAcceptedClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Services\QuoteAcceptanceService;
 use App\Support\BusinessContact;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Tests\IntegrationTestCase;
@@ -221,5 +224,226 @@ class SignedLinkAcceptTest extends IntegrationTestCase
 
         $this->assertSame(QuoteAcceptanceService::STATUS_ACCEPTED, $status);
         Mail::assertNothingSent();
+        Mail::assertNotSent(ClientProjectQuoteAcceptedClient::class);
+    }
+
+    public function test_signed_link_emails_the_client_once_and_still_notifies_the_business(): void
+    {
+        Mail::fake();
+        [$project, $quotation] = $this->makeLinkedQuotation();
+        $quoteNumber = $quotation->displayQuoteNumber();
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->post($url)->assertRedirect();
+        $this->post($url)->assertOk();
+
+        Mail::assertSent(ClientProjectQuoteAcceptedClient::class, 1);
+        Mail::assertSent(ClientProjectQuoteAcceptedAdmin::class, 1);
+        Mail::assertSent(ClientProjectQuoteAcceptedClient::class, function (ClientProjectQuoteAcceptedClient $mail) use ($quoteNumber) {
+            $mail->build();
+            $html = view($mail->view, $mail->viewData)->render();
+            $phone = BusinessContact::phoneDisplay();
+            $subject = 'Thank you for choosing Zanini Renovations, quote '.$quoteNumber;
+
+            $this->assertSame($subject, $mail->subjectLine());
+            $this->assertSame($subject, $mail->subject);
+            $this->assertStringContainsString('Hi Ada,', $html);
+            $this->assertStringContainsString(
+                'Thank you for accepting quote '.$quoteNumber.' for Kitchen renovation. We truly appreciate the trust you have placed in Zanini Renovations.',
+                $html,
+            );
+            $this->assertStringContainsString(
+                'We will be in touch shortly to take the next step together, including scheduling and the project details.',
+                $html,
+            );
+            $this->assertStringContainsString(
+                'If you have any questions in the meantime, simply reply to this email or call us at '.$phone.'.',
+                $html,
+            );
+            $this->assertStringContainsString('Best regards,', $html);
+            $this->assertStringContainsString('Jonas Zanini', $html);
+            $this->assertStringContainsString('Zanini Renovations', $html);
+            $this->assertStringContainsString(BusinessContact::email().' | zaninirenovations.ca', $html);
+            $this->assertTrue($mail->hasReplyTo(BusinessContact::email()));
+
+            return $mail->hasTo('ada@example.test');
+        });
+
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+            'recipient' => 'ada@example.test',
+            'subject' => 'Thank you for choosing Zanini Renovations, quote '.$quoteNumber,
+            'status' => ClientCommunicationLog::STATUS_SENT,
+            'direction' => ClientCommunicationLog::DIRECTION_TO_CLIENT,
+            'channel' => ClientCommunicationLog::CHANNEL_EMAIL,
+        ]);
+        $this->assertSame(1, ClientCommunicationLog::query()
+            ->where('client_project_id', $project->id)
+            ->where('reason', ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT)
+            ->count());
+        $this->assertSame(
+            'Quote accepted (client)',
+            ClientCommunicationLog::REASON_LABELS[ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT],
+        );
+    }
+
+    public function test_client_first_name_falls_back_to_there(): void
+    {
+        Mail::fake();
+        [, $quotation] = $this->makeLinkedQuotation([], ['client_name' => '']);
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->post($url)->assertRedirect();
+
+        Mail::assertSent(ClientProjectQuoteAcceptedClient::class, function (ClientProjectQuoteAcceptedClient $mail) {
+            $mail->build();
+            $html = view($mail->view, $mail->viewData)->render();
+            $this->assertSame('there', $mail->clientFirstName());
+            $this->assertStringContainsString('Hi there,', $html);
+
+            return true;
+        });
+
+        $blank = new ClientProjectQuoteAcceptedClient($quotation, new ClientProject([
+            'client_name' => '   ',
+            'name' => 'Kitchen renovation',
+        ]));
+        $this->assertSame('there', $blank->clientFirstName());
+
+        $named = new ClientProjectQuoteAcceptedClient($quotation, new ClientProject([
+            'client_name' => 'Ada Client',
+            'name' => 'Kitchen renovation',
+        ]));
+        $this->assertSame('Ada', $named->clientFirstName());
+    }
+
+    public function test_question_sentence_drops_the_call_clause_without_a_phone(): void
+    {
+        $this->assertSame(
+            'If you have any questions in the meantime, simply reply to this email.',
+            ClientProjectQuoteAcceptedClient::questionSentence(''),
+        );
+        $this->assertSame(
+            'If you have any questions in the meantime, simply reply to this email.',
+            ClientProjectQuoteAcceptedClient::questionSentence('   '),
+        );
+        $this->assertSame(
+            'If you have any questions in the meantime, simply reply to this email or call us at (647) 834-7570.',
+            ClientProjectQuoteAcceptedClient::questionSentence('(647) 834-7570'),
+        );
+    }
+
+    public function test_link_accept_skips_client_email_without_a_valid_address(): void
+    {
+        Mail::fake();
+        Log::spy();
+        [$project, $quotation] = $this->makeLinkedQuotation([], [
+            'client_email' => 'not-an-email',
+        ]);
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->post($url)->assertRedirect();
+
+        $quotation->refresh();
+        $this->assertTrue($quotation->isAccepted());
+        Mail::assertNotSent(ClientProjectQuoteAcceptedClient::class);
+        Mail::assertSent(ClientProjectQuoteAcceptedAdmin::class, 1);
+        $this->assertDatabaseMissing('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+        ]);
+        Log::shouldHaveReceived('info')
+            ->with('Quote acceptance client email skipped: no valid client email', \Mockery::type('array'))
+            ->once();
+    }
+
+    public function test_link_accept_ccs_the_secondary_client_email(): void
+    {
+        Mail::fake();
+        [$project, $quotation] = $this->makeLinkedQuotation([], [
+            'client_email_secondary' => 'spouse@example.test',
+        ]);
+        $url = URL::signedRoute('public.quotations.accept', ['quotation' => $quotation]);
+
+        $this->post($url)->assertRedirect();
+
+        Mail::assertSent(ClientProjectQuoteAcceptedClient::class, function (ClientProjectQuoteAcceptedClient $mail) {
+            return $mail->hasTo('ada@example.test') && $mail->hasCc('spouse@example.test');
+        });
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+            'recipient' => 'ada@example.test',
+            'cc' => 'spouse@example.test',
+            'status' => ClientCommunicationLog::STATUS_SENT,
+        ]);
+    }
+
+    public function test_api_accept_does_not_email_the_client(): void
+    {
+        Mail::fake();
+        [, $quotation] = $this->makeLinkedQuotation();
+
+        $status = app(QuoteAcceptanceService::class)->accept(
+            $quotation,
+            ClientProjectQuotation::ACCEPTED_VIA_API,
+            '127.0.0.1',
+            'gmail-msg-abc',
+        );
+
+        $this->assertSame(QuoteAcceptanceService::STATUS_ACCEPTED, $status);
+        $this->assertTrue($quotation->fresh()->isAccepted());
+        Mail::assertNotSent(ClientProjectQuoteAcceptedClient::class);
+        Mail::assertNotSent(ClientProjectQuoteAcceptedAdmin::class);
+    }
+
+    public function test_client_mail_failure_does_not_undo_acceptance_and_logs_failure(): void
+    {
+        Log::spy();
+        [$project, $quotation] = $this->makeLinkedQuotation();
+        $quoteNumber = $quotation->displayQuoteNumber();
+
+        Mail::shouldReceive('to')->andReturnUsing(function ($address, $name = null) {
+            if ($address === 'ada@example.test') {
+                throw new \RuntimeException('SMTP down');
+            }
+
+            $pending = \Mockery::mock();
+            $pending->shouldReceive('send')->once()->andReturnNull();
+
+            return $pending;
+        });
+
+        $status = app(QuoteAcceptanceService::class)->accept(
+            $quotation,
+            ClientProjectQuotation::ACCEPTED_VIA_LINK,
+            '127.0.0.1',
+        );
+
+        $this->assertSame(QuoteAcceptanceService::STATUS_ACCEPTED, $status);
+        $quotation->refresh();
+        $project->refresh();
+        $this->assertTrue($quotation->isAccepted());
+        $this->assertSame(ClientProjectQuotation::ACCEPTED_VIA_LINK, $quotation->accepted_via);
+        $this->assertSame(ClientProject::STATUS_PROPOSAL_ACCEPTED, $project->status);
+
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+            'recipient' => 'ada@example.test',
+            'subject' => 'Thank you for choosing Zanini Renovations, quote '.$quoteNumber,
+            'status' => ClientCommunicationLog::STATUS_FAILED,
+            'direction' => ClientCommunicationLog::DIRECTION_TO_CLIENT,
+            'error' => 'SMTP down',
+        ]);
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_QUOTE_ACCEPTED_ADMIN,
+            'status' => ClientCommunicationLog::STATUS_SENT,
+        ]);
+        Log::shouldHaveReceived('warning')
+            ->with('Quote acceptance client email failed', \Mockery::type('array'))
+            ->once();
     }
 }

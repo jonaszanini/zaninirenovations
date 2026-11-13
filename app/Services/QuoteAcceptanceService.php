@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Mail\ClientProjectQuoteAcceptedAdmin;
+use App\Mail\ClientProjectQuoteAcceptedClient;
 use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
@@ -13,8 +14,9 @@ use Illuminate\Support\Facades\Mail;
 
 /**
  * Idempotent quotation acceptance (public signed link, API bot, admin).
- * Does not email or SMS the client. A new acceptance from the public
- * Accept this quote link (quotation email and PDF) emails the business inbox.
+ * A new acceptance from the public Accept this quote link (quotation email
+ * and PDF) emails the business inbox and emails the client a confirmation.
+ * API bot and admin acceptance do not send those emails. Does not SMS the client.
  */
 class QuoteAcceptanceService
 {
@@ -130,7 +132,9 @@ class QuoteAcceptanceService
         ]);
 
         if ($via === ClientProjectQuotation::ACCEPTED_VIA_LINK) {
-            $this->notifyBusinessOfLinkAcceptance($quotation->fresh(['project']) ?? $quotation);
+            $accepted = $quotation->fresh(['project']) ?? $quotation;
+            $this->notifyBusinessOfLinkAcceptance($accepted);
+            $this->notifyClientOfLinkAcceptance($accepted);
         }
 
         return self::STATUS_ACCEPTED;
@@ -180,6 +184,70 @@ class QuoteAcceptanceService
                 $subject,
                 $description,
                 ClientCommunicationLog::DIRECTION_TO_ADMIN,
+                false,
+                $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * Email the client after they accept from the shared email/PDF link.
+     * A mail failure does not undo the acceptance. Skips when the client
+     * has no valid email address.
+     */
+    private function notifyClientOfLinkAcceptance(ClientProjectQuotation $quotation): void
+    {
+        $quotation->loadMissing('project');
+        $project = $quotation->project;
+        if ($project === null) {
+            return;
+        }
+
+        $to = trim((string) $project->client_email);
+        if ($to === '' || filter_var($to, FILTER_VALIDATE_EMAIL) === false) {
+            Log::info('Quote acceptance client email skipped: no valid client email', [
+                'quotation_id' => $quotation->id,
+                'client_project_id' => $project->id,
+            ]);
+
+            return;
+        }
+
+        $mailable = new ClientProjectQuoteAcceptedClient($quotation, $project);
+        $subject = $mailable->subjectLine();
+        $cc = $project->secondaryClientEmail();
+        $description = 'Confirmation emailed to the client after they accepted '.$quotation->displayQuoteNumber().'.';
+
+        try {
+            $mailer = Mail::to($to, $project->client_name ?: null);
+            if ($cc) {
+                $mailer->cc($cc);
+            }
+            $mailer->send($mailable);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+                $to,
+                $cc,
+                $subject,
+                $description,
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Quote acceptance client email failed', [
+                'quotation_id' => $quotation->id,
+                'client_project_id' => $project->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            app(ClientCommunicationLogger::class)->logEmail(
+                $project,
+                ClientCommunicationLog::REASON_QUOTE_ACCEPTED_CLIENT,
+                $to,
+                $cc,
+                $subject,
+                $description,
+                ClientCommunicationLog::DIRECTION_TO_CLIENT,
                 false,
                 $e->getMessage(),
             );

@@ -67,6 +67,8 @@ class ClientCommunicationLog extends Model
     public const REASON_QUOTE_SENT_FOLLOWUP_ADMIN = 'quote_sent_followup_admin';
     /** Business inbox notice when a client accepts from the email or PDF link. */
     public const REASON_QUOTE_ACCEPTED_ADMIN = 'quote_accepted_admin';
+    /** Client confirmation when they accept from the email or PDF link. */
+    public const REASON_QUOTE_ACCEPTED_CLIENT = 'quote_accepted_client';
 
     public const REASON_LABELS = [
         self::REASON_QUOTATION_SENT => 'Quotation',
@@ -95,6 +97,7 @@ class ClientCommunicationLog extends Model
         self::REASON_QUOTE_PENDING_REMINDER_ADMIN => 'Daily quote reminder (admin)',
         self::REASON_QUOTE_SENT_FOLLOWUP_ADMIN => 'Quote follow-up (admin)',
         self::REASON_QUOTE_ACCEPTED_ADMIN => 'Quote accepted (admin)',
+        self::REASON_QUOTE_ACCEPTED_CLIENT => 'Quote accepted (client)',
     ];
 
     protected $fillable = [
@@ -191,6 +194,7 @@ class ClientCommunicationLog extends Model
             self::REASON_COMMENCEMENT_EVE_CLIENT,
             self::REASON_COMMENCEMENT_EVE_ADMIN => '#0891b2',        // cyan
             self::REASON_THANK_YOU => '#ec4899',                     // pink
+            self::REASON_QUOTE_ACCEPTED_CLIENT => '#0f766e',         // teal
             self::REASON_TIME_TRACKING_SUMMARY => '#6366f1',         // indigo
             self::REASON_EXPENSES_SUMMARY => '#0d9488',              // teal
             self::REASON_HELPER_PAYMENT => '#a855f7',                // purple
