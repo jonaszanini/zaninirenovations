@@ -7,6 +7,8 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectInvoice;
 use App\Models\ClientProjectQuotation;
 use App\Models\User;
+use App\Services\AdminDashboardService;
+use App\Services\ClientProjectInvoiceReminderService;
 use App\Services\Invoice\InvoicePdfService;
 use App\Services\Invoice\PrepareBillingService;
 use App\Services\RecalculateRemainingInstallmentsService;
@@ -113,11 +115,6 @@ class PrepareBillingTest extends IntegrationTestCase
             ->assertSee('Confirm draft invoices', false)
             ->assertSee('Will create draft', false)
             ->assertSee('CAD', false);
-
-        $this->post(route('admin.client-projects.billing.confirm', $project), [])
-            ->assertRedirect(route('admin.client-projects.billing.prepare', $project))
-            ->assertSessionHasErrors();
-        $this->assertSame(0, $project->invoices()->count());
 
         $this->post(route('admin.client-projects.billing.confirm', $project), [
             'due_on' => [1 => '2026-12-01', 2 => '2027-01-15'],
@@ -592,6 +589,165 @@ class PrepareBillingTest extends IntegrationTestCase
 
         $this->assertEquals($ids, $project->invoices()->orderBy('id')->pluck('id')->all());
         $this->assertSame(2, $project->invoices()->where('status', ClientProjectInvoice::STATUS_DRAFT)->count());
+    }
+
+    public function test_confirm_allows_blank_due_date_on_later_installments(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan();
+
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => 'not-a-date'],
+        ])->assertRedirect(route('admin.client-projects.billing.prepare', $project))
+            ->assertSessionHasErrors('due_on.2');
+        $this->assertSame(0, $project->invoices()->count());
+
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '2026-12-01', 2 => ''],
+        ])->assertRedirect(route('admin.client-projects.show', $project).'#invoice')
+            ->assertSessionHas('success');
+
+        $invoices = $project->invoices()->orderBy('installment_number')->get();
+        $this->assertCount(2, $invoices);
+        $this->assertTrue($invoices[0]->isDraft());
+        $this->assertTrue($invoices[1]->isDraft());
+        $this->assertSame('2026-12-01', $invoices[0]->due_on?->toDateString());
+        $this->assertNull($invoices[1]->due_on);
+        $this->assertSame('Upon completion', $invoices[1]->dueOnLabel());
+        $this->assertSame('Upon completion', $invoices[1]->dueOnLabel(true));
+        $this->assertEqualsWithDelta(400.00, (float) $invoices[0]->subtotal, 0.01);
+        $this->assertEqualsWithDelta(600.00, (float) $invoices[1]->subtotal, 0.01);
+        $this->assertEqualsWithDelta(1130.00, (float) $invoices->sum('total'), 0.01);
+
+        $subtotal = (float) $invoices[1]->subtotal;
+        $hst = (float) $invoices[1]->hst;
+        $total = (float) $invoices[1]->total;
+
+        $prepare = $this->get(route('admin.client-projects.billing.prepare', $project));
+        $prepare->assertOk()->assertSee('value="2026-12-01"', false);
+        preg_match_all('/<input\b[^>]*name="due_on\[\d+\]"[^>]*>/', $prepare->getContent(), $inputs);
+        $this->assertCount(2, $inputs[0]);
+        foreach ($inputs[0] as $tag) {
+            $this->assertStringNotContainsString('required', $tag);
+        }
+
+        $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertSee('Upon completion', false)
+            ->assertSee('Due: '.$invoices[0]->dueOnLabel(), false);
+
+        $this->get(route('admin.financials.invoices', ['status' => 'draft']))
+            ->assertOk()
+            ->assertSee($invoices[1]->invoice_number, false)
+            ->assertSee('Upon completion', false)
+            ->assertDontSee('1970', false);
+
+        $pdf = view('admin.client_projects.invoice.pdf', [
+            'project' => $project->fresh(),
+            'invoice' => $invoices[1]->fresh(),
+        ])->render();
+        $this->assertStringContainsString('<strong>Due date:</strong> Upon completion', $pdf);
+        $this->assertStringNotContainsString('1970', $pdf);
+
+        $email = view('emails.client_projects.client_invoice', [
+            'project' => $project->fresh(),
+            'invoice' => $invoices[1]->fresh(),
+        ])->render();
+        $this->assertStringContainsString('Upon completion', $email);
+        $this->assertStringNotContainsString('1970', $email);
+
+        $this->get(route('admin.client-projects.invoices.edit', [$project, $invoices[1]]))
+            ->assertOk()
+            ->assertSee('Upon completion', false);
+
+        $this->put(route('admin.client-projects.invoices.update', [$project, $invoices[1]]), [
+            'intent' => 'draft',
+            'hst_exempt' => '0',
+            'due_on' => '2027-03-15',
+            'items' => $invoices[1]->cleanItems(),
+        ])->assertSessionHasNoErrors();
+
+        $updated = $invoices[1]->fresh();
+        $this->assertSame('2027-03-15', $updated->due_on?->toDateString());
+        $this->assertEqualsWithDelta($subtotal, (float) $updated->subtotal, 0.01);
+        $this->assertEqualsWithDelta($hst, (float) $updated->hst, 0.01);
+        $this->assertEqualsWithDelta($total, (float) $updated->total, 0.01);
+    }
+
+    public function test_overdue_and_reminders_ignore_null_due_dates(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan([
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+        ]);
+
+        $this->post(route('admin.client-projects.billing.confirm', $project), [
+            'due_on' => [1 => '', 2 => ''],
+        ])->assertRedirect(route('admin.client-projects.show', $project).'#invoice');
+
+        $drafts = $project->invoices()->orderBy('installment_number')->get();
+        $this->assertCount(2, $drafts);
+        $this->assertNull($drafts[0]->due_on);
+        $this->assertNull($drafts[1]->due_on);
+
+        $dated = $drafts[0];
+        $dated->status = ClientProjectInvoice::STATUS_SENT;
+        $dated->sent_at = now();
+        $dated->due_on = now()->subDays(5)->toDateString();
+        $dated->save();
+
+        $undated = $drafts[1];
+        $undated->status = ClientProjectInvoice::STATUS_SENT;
+        $undated->sent_at = now();
+        $undated->due_on = null;
+        $undated->save();
+
+        $pastDueIds = app(ClientProjectInvoiceReminderService::class)
+            ->pastDueSentInvoices()
+            ->pluck('id')
+            ->all();
+        $this->assertContains($dated->id, $pastDueIds);
+        $this->assertNotContains($undated->id, $pastDueIds);
+
+        $blocked = app(ClientProjectInvoiceReminderService::class)
+            ->sendPaymentReminder($project->fresh(), $undated->fresh());
+        $this->assertFalse($blocked['ok']);
+
+        $payload = app(AdminDashboardService::class)->build(true);
+        $overdueNumbers = collect($payload['overdue_invoices'])->pluck('invoice_number')->all();
+        $this->assertContains($dated->invoice_number, $overdueNumbers);
+        $this->assertNotContains($undated->invoice_number, $overdueNumbers);
+
+        $outstanding = (float) ClientProjectInvoice::query()
+            ->collectible()
+            ->where('status', ClientProjectInvoice::STATUS_SENT)
+            ->sum('total');
+        $this->assertEqualsWithDelta(
+            (float) $dated->fresh()->total + (float) $undated->fresh()->total,
+            $outstanding,
+            0.01
+        );
+        $this->assertEqualsWithDelta($outstanding, (float) $payload['cards']['outstanding_receivables'], 0.01);
+        $this->assertEqualsWithDelta((float) $dated->fresh()->total, (float) $payload['cards']['overdue_invoice_total'], 0.01);
+    }
+
+    public function test_prepare_billing_title_has_no_em_dash(): void
+    {
+        $this->actingAsAdmin();
+        $project = $this->acceptedProjectWithPlan([
+            'name' => 'Website — Edward leibel — Fireplace trim/ moulding',
+            'client_name' => 'Edward leibel',
+        ]);
+
+        $response = $this->get(route('admin.client-projects.billing.prepare', $project));
+        $response->assertOk();
+        $response->assertSee('Prepare billing, Website, Edward leibel, Fireplace trim/ moulding', false);
+
+        $this->assertSame(1, preg_match('/<h1>(.*?)<\/h1>/s', $response->getContent(), $heading));
+        $title = html_entity_decode($heading[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $this->assertStringNotContainsString('—', $title);
+        $this->assertStringNotContainsString('–', $title);
+        $this->assertStringNotContainsString('-', $title);
     }
 
     /**

@@ -146,7 +146,7 @@
             <label for="cp-invoice-due">Due date</label>
             <span class="admin-label-with-tip__end">
               <span class="cp-required">*</span>
-              <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client.</x-admin.info-tip>
+              <x-admin.info-tip label="Due date">Required before the invoice can be sent to the client. Leave a draft blank when the date is unknown. Blank drafts show Upon completion until you choose a date.</x-admin.info-tip>
             </span>
           </span>
           <input type="date"

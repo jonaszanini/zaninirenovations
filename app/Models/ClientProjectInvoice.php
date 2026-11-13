@@ -47,7 +47,13 @@ class ClientProjectInvoice extends Model
         self::PAYMENT_METHOD_ETRANSFER => 'e-Transfer',
     ];
 
-    /** Default due period (days after send) when not explicitly set. */
+    /**
+     * Shown wherever a missing due date is displayed. The column stays null.
+     * Dates are not invented from the send date.
+     */
+    public const DUE_UNSET_LABEL = 'Upon completion';
+
+    /** Kept for older callers. Blank due dates are not filled with this offset. */
     public const DEFAULT_DUE_DAYS = 10;
 
     /** Invoice line maps to hourly labour — HST applies. */
@@ -502,6 +508,21 @@ class ClientProjectInvoice extends Model
         return $desc
             ? "{$ord} Installment — {$desc}"
             : "{$ord} Installment";
+    }
+
+    /**
+     * Calendar label for due_on. Null stays "Upon completion" (never 1970
+     * and never a date counted forward from send).
+     */
+    public function dueOnLabel(bool $long = false): string
+    {
+        if (! $this->due_on) {
+            return self::DUE_UNSET_LABEL;
+        }
+
+        return $long
+            ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($this->due_on)
+            : ClientProject::formatDate($this->due_on);
     }
 
     /** Status badge copy for the UI ("No invoice" / "Draft" / "Sent" / "Paid"). */

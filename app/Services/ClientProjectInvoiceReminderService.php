@@ -66,6 +66,10 @@ class ClientProjectInvoiceReminderService
             return ['ok' => false, 'channel' => null, 'detail' => 'Invoice is already paid.'];
         }
 
+        if (empty($invoice->due_on)) {
+            return ['ok' => false, 'channel' => null, 'detail' => 'This invoice has no due date, so a past due reminder is not sent.'];
+        }
+
         if (filled(trim((string) $project->client_email))) {
             return $this->sendEmailReminder($project, $invoice);
         }

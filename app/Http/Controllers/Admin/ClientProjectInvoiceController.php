@@ -307,8 +307,8 @@ class ClientProjectInvoiceController extends Controller
                 $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
             }
 
-            if (! empty($data['due_on'])) {
-                $invoice->due_on = $data['due_on'];
+            if (array_key_exists('due_on', $data)) {
+                $invoice->due_on = $data['due_on'] ?: null;
             }
 
             $invoice->save();

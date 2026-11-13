@@ -52,6 +52,29 @@ class SendPastDueInvoiceRemindersTest extends IntegrationTestCase
         });
     }
 
+    public function test_skips_sent_invoices_with_a_null_due_date(): void
+    {
+        Mail::fake();
+
+        $project = ClientProject::factory()->create([
+            'client_email' => 'client@example.com',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+        ]);
+
+        ClientProjectInvoice::factory()->for($project, 'project')->sent()->create([
+            'due_on' => null,
+            'total' => 452.00,
+        ]);
+
+        $this->artisan('client-projects:send-past-due-invoice-reminders')
+            ->assertSuccessful();
+
+        Mail::assertNothingSent();
+        $this->assertTrue(
+            app(\App\Services\ClientProjectInvoiceReminderService::class)->pastDueSentInvoices()->isEmpty()
+        );
+    }
+
     public function test_skips_paid_and_not_yet_due_invoices(): void
     {
         Mail::fake();

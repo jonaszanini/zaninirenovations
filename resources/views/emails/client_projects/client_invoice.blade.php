@@ -19,9 +19,7 @@
     <tr>
       <td style="padding: 6px 12px; background: #f4fafe; border: 1px solid #024768; font-size: 15px;">
         <strong>Total due:</strong> {{ \App\Models\ClientProject::formatMoney($invoice->total) }}
-        @if ($invoice->due_on)
-          &nbsp;·&nbsp; <strong>Due:</strong> {{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on) }}
-        @endif
+        &nbsp;·&nbsp; <strong>Due:</strong> {{ $invoice->dueOnLabel(true) }}
       </td>
     </tr>
   </table>

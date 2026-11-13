@@ -113,6 +113,7 @@
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -295,6 +296,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -506,6 +508,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -581,6 +584,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [

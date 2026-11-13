@@ -143,6 +143,7 @@
               <th style="text-align:right;">Subtotal</th>
               <th style="text-align:right;">Total</th>
               <th>Status</th>
+              <th>Due</th>
               <th>Date</th>
               <th></th>
             </tr>
@@ -173,6 +174,7 @@
                 <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">{{ $statusLabel }}</span>
                 </td>
+                <td data-label="Due">{{ $invoice->dueOnLabel() }}</td>
                 <td data-label="Date">{{ \App\Models\ClientProject::formatDate($invoiceDate) }}</td>
                 <td data-label="Actions" class="admin-table-actions">
                   <div class="admin-actions-dropdown">

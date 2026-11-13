@@ -23,12 +23,7 @@
       && $invoice->installment_number !== null
       && $discPdf> 0.0001;
     $dateStr = \App\Support\EasternStandardTimeDisplay::formatInstantLongDate($invoice->sent_at ?: now());
-    $dueStr = $invoice->due_on
-      ? \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on)
-      : \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate(
-          \Illuminate\Support\Carbon::now(\App\Support\EasternStandardTimeDisplay::easternTimezone())
-              ->addDays(\App\Models\ClientProjectInvoice::DEFAULT_DUE_DAYS)
-      );
+    $dueStr = $invoice->dueOnLabel(true);
   @endphp
   <style>
     @page {
