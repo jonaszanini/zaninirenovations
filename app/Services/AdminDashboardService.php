@@ -220,7 +220,7 @@ class AdminDashboardService
             'cumulative_profit' => $cumulativeProfit,
             'forward_total_revenue' => $forwardTotal,
             'forward_total_profit' => round(array_sum($profitSeries), 2),
-            'disclaimer' => 'Based on scheduled payment plans and invoice due dates — actuals may vary.',
+            'disclaimer' => 'Based on scheduled payment plans and invoice due dates, actuals may vary.',
         ];
     }
 
@@ -285,14 +285,11 @@ class AdminDashboardService
 
     private function expectedCollectionDateForOpenInvoice(ClientProjectInvoice $invoice): ?Carbon
     {
-        if ($invoice->due_on) {
-            return Carbon::parse($invoice->due_on)->startOfDay();
-        }
-        if ($invoice->sent_at) {
-            return Carbon::parse($invoice->sent_at)->addDays(ClientProjectInvoice::DEFAULT_DUE_DAYS)->startOfDay();
+        if (! $invoice->due_on) {
+            return null;
         }
 
-        return null;
+        return Carbon::parse($invoice->due_on)->startOfDay();
     }
 
     /**
@@ -524,7 +521,7 @@ class AdminDashboardService
             $inv = $p->invoices->first(fn ($i) => $i->isSent() && ! $i->isPaid());
 
             return $inv
-                ? 'Invoice '.$inv->invoice_number.' — '.ClientProject::formatMoney((float) $inv->total).' due '.ClientProject::formatDate($inv->due_on)
+                ? 'Invoice '.$inv->invoice_number.', '.ClientProject::formatMoney((float) $inv->total).' due '.$inv->dueOnLabel()
                 : null;
         }
 
@@ -535,7 +532,7 @@ class AdminDashboardService
         $gross = $inst->effectiveTotal();
         $label = $inst->label ?: 'Installment';
 
-        return ClientProject::formatMoney($gross).' — '.$label;
+        return ClientProject::formatMoney($gross).', '.$label;
     }
 
     private function buildRecentActivity(): array

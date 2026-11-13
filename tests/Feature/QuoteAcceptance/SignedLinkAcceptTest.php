@@ -187,6 +187,20 @@ class SignedLinkAcceptTest extends IntegrationTestCase
         $this->assertStringNotContainsString('>'.$acceptUrl.'<', $html);
     }
 
+    public function test_admin_acceptance_email_subject_uses_commas(): void
+    {
+        [$project, $quotation] = $this->makeLinkedQuotation();
+        $mail = new ClientProjectQuoteAcceptedAdmin($quotation, $project->fresh());
+        $subject = $mail->subjectLine();
+
+        $this->assertSame(
+            'Quote accepted, '.$quotation->displayQuoteNumber().', Ada Client',
+            $subject
+        );
+        $this->assertStringNotContainsString('—', $subject);
+        $this->assertStringNotContainsString('–', $subject);
+    }
+
     public function test_signed_accept_emails_the_business_once(): void
     {
         Mail::fake();

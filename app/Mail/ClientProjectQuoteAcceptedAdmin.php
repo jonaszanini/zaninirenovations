@@ -28,7 +28,7 @@ class ClientProjectQuoteAcceptedAdmin extends Mailable
             ? $this->project->client_name
             : 'Client';
 
-        return 'Quote accepted — '.$this->quotation->displayQuoteNumber().' — '.$client;
+        return 'Quote accepted, '.$this->quotation->displayQuoteNumber().', '.$client;
     }
 
     public function build(): self

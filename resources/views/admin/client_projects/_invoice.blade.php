@@ -90,7 +90,7 @@
                   {{ $invoice->installmentTitle() }}
                   @if ($invoice->isHstExempt())
                     <div style="margin-top:4px;">
-                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment, no HST charged on this invoice.">
                         <i class="fa fa-money"></i> HST excluded
                       </span>
                     </div>
@@ -99,7 +99,7 @@
                 <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
                 <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
-                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                    <span class="admin-form-help" style="font-style:italic;">Excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
@@ -113,6 +113,7 @@
                     <span style="font-weight:400;opacity:.8;">· {{ $invoice->invoice_number }}</span>
                   </span>
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -185,7 +186,7 @@
           </form>
         @else
           <button type="button" class="admin-btn admin-btn--primary admin-btn--sm" disabled
-                  title="{{ $hourlyRate <= 0 ? 'Set the hourly rate on the project first.' : 'No unbilled hours to invoice — log time on the Time Tracking tab first.' }}">
+                  title="{{ $hourlyRate <= 0 ? 'Set the hourly rate on the project first.' : 'No unbilled hours to invoice, log time on the Time Tracking tab first.' }}">
             <i class="fa fa-clock-o"></i> Create invoice from hours
           </button>
         @endif
@@ -271,7 +272,7 @@
                   @endif
                   @if ($invoice->isHstExempt())
                     <div style="margin-top:4px;">
-                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment, no HST charged on this invoice.">
                         <i class="fa fa-money"></i> HST excluded
                       </span>
                     </div>
@@ -280,7 +281,7 @@
                 <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
                 <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
-                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                    <span class="admin-form-help" style="font-style:italic;">Excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
@@ -295,6 +296,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -343,7 +345,7 @@
             One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
             When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
             and the matching installment on the Financials tab is marked paid for you.
-            Unpaid sent invoices get a payment reminder each day after the due date — use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
+            Unpaid sent invoices get a payment reminder each day after the due date, use <strong>Stop daily reminders</strong> on a row to pause that without deleting the invoice.
             Deleting an unpaid invoice removes only the invoice, not the payment-plan line.
           </x-admin.info-tip>
         </h3>
@@ -383,8 +385,8 @@
           No payment plan yet. On the
           <a href="#quotation" data-cp-jump-tab="quotation">Quotation</a>
           tab, set at least one quotation to <strong>Accepted</strong>, then save the installment schedule on
-          <a href="#financials" data-cp-jump-tab="financials">Financials</a>
-          — afterward you can create an invoice per installment here.
+          <a href="#financials" data-cp-jump-tab="financials">Financials</a>,
+          afterward you can create an invoice per installment here.
         @elseif (! $invoiceHasAcceptedQuot)
           No payment plan yet. Add a quotation with line items, mark it <strong>Accepted</strong> on the
           <a href="#quotation" data-cp-jump-tab="quotation">Quotation</a>
@@ -412,7 +414,7 @@
           Subtotal comes from the pre-tax installment amount on the
           <a href="#financials" data-cp-jump-tab="financials">Financials payment plan</a>.
           HST is applied once at invoice time, sliced proportionally from the
-          quotation's actual HST — so HST-exempt quotation lines (e.g. supplied
+          quotation's actual HST, so HST-exempt quotation lines (e.g. supplied
           material) never get re-taxed here.
           Existing draft / sent invoices are updated when you save a new payment
           plan on Financials (paid invoices stay as-is). Installments that do not
@@ -480,7 +482,7 @@
                   @endif
                   @if ($invoice && $invoice->isHstExempt())
                     <div style="margin-top:4px;">
-                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment, no HST charged on this invoice.">
                         <i class="fa fa-money"></i> HST excluded
                       </span>
                     </div>
@@ -489,7 +491,7 @@
                 <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($rowSubtotal) }}</td>
                 <td class="cp-col-amount" data-label="HST">
                   @if ($invoice && $invoice->isHstExempt())
-                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                    <span class="admin-form-help" style="font-style:italic;">Excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($rowHst) }}
                   @endif
@@ -506,6 +508,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -531,7 +534,7 @@
       <h4 style="margin:24px 0 6px;">
         Manual invoices
         <x-admin.info-tip label="HST on manual invoices">
-          HST (13%) is added to the manual invoice subtotal once — these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
+          HST (13%) is added to the manual invoice subtotal once, these invoices are not tied to the quotation, so the breakdown below is the only HST applied.
         </x-admin.info-tip>
       </h4>
       <div class="admin-table-scroll">
@@ -557,7 +560,7 @@
                   {{ $invoice->installment_description ?: 'Manual invoice' }}
                   @if ($invoice->isHstExempt())
                     <div style="margin-top:4px;">
-                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment — no HST charged on this invoice.">
+                      <span class="cp-badge" style="background:#fef3c7;color:#92400e;" title="Cash payment, no HST charged on this invoice.">
                         <i class="fa fa-money"></i> HST excluded
                       </span>
                     </div>
@@ -566,7 +569,7 @@
                 <td class="cp-col-amount" data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
                 <td class="cp-col-amount" data-label="HST">
                   @if ($invoice->isHstExempt())
-                    <span class="admin-form-help" style="font-style:italic;">— excluded</span>
+                    <span class="admin-form-help" style="font-style:italic;">Excluded</span>
                   @else
                     {{ \App\Models\ClientProject::formatMoney($invoice->hst) }}
                   @endif
@@ -581,6 +584,7 @@
                   </span>
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -637,7 +641,7 @@
               @endif
               using the options below.
             @else
-              No client email or SMS-capable phone is on file — the receipt will be saved for you to send manually.
+              No client email or SMS-capable phone is on file, the receipt will be saved for you to send manually.
             @endif
             @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
           </p>
@@ -689,7 +693,7 @@
             <div class="admin-form-group cp-label-flush">
               <label for="cp-mark-paid-project-status">Set project status to</label>
               <select id="cp-mark-paid-project-status" name="project_status" class="admin-input">
-                <option value="">Keep current — {{ $project->statusLabel() }}</option>
+                <option value="">Keep current, {{ $project->statusLabel() }}</option>
                 @foreach ($markPaidStatusLabels as $key => $lbl)
                   <option value="{{ $key }}">{{ $lbl }}</option>
                 @endforeach

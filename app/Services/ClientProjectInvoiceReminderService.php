@@ -66,6 +66,10 @@ class ClientProjectInvoiceReminderService
             return ['ok' => false, 'channel' => null, 'detail' => 'Invoice is already paid.'];
         }
 
+        if (empty($invoice->due_on)) {
+            return ['ok' => false, 'channel' => null, 'detail' => 'This invoice has no due date, so a past due reminder is not sent.'];
+        }
+
         if (filled(trim((string) $project->client_email))) {
             return $this->sendEmailReminder($project, $invoice);
         }
@@ -89,8 +93,8 @@ class ClientProjectInvoiceReminderService
     private function sendEmailReminder(ClientProject $project, ClientProjectInvoice $invoice): array
     {
         $cc = $project->secondaryClientEmail();
-        $reminderSubject = "Payment reminder — invoice {$invoice->invoice_number}";
-        $reminderDescription = "Payment reminder for invoice {$invoice->invoice_number} — outstanding "
+        $reminderSubject = "Payment reminder, invoice {$invoice->invoice_number}";
+        $reminderDescription = "Payment reminder for invoice {$invoice->invoice_number}, outstanding "
             .ClientProject::formatMoney((float) $invoice->total)
             .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
 
@@ -165,9 +169,9 @@ class ClientProjectInvoiceReminderService
         $dueFmt = $invoice->due_on
             ? EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on)
             : 'the due date';
-        $smsBody = "Zanini Renovations — Reminder: Invoice {$invoice->invoice_number} ({$totalFmt}) was due {$dueFmt}. View invoice: {$signedUrl}";
+        $smsBody = "Zanini Renovations, Reminder: Invoice {$invoice->invoice_number} ({$totalFmt}) was due {$dueFmt}. View invoice: {$signedUrl}";
 
-        $summary = "Invoice {$invoice->invoice_number} past-due reminder SMS — {$totalFmt} — \"".Str::limit($smsBody, 120).'"';
+        $summary = "Invoice {$invoice->invoice_number} past-due reminder SMS, {$totalFmt}, \"".Str::limit($smsBody, 120).'"';
         $result = $this->clientSms->sendToClient(
             $project,
             $smsTo,

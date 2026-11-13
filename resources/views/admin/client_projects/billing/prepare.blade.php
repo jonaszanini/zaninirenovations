@@ -1,6 +1,11 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Prepare billing — '.$project->name)
+@php
+    $prepareTitleName = trim((string) preg_replace('/\s*[—–]\s*/u', ', ', (string) $project->name));
+    $prepareHeading = $prepareTitleName === '' ? 'Prepare billing' : 'Prepare billing, '.$prepareTitleName;
+@endphp
+
+@section('heading', $prepareHeading)
 
 @push('head')
 <link rel="stylesheet" href="{{ asset('css/admin-client-projects.css') }}?v={{ @filemtime(public_path('css/admin-client-projects.css')) ?: time() }}">
@@ -31,7 +36,8 @@
       <h3 class="cp-form-help-flush">
         Review installment drafts
         <x-admin.info-tip label="Review installment drafts">
-          Amounts come from the accepted quotation and the saved payment plan. Due dates are not on the quotation — set them here.
+          Amounts come from the accepted quotation and the saved payment plan. Due dates are not on the quotation.
+          Leave any installment blank when the finish date is unknown. The draft saves with no due date and shows Upon completion until you set one while editing or sending.
           Confirm creates <strong>draft</strong> invoices only (the same records as Financials and Invoices). Send remains a separate step.
         </x-admin.info-tip>
       </h3>
@@ -93,7 +99,14 @@
                 <th class="cp-col-amount">Subtotal</th>
                 <th class="cp-col-amount">HST</th>
                 <th class="cp-col-amount">Total CAD</th>
-                <th>Due date</th>
+                <th>
+                  <span class="admin-label-with-tip">
+                    Due date
+                    <x-admin.info-tip label="Due date">
+                      Optional. Leave it blank when you do not know the date yet, including on completion. You can set it later on the draft invoice.
+                    </x-admin.info-tip>
+                  </span>
+                </th>
                 <th>Invoice</th>
               </tr>
             </thead>
@@ -113,13 +126,12 @@
                   <td class="cp-col-amount" data-label="Total CAD"><strong>{{ \App\Models\ClientProject::formatMoney($row['total']) }}</strong></td>
                   <td data-label="Due date">
                     @if ($locked)
-                      <span class="admin-form-help">{{ $dueValue ?: '—' }}</span>
+                      <span class="admin-form-help">{{ $dueValue ?: 'Upon completion' }}</span>
                     @else
                       <input type="date"
                              class="admin-input"
                              name="due_on[{{ $n }}]"
                              value="{{ $dueValue }}"
-                             required
                              aria-label="Due date for installment {{ $n }}">
                       @error('due_on.'.$n)
                         <p class="admin-form-error">{{ $message }}</p>
@@ -132,7 +144,7 @@
                     @elseif ($row['action'] === 'skip_issued')
                       <span class="cp-badge" style="background:#3b82f620;color:#1d4ed8;">{{ \App\Models\ClientProjectInvoice::statusLabel($row['invoice_status']) }} {{ $row['invoice_number'] }}</span>
                     @elseif ($row['action'] === 'skip_paid')
-                      <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid — skip</span>
+                      <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid, skip</span>
                     @else
                       <span class="admin-form-help">Will create draft</span>
                     @endif

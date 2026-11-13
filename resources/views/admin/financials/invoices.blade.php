@@ -143,6 +143,7 @@
               <th style="text-align:right;">Subtotal</th>
               <th style="text-align:right;">Total</th>
               <th>Status</th>
+              <th>Due</th>
               <th>Date</th>
               <th></th>
             </tr>
@@ -157,22 +158,23 @@
               @endphp
               <tr>
                 <td data-label="Invoice #">
-                  <code class="admin-code">{{ $invoice->invoice_number ?: '—' }}</code>
+                  <code class="admin-code">{{ $invoice->invoice_number ?: 'Not set' }}</code>
                 </td>
                 <td data-label="Project">
                   @if ($project)
                     <a href="{{ route('admin.client-projects.show', $project) }}#invoice" class="admin-link">{{ $project->name }}</a>
                   @else
-                    <span class="admin-muted">—</span>
+                    <span class="admin-muted">Not set</span>
                   @endif
                 </td>
-                <td data-label="Client">{{ $project?->client_name ?: '—' }}</td>
+                <td data-label="Client">{{ $project?->client_name ?: 'Not set' }}</td>
                 <td data-label="Description">{{ $invoice->installment_description ?: ($invoice->isManual() ? 'Manual invoice' : 'Installment '.$invoice->installment_number) }}</td>
                 <td data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
                 <td data-label="Total"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">{{ $statusLabel }}</span>
                 </td>
+                <td data-label="Due">{{ $invoice->dueOnLabel() }}</td>
                 <td data-label="Date">{{ \App\Models\ClientProject::formatDate($invoiceDate) }}</td>
                 <td data-label="Actions" class="admin-table-actions">
                   <div class="admin-actions-dropdown">

@@ -4225,6 +4225,12 @@ a:hover .cp-expense-receipt-pdf {
 .cp-invoices-table td {
   vertical-align: middle;
 }
+.cp-invoice-due {
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.3;
+}
 .cp-invoice-actions {
   display: flex;
   gap: 6px;

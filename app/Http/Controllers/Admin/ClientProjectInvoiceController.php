@@ -116,8 +116,8 @@ class ClientProjectInvoiceController extends Controller
                 ->with(
                     'success',
                     $invoice->wasRecentlyCreated
-                        ? 'Draft invoice created for the next installment. Review before sending — nothing was issued.'
-                        : 'Opening the existing invoice for this installment. Review before sending — nothing was issued.'
+                        ? 'Draft invoice created for the next installment. Review before sending, nothing was issued.'
+                        : 'Opening the existing invoice for this installment. Review before sending, nothing was issued.'
                 );
         }
 
@@ -142,7 +142,7 @@ class ClientProjectInvoiceController extends Controller
             if ($existing) {
                 return redirect()
                     ->route('admin.client-projects.invoices.edit', [$client_project, $existing])
-                    ->with('info', 'An invoice already exists for this installment — opening the editor.');
+                    ->with('info', 'An invoice already exists for this installment, opening the editor.');
             }
         }
 
@@ -178,7 +178,7 @@ class ClientProjectInvoiceController extends Controller
             return redirect()
                 ->route('admin.client-projects.show', $client_project)
                 ->withFragment('invoice')
-                ->with('info', 'This project is '.$client_project->statusLabel().'. Existing invoices are read-only — use the PDF or delete an unpaid invoice.');
+                ->with('info', 'This project is '.$client_project->statusLabel().'. Existing invoices are read-only, use the PDF or delete an unpaid invoice.');
         }
 
         return view('admin.client_projects.invoice.edit', [
@@ -307,8 +307,8 @@ class ClientProjectInvoiceController extends Controller
                 $this->totals->syncHourlyExpenseLinks($client_project, $invoice, $items);
             }
 
-            if (! empty($data['due_on'])) {
-                $invoice->due_on = $data['due_on'];
+            if (array_key_exists('due_on', $data)) {
+                $invoice->due_on = $data['due_on'] ?: null;
             }
 
             $invoice->save();
@@ -441,7 +441,7 @@ class ClientProjectInvoiceController extends Controller
         }
 
         if (blank(trim((string) $client_project->client_email))) {
-            return back()->with('error', "Cannot email the invoice — add the client's email address first.");
+            return back()->with('error', "Cannot email the invoice, add the client's email address first.");
         }
 
         // Bump version on re-send so the PDF history is preserved on disk.
@@ -469,7 +469,7 @@ class ClientProjectInvoiceController extends Controller
 
         $cc = $client_project->secondaryClientEmail();
         $invoiceSubject = "Invoice {$invoice->invoice_number} from Zanini Renovations";
-        $invoiceDescription = "Invoice {$invoice->invoice_number} ({$invoice->installmentTitle()}) v{$invoice->version} — total "
+        $invoiceDescription = "Invoice {$invoice->invoice_number} ({$invoice->installmentTitle()}) v{$invoice->version}, total "
             .ClientProject::formatMoney((float) $invoice->total)
             .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
 
@@ -561,7 +561,7 @@ class ClientProjectInvoiceController extends Controller
 
         $smsTo = ClientProject::phoneDigitsForSms($client_project->client_phone);
         if ($smsTo === null) {
-            return back()->with('error', 'Cannot send SMS — client phone number is missing or not valid for texting.');
+            return back()->with('error', 'Cannot send SMS, client phone number is missing or not valid for texting.');
         }
 
         $signedUrl = URL::temporarySignedRoute(
@@ -571,9 +571,9 @@ class ClientProjectInvoiceController extends Controller
         );
 
         $totalFmt = ClientProject::formatMoney((float) $invoice->total);
-        $smsBody = "Zanini Renovations — Invoice {$invoice->invoice_number}. Total: {$totalFmt}. For details & PDF: {$signedUrl}";
+        $smsBody = "Zanini Renovations, Invoice {$invoice->invoice_number}. Total: {$totalFmt}. For details & PDF: {$signedUrl}";
 
-        $summary = "Invoice {$invoice->invoice_number} SMS link — ".$totalFmt.' — "'.Str::limit($smsBody, 120).'"';
+        $summary = "Invoice {$invoice->invoice_number} SMS link, ".$totalFmt.', "'.Str::limit($smsBody, 120).'"';
         $result = $clientSms->sendToClient(
             $client_project,
             $smsTo,
@@ -823,7 +823,7 @@ class ClientProjectInvoiceController extends Controller
         return redirect()
             ->route('admin.client-projects.show', $client_project)
             ->withFragment('invoice')
-            ->with('success', 'Invoice deleted. The payment-plan line is unchanged — you can create a new invoice for this installment when you are ready.');
+            ->with('success', 'Invoice deleted. The payment-plan line is unchanged, you can create a new invoice for this installment when you are ready.');
     }
 
     // --- Helpers ----------------------------------------------------------
@@ -850,9 +850,9 @@ class ClientProjectInvoiceController extends Controller
         );
 
         $paidFmt = ClientProject::formatMoney((float) $invoice->paid_amount);
-        $smsBody = "Zanini Renovations — Receipt for invoice {$invoice->invoice_number}. Paid: {$paidFmt}. View receipt: {$signedUrl}";
+        $smsBody = "Zanini Renovations, Receipt for invoice {$invoice->invoice_number}. Paid: {$paidFmt}. View receipt: {$signedUrl}";
 
-        $summary = "Receipt {$invoice->invoice_number} SMS link — {$paidFmt} — \"".Str::limit($smsBody, 120).'"';
+        $summary = "Receipt {$invoice->invoice_number} SMS link, {$paidFmt}, \"".Str::limit($smsBody, 120).'"';
         $result = $clientSms->sendToClient(
             $project,
             $smsTo,
@@ -895,7 +895,7 @@ class ClientProjectInvoiceController extends Controller
         }
 
         if (! $mocean->isConfigured()) {
-            $out[] = 'SMS is not configured — set MOCEAN_API_TOKEN on the server.';
+            $out[] = 'SMS is not configured, set MOCEAN_API_TOKEN on the server.';
         }
 
         if (ClientProject::phoneDigitsForSms($project->client_phone) === null) {

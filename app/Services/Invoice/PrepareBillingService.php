@@ -69,7 +69,8 @@ class PrepareBillingService
     /**
      * Create missing installment drafts and stamp due dates on drafts.
      * Idempotent: existing sent/paid invoices are left alone; existing drafts
-     * are reused (due date updated when provided).
+     * are reused. A blank due date is stored as null (not invented). The date
+     * can be set later on the draft invoice.
      *
      * @param  array<int|string, string|null>  $dueOnByNumber
      * @return list<ClientProjectInvoice>
@@ -96,15 +97,10 @@ class PrepareBillingService
                     continue;
                 }
 
-                $due = $this->normalizeDue($dueOnByNumber[$n] ?? ($row['due_on'] ?? null));
-                if ($due === null) {
-                    throw ValidationException::withMessages([
-                        'due_on.'.$n => 'Set a due date for '.$row['label'].'. Dates are not invented.',
-                    ]);
-                }
+                $due = $this->dueForConfirm($dueOnByNumber, $n, $row);
 
                 $invoice = $this->openOrCreateInstallmentDraft($locked, $n);
-                if ($invoice->isDraft() && (string) optional($invoice->due_on)?->toDateString() !== $due) {
+                if ($invoice->isDraft() && $invoice->due_on?->toDateString() !== $due) {
                     $invoice->due_on = $due;
                     $invoice->save();
                 }
@@ -164,7 +160,7 @@ class PrepareBillingService
             $inst = $project->installments->sortBy('sort_order')->values()->get($number - 1);
         if ($inst && $inst->is_paid) {
             throw ValidationException::withMessages([
-                'billing' => ['That installment is already marked paid — it will not be billed again.'],
+                'billing' => ['That installment is already marked paid, it will not be billed again.'],
             ]);
         }
         if ($inst && (float) $inst->amount < 0.01) {
@@ -278,7 +274,7 @@ class PrepareBillingService
         if (! empty($quoteTerms['from_quotation_schedule'])) {
             if ($planN !== (int) $quoteTerms['installments']) {
                 $out[] = 'Saved payment plan has '.$planN.' installment(s) but the accepted quotation terms are '
-                    .(int) $quoteTerms['installments'].'. Review Financials — this is not recalculated silently.';
+                    .(int) $quoteTerms['installments'].'. Review Financials, this is not recalculated silently.';
             }
 
             foreach ($installments as $i => $row) {
@@ -375,6 +371,31 @@ class PrepareBillingService
         ];
     }
 
+    /**
+     * Blank is allowed for every installment, including the first. A non empty
+     * value must be a real calendar date. When the request omits the key,
+     * keep the date already on the row.
+     *
+     * @param  array<int|string, mixed>  $dueOnByNumber
+     * @param  array<string, mixed>  $row
+     */
+    private function dueForConfirm(array $dueOnByNumber, int $n, array $row): ?string
+    {
+        $provided = array_key_exists($n, $dueOnByNumber) || array_key_exists((string) $n, $dueOnByNumber);
+        $raw = $provided
+            ? ($dueOnByNumber[$n] ?? $dueOnByNumber[(string) $n] ?? null)
+            : ($row['due_on'] ?? null);
+        $due = $this->normalizeDue($raw);
+        $trimmed = trim((string) ($raw ?? ''));
+        if ($trimmed !== '' && $due === null) {
+            throw ValidationException::withMessages([
+                'due_on.'.$n => 'Enter a valid due date for '.$row['label'].', or leave it blank.',
+            ]);
+        }
+
+        return $due;
+    }
+
     private function normalizeDue(mixed $raw): ?string
     {
         $s = trim((string) $raw);
@@ -382,6 +403,14 @@ class PrepareBillingService
             return null;
         }
         if (! preg_match('/^\d{4}-\d{2}-\d{2}$/', $s)) {
+            return null;
+        }
+
+        $dt = \DateTimeImmutable::createFromFormat('!Y-m-d', $s);
+        $errors = \DateTimeImmutable::getLastErrors();
+        $warnings = is_array($errors) ? (int) ($errors['warning_count'] ?? 0) : 0;
+        $errorCount = is_array($errors) ? (int) ($errors['error_count'] ?? 0) : 0;
+        if (! $dt || $warnings > 0 || $errorCount > 0 || $dt->format('Y-m-d') !== $s) {
             return null;
         }
 

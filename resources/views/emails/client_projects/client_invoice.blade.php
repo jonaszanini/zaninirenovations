@@ -1,4 +1,4 @@
-@component('emails.client_projects.layout', ['title' => 'Invoice #'.$invoice->invoice_number.' – '.$project->name])
+@component('emails.client_projects.layout', ['title' => 'Invoice #'.$invoice->invoice_number.', '.$project->name])
   <p>Hi {{ $project->client_name }},</p>
 
   @if ($project->usesInvoiceBillingOverride())
@@ -19,9 +19,7 @@
     <tr>
       <td style="padding: 6px 12px; background: #f4fafe; border: 1px solid #024768; font-size: 15px;">
         <strong>Total due:</strong> {{ \App\Models\ClientProject::formatMoney($invoice->total) }}
-        @if ($invoice->due_on)
-          &nbsp;·&nbsp; <strong>Due:</strong> {{ \App\Support\EasternStandardTimeDisplay::formatCalendarLongDate($invoice->due_on) }}
-        @endif
+        &nbsp;·&nbsp; <strong>Due:</strong> {{ $invoice->dueOnLabel(true) }}
       </td>
     </tr>
   </table>
@@ -37,7 +35,7 @@
 
   <p>If you have any questions about this invoice, just reply to this email and I'll get right back to you.</p>
 
-  <p>Thank you for your business — it's a pleasure working with you.</p>
+  <p>Thank you for your business, it's a pleasure working with you.</p>
 
   <p style="margin-top:24px;">
     Best regards,<br>
