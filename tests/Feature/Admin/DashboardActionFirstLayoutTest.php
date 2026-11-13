@@ -146,5 +146,61 @@ class DashboardActionFirstLayoutTest extends IntegrationTestCase
         $this->assertArrayHasKey('gross_margin_ytd_pct', $payload['cards']);
         $this->assertNotEmpty($payload['pipeline']['open_quotation_rows']);
         $this->assertSame('Open Quote Job', $payload['pipeline']['open_quotation_rows'][0]['name']);
+        $this->assertSame(
+            'Based on scheduled payment plans and invoice due dates, actuals may vary.',
+            $payload['projection']['disclaimer']
+        );
+        $this->assertStringNotContainsString('—', $payload['projection']['disclaimer']);
+        $this->assertStringNotContainsString('–', $payload['projection']['disclaimer']);
+    }
+
+    public function test_upcoming_next_payment_uses_commas(): void
+    {
+        $hourly = ClientProject::factory()->create([
+            'name' => 'Hourly Next Payment',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'billing_type' => ClientProject::BILLING_HOURLY,
+            'start_date' => now()->addDays(4)->toDateString(),
+        ]);
+        $invoice = ClientProjectInvoice::factory()->sent()->create([
+            'client_project_id' => $hourly->id,
+            'invoice_number' => 'INV-NEXT-100',
+            'due_on' => now()->addDays(10)->toDateString(),
+            'subtotal' => 200.00,
+            'hst' => 26.00,
+            'total' => 226.00,
+        ]);
+
+        $fixed = ClientProject::factory()->create([
+            'name' => 'Fixed Next Payment',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'start_date' => now()->addDays(5)->toDateString(),
+        ]);
+        $installment = $fixed->installments()->create([
+            'sort_order' => 0,
+            'label' => 'On completion',
+            'percentage' => 100,
+            'amount' => 500,
+            'is_paid' => false,
+        ]);
+
+        $payload = app(AdminDashboardService::class)->build(true);
+        $byProject = collect($payload['upcoming'])->keyBy('project_id');
+
+        $hourlySummary = $byProject[$hourly->id]['next_payment'];
+        $this->assertSame(
+            'Invoice '.$invoice->invoice_number.', '.ClientProject::formatMoney(226.00).' due '.$invoice->fresh()->dueOnLabel(),
+            $hourlySummary
+        );
+        $this->assertStringNotContainsString('—', $hourlySummary);
+        $this->assertStringNotContainsString(' - ', $hourlySummary);
+
+        $fixedSummary = $byProject[$fixed->id]['next_payment'];
+        $this->assertSame(
+            ClientProject::formatMoney($installment->effectiveTotal()).', On completion',
+            $fixedSummary
+        );
+        $this->assertStringNotContainsString('—', $fixedSummary);
+        $this->assertStringNotContainsString(' - ', $fixedSummary);
     }
 }

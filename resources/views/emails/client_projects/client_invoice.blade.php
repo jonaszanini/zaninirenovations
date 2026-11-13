@@ -1,4 +1,4 @@
-@component('emails.client_projects.layout', ['title' => 'Invoice #'.$invoice->invoice_number.' – '.$project->name])
+@component('emails.client_projects.layout', ['title' => 'Invoice #'.$invoice->invoice_number.', '.$project->name])
   <p>Hi {{ $project->client_name }},</p>
 
   @if ($project->usesInvoiceBillingOverride())
@@ -35,7 +35,7 @@
 
   <p>If you have any questions about this invoice, just reply to this email and I'll get right back to you.</p>
 
-  <p>Thank you for your business — it's a pleasure working with you.</p>
+  <p>Thank you for your business, it's a pleasure working with you.</p>
 
   <p style="margin-top:24px;">
     Best regards,<br>

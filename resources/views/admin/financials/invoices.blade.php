@@ -158,16 +158,16 @@
               @endphp
               <tr>
                 <td data-label="Invoice #">
-                  <code class="admin-code">{{ $invoice->invoice_number ?: '—' }}</code>
+                  <code class="admin-code">{{ $invoice->invoice_number ?: 'Not set' }}</code>
                 </td>
                 <td data-label="Project">
                   @if ($project)
                     <a href="{{ route('admin.client-projects.show', $project) }}#invoice" class="admin-link">{{ $project->name }}</a>
                   @else
-                    <span class="admin-muted">—</span>
+                    <span class="admin-muted">Not set</span>
                   @endif
                 </td>
-                <td data-label="Client">{{ $project?->client_name ?: '—' }}</td>
+                <td data-label="Client">{{ $project?->client_name ?: 'Not set' }}</td>
                 <td data-label="Description">{{ $invoice->installment_description ?: ($invoice->isManual() ? 'Manual invoice' : 'Installment '.$invoice->installment_number) }}</td>
                 <td data-label="Subtotal">{{ \App\Models\ClientProject::formatMoney($invoice->subtotal) }}</td>
                 <td data-label="Total"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>

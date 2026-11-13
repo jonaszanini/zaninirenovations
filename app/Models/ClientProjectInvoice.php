@@ -492,7 +492,7 @@ class ClientProjectInvoice extends Model
 
     /**
      * Friendly title used in UI + PDF, e.g.
-     *   "1st Installment — On signing (holds the schedule)"
+     *   "1st Installment, On signing (holds the schedule)"
      *   "Manual invoice"
      */
     public function installmentTitle(): string
@@ -506,7 +506,7 @@ class ClientProjectInvoice extends Model
         $desc = $this->installment_description ?: '';
 
         return $desc
-            ? "{$ord} Installment — {$desc}"
+            ? "{$ord} Installment, {$desc}"
             : "{$ord} Installment";
     }
 

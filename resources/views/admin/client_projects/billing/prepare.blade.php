@@ -144,7 +144,7 @@
                     @elseif ($row['action'] === 'skip_issued')
                       <span class="cp-badge" style="background:#3b82f620;color:#1d4ed8;">{{ \App\Models\ClientProjectInvoice::statusLabel($row['invoice_status']) }} {{ $row['invoice_number'] }}</span>
                     @elseif ($row['action'] === 'skip_paid')
-                      <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid — skip</span>
+                      <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid, skip</span>
                     @else
                       <span class="admin-form-help">Will create draft</span>
                     @endif

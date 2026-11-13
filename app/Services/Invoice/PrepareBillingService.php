@@ -160,7 +160,7 @@ class PrepareBillingService
             $inst = $project->installments->sortBy('sort_order')->values()->get($number - 1);
         if ($inst && $inst->is_paid) {
             throw ValidationException::withMessages([
-                'billing' => ['That installment is already marked paid — it will not be billed again.'],
+                'billing' => ['That installment is already marked paid, it will not be billed again.'],
             ]);
         }
         if ($inst && (float) $inst->amount < 0.01) {
@@ -274,7 +274,7 @@ class PrepareBillingService
         if (! empty($quoteTerms['from_quotation_schedule'])) {
             if ($planN !== (int) $quoteTerms['installments']) {
                 $out[] = 'Saved payment plan has '.$planN.' installment(s) but the accepted quotation terms are '
-                    .(int) $quoteTerms['installments'].'. Review Financials — this is not recalculated silently.';
+                    .(int) $quoteTerms['installments'].'. Review Financials, this is not recalculated silently.';
             }
 
             foreach ($installments as $i => $row) {

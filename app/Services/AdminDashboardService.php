@@ -220,7 +220,7 @@ class AdminDashboardService
             'cumulative_profit' => $cumulativeProfit,
             'forward_total_revenue' => $forwardTotal,
             'forward_total_profit' => round(array_sum($profitSeries), 2),
-            'disclaimer' => 'Based on scheduled payment plans and invoice due dates — actuals may vary.',
+            'disclaimer' => 'Based on scheduled payment plans and invoice due dates, actuals may vary.',
         ];
     }
 
@@ -521,7 +521,7 @@ class AdminDashboardService
             $inv = $p->invoices->first(fn ($i) => $i->isSent() && ! $i->isPaid());
 
             return $inv
-                ? 'Invoice '.$inv->invoice_number.' — '.ClientProject::formatMoney((float) $inv->total).' due '.$inv->dueOnLabel()
+                ? 'Invoice '.$inv->invoice_number.', '.ClientProject::formatMoney((float) $inv->total).' due '.$inv->dueOnLabel()
                 : null;
         }
 
@@ -532,7 +532,7 @@ class AdminDashboardService
         $gross = $inst->effectiveTotal();
         $label = $inst->label ?: 'Installment';
 
-        return ClientProject::formatMoney($gross).' — '.$label;
+        return ClientProject::formatMoney($gross).', '.$label;
     }
 
     private function buildRecentActivity(): array

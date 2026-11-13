@@ -1,6 +1,6 @@
 @extends('admin.layouts.app')
 
-@section('heading', 'Edit Invoice — '.$project->name)
+@section('heading', 'Edit Invoice, '.$project->name)
 
 @section('content')
   @php
@@ -81,7 +81,7 @@
 
     <div class="cp-contract-editor-heading">
       <h3 class="cp-heading-reset">
-        Invoice editor — <span class="cp-quotation-number">{{ $invoice->invoice_number }}</span>
+        Invoice editor, <span class="cp-quotation-number">{{ $invoice->invoice_number }}</span>
         @if ($invoice->isSent())
           <span class="cp-badge cp-badge--sent cp-badge--ml">Sent</span>
         @elseif ($invoice->isPaid())
@@ -92,12 +92,12 @@
       </h3>
       <p class="admin-form-help admin-form-help--tight">
         @if ($isFromTimeEntries)
-          Hourly invoice — prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
+          Hourly invoice, prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.
           You can edit the descriptions and amounts freely before sending. Deleting this draft will release the entries back to "unbilled".
           Material lines are tax-included (no extra HST on materials); HST applies to labour only.
           Use <strong>Credit</strong> for a pre-tax deduction (e.g. deposit already paid toward an estimate). Enter the credit as a <strong>positive</strong> amount; it reduces labour before HST is calculated.
         @elseif ($isManual)
-          Manual invoice — no installment link. Enter the pre-HST total and optionally itemise the work below.
+          Manual invoice, no installment link. Enter the pre-HST total and optionally itemise the work below.
         @else
           <strong>{{ $invoice->installmentTitle() }}</strong>.
           Amounts below follow the Financials installment as a reference; you may apply a pre-tax discount before HST.
@@ -127,12 +127,12 @@
             <div class="cp-invoice-locked-field">
               <span class="cp-badge cp-badge--hourly">
                 <i class="fa fa-clock-o"></i>
-                Hourly — {{ $invoice->timeEntries->count() }} time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}
+                Hourly, {{ $invoice->timeEntries->count() }} time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}
               </span>
             </div>
           @elseif ($isManual)
             <div class="cp-invoice-locked-field">
-              <span class="cp-badge cp-badge--manual">Manual — no installment</span>
+              <span class="cp-badge cp-badge--manual">Manual, no installment</span>
             </div>
           @else
             <div class="cp-invoice-locked-field">
@@ -173,7 +173,7 @@
                    class="admin-input"
                    maxlength="255"
                    value="{{ $manualDescription }}"
-                   placeholder="e.g. Extra work — additional drywall">
+                   placeholder="e.g. Extra work, additional drywall">
           </div>
           @unless ($isHourlyManual)
             <div class="admin-form-group">
@@ -193,7 +193,7 @@
           @else
             <div class="admin-form-group">
                 <span class="admin-form-help cp-invoice-help-block">
-                  Mark each line as Labour (pre-tax), <strong>Credit</strong> (pre-tax deduction — enter a positive amount), or Materials/Gas (<strong>amount includes HST</strong>). Invoice HST applies to net labour only — materials and gas pass through tax-included.
+                  Mark each line as Labour (pre-tax), <strong>Credit</strong> (pre-tax deduction, enter a positive amount), or Materials/Gas (<strong>amount includes HST</strong>). Invoice HST applies to net labour only, materials and gas pass through tax-included.
                 </span>
             </div>
           @endunless
@@ -205,7 +205,7 @@
         @endphp
         <div class="cp-invoice-locked-total">
           <div>
-            <span class="admin-form-help">Locked total (from Financials — reference):</span>
+            <span class="admin-form-help">Locked total (from Financials, reference):</span>
           </div>
           <div class="cp-invoice-locked-total-value">
             <div class="cp-invoice-locked-total-subtotal">
@@ -428,7 +428,7 @@
               <div class="cp-quotation-totals-row cp-invoice-plan-diff is-hidden" id="cp-invoice-plan-diff">
                 <span>
                   <i class="fa fa-info-circle"></i>
-                  Net subtotal differs from the Financials installment ({{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}) by <span id="cp-invoice-diff">—</span>.
+                  Net subtotal differs from the Financials installment ({{ \App\Models\ClientProject::formatMoney($lockedSubtotal) }}) by <span id="cp-invoice-diff">CA$0.00</span>.
                 </span>
               </div>
             @endunless

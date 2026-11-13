@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Invoice {{ $invoice->invoice_number }} — {{ $project->name }}</title>
+  <title>Invoice {{ $invoice->invoice_number }}, {{ $project->name }}</title>
   @php
     // Normalise font paths to forward slashes — see quotation/pdf for why.
     $fontDir = str_replace('\\', '/', public_path('fonts/roboto'));
@@ -325,7 +325,7 @@
   <div class="pdf-footer">
     <table>
       <tr>
-        <td class="left">ZANINI RENOVATIONS — Invoice {{ $invoice->invoice_number }}</td>
+        <td class="left">ZANINI RENOVATIONS, Invoice {{ $invoice->invoice_number }}</td>
         <td class="right"></td>
       </tr>
     </table>
@@ -347,10 +347,10 @@
       <td class="right">
         <div class="quote-client">
           <p class="label">Bill to</p>
-          <p class="name">{{ $project->invoiceBillToName() ?: '—' }}</p>
-          <p class="line">{!! nl2br(e($project->invoiceBillToAddress() !== '' ? $project->invoiceBillToAddress() : '—')) !!}</p>
-          <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: '—' }}</p>
-          <p class="line">{{ $project->client_email ?: '—' }}</p>
+          <p class="name">{{ $project->invoiceBillToName() ?: 'Not set' }}</p>
+          <p class="line">{!! nl2br(e($project->invoiceBillToAddress() !== '' ? $project->invoiceBillToAddress() : 'Not set')) !!}</p>
+          <p class="line">{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: 'Not set' }}</p>
+          <p class="line">{{ $project->client_email ?: 'Not set' }}</p>
           <p class="line" style="margin-top:4pt;font-style:italic;color:#4b5563;">
             Project: {{ $project->name }}
           </p>
@@ -416,7 +416,7 @@
 
     @if (count($materialsRows) > 0)
       <p style="margin:0 0 6pt;font-size:10.5pt;font-weight:700;color:#024768;letter-spacing:0.06em;text-transform:uppercase;">Materials / Gas (amounts include HST)</p>
-      <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials or gas — amounts below are the final client prices (tax-included).</p>
+      <p style="margin:0 0 8pt;font-size:9.5pt;color:#4b5563;font-style:italic;">No additional HST is charged on materials or gas, amounts below are the final client prices (tax-included).</p>
       <table class="items" style="margin-bottom:12pt;">
         <thead>
           <tr>
@@ -553,7 +553,7 @@
   </table>
 
   <div class="closing">
-    <p style="margin-top:14pt;">Thank you for your business — it's a pleasure working with you.</p>
+    <p style="margin-top:14pt;">Thank you for your business, it's a pleasure working with you.</p>
     <p>If you have any questions regarding this invoice, please do not hesitate to reach out.</p>
     <div class="signoff">
       <p>Best regards,</p>
