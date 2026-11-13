@@ -582,9 +582,6 @@ class DeployDependsOnTestsTest extends TestCase
     }
 
     /**
-     * @return list<string>
-     */
-    /**
      * The PHP unit job does not run npm ci unless JS or browser tests are
      * selected. These checks need the picomatch package from that install.
      */
@@ -595,6 +592,9 @@ class DeployDependsOnTestsTest extends TestCase
         }
     }
 
+    /**
+     * @return list<string>
+     */
     private function pathsFile(string $relative): array
     {
         $path = base_path($relative);
