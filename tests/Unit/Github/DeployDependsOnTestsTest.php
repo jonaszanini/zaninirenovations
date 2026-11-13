@@ -268,8 +268,8 @@ class DeployDependsOnTestsTest extends TestCase
 
         $tests = $this->workflow('tests.yml');
         $this->assertStringContainsString('inputs.full_suite', $tests);
-        $this->assertStringContainsString("CI_MYSQL_SUITE:", $tests);
-        $this->assertStringContainsString("inputs.full_suite == true", $tests);
+        $this->assertStringContainsString('CI_MYSQL_SUITE:', $tests);
+        $this->assertStringContainsString('inputs.full_suite == true', $tests);
         $this->assertStringContainsString('needs.changes.outputs.run_unit_js', $tests);
         $this->assertStringContainsString("docs_only != 'true'", $tests);
     }
@@ -374,6 +374,8 @@ class DeployDependsOnTestsTest extends TestCase
 
     public function test_ci_filter_matrix_script_passes(): void
     {
+        $this->requirePicomatch();
+
         exec('bash '.escapeshellarg(base_path('tests/ci/ci-filter-matrix.test.sh')).' 2>&1', $output, $code);
         $this->assertSame(0, $code, implode("\n", $output));
     }
@@ -392,6 +394,8 @@ class DeployDependsOnTestsTest extends TestCase
 
     public function test_picomatch_workflow_filter_spot_checks(): void
     {
+        $this->requirePicomatch();
+
         exec('node '.escapeshellarg(base_path('tests/ci/picomatch-tracked-files-audit.js')).' 2>&1', $output, $code);
         $this->assertSame(0, $code, implode("\n", $output));
     }
@@ -580,6 +584,17 @@ class DeployDependsOnTestsTest extends TestCase
     /**
      * @return list<string>
      */
+    /**
+     * The PHP unit job does not run npm ci unless JS or browser tests are
+     * selected. These checks need the picomatch package from that install.
+     */
+    private function requirePicomatch(): void
+    {
+        if (! is_dir(base_path('node_modules/picomatch'))) {
+            $this->markTestSkipped('picomatch is not installed. npm ci runs when JS or browser tests are selected.');
+        }
+    }
+
     private function pathsFile(string $relative): array
     {
         $path = base_path($relative);
