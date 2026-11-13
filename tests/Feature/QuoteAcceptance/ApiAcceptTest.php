@@ -2,9 +2,12 @@
 
 namespace Tests\Feature\QuoteAcceptance;
 
+use App\Mail\ClientProjectQuoteAcceptedAdmin;
+use App\Mail\ClientProjectQuoteAcceptedClient;
 use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Services\QuoteAcceptanceService;
+use Illuminate\Support\Facades\Mail;
 use Tests\IntegrationTestCase;
 
 class ApiAcceptTest extends IntegrationTestCase
@@ -17,6 +20,23 @@ class ApiAcceptTest extends IntegrationTestCase
     {
         parent::setUp();
         config(['quote_accept.api_token' => self::TOKEN]);
+    }
+
+    public function test_api_accept_does_not_email_the_client(): void
+    {
+        Mail::fake();
+        [$project, $quotation] = $this->makeLinkedQuotation();
+
+        $this->postJson('/api/quotations/accept', [
+            'project_number' => $project->referenceCode(),
+            'quote_number' => $quotation->displayQuoteNumber(),
+        ], $this->authHeaders())
+            ->assertOk()
+            ->assertExactJson(['status' => QuoteAcceptanceService::STATUS_ACCEPTED]);
+
+        $this->assertTrue($quotation->fresh()->isAccepted());
+        Mail::assertNotSent(ClientProjectQuoteAcceptedClient::class);
+        Mail::assertNotSent(ClientProjectQuoteAcceptedAdmin::class);
     }
 
     public function test_correct_token_accepts_quote(): void
