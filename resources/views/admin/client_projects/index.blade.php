@@ -295,8 +295,10 @@
                 </td>
                 <td>
                   <div class="cp-table-project-cell">
-                    <span class="cp-table-project-ref">{{ $project->referenceCode() }}</span>
-                    <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                    <div class="cp-table-project-head">
+                      <span class="cp-table-project-ref">{{ $project->referenceCode() }}</span>
+                      <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                    </div>
                     @php
                       $hasStatusNote = filled($project->status_note);
                       $isRowClosed = $project->isClosed();

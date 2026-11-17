@@ -866,22 +866,43 @@ a.cp-table-phone .fa {
 /* 5-column Projects index table refinements */
 .admin-table.cp-projects-table th,
 .admin-table.cp-projects-table td {
-  padding: 12px 10px;
+  padding: 10px;
 }
 @media (min-width: 768px) {
   .admin-table.cp-projects-table th,
   .admin-table.cp-projects-table td {
-    padding: 12px 14px;
+    padding: 10px 14px;
   }
 }
 .admin-table.cp-projects-table th {
   font-size: 11px;
   letter-spacing: 0.06em;
 }
+.admin-table.cp-projects-table .cp-client-cell {
+  gap: 3px;
+}
+.admin-table.cp-projects-table .cp-client-actions {
+  gap: 5px;
+  margin-top: 2px;
+}
 @media (min-width: 901px) {
+  .admin-table.cp-projects-table th:first-child,
   .admin-table.cp-projects-table td:first-child {
-    min-width: 205px;
-    width: 22%;
+    width: 175px;
+    min-width: 168px;
+    max-width: 195px;
+  }
+  .admin-table.cp-projects-table th:nth-child(2),
+  .admin-table.cp-projects-table td:nth-child(2) {
+    width: 48%;
+  }
+  .admin-table.cp-projects-table th:nth-child(3),
+  .admin-table.cp-projects-table td:nth-child(3),
+  .admin-table.cp-projects-table th:nth-child(4),
+  .admin-table.cp-projects-table td:nth-child(4),
+  .admin-table.cp-projects-table th:nth-child(5),
+  .admin-table.cp-projects-table td:nth-child(5) {
+    white-space: nowrap;
   }
 }
 .admin-table.cp-projects-table .cp-client-name,
@@ -897,16 +918,23 @@ a.cp-table-phone .fa {
 }
 .admin-table.cp-projects-table th:nth-child(2),
 .admin-table.cp-projects-table td:nth-child(2) {
-  min-width: 220px;
+  min-width: 240px;
   white-space: normal;
 }
 .admin-table.cp-projects-table .cp-table-project-cell {
-  gap: 4px;
+  gap: 2px;
+}
+.cp-table-project-head {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  gap: 8px;
 }
 .admin-table.cp-projects-table .cp-table-project-ref {
   display: inline-flex;
   align-items: center;
   align-self: flex-start;
+  flex-shrink: 0;
   padding: 2px 8px;
   border-radius: 6px;
   font-size: 10.5px;
@@ -916,10 +944,11 @@ a.cp-table-phone .fa {
   border: 1px solid rgba(79, 70, 229, 0.25);
 }
 .admin-table.cp-projects-table .cp-table-project-name {
+  min-width: 0;
   white-space: normal;
   overflow-wrap: anywhere;
   font-size: 13.5px;
-  line-height: 1.45;
+  line-height: 1.4;
   transition: color 0.15s ease;
 }
 .admin-table.cp-projects-table tr.cp-row-link:hover .cp-table-project-name {
