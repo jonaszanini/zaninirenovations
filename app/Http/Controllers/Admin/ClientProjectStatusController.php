@@ -21,8 +21,13 @@ class ClientProjectStatusController extends Controller
     ) {
         if ($client_project->isClosed()) {
             $label = $client_project->isCancelled() ? 'Cancelled' : 'Rejected';
+            $message = "This project has been marked as {$label} and is final.";
 
-            return back()->with('error', "This project has been marked as {$label} and is final.");
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         $data = $request->validate([
@@ -41,15 +46,28 @@ class ClientProjectStatusController extends Controller
         if ($data['status'] === $client_project->status) {
             $unchanged = (filled($client_project->status_note) ? trim((string) $client_project->status_note) : null) === $note;
             if ($unchanged) {
+                if ($request->expectsJson()) {
+                    return $this->statusJsonResponse($client_project, 'Status unchanged.');
+                }
+
                 return back()->with('success', 'Status unchanged.');
             }
 
-            $service->updateStatusNote($client_project, $note);
+            $updated = $service->updateStatusNote($client_project, $note);
+            $message = $note ? 'Status note saved.' : 'Status note cleared.';
 
-            return back()->with('success', $note ? 'Status note saved.' : 'Status note cleared.');
+            if ($request->expectsJson()) {
+                return $this->statusJsonResponse($updated, $message);
+            }
+
+            return back()->with('success', $message);
         }
 
-        $service->transition($client_project, $data['status'], $note, true);
+        $updated = $service->transition($client_project, $data['status'], $note, true);
+
+        if ($request->expectsJson()) {
+            return $this->statusJsonResponse($updated, 'Status updated.');
+        }
 
         return back()->with('success', 'Status updated.');
     }
@@ -60,7 +78,13 @@ class ClientProjectStatusController extends Controller
         ClientProjectStatusService $service,
     ) {
         if (! $client_project->isRejected()) {
-            return back()->with('error', 'Only rejected projects can be reopened.');
+            $message = 'Only rejected projects can be reopened.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'message' => $message], 422);
+            }
+
+            return back()->with('error', $message);
         }
 
         $data = $request->validate([
@@ -73,11 +97,31 @@ class ClientProjectStatusController extends Controller
             ? trim((string) $data['note'])
             : 'Project reopened from Rejected.';
 
-        $service->transition($client_project, $targetStatus, $note, true);
+        $updated = $service->transition($client_project, $targetStatus, $note, true);
 
         $label = ClientProject::statusLabels()[$targetStatus] ?? $targetStatus;
+        $message = "Project reopened — status set to {$label}.";
 
-        return back()->with('success', "Project reopened — status set to {$label}.");
+        if ($request->expectsJson()) {
+            return $this->statusJsonResponse($updated, $message);
+        }
+
+        return back()->with('success', $message);
+    }
+
+    private function statusJsonResponse(ClientProject $project, string $message)
+    {
+        return response()->json([
+            'ok' => true,
+            'message' => $message,
+            'status' => $project->status,
+            'status_label' => $project->statusLabel(),
+            'status_color' => $project->statusColor(),
+            'status_note' => $project->status_note,
+            'is_closed' => $project->isClosed(),
+            'is_cancelled' => $project->isCancelled(),
+            'is_rejected' => $project->isRejected(),
+        ]);
     }
 
     /**

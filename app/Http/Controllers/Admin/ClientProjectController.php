@@ -41,7 +41,7 @@ use Illuminate\Validation\ValidationException;
 class ClientProjectController extends Controller
 {
   /** @var list<int> */
-    public const LIST_PER_PAGE_OPTIONS = [25, 35, 50];
+    public const LIST_PER_PAGE_OPTIONS = [10, 25, 35, 50];
 
     public function __construct(protected ClientProjectCalendarService $calendarService, protected ClientProjectClientMailer $clientMailer)
     {
@@ -135,7 +135,7 @@ class ClientProjectController extends Controller
         $perPage = AdminPaginatedList::perPageFrom(
             $request,
             self::LIST_PER_PAGE_OPTIONS,
-            self::LIST_PER_PAGE_OPTIONS[0],
+            25,
         );
 
         $projects = $query->paginate($perPage)->withQueryString();

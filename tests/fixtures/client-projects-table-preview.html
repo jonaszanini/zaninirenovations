@@ -10,21 +10,101 @@
 </head>
 <body class="admin-body admin-dark">
   <div class="admin-app" id="admin-app">
+    <aside class="admin-sidebar" aria-hidden="true"></aside>
     <main class="admin-main">
       <div class="admin-content">
         <div class="cp-projects-scope-bar">
           <div class="cp-projects-scope-head">
             <div class="cp-projects-scope-start">
-              <span class="cp-projects-scope-label">Show</span>
               <div class="cp-projects-scope-toggles">
-                <span class="cp-projects-scope-chip cp-projects-scope-chip--active">Ongoing pipeline</span>
+                <a href="#" class="cp-projects-scope-chip cp-projects-scope-chip--active">
+                  <i class="fa fa-filter" aria-hidden="true"></i>
+                  <span>Ongoing pipeline</span>
+                </a>
+                <a href="#" class="cp-projects-scope-chip">
+                  <i class="fa fa-th-large" aria-hidden="true"></i>
+                  <span>All projects</span>
+                </a>
               </div>
             </div>
+            <a href="#" class="admin-btn admin-btn--primary cp-projects-scope-create">
+              <i class="fa fa-plus-circle" aria-hidden="true"></i>
+              <span>New project</span>
+            </a>
           </div>
         </div>
-        <div class="admin-card">
+
+        <div class="admin-card cp-projects-filter-card">
+          <details class="cp-filter-accordion" id="admin-filters-client-projects">
+            <summary class="cp-filter-accordion__summary" aria-controls="admin-filters-client-projects-panel">
+              <span class="cp-filter-accordion__heading">
+                <span class="cp-filter-accordion__icon" aria-hidden="true"><i class="fa fa-sliders"></i></span>
+                <span class="admin-filters-accordion__title cp-filter-accordion__title">Filters &amp; Search</span>
+              </span>
+              <span class="cp-filter-accordion__toggle">
+                <span class="cp-filter-accordion__toggle-text">
+                  <span class="cp-filter-accordion__show-label">Show filters</span>
+                  <span class="cp-filter-accordion__hide-label">Hide filters</span>
+                </span>
+                <i class="fa fa-chevron-down cp-filter-accordion__caret" aria-hidden="true"></i>
+              </span>
+            </summary>
+            <div class="cp-filter-accordion__body" id="admin-filters-client-projects-panel">
+              <form class="cp-filters cp-filters--modern">
+                <div class="cp-filter cp-filter--search">
+                  <label>Search</label>
+                  <input class="admin-input" type="text" placeholder="Project #, name, or client">
+                </div>
+                <div class="cp-filter cp-filter--select">
+                  <label>Status</label>
+                  <select class="admin-input"><option>All statuses</option></select>
+                </div>
+                <div class="cp-filter cp-filter--date">
+                  <label>From Date</label>
+                  <input class="admin-input" type="date">
+                </div>
+                <div class="cp-filter cp-filter--date">
+                  <label>To Date</label>
+                  <input class="admin-input" type="date">
+                </div>
+                <div class="cp-filter cp-filter--actions">
+                  <button type="button" class="admin-btn admin-btn--primary admin-btn--sm cp-filter-apply-btn">Apply</button>
+                  <a href="#" class="admin-btn admin-btn--ghost admin-btn--sm cp-filter-reset-btn">Reset</a>
+                </div>
+              </form>
+            </div>
+          </details>
+
+          <div class="cp-projects-quick-status" role="toolbar" aria-label="Quick status filters">
+            <span class="cp-projects-quick-status__label">Quick Filter:</span>
+            <a href="#" class="cp-badge cp-projects-quick-status-btn" style="--cp-badge-color: #f59e0b; background: #f59e0b20; color: #f59e0b; border-color: #f59e0b4d;">Quote Pending</a>
+            <a href="#" class="cp-badge cp-projects-quick-status-btn" style="--cp-badge-color: #8b5cf6; background: #8b5cf620; color: #8b5cf6; border-color: #8b5cf64d;">Scheduled</a>
+            <a href="#" class="cp-badge cp-projects-quick-status-btn" style="--cp-badge-color: #3b82f6; background: #3b82f620; color: #3b82f6; border-color: #3b82f64d;">Quote Sent</a>
+            <a href="#" class="cp-badge cp-projects-quick-status-btn" style="--cp-badge-color: #6366f1; background: #6366f120; color: #6366f1; border-color: #6366f14d;">In Progress</a>
+          </div>
+        </div>
+
+        <section class="admin-card cp-projects-list-card">
+          <div class="cp-projects-card-header">
+            <div class="cp-projects-card-header__lead">
+              <div class="cp-projects-card-header__icon" aria-hidden="true">
+                <i class="fa fa-list-ul"></i>
+              </div>
+              <div>
+                <h2 class="cp-projects-card-header__title">Project List</h2>
+                <p class="cp-projects-card-header__sub">Showing 2 project entries</p>
+              </div>
+            </div>
+            <div class="cp-projects-card-header__controls">
+              <form class="cp-per-page-form">
+                <label>Rows per page:</label>
+                <select class="admin-input cp-per-page-select"><option selected>25</option></select>
+              </form>
+            </div>
+          </div>
+
           <div class="admin-table-scroll">
-            <table class="admin-table cp-table">
+            <table class="admin-table cp-table cp-projects-table">
               <thead>
                 <tr>
                   <th>Client</th>
@@ -32,8 +112,6 @@
                   <th>Status</th>
                   <th>Dates</th>
                   <th class="cp-col-amount">Total</th>
-                  <th class="cp-col-amount">Paid</th>
-                  <th>Last updated</th>
                 </tr>
               </thead>
               <tbody>
@@ -42,52 +120,86 @@
                     <div class="cp-client-cell">
                       <strong class="cp-client-name">ChristopherMontgomeryWhitfieldNoBreaks</strong>
                       <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
-                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
-                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-copy-btn" title="Copy email"><i class="fa fa-envelope"></i></button>
-                        <a href="#" class="cp-client-action-btn cp-client-action-btn--address" title="Open in Google Maps"><i class="fa fa-map-marker"></i></a>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-client-action-btn--active cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--active cp-copy-btn" title="Copy email"><i class="fa fa-envelope"></i></button>
+                        <a href="#" class="cp-client-action-btn cp-client-action-btn--address cp-client-action-btn--active" title="Open in Google Maps"><i class="fa fa-map-marker"></i></a>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div class="cp-table-project-cell">
-                      <div class="cp-table-project-ref">P-0099</div>
+                      <span class="cp-table-project-ref">PRJ00099</span>
                       <strong class="cp-table-project-name">Whole-home refresh — long client name row</strong>
+                      <div class="cp-inline-note">
+                        <div class="cp-table-status-note cp-inline-note__display" role="button" tabindex="0">
+                          <span class="cp-inline-note__text cp-inline-note__text--empty">No notes</span>
+                          <i class="fa fa-pencil cp-inline-note__icon" aria-hidden="true"></i>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td><span class="cp-badge">Quoted</span></td>
-                  <td><div>2026-12-01</div></td>
-                  <td class="cp-col-amount">$42,000.00</td>
-                  <td class="cp-col-amount">0%</td>
-                  <td>2026-11-01</td>
+                  <td>
+                    <div class="cp-inline-status">
+                      <button type="button" class="cp-badge cp-status-pill cp-status-pill--interactive" style="--cp-badge-color: #3b82f6; background: #3b82f620; color: #3b82f6; border-color: #3b82f645;">
+                        <span class="cp-status-pill__dot" aria-hidden="true"></span>
+                        <span class="cp-status-pill__label">Quote Sent</span>
+                        <i class="fa fa-caret-down cp-status-pill__caret" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td><div class="cp-dates-range">01/12/2026 to 10/12/2026</div></td>
+                  <td class="cp-col-amount">CA$42,000.00</td>
                 </tr>
                 <tr class="cp-row-link" tabindex="0">
                   <td>
                     <div class="cp-client-cell">
                       <strong class="cp-client-name">Maria Costa</strong>
                       <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
-                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
-                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-copy-btn" title="Copy email"><i class="fa fa-envelope"></i></button>
-                        <a href="#" class="cp-client-action-btn cp-client-action-btn--address" title="Open in Google Maps"><i class="fa fa-map-marker"></i></a>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--phone cp-client-action-btn--active cp-copy-btn" title="Copy phone"><i class="fa fa-phone"></i></button>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--disabled" disabled aria-disabled="true" title="No email"><i class="fa fa-envelope"></i></button>
+                        <button type="button" class="cp-client-action-btn cp-client-action-btn--address cp-client-action-btn--disabled" disabled aria-disabled="true" title="No address"><i class="fa fa-map-marker"></i></button>
                       </div>
                     </div>
                   </td>
                   <td>
                     <div class="cp-table-project-cell">
-                      <div class="cp-table-project-ref">P-0042</div>
+                      <span class="cp-table-project-ref">PRJ00042</span>
                       <strong class="cp-table-project-name">Kitchen renovation — QA screenshot</strong>
-                      <div class="cp-table-status-note">Cabinets arriving Tuesday</div>
+                      <div class="cp-inline-note">
+                        <div class="cp-table-status-note cp-inline-note__display" role="button" tabindex="0">
+                          <span class="cp-inline-note__text">Cabinets arriving Tuesday</span>
+                          <i class="fa fa-pencil cp-inline-note__icon" aria-hidden="true"></i>
+                        </div>
+                      </div>
                     </div>
                   </td>
-                  <td><span class="cp-badge">In progress</span></td>
-                  <td><div>2026-11-09</div><div class="cp-subtle">→ 2026-11-23</div></td>
-                  <td class="cp-col-amount">$18,500.00</td>
-                  <td class="cp-col-amount">27%</td>
-                  <td>2026-11-02</td>
+                  <td>
+                    <div class="cp-inline-status">
+                      <button type="button" class="cp-badge cp-status-pill cp-status-pill--interactive" style="--cp-badge-color: #10b981; background: #10b98120; color: #10b981; border-color: #10b98145;">
+                        <span class="cp-status-pill__dot" aria-hidden="true"></span>
+                        <span class="cp-status-pill__label">In Progress</span>
+                        <i class="fa fa-caret-down cp-status-pill__caret" aria-hidden="true"></i>
+                      </button>
+                    </div>
+                  </td>
+                  <td><div class="cp-dates-range">09/11/2026 to 23/11/2026</div></td>
+                  <td class="cp-col-amount">CA$18,500.00</td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
+
+          <div class="cp-projects-card-footer">
+            <span class="cp-projects-pagination-info">Showing 1 to 2 of 2 entries</span>
+            <div class="admin-pagination cp-projects-pagination">
+              <nav class="admin-pagination-nav" role="navigation" aria-label="Pagination">
+                <span class="is-disabled">Previous</span>
+                <span aria-current="page">1</span>
+                <span class="is-disabled">Next</span>
+              </nav>
+            </div>
+          </div>
+        </section>
       </div>
     </main>
   </div>
