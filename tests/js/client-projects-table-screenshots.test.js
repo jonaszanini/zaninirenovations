@@ -55,8 +55,7 @@ async function capture(label, width, height, port, minClientColWidth) {
   const page = await browser.newPage();
   await page.setViewport({ width, height });
   await page.goto(`http://127.0.0.1:${port}/`, { waitUntil: 'networkidle0', timeout: 60000 });
-  const phoneWidth = label.includes('390');
-  await page.waitForSelector(phoneWidth ? '.cp-client-mobile-field' : '.cp-client-action-btn--phone', {
+  await page.waitForSelector('.cp-client-action-btn--phone', {
     timeout: 15000,
     visible: true,
   });
@@ -67,24 +66,25 @@ async function capture(label, width, height, port, minClientColWidth) {
         return style.display !== 'none' && style.visibility !== 'hidden' && el.getClientRects().length > 0;
       });
     }
-    const fields = visible('.cp-client-mobile-field');
     const icons = visible('.cp-client-action-btn');
+    const actions = visible('.cp-client-actions');
     return {
-      fieldHrefs: fields.map((el) => el.getAttribute('href') || ''),
-      fieldCount: fields.length,
       iconCount: icons.length,
+      actionCount: actions.length,
+      fieldCount: visible('.cp-client-mobile-field').length,
+      hrefs: icons.map((el) => el.getAttribute('href') || ''),
+      hold: icons.map((el) => el.getAttribute('data-cp-hold-copy') || ''),
+      disabled: visible('.cp-client-action-btn--disabled').length,
     };
   });
-  if (phoneWidth) {
-    assert.ok(contact.fieldCount >= 3, `${label} must show phone, email, and address`);
-    assert.strictEqual(contact.iconCount, 0, `${label} hides desktop contact icons`);
-    assert.ok(contact.fieldHrefs.some((href) => href.startsWith('tel:')), `${label} phone opens the dialer`);
-    assert.ok(contact.fieldHrefs.some((href) => href.includes('mail.google.com/mail/') && href.includes('authuser=zaninirenovations@gmail.com')), `${label} email opens Gmail`);
-    assert.ok(contact.fieldHrefs.some((href) => href.includes('google.com/maps/search/')), `${label} address opens Maps`);
-  } else {
-    assert.ok(contact.iconCount >= 3, `${label} keeps phone, email, and address icons`);
-    assert.strictEqual(contact.fieldCount, 0, `${label} hides phone width contact text`);
-  }
+  assert.strictEqual(contact.fieldCount, 0, `${label} keeps icon buttons instead of contact text`);
+  assert.ok(contact.actionCount >= 1, `${label} shows the contact icon row`);
+  assert.ok(contact.iconCount >= 3, `${label} shows phone, email, and address icons`);
+  assert.ok(contact.disabled >= 2, `${label} keeps empty contact icons disabled`);
+  assert.ok(contact.hrefs.some((href) => href.startsWith('tel:')), `${label} phone icon opens the dialer`);
+  assert.ok(contact.hrefs.some((href) => href.includes('mail.google.com/mail/') && href.includes('authuser=zaninirenovations@gmail.com')), `${label} email icon opens Gmail`);
+  assert.ok(contact.hrefs.some((href) => href.includes('google.com/maps/search/')), `${label} address icon opens Maps`);
+  assert.ok(contact.hold.filter(Boolean).length >= 3, `${label} icons can hold to copy`);
   const layout = await page.evaluate(() => {
     const td = document.querySelector('.cp-table tbody tr:first-child td:first-child');
     const name = document.querySelector('.cp-table tbody tr:first-child .cp-client-name');
@@ -111,7 +111,7 @@ async function capture(label, width, height, port, minClientColWidth) {
   await page.screenshot({ path: path.join(outDir, `${label}.png`), fullPage: false });
   const count = await page.$$eval('.cp-client-action-btn', (els) => els.length);
   await browser.close();
-  assert.ok(count >= 3, `${label} must still render phone/email/address icons in the markup`);
+  assert.ok(count >= 6, `${label} must render contact icons for each row`);
   return { label, count, layout, contact };
 }
 

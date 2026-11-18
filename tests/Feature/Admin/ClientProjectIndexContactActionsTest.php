@@ -10,7 +10,7 @@ class ClientProjectIndexContactActionsTest extends IntegrationTestCase
 {
     use ActsAsAdmin;
 
-    public function test_index_renders_mobile_contact_links_and_keeps_desktop_icons(): void
+    public function test_index_keeps_contact_icons_and_touch_actions(): void
     {
         $this->actingAsAdmin();
 
@@ -42,8 +42,21 @@ class ClientProjectIndexContactActionsTest extends IntegrationTestCase
         $response->assertSee('data-cp-hold-copy="(613) 555-0100"', false);
         $response->assertSee('data-cp-hold-copy="pat@example.com"', false);
         $response->assertSee('data-cp-hold-copy="10 Main Street, Ottawa, ON"', false);
-        $response->assertSee('cp-client-mobile-fields', false);
         $response->assertSee('admin-contact-hold.js', false);
+        $response->assertDontSee('cp-client-mobile-fields', false);
+        $response->assertDontSee('cp-client-mobile-field', false);
+        $this->assertMatchesRegularExpression(
+            '/<a\b[^>]*href="tel:\+16135550100"[^>]*cp-client-action-btn--phone[^>]*data-cp-hold-copy="\(613\) 555-0100"/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/<a\b[^>]*mail\.google\.com\/mail\/\?authuser=zaninirenovations@gmail\.com[^>]*cp-client-action-btn--email[^>]*data-cp-hold-copy="pat@example\.com"/s',
+            $html
+        );
+        $this->assertMatchesRegularExpression(
+            '/<a\b[^>]*google\.com\/maps\/search\/[^>]*cp-client-action-btn--address[^>]*data-cp-hold-copy="10 Main Street, Ottawa, ON"/s',
+            $html
+        );
 
         $this->assertStringContainsString('cp-copy-btn', $html);
         $this->assertStringContainsString('cp-client-action-btn--phone', $html);
