@@ -27,6 +27,10 @@ class ClientProjectsIndexViewTest extends TestCase
         $this->assertStringContainsString('cp-client-action-btn--disabled', $blade);
         $this->assertStringContainsString('cp-copy-btn', $blade);
         $this->assertStringContainsString('cp-copy-toast', $blade);
+        $this->assertStringContainsString('cp-client-mobile-fields', $blade);
+        $this->assertStringContainsString('data-cp-hold-copy', $blade);
+        $this->assertStringContainsString('mail.google.com/mail/?authuser=zaninirenovations@gmail.com', $blade);
+        $this->assertStringContainsString('admin-contact-hold.js', $blade);
         $this->assertStringNotContainsString('cp-client-desktop-details', $blade);
     }
 
@@ -40,6 +44,8 @@ class ClientProjectsIndexViewTest extends TestCase
         $this->assertStringContainsString('.cp-client-action-btn', $css);
         $this->assertStringContainsString('.cp-client-action-btn--disabled', $css);
         $this->assertStringContainsString('.cp-copy-toast', $css);
+        $this->assertStringContainsString('.cp-client-mobile-fields', $css);
+        $this->assertStringContainsString('.cp-client-mobile-field', $css);
     }
 
     public function test_header_details_grid_uses_auto_fit_to_prevent_narrow_column_email_wrap(): void

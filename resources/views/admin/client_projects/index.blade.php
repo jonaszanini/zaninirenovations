@@ -219,7 +219,11 @@
                     @php
                       $hasPhone = filled($project->client_phone);
                       $formattedPhone = $hasPhone ? \App\Models\ClientProject::formatPhone($project->client_phone) : null;
+                      $telHref = $hasPhone ? \App\Models\ClientProject::telHref($project->client_phone) : null;
                       $hasEmail = filled($project->client_email);
+                      $gmailHref = $hasEmail
+                        ? 'https://mail.google.com/mail/?authuser=zaninirenovations@gmail.com&view=cm&fs=1&to='.rawurlencode($project->client_email)
+                        : null;
                       $mapsUrl = $project->googleMapsSearchUrl();
                       $hasAddress = filled($project->client_address) && filled($mapsUrl);
                     @endphp
@@ -289,6 +293,37 @@
                                 aria-label="No address provided">
                           <i class="fa fa-map-marker" aria-hidden="true"></i>
                         </button>
+                      @endif
+                    </div>
+
+                    <div class="cp-client-mobile-fields">
+                      @if ($telHref && $formattedPhone)
+                        <a href="{{ $telHref }}"
+                           class="cp-client-mobile-field cp-table-phone"
+                           data-cp-hold-copy="{{ $formattedPhone }}"
+                           draggable="false"
+                           title="Call {{ $formattedPhone }}. Hold to copy."
+                           aria-label="Call {{ $formattedPhone }}. Hold to copy.">{{ $formattedPhone }}</a>
+                      @endif
+                      @if ($gmailHref)
+                        <a href="{{ $gmailHref }}"
+                           class="cp-client-mobile-field"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           data-cp-hold-copy="{{ $project->client_email }}"
+                           draggable="false"
+                           title="Email {{ $project->client_email }} in Gmail. Hold to copy."
+                           aria-label="Email {{ $project->client_email }} in Gmail. Hold to copy.">{{ $project->client_email }}</a>
+                      @endif
+                      @if ($hasAddress)
+                        <a href="{{ $mapsUrl }}"
+                           class="cp-client-mobile-field cp-table-street"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           data-cp-hold-copy="{{ $project->client_address }}"
+                           draggable="false"
+                           title="Open this address in Google Maps. Hold to copy."
+                           aria-label="Open this address in Google Maps. Hold to copy.">{{ $project->client_address }}</a>
                       @endif
                     </div>
                   </div>
@@ -479,7 +514,7 @@
       function shouldIgnore(target) {
         // Don't hijack clicks on real interactive elements inside the row
         // (links, buttons, inputs, selects, action buttons, inline note/status).
-        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions, .cp-inline-note, .cp-inline-status, .cp-status-menu');
+        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions, .cp-client-mobile-fields, .cp-inline-note, .cp-inline-status, .cp-status-menu');
       }
 
       rows.forEach(function (row) {
@@ -1052,3 +1087,7 @@
     })();
   </script>
 @endsection
+
+@push('scripts')
+  <script src="{{ asset('js/admin-contact-hold.js') }}?v={{ @filemtime(public_path('js/admin-contact-hold.js')) ?: time() }}"></script>
+@endpush
