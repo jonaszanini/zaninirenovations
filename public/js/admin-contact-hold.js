@@ -1,7 +1,9 @@
 /**
- * Phone, email, and address links on the projects list (phone widths).
- * A short tap follows the link. A touch hold of about 500ms copies the
- * value and suppresses that tap, the context menu, and text selection.
+ * Hold to copy on contact icons (data-cp-hold-copy).
+ * Touch and pen only. A short tap is left alone so the link can open.
+ * A hold of about 500ms copies the value, shows the Copied toast, and
+ * suppresses that tap, the context menu, and text selection.
+ * Mouse clicks are not handled here.
  * Copy and the "Copied" toast go through AdminCopyValue and AdminToast.
  */
 (function (root, factory) {
@@ -115,32 +117,48 @@
     return { x: ev.clientX || 0, y: ev.clientY || 0 };
   }
 
-  function bind(doc) {
+  function isHoldPointer(ev) {
+    return !!ev && (ev.pointerType === 'touch' || ev.pointerType === 'pen');
+  }
+
+  function bind(doc, env) {
     if (!doc || typeof doc.querySelectorAll !== 'function') return;
+    env = env || null;
     var fields = doc.querySelectorAll('[data-cp-hold-copy]');
     Array.prototype.forEach.call(fields, function (el) {
       if (el.getAttribute('data-cp-hold-bound') === '1') return;
       el.setAttribute('data-cp-hold-bound', '1');
 
-      var session = createSession({
+      var suppressClicksUntil = 0;
+      var sessionOpts = {
         onCopy: function () {
-          copyAndToast(el.getAttribute('data-cp-hold-copy') || '');
+          suppressClicksUntil = Date.now() + 700;
+          copyAndToast(el.getAttribute('data-cp-hold-copy') || '', env);
         },
-      });
+      };
+      if (env && typeof env.setTimer === 'function') sessionOpts.setTimer = env.setTimer;
+      if (env && typeof env.clearTimer === 'function') sessionOpts.clearTimer = env.clearTimer;
+      var session = createSession(sessionOpts);
 
       el.addEventListener('pointerdown', function (ev) {
-        if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+        if (!isHoldPointer(ev)) {
+          session.pointerCancel();
+          return;
+        }
+        if (ev.button != null && ev.button !== 0) return;
         session.pointerDown(pointFromEvent(ev));
         el.classList.add('is-holding');
       });
 
       el.addEventListener('pointermove', function (ev) {
+        if (!isHoldPointer(ev)) return;
         if (session.pointerMove(pointFromEvent(ev)) === 'cancelled') {
           el.classList.remove('is-holding');
         }
       });
 
       el.addEventListener('pointerup', function (ev) {
+        if (!isHoldPointer(ev)) return;
         el.classList.remove('is-holding');
         if (session.pointerUp() === 'suppress') {
           ev.preventDefault();
@@ -148,12 +166,14 @@
         }
       });
 
-      el.addEventListener('pointercancel', function () {
+      el.addEventListener('pointercancel', function (ev) {
+        if (ev && !isHoldPointer(ev)) return;
         session.pointerCancel();
         el.classList.remove('is-holding');
       });
 
       el.addEventListener('contextmenu', function (ev) {
+        if (ev.pointerType === 'mouse') return;
         if (session.contextMenu() === 'suppress') {
           ev.preventDefault();
           ev.stopPropagation();
@@ -165,8 +185,9 @@
       });
 
       el.addEventListener('click', function (ev) {
+        var suppress = session.click() === 'suppress' || Date.now() < suppressClicksUntil;
         ev.stopPropagation();
-        if (session.click() === 'suppress') {
+        if (suppress) {
           ev.preventDefault();
           ev.stopPropagation();
         }

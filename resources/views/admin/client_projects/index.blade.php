@@ -229,8 +229,19 @@
                     @endphp
 
                     <div class="cp-client-actions cp-client-mobile-actions" role="group" aria-label="Client contact actions">
-                      {{-- Phone: click copies to clipboard --}}
-                      @if ($hasPhone)
+                      {{-- Phone: mouse click copies. A touch tap dials. A touch hold copies. --}}
+                      @if ($hasPhone && $telHref)
+                        <a href="{{ $telHref }}"
+                           class="cp-client-action-btn cp-client-action-btn--phone cp-client-action-btn--active cp-copy-btn cp-hold-copy-btn"
+                           data-copy="{{ $project->client_phone }}"
+                           data-copy-label="Phone number"
+                           data-cp-hold-copy="{{ $formattedPhone }}"
+                           draggable="false"
+                           title="Copy phone: {{ $formattedPhone }}"
+                           aria-label="Copy phone {{ $formattedPhone }}">
+                          <i class="fa fa-phone" aria-hidden="true"></i>
+                        </a>
+                      @elseif ($hasPhone)
                         <button type="button"
                                 class="cp-client-action-btn cp-client-action-btn--phone cp-client-action-btn--active cp-copy-btn cp-hold-copy-btn"
                                 data-copy="{{ $project->client_phone }}"
@@ -251,16 +262,20 @@
                         </button>
                       @endif
 
-                      {{-- Email: click copies to clipboard --}}
-                      @if ($hasEmail)
-                        <button type="button"
-                                class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--active cp-copy-btn cp-hold-copy-btn"
-                                data-copy="{{ $project->client_email }}"
-                                data-copy-label="Email"
-                                title="Copy email: {{ $project->client_email }}"
-                                aria-label="Copy email {{ $project->client_email }}">
+                      {{-- Email: mouse click copies. A touch tap opens Gmail. A touch hold copies. --}}
+                      @if ($gmailHref)
+                        <a href="{{ $gmailHref }}"
+                           target="_blank"
+                           rel="noopener noreferrer"
+                           class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--active cp-copy-btn cp-hold-copy-btn"
+                           data-copy="{{ $project->client_email }}"
+                           data-copy-label="Email"
+                           data-cp-hold-copy="{{ $project->client_email }}"
+                           draggable="false"
+                           title="Copy email: {{ $project->client_email }}"
+                           aria-label="Copy email {{ $project->client_email }}">
                           <i class="fa fa-envelope" aria-hidden="true"></i>
-                        </button>
+                        </a>
                       @else
                         <button type="button"
                                 class="cp-client-action-btn cp-client-action-btn--email cp-client-action-btn--disabled"
@@ -273,12 +288,14 @@
                         </button>
                       @endif
 
-                      {{-- Address: click opens Google Maps in a new tab --}}
+                      {{-- Address: click opens Google Maps in a new tab. A touch hold copies. --}}
                       @if ($hasAddress)
                         <a href="{{ $mapsUrl }}"
                            target="_blank"
                            rel="noopener noreferrer"
                            class="cp-client-action-btn cp-client-action-btn--address cp-client-action-btn--active"
+                           data-cp-hold-copy="{{ $project->client_address }}"
+                           draggable="false"
                            title="Open in Google Maps: {{ $project->client_address }}"
                            aria-label="Open {{ $project->client_address }} in Google Maps">
                           <i class="fa fa-map-marker" aria-hidden="true"></i>
@@ -293,37 +310,6 @@
                                 aria-label="No address provided">
                           <i class="fa fa-map-marker" aria-hidden="true"></i>
                         </button>
-                      @endif
-                    </div>
-
-                    <div class="cp-client-mobile-fields">
-                      @if ($telHref && $formattedPhone)
-                        <a href="{{ $telHref }}"
-                           class="cp-client-mobile-field cp-table-phone"
-                           data-cp-hold-copy="{{ $formattedPhone }}"
-                           draggable="false"
-                           title="Call {{ $formattedPhone }}. Hold to copy."
-                           aria-label="Call {{ $formattedPhone }}. Hold to copy.">{{ $formattedPhone }}</a>
-                      @endif
-                      @if ($gmailHref)
-                        <a href="{{ $gmailHref }}"
-                           class="cp-client-mobile-field"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           data-cp-hold-copy="{{ $project->client_email }}"
-                           draggable="false"
-                           title="Email {{ $project->client_email }} in Gmail. Hold to copy."
-                           aria-label="Email {{ $project->client_email }} in Gmail. Hold to copy.">{{ $project->client_email }}</a>
-                      @endif
-                      @if ($hasAddress)
-                        <a href="{{ $mapsUrl }}"
-                           class="cp-client-mobile-field cp-table-street"
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           data-cp-hold-copy="{{ $project->client_address }}"
-                           draggable="false"
-                           title="Open this address in Google Maps. Hold to copy."
-                           aria-label="Open this address in Google Maps. Hold to copy.">{{ $project->client_address }}</a>
                       @endif
                     </div>
                   </div>
@@ -514,7 +500,7 @@
       function shouldIgnore(target) {
         // Don't hijack clicks on real interactive elements inside the row
         // (links, buttons, inputs, selects, action buttons, inline note/status).
-        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions, .cp-client-mobile-fields, .cp-inline-note, .cp-inline-status, .cp-status-menu');
+        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions, .cp-inline-note, .cp-inline-status, .cp-status-menu');
       }
 
       rows.forEach(function (row) {
@@ -1042,10 +1028,43 @@
         });
       }
 
-      // Handle copy buttons (phone & email)
+      // Mouse clicks keep the original copy / maps behavior. A touch or pen
+      // tap follows the icon link (dialer, Gmail, Maps). The ghost click some
+      // browsers fire after a touch must not copy and must not open the link twice.
+      var lastCoarseAt = 0;
+
+      function notePointer(ev, el) {
+        var type = ev && ev.pointerType ? ev.pointerType : '';
+        if (el && type) el.setAttribute('data-cp-last-pointer', type);
+        if (type === 'touch' || type === 'pen') lastCoarseAt = Date.now();
+      }
+
+      function activationKind(ev, el) {
+        var type = (ev && ev.pointerType) || (el && el.getAttribute('data-cp-last-pointer')) || '';
+        if (type === 'touch' || type === 'pen') return 'touch';
+        if (lastCoarseAt && (Date.now() - lastCoarseAt) < 800) return 'ghost';
+        return 'mouse';
+      }
+
+      // Handle copy buttons (phone & email). Desktop click copies.
       var copyBtns = document.querySelectorAll('.cp-copy-btn');
       copyBtns.forEach(function (btn) {
+        btn.addEventListener('pointerdown', function (ev) {
+          notePointer(ev, btn);
+        });
         btn.addEventListener('click', function (ev) {
+          var kind = activationKind(ev, btn);
+          btn.removeAttribute('data-cp-last-pointer');
+          if (kind === 'touch' && btn.tagName === 'A' && btn.getAttribute('href')) {
+            ev.stopPropagation();
+            return;
+          }
+          if (kind === 'ghost') {
+            ev.preventDefault();
+            ev.stopPropagation();
+            return;
+          }
+
           ev.preventDefault();
           ev.stopPropagation();
 
@@ -1068,10 +1087,18 @@
         });
       });
 
-      // Prevent row navigation when clicking address link
+      // Prevent row navigation when clicking address link. Mouse and touch
+      // both follow the maps href. A ghost click after touch does not open it again.
       var addressLinks = document.querySelectorAll('.cp-client-action-btn--address');
       addressLinks.forEach(function (el) {
+        el.addEventListener('pointerdown', function (ev) {
+          notePointer(ev, el);
+        });
         el.addEventListener('click', function (ev) {
+          if (activationKind(ev, el) === 'ghost') {
+            ev.preventDefault();
+          }
+          el.removeAttribute('data-cp-last-pointer');
           ev.stopPropagation();
         });
       });

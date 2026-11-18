@@ -75,6 +75,145 @@ function manualSession(onCopy) {
     assert.ok(toasted, 'copy shows a toast');
     assert.strictEqual(toasted.title, 'Copied');
     assert.strictEqual(toasted.type, 'success');
+    testBind();
     console.log('admin-contact-hold.test.js: ok');
   }, 0);
 })();
+
+function fakeEl(attrs) {
+  const attributes = Object.assign({}, attrs);
+  const listeners = {};
+  return {
+    classList: {
+      add() {},
+      remove() {},
+    },
+    getAttribute(name) {
+      return Object.prototype.hasOwnProperty.call(attributes, name) ? attributes[name] : null;
+    },
+    setAttribute(name, value) {
+      attributes[name] = String(value);
+    },
+    addEventListener(type, fn) {
+      listeners[type] = listeners[type] || [];
+      listeners[type].push(fn);
+    },
+    dispatch(type, ev) {
+      (listeners[type] || []).forEach((fn) => fn(ev));
+    },
+  };
+}
+
+function bindEl(attrs, onCopyText) {
+  const el = fakeEl(attrs);
+  let pending = null;
+  const copies = [];
+  hold.bind({
+    querySelectorAll() {
+      return [el];
+    },
+  }, {
+    setTimer(fn) {
+      pending = fn;
+      return 1;
+    },
+    clearTimer() {
+      pending = null;
+    },
+    window: {
+      AdminCopyValue: {
+        copyText(text) {
+          copies.push(text);
+          if (onCopyText) onCopyText(text);
+          return Promise.resolve();
+        },
+      },
+      AdminToast: { show() {} },
+    },
+  });
+  return {
+    el,
+    copies,
+    fire() {
+      const fn = pending;
+      pending = null;
+      if (fn) fn();
+    },
+    pending() {
+      return pending;
+    },
+  };
+}
+
+function testBind() {
+  const mouse = bindEl({ 'data-cp-hold-copy': 'mouse@example.com' });
+  mouse.el.dispatch('pointerdown', { pointerType: 'mouse', button: 0, clientX: 1, clientY: 1 });
+  assert.strictEqual(mouse.pending(), null, 'a mouse press does not start a hold');
+  const mouseClick = {
+    pointerType: 'mouse',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  mouse.el.dispatch('click', mouseClick);
+  assert.strictEqual(mouseClick.prevented, false, 'a mouse click is not swallowed');
+  assert.deepStrictEqual(mouse.copies, [], 'a mouse click does not copy');
+  const mouseMenu = {
+    pointerType: 'mouse',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  mouse.el.dispatch('contextmenu', mouseMenu);
+  assert.strictEqual(mouseMenu.prevented, false, 'a mouse context menu stays available');
+
+  const tap = bindEl({ 'data-cp-hold-copy': '(613) 555-0100' });
+  tap.el.dispatch('pointerdown', { pointerType: 'touch', button: 0, clientX: 2, clientY: 2 });
+  assert.strictEqual(typeof tap.pending(), 'function', 'a touch starts the hold timer');
+  const tapUp = {
+    pointerType: 'touch',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  tap.el.dispatch('pointerup', tapUp);
+  assert.strictEqual(tapUp.prevented, false, 'a short tap is not cancelled on release');
+  const tapClick = {
+    pointerType: 'touch',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  tap.el.dispatch('click', tapClick);
+  assert.strictEqual(tapClick.prevented, false, 'a short tap can follow the link');
+  assert.deepStrictEqual(tap.copies, [], 'a short tap does not copy');
+
+  const held = bindEl({ 'data-cp-hold-copy': '10 Main Street' });
+  held.el.dispatch('pointerdown', { pointerType: 'touch', button: 0, clientX: 3, clientY: 3 });
+  held.fire();
+  assert.deepStrictEqual(held.copies, ['10 Main Street'], 'a touch hold copies the icon value');
+  const heldUp = {
+    pointerType: 'touch',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  held.el.dispatch('pointerup', heldUp);
+  assert.strictEqual(heldUp.prevented, true, 'release after a hold does not activate the link');
+  const heldClick = {
+    pointerType: 'touch',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  held.el.dispatch('click', heldClick);
+  assert.strictEqual(heldClick.prevented, true, 'the tap after a hold is swallowed');
+  const menu = {
+    pointerType: 'touch',
+    prevented: false,
+    preventDefault() { this.prevented = true; },
+    stopPropagation() {},
+  };
+  held.el.dispatch('contextmenu', menu);
+  assert.strictEqual(menu.prevented, true, 'a touch context menu stays closed');
+}
