@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Automations;
 
+use App\Mail\ClientProjectCommencementEveAdmin;
 use App\Mail\ClientProjectCommencementEveClient;
+use App\Models\ClientCommunicationLog;
 use App\Models\ClientProject;
 use App\Services\ClientSmsService;
 use App\Services\MoceanSmsService;
@@ -17,6 +19,9 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
         parent::setUp();
 
         Carbon::setTestNow(Carbon::parse('2026-06-10 09:00:00', 'America/Toronto'));
+
+        $this->spy(ClientSmsService::class)->shouldReceive('sendToClient')->never();
+        $this->spy(MoceanSmsService::class)->shouldReceive('send')->never();
     }
 
     protected function tearDown(): void
@@ -26,20 +31,10 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
         parent::tearDown();
     }
 
-    public function test_sends_client_email_and_sms_the_day_before_start_date(): void
+    public function test_sends_admin_email_and_does_not_send_client_email_or_sms(): void
     {
         Mail::fake();
-        config(['client_projects.commencement_eve_email_to' => '']);
-
-        $this->mock(MoceanSmsService::class, function ($mock) {
-            $mock->shouldReceive('isConfigured')->andReturn(true);
-        });
-
-        $this->mock(ClientSmsService::class, function ($mock) {
-            $mock->shouldReceive('sendToClient')
-                ->once()
-                ->andReturn(['ok' => true, 'detail' => 'sent', 'intro_sent' => false]);
-        });
+        config(['client_projects.commencement_eve_email_to' => 'admin@example.com']);
 
         $project = ClientProject::factory()->create([
             'start_date' => '2026-06-11',
@@ -53,29 +48,36 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
         $this->artisan('client-projects:notify-commencement-eve')
             ->assertSuccessful();
 
-        Mail::assertSent(ClientProjectCommencementEveClient::class, function ($mail) use ($project) {
-            return $mail->hasTo('client@example.com')
+        Mail::assertSent(ClientProjectCommencementEveAdmin::class, function ($mail) use ($project) {
+            return $mail->hasTo('admin@example.com')
                 && $mail->project->is($project);
         });
+        Mail::assertNotSent(ClientProjectCommencementEveClient::class);
+        Mail::assertSent(ClientProjectCommencementEveAdmin::class, 1);
 
         $project->refresh();
         $this->assertSame('2026-06-11', $project->day_before_start_sent_for_date?->toDateString());
+        $this->assertNoClientReminderWasRecorded($project);
+
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_ADMIN,
+            'recipient' => 'admin@example.com',
+            'status' => ClientCommunicationLog::STATUS_SENT,
+            'direction' => ClientCommunicationLog::DIRECTION_TO_ADMIN,
+        ]);
+
+        $this->artisan('client-projects:notify-commencement-eve')
+            ->assertSuccessful();
+
+        Mail::assertSent(ClientProjectCommencementEveAdmin::class, 1);
+        Mail::assertNotSent(ClientProjectCommencementEveClient::class);
     }
 
-    public function test_marks_sent_when_client_email_succeeds_even_if_sms_fails(): void
+    public function test_marks_sent_when_no_admin_address_is_configured(): void
     {
         Mail::fake();
         config(['client_projects.commencement_eve_email_to' => '']);
-
-        $this->mock(MoceanSmsService::class, function ($mock) {
-            $mock->shouldReceive('isConfigured')->andReturn(true);
-        });
-
-        $this->mock(ClientSmsService::class, function ($mock) {
-            $mock->shouldReceive('sendToClient')
-                ->once()
-                ->andReturn(['ok' => false, 'detail' => 'gateway error', 'intro_sent' => false]);
-        });
 
         $project = ClientProject::factory()->create([
             'start_date' => '2026-06-11',
@@ -88,34 +90,29 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
         $this->artisan('client-projects:notify-commencement-eve')
             ->assertSuccessful();
 
-        Mail::assertSent(ClientProjectCommencementEveClient::class);
+        Mail::assertNothingSent();
+        Mail::assertNotSent(ClientProjectCommencementEveClient::class);
+        Mail::assertNotSent(ClientProjectCommencementEveAdmin::class);
 
         $project->refresh();
-        $this->assertNull($project->day_before_start_sent_for_date);
+        $this->assertSame('2026-06-11', $project->day_before_start_sent_for_date?->toDateString());
+        $this->assertNoClientReminderWasRecorded($project);
+
+        $this->artisan('client-projects:notify-commencement-eve')
+            ->assertSuccessful();
+
+        Mail::assertNothingSent();
     }
 
-    public function test_marks_sent_when_client_sms_succeeds_even_if_admin_email_fails(): void
+    public function test_marks_sent_after_admin_email_fails_so_it_does_not_retry(): void
     {
         config(['client_projects.commencement_eve_email_to' => 'admin@example.com']);
 
         Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('SMTP down'));
 
-        $this->mock(MoceanSmsService::class, function ($mock) {
-            $mock->shouldReceive('isConfigured')->andReturn(true);
-        });
-
-        $this->mock(ClientSmsService::class, function ($mock) {
-            $mock->shouldReceive('sendToClient')
-                ->once()
-                ->andReturn(['ok' => true, 'detail' => 'sent', 'intro_sent' => false]);
-        });
-
         $project = ClientProject::factory()->create([
             'start_date' => '2026-06-11',
-            // No client_email: the client channel under test here is SMS
-            // only, so the (mocked, always-throwing) Mail::to() call is hit
-            // exactly once — for the optional admin email — not twice.
-            'client_email' => null,
+            'client_email' => 'client@example.com',
             'client_phone' => '6135550100',
             'status' => ClientProject::STATUS_IN_PROGRESS,
             'day_before_start_sent_for_date' => null,
@@ -126,29 +123,66 @@ class NotifyClientProjectCommencementEveTest extends IntegrationTestCase
 
         $project->refresh();
         $this->assertSame('2026-06-11', $project->day_before_start_sent_for_date?->toDateString());
-    }
+        $this->assertNoClientReminderWasRecorded($project);
 
-    public function test_does_not_mark_sent_when_client_email_fails(): void
-    {
-        config(['client_projects.commencement_eve_email_to' => '']);
-
-        Mail::shouldReceive('to')->once()->andThrow(new \RuntimeException('SMTP down'));
-
-        $this->mock(MoceanSmsService::class, function ($mock) {
-            $mock->shouldReceive('isConfigured')->andReturn(false);
-        });
-
-        $project = ClientProject::factory()->create([
-            'start_date' => '2026-06-11',
-            'client_email' => 'client@example.com',
-            'status' => ClientProject::STATUS_SCHEDULED,
-            'day_before_start_sent_for_date' => null,
+        $this->assertDatabaseHas('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_ADMIN,
+            'status' => ClientCommunicationLog::STATUS_FAILED,
+        ]);
+        $this->assertDatabaseMissing('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_CLIENT,
+        ]);
+        $this->assertDatabaseMissing('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_SMS,
         ]);
 
         $this->artisan('client-projects:notify-commencement-eve')
             ->assertSuccessful();
+    }
+
+    public function test_dry_run_does_not_send_or_mark(): void
+    {
+        Mail::fake();
+        config(['client_projects.commencement_eve_email_to' => 'admin@example.com']);
+
+        $project = ClientProject::factory()->create([
+            'start_date' => '2026-06-11',
+            'client_email' => 'client@example.com',
+            'client_phone' => '6135550100',
+            'status' => ClientProject::STATUS_SCHEDULED,
+            'day_before_start_sent_for_date' => null,
+        ]);
+
+        $this->artisan('client-projects:notify-commencement-eve', ['--dry-run' => true])
+            ->expectsOutputToContain('Client email and SMS are disabled.')
+            ->expectsOutputToContain('admin email → admin@example.com')
+            ->doesntExpectOutputToContain('client@example.com')
+            ->assertSuccessful();
+
+        Mail::assertNothingSent();
 
         $project->refresh();
         $this->assertNull($project->day_before_start_sent_for_date);
+        $this->assertNoClientReminderWasRecorded($project);
+    }
+
+    private function assertNoClientReminderWasRecorded(ClientProject $project): void
+    {
+        $this->assertSame(
+            0,
+            $project->statusHistory()->where('note', 'like', '%reminder sent%')->count()
+        );
+
+        $this->assertDatabaseMissing('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_CLIENT,
+        ]);
+        $this->assertDatabaseMissing('client_communication_logs', [
+            'client_project_id' => $project->id,
+            'reason' => ClientCommunicationLog::REASON_COMMENCEMENT_EVE_SMS,
+        ]);
     }
 }
