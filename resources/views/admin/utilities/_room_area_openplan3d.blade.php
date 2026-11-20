@@ -35,8 +35,7 @@
 
       <div class="util-ra-openplan3d-titles">
         <div class="util-ra-openplan3d-title-row">
-          <h1 class="util-ra-openplan3d-title">{{ $pageTitle }}</h1>
-          <span class="util-ra-badge util-ra-badge--openplan3d">openPlan3D</span>
+          <h1 class="util-ra-openplan3d-title visually-hidden">{{ $pageTitle }}</h1>
           <span id="openplan3d-dirty-badge" class="openplan3d-dirty-badge" hidden title="Unsaved changes">
             <span class="openplan3d-dirty-dot"></span> Unsaved
           </span>
@@ -49,7 +48,7 @@
 
     {{-- Project & Room Navigation Controls --}}
     <div class="util-ra-openplan3d-header__selectors">
-      <div class="openplan3d-control-group">
+      <div class="openplan3d-control-group openplan3d-control-group--project">
         <label for="openplan3d-project-select" class="openplan3d-control-label">Project</label>
         <select id="openplan3d-project-select" class="admin-input openplan3d-select" aria-label="Select Project">
           <option value="">— Select Project —</option>
@@ -66,6 +65,19 @@
       <div class="openplan3d-control-group openplan3d-control-group--name">
         <label for="openplan3d-room-name" class="openplan3d-control-label">Room Name</label>
         <input type="text" id="openplan3d-room-name" class="admin-input openplan3d-input" placeholder="Room name" maxlength="120" aria-label="Room Name">
+      </div>
+    </div>
+
+    {{-- Takeoffs Toggle + Area Summary in Header --}}
+    <div class="openplan3d-header-takeoffs" id="openplan3d-header-takeoffs">
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="false" aria-controls="openplan3d-takeoffs-strip" aria-label="Show or hide takeoff metrics and area zones" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
+        <i class="fa fa-bar-chart" aria-hidden="true"></i>
+        <span>Takeoffs</span>
+        <i class="fa fa-chevron-up openplan3d-takeoffs-chevron" aria-hidden="true"></i>
+      </button>
+      <div class="openplan3d-takeoffs-summary" id="openplan3d-takeoffs-summary" aria-live="polite">
+        <span class="openplan3d-takeoffs-summary__floor" id="openplan3d-takeoffs-summary-floor"></span>
+        <span class="openplan3d-takeoffs-summary__zones" id="openplan3d-takeoffs-summary-zones"></span>
       </div>
     </div>
 
@@ -112,11 +124,6 @@
       </div>
 
       <div class="openplan3d-header-actions__group openplan3d-header-actions__group--util" role="group" aria-label="Editor utilities">
-      @include('admin.partials.info_tip', [
-        'tipLabel' => 'openPlan3D engine preview',
-        'tipText' => 'openPlan3D is a self-hosted 2D/3D floor plan editor running completely offline from our server. All measurements, floor plans, and quotes remain securely stored in your database.',
-      ])
-
       <button type="button" class="admin-btn admin-btn--ghost openplan3d-tool-btn openplan3d-tool-btn--icon openplan3d-instant-tip" id="openplan3d-theme-toggle" aria-label="Toggle dark/light theme" data-openplan3d-tip="Toggle dark/light theme">
         <i class="fa fa-moon-o" data-theme-icon="moon" aria-hidden="true"></i>
         <i class="fa fa-sun-o" data-theme-icon="sun" aria-hidden="true" hidden></i>
@@ -136,18 +143,9 @@
     </div>
   </header>
 
-  {{-- Compact takeoffs HUD strip (collapsed by default for max canvas) --}}
+  {{-- Collapsible takeoffs row (toggled from header Takeoffs button) --}}
   <div class="openplan3d-takeoffs-strip is-collapsed" id="openplan3d-takeoffs-strip">
     <div class="openplan3d-takeoffs-strip__bar">
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="false" aria-controls="openplan3d-takeoffs-body" aria-label="Show or hide takeoff metrics and area zones" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
-        <i class="fa fa-bar-chart" aria-hidden="true"></i>
-        <span>Takeoffs</span>
-        <i class="fa fa-chevron-up openplan3d-takeoffs-chevron" aria-hidden="true"></i>
-      </button>
-      <div class="openplan3d-takeoffs-summary" id="openplan3d-takeoffs-summary" aria-live="polite">
-        <span class="openplan3d-takeoffs-summary__floor" id="openplan3d-takeoffs-summary-floor"></span>
-        <span class="openplan3d-takeoffs-summary__zones" id="openplan3d-takeoffs-summary-zones"></span>
-      </div>
       <div class="openplan3d-metrics-ribbon" id="openplan3d-metrics-ribbon">
     <div class="openplan3d-metric-card">
       <span class="openplan3d-metric-label">Floor Area</span>
@@ -415,8 +413,8 @@
 }
 
 .util-ra-openplan3d-header__selectors {
-  max-width: 460px;
-  flex: 1 1 260px;
+  max-width: 100%;
+  flex: 0 1 auto;
   overflow: hidden;
   background: var(--admin-surface-hover, rgba(15, 23, 42, 0.04));
   border: 1px solid var(--admin-border, #e2e8f0);
@@ -433,10 +431,20 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.1rem;
-  border-radius: 8px;
-  border: 1px solid var(--admin-border, #e2e8f0);
-  background: var(--admin-surface, #ffffff);
+  border: 0;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.openplan3d-header-actions__group + .openplan3d-header-actions__group::before {
+  content: '';
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  background: var(--admin-border, #cbd5e1);
+  margin: 0 0.2rem;
+  flex-shrink: 0;
 }
 
 .openplan3d-tool-btn--icon {
@@ -564,10 +572,23 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   visibility: visible;
 }
 
+.openplan3d-header-takeoffs {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+  padding-left: 0.5rem;
+  border-left: 1px solid var(--admin-border, #e2e8f0);
+}
+
 .openplan3d-takeoffs-strip {
   flex: 0 0 auto;
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
   background: var(--admin-surface-hover, #f1f5f9);
+}
+
+.openplan3d-takeoffs-strip.is-collapsed {
+  display: none;
 }
 
 .openplan3d-takeoffs-strip__bar {
@@ -575,24 +596,27 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 0.25rem 0.55rem;
-  padding: 0.2rem 0.65rem 0.25rem;
+  padding: 0.4rem 0.65rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
   min-height: 0;
 }
 
 .openplan3d-takeoffs-toggle {
   flex: 0 0 auto;
+  min-height: 34px;
+  padding: 0.25rem 0.6rem;
 }
 
 .openplan3d-takeoffs-summary {
-  display: flex;
-  flex-direction: column;
-  gap: 0.05rem;
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.35rem;
   line-height: 1.25;
-  font-size: max(0.6875rem, 11px);
+  font-size: max(0.75rem, 12px);
   color: var(--admin-muted, #64748b);
-  flex: 0 1 auto;
-  min-width: max-content;
-  max-width: 100%;
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .openplan3d-takeoffs-summary__floor {
@@ -604,29 +628,18 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   font-size: 0.72rem;
 }
 
+.openplan3d-takeoffs-summary__zones::before {
+  content: '· ';
+}
+
 .openplan3d-takeoffs-toggle .openplan3d-takeoffs-chevron {
   font-size: 0.7rem;
   margin-left: 0.15rem;
   transition: transform 0.15s ease;
 }
 
-.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-chevron {
+.openplan3d-takeoffs-toggle[aria-expanded="false"] .openplan3d-takeoffs-chevron {
   transform: rotate(180deg);
-}
-
-.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-strip__bar {
-  align-items: center;
-  padding: 0.15rem 0.65rem;
-}
-
-.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-summary {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.45rem;
-}
-
-.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-summary__zones::before {
-  content: '· ';
 }
 
 .openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-body,
@@ -679,7 +692,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .util-ra-openplan3d-header__primary {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0;
 }
 
 .util-ra-openplan3d-back {
@@ -704,6 +717,23 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   align-items: center;
   gap: 0.4rem;
   white-space: nowrap;
+}
+
+.util-ra-openplan3d-title.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.openplan3d-dirty-badge,
+.util-ra-openplan3d-sub {
+  margin-left: 0.45rem;
 }
 
 .util-ra-openplan3d-title {
@@ -758,8 +788,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex: 1 1 260px;
-  max-width: 460px;
+  flex: 0 1 auto;
+  max-width: 100%;
   min-width: 0;
   overflow: hidden;
 }
@@ -767,14 +797,9 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .openplan3d-control-group {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  flex: 1 1 0;
-  min-width: 82px;
-}
-
-.openplan3d-control-group--name {
-  flex: 1.25 1 0;
-  min-width: 108px;
+  gap: 0.28rem;
+  flex: 0 1 auto;
+  min-width: 0;
 }
 
 .openplan3d-control-label {
@@ -782,10 +807,12 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   font-weight: 600;
   color: var(--admin-text-muted, #64748b);
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .openplan3d-select,
 .openplan3d-input {
+  box-sizing: border-box;
   min-height: 34px;
   padding: 0.25rem 0.5rem;
   font-size: 0.84rem;
@@ -793,8 +820,14 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   border: 1px solid var(--admin-border, #cbd5e1);
   background: var(--admin-input-bg, #ffffff);
   color: var(--admin-text, #1e293b);
-  width: 100%;
+  width: auto;
+  flex: 0 1 auto;
+  max-width: 100%;
   min-width: 0;
+}
+
+.openplan3d-select {
+  text-overflow: ellipsis;
 }
 
 .util-ra-openplan3d-header__actions {
@@ -1106,10 +1139,11 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 .openplan3d-metric-card {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 0.12rem 0.18rem;
-  padding: 0.08rem 0.32rem;
+  gap: 0.12rem 0.22rem;
+  min-height: 28px;
+  padding: 0.16rem 0.42rem;
   background: var(--admin-card-bg, #ffffff);
   border: 1px solid var(--admin-border, #cbd5e1);
   border-radius: 5px;
@@ -1341,9 +1375,20 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   }
 }
 
-@media (max-width: 1360px) {
-  .openplan3d-control-label {
+@media (max-width: 1400px) {
+  .openplan3d-takeoffs-summary__zones {
     display: none;
+  }
+}
+
+@media (max-width: 1360px) {
+  .openplan3d-control-label,
+  .util-ra-openplan3d-back span {
+    display: none;
+  }
+  .util-ra-openplan3d-back {
+    padding: 0 0.5rem;
+    justify-content: center;
   }
 }
 
@@ -1353,10 +1398,20 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     gap: 0.45rem;
   }
   .util-ra-openplan3d-header__selectors {
-    order: 3;
-    flex-basis: 100%;
+    order: 2;
+    flex: 0 1 100%;
+    width: 100%;
     max-width: 100%;
     margin-top: 0.15rem;
+  }
+  .openplan3d-header-takeoffs {
+    order: 3;
+    width: 100%;
+    border-left: 0;
+    padding-left: 0;
+  }
+  .openplan3d-takeoffs-summary__zones {
+    display: inline;
   }
 }
 
@@ -1460,6 +1515,11 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     gap: 2px;
   }
 
+  .openplan3d-header-actions__group + .openplan3d-header-actions__group::before {
+    height: 24px;
+    margin: 0 1px;
+  }
+
   .openplan3d-save-btn {
     position: fixed;
     top: 6px;
@@ -1473,13 +1533,17 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
   .openplan3d-tool-btn,
   .openplan3d-draw-toggle__btn,
-  .openplan3d-takeoffs-toggle,
   .openplan3d-header-actions .admin-info-tip-wrap,
   .openplan3d-header-actions .admin-info-tip {
     min-width: 44px;
     min-height: 44px;
     padding: 0;
     justify-content: center;
+  }
+
+  .openplan3d-takeoffs-toggle {
+    min-height: 44px;
+    padding: 0 0.65rem;
   }
 
   .openplan3d-draw-toggle__btn {
@@ -1779,8 +1843,8 @@ body.admin-dark .openplan3d-zones-icon-btn:hover,
 html.admin-dark .openplan3d-metrics-ribbon,
 body.admin-dark .openplan3d-metrics-ribbon,
 .admin-dark .openplan3d-metrics-ribbon {
-  background: #070b12;
-  border-bottom: 1px solid #1e293b;
+  background: transparent;
+  border-bottom: none;
 }
 
 html.admin-dark .openplan3d-metric-card,
@@ -1888,6 +1952,53 @@ body.admin-dark .util-ra-openplan3d-header__selectors,
 .admin-dark .util-ra-openplan3d-header__selectors {
   background: rgba(15, 23, 42, 0.72);
   border-color: #1e293b;
+}
+
+html.admin-dark .openplan3d-header-takeoffs,
+body.admin-dark .openplan3d-header-takeoffs,
+.admin-dark .openplan3d-header-takeoffs {
+  border-left-color: #1e293b;
+}
+
+html.admin-dark .openplan3d-header-actions__group + .openplan3d-header-actions__group::before,
+body.admin-dark .openplan3d-header-actions__group + .openplan3d-header-actions__group::before,
+.admin-dark .openplan3d-header-actions__group + .openplan3d-header-actions__group::before {
+  background: #334155;
+}
+
+html.admin-dark .openplan3d-takeoffs-toggle,
+body.admin-dark .openplan3d-takeoffs-toggle,
+.admin-dark .openplan3d-takeoffs-toggle {
+  background: #1e293b;
+  border-color: #334155;
+  color: #e2e8f0;
+}
+
+html.admin-dark .openplan3d-takeoffs-toggle:hover,
+body.admin-dark .openplan3d-takeoffs-toggle:hover,
+.admin-dark .openplan3d-takeoffs-toggle:hover {
+  background: #334155;
+  border-color: #475569;
+  color: #ffffff;
+}
+
+html.admin-dark .openplan3d-takeoffs-summary,
+body.admin-dark .openplan3d-takeoffs-summary,
+.admin-dark .openplan3d-takeoffs-summary {
+  color: #94a3b8;
+}
+
+html.admin-dark .openplan3d-takeoffs-summary__floor,
+body.admin-dark .openplan3d-takeoffs-summary__floor,
+.admin-dark .openplan3d-takeoffs-summary__floor {
+  color: #f1f5f9;
+}
+
+html.admin-dark .openplan3d-takeoffs-strip,
+body.admin-dark .openplan3d-takeoffs-strip,
+.admin-dark .openplan3d-takeoffs-strip {
+  background: #0b1220;
+  border-bottom-color: #1e293b;
 }
 
 html.admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer,

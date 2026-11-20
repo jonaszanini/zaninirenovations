@@ -119,11 +119,15 @@
     'groups'
   ];
 
-  function normalizeFloor(floor) {
-    if (!floor || typeof floor !== 'object') return { walls: [], rooms: [], doors: [], windows: [] };
+  function normalizeFloor(floor, index) {
+    var defaultName = 'Floor ' + ((index || 0) + 1);
+    if (!floor || typeof floor !== 'object') return { name: defaultName, walls: [], rooms: [], doors: [], windows: [] };
     var next = {};
     for (var key in floor) {
       if (Object.prototype.hasOwnProperty.call(floor, key)) next[key] = floor[key];
+    }
+    if (!next.name || !String(next.name).trim()) {
+      next.name = defaultName;
     }
     for (var i = 0; i < FLOOR_ARRAY_KEYS.length; i++) {
       var k = FLOOR_ARRAY_KEYS[i];
@@ -146,7 +150,7 @@
     } else if (Array.isArray(p.walls) || Array.isArray(p.rooms)) {
       floors = [p];
     }
-    p.floors = floors.map(function (floor) { return normalizeFloor(floor); });
+    p.floors = floors.map(function (floor, idx) { return normalizeFloor(floor, idx); });
     if (!p.activeFloorId && p.floors[0] && p.floors[0].id) {
       p.activeFloorId = p.floors[0].id;
     }
