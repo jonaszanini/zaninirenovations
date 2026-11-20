@@ -561,6 +561,7 @@
     var modalBody = doc.getElementById('openplan3d-modal-body');
     var modalInputWrap = doc.getElementById('openplan3d-modal-input-wrap');
     var modalInput = doc.getElementById('openplan3d-modal-input');
+    var modalPlanNameInput = doc.getElementById('openplan3d-modal-plan-name');
     var modalLink = doc.getElementById('openplan3d-modal-link');
     var modalActions = doc.getElementById('openplan3d-modal-actions');
     var modalCancel = doc.getElementById('openplan3d-modal-cancel');
@@ -691,7 +692,12 @@
         if (modalLinkCancel) modalLinkCancel.hidden = mode !== 'save-destination';
         if (modalCancel) modalCancel.hidden = !!opts.hideCancel;
         if (modalConfirm) modalConfirm.textContent = opts.confirmLabel || (mode === 'prompt' ? 'Continue' : 'OK');
-        if (mode === 'save-destination') fillClientProjectSelect();
+        if (mode === 'save-destination') {
+          fillClientProjectSelect();
+          if (modalPlanNameInput) {
+            modalPlanNameInput.value = ((roomNameInput && roomNameInput.value) || '').trim() || 'Room 1';
+          }
+        }
         if (modalLinkHead) modalLinkHead.hidden = mode !== 'save-destination';
         if (modalClientFieldLabel) {
           modalClientFieldLabel.textContent = mode === 'zone-picker' ? 'Target zone' : 'Client project';
@@ -721,9 +727,16 @@
             modalInput.select();
             return;
           }
-          if (mode === 'save-destination' && modalLinkBtn) {
-            modalLinkBtn.focus();
-            return;
+          if (mode === 'save-destination') {
+            if (modalPlanNameInput) {
+              modalPlanNameInput.focus();
+              modalPlanNameInput.select();
+              return;
+            }
+            if (modalLinkBtn) {
+              modalLinkBtn.focus();
+              return;
+            }
           }
           if (mode === 'zone-picker' && modalClientSelect) {
             modalClientSelect.focus();
@@ -1493,7 +1506,7 @@
     }
 
     function ensureProjectForSave(choice) {
-      var name = ((roomNameInput && roomNameInput.value) || 'Room plans').trim() || 'Room plans';
+      var name = ((choice && choice.planName) || (roomNameInput && roomNameInput.value) || 'Room plans').trim() || 'Room plans';
       if (choice && choice.action === 'link') {
         var clientId = parseInt(choice.clientProjectId, 10);
         if (!clientId) {
@@ -1800,6 +1813,11 @@
             return null;
           }
 
+          if (choice && choice.planName) {
+            if (roomNameInput) roomNameInput.value = choice.planName;
+            if (currentRoom) currentRoom.name = choice.planName;
+          }
+
           var projectPromise = needsDestinationChoice()
             ? ensureProjectForSave(choice)
             : Promise.resolve(true);
@@ -1834,9 +1852,23 @@
         finishModal(true);
       });
     }
+    function readModalPlanNameOrFocus() {
+      if (!modalPlanNameInput) return null;
+      var typed = String(modalPlanNameInput.value || '').trim();
+      if (!typed) {
+        modalPlanNameInput.focus();
+        return false;
+      }
+      return typed;
+    }
     if (modalStandaloneBtn) {
       modalStandaloneBtn.addEventListener('click', function () {
-        finishModal({ action: 'standalone' });
+        var typedName = readModalPlanNameOrFocus();
+        if (typedName === false) return;
+        finishModal({
+          action: 'standalone',
+          planName: typedName || undefined
+        });
       });
     }
     if (modalLinkCancel) {
@@ -1849,10 +1881,23 @@
           if (modalClientSelect) modalClientSelect.focus();
           return;
         }
+        var typedName = readModalPlanNameOrFocus();
+        if (typedName === false) return;
         finishModal({
           action: 'link',
-          clientProjectId: clientProjectId
+          clientProjectId: clientProjectId,
+          planName: typedName || undefined
         });
+      });
+    }
+    if (modalPlanNameInput) {
+      modalPlanNameInput.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var clientProjectId = modalClientSelect ? String(modalClientSelect.value || '').trim() : '';
+          if (clientProjectId && modalLinkBtn) modalLinkBtn.click();
+          else if (modalStandaloneBtn) modalStandaloneBtn.click();
+        }
       });
     }
     if (doc) {

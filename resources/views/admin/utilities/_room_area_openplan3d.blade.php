@@ -136,37 +136,10 @@
     </div>
   </header>
 
-  {{-- Collapsible Room & Finish Settings Drawer --}}
-  <div class="openplan3d-settings-drawer" id="openplan3d-settings-drawer" hidden>
-    <div class="openplan3d-settings-grid">
-      <div class="admin-form-group openplan3d-setting-item">
-        <label for="ra-wall-height">Wall Height (ft)</label>
-        <input type="number" step="0.1" min="1" max="25" id="ra-wall-height" class="admin-input" value="8">
-      </div>
-      <div class="admin-form-group openplan3d-setting-item">
-        <label for="ra-ceiling-height">Ceiling Height (ft)</label>
-        <input type="number" step="0.1" min="1" max="25" id="ra-ceiling-height" class="admin-input" value="8">
-      </div>
-      <div class="admin-form-group openplan3d-setting-item">
-        <label for="ra-floor-waste">Flooring Waste (%)</label>
-        <input type="number" step="1" min="0" max="100" id="ra-floor-waste" class="admin-input" value="10">
-      </div>
-      <div class="admin-form-group openplan3d-setting-item">
-        <label for="ra-floor-box">Box Size (sf)</label>
-        <input type="number" step="0.5" min="1" max="200" id="ra-floor-box" class="admin-input" value="20">
-      </div>
-      <div class="openplan3d-setting-item openplan3d-setting-item--close">
-        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="openplan3d-settings-close">
-          <i class="fa fa-times" aria-hidden="true"></i> Close
-        </button>
-      </div>
-    </div>
-  </div>
-
-  {{-- Compact takeoffs strip (metrics + area zones) --}}
-  <div class="openplan3d-takeoffs-strip" id="openplan3d-takeoffs-strip">
+  {{-- Compact takeoffs HUD strip (collapsed by default for max canvas) --}}
+  <div class="openplan3d-takeoffs-strip is-collapsed" id="openplan3d-takeoffs-strip">
     <div class="openplan3d-takeoffs-strip__bar">
-      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="true" aria-controls="openplan3d-takeoffs-body" aria-label="Show or hide takeoff metrics and area zones" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm openplan3d-takeoffs-toggle openplan3d-instant-tip" id="openplan3d-takeoffs-toggle" aria-expanded="false" aria-controls="openplan3d-takeoffs-body" aria-label="Show or hide takeoff metrics and area zones" data-openplan3d-tip="Show or hide takeoff metrics and area zones">
         <i class="fa fa-bar-chart" aria-hidden="true"></i>
         <span>Takeoffs</span>
         <i class="fa fa-chevron-up openplan3d-takeoffs-chevron" aria-hidden="true"></i>
@@ -294,27 +267,7 @@
     </div>
   </div>
 
-  {{-- Feedback / Toast Message Box --}}
-  <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
-
-  <div id="openplan3d-noscale-warning" class="openplan3d-noscale-warning" hidden role="status">
-    <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
-    <span>This room has no scale. Measurements may be wrong until scale is set.</span>
-    @include('admin.partials.info_tip', [
-      'tipLabel' => 'Room scale',
-      'tipText' => 'Scale converts the drawing to real-world feet. openPlan3D plans that include a unit (cm, ft, in) already have scale. Set scale before trusting measurements or quotes.',
-    ])
-  </div>
-
-  <div id="openplan3d-geometry-warning" class="openplan3d-geometry-warning" hidden role="status">
-    <i class="fa fa-info-circle" aria-hidden="true"></i>
-    <span data-openplan3d-geometry-text>Room geometry could not be measured. Fix the outline in the editor before saving or quoting.</span>
-    @include('admin.partials.info_tip', [
-      'tipLabel' => 'Room outline',
-      'tipText' => 'Self-crossing or invalid corners prevent area and wall takeoffs. Adjust walls until the shape is a simple closed outline, then save the plan again.',
-    ])
-  </div>
-
+  {{-- Modal Dialog --}}
   <div id="openplan3d-modal" class="openplan3d-modal" hidden>
     <div class="openplan3d-modal-backdrop" data-openplan3d-modal-dismiss tabindex="-1" aria-hidden="true"></div>
     <div class="openplan3d-modal-panel" role="dialog" aria-modal="true" aria-labelledby="openplan3d-modal-title">
@@ -325,6 +278,10 @@
         <input type="text" id="openplan3d-modal-input" class="admin-input" maxlength="120">
       </label>
       <div id="openplan3d-modal-link" class="openplan3d-modal-link" hidden>
+        <div class="openplan3d-modal-field openplan3d-modal-plan-name-field" id="openplan3d-modal-plan-name-wrap">
+          <label class="openplan3d-modal-plan-name-label" for="openplan3d-modal-plan-name">Room / Plan name</label>
+          <input type="text" id="openplan3d-modal-plan-name" class="admin-input" maxlength="120" placeholder="Enter room or plan name" aria-label="Room or plan name">
+        </div>
         <div class="openplan3d-modal-link-head">
           <span class="openplan3d-modal-field-label">Client project</span>
           @include('admin.partials.info_tip', [
@@ -349,8 +306,58 @@
       </div>
     </div>
   </div>
-  {{-- Iframe Container --}}
+  {{-- Iframe Container with floating HUD overlays --}}
   <main class="util-ra-openplan3d-frame-container" id="openplan3d-container">
+    <div class="openplan3d-floating-overlays" aria-live="polite">
+      {{-- Collapsible Room & Finish Settings Floating Panel --}}
+      <div class="openplan3d-settings-drawer" id="openplan3d-settings-drawer" hidden>
+        <div class="openplan3d-settings-grid">
+          <div class="admin-form-group openplan3d-setting-item">
+            <label for="ra-wall-height">Wall Height (ft)</label>
+            <input type="number" step="0.1" min="1" max="25" id="ra-wall-height" class="admin-input" value="8">
+          </div>
+          <div class="admin-form-group openplan3d-setting-item">
+            <label for="ra-ceiling-height">Ceiling Height (ft)</label>
+            <input type="number" step="0.1" min="1" max="25" id="ra-ceiling-height" class="admin-input" value="8">
+          </div>
+          <div class="admin-form-group openplan3d-setting-item">
+            <label for="ra-floor-waste">Flooring Waste (%)</label>
+            <input type="number" step="1" min="0" max="100" id="ra-floor-waste" class="admin-input" value="10">
+          </div>
+          <div class="admin-form-group openplan3d-setting-item">
+            <label for="ra-floor-box">Box Size (sf)</label>
+            <input type="number" step="0.5" min="1" max="200" id="ra-floor-box" class="admin-input" value="20">
+          </div>
+          <div class="openplan3d-setting-item openplan3d-setting-item--close">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="openplan3d-settings-close">
+              <i class="fa fa-times" aria-hidden="true"></i> Close
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {{-- Feedback / Toast Message Box --}}
+      <div id="openplan3d-feedback" class="openplan3d-feedback" hidden role="alert" aria-live="polite"></div>
+
+      <div id="openplan3d-noscale-warning" class="openplan3d-noscale-warning" hidden role="status">
+        <i class="fa fa-exclamation-triangle" aria-hidden="true"></i>
+        <span>This room has no scale. Measurements may be wrong until scale is set.</span>
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Room scale',
+          'tipText' => 'Scale converts the drawing to real-world feet. openPlan3D plans that include a unit (cm, ft, in) already have scale. Set scale before trusting measurements or quotes.',
+        ])
+      </div>
+
+      <div id="openplan3d-geometry-warning" class="openplan3d-geometry-warning" hidden role="status">
+        <i class="fa fa-info-circle" aria-hidden="true"></i>
+        <span data-openplan3d-geometry-text>Room geometry could not be measured. Fix the outline in the editor before saving or quoting.</span>
+        @include('admin.partials.info_tip', [
+          'tipLabel' => 'Room outline',
+          'tipText' => 'Self-crossing or invalid corners prevent area and wall takeoffs. Adjust walls until the shape is a simple closed outline, then save the plan again.',
+        ])
+      </div>
+    </div>
+
     <iframe
       id="openplan3d-iframe"
       src="/vendor/openplan3d-h1/editor/index.html?v={{ @filemtime(public_path('vendor/openplan3d-h1/editor/index.html')) ?: time() }}"
@@ -380,15 +387,16 @@
 .util-ra-openplan3d-header {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.4rem 0.75rem;
+  gap: 0.45rem;
+  padding: 0.32rem 0.65rem;
   background: var(--admin-surface, #f8fafc);
   border-bottom: 1px solid var(--admin-border, #e2e8f0);
   flex: 0 0 auto;
-  min-height: 0;
+  min-height: 52px;
+  z-index: 30;
 }
 
 .util-ra-openplan3d-header__primary,
@@ -396,14 +404,19 @@
 .util-ra-openplan3d-header__actions {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.45rem;
+  flex-wrap: nowrap;
+  gap: 0.4rem;
   flex: 0 1 auto;
   min-width: 0;
 }
 
 .util-ra-openplan3d-header__selectors {
   max-width: 100%;
+  flex: 1 1 auto;
+  background: var(--admin-surface-hover, rgba(15, 23, 42, 0.04));
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.16rem 0.45rem;
 }
 
 .openplan3d-header-actions {
@@ -711,24 +724,27 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .util-ra-openplan3d-header__selectors {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex: 1;
-  max-width: 650px;
+  gap: 0.4rem;
+  flex: 1 1 auto;
+  max-width: 540px;
+  min-width: 0;
 }
 
 .openplan3d-control-group {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  flex: 1;
+  gap: 0.25rem;
+  flex: 1 1 0;
+  min-width: 82px;
 }
 
 .openplan3d-control-group--name {
-  flex: 1.2;
+  flex: 1.25 1 0;
+  min-width: 108px;
 }
 
 .openplan3d-control-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--admin-text-muted, #64748b);
   white-space: nowrap;
@@ -736,20 +752,21 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 .openplan3d-select,
 .openplan3d-input {
-  min-height: 38px;
-  padding: 0.35rem 0.6rem;
-  font-size: 0.88rem;
-  border-radius: 6px;
+  min-height: 34px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.84rem;
+  border-radius: 7px;
   border: 1px solid var(--admin-border, #cbd5e1);
   background: var(--admin-input-bg, #ffffff);
   color: var(--admin-text, #1e293b);
   width: 100%;
+  min-width: 0;
 }
 
 .util-ra-openplan3d-header__actions {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .openplan3d-tool-btn,
@@ -757,12 +774,12 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 .openplan3d-save-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  min-height: 44px;
-  padding: 0.5rem 0.85rem;
-  font-size: 0.88rem;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0.38rem 0.68rem;
+  font-size: 0.84rem;
   white-space: nowrap;
-  border-radius: 6px;
+  border-radius: 8px;
   text-decoration: none;
   cursor: pointer;
 }
@@ -772,12 +789,37 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   cursor: not-allowed;
 }
 
+/* Floating Overlays over Canvas (settings + feedback + warnings) */
+.openplan3d-floating-overlays {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 45;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: min(720px, calc(100% - 24px));
+  pointer-events: none;
+}
+
+.openplan3d-floating-overlays > * {
+  pointer-events: auto;
+  width: 100%;
+  border-radius: 10px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.22);
+}
+
+.openplan3d-floating-overlays [hidden] {
+  display: none !important;
+}
+
 /* Settings Drawer */
 .openplan3d-settings-drawer {
   background: var(--admin-card-bg, #ffffff);
-  border-bottom: 1px solid var(--admin-border, #e2e8f0);
-  padding: 0.6rem 1rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--admin-border, #e2e8f0);
+  padding: 0.65rem 0.9rem;
 }
 
 .openplan3d-settings-grid {
@@ -1199,7 +1241,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   margin-bottom: 0.75rem;
 }
 
-.openplan3d-modal-field-label {
+.openplan3d-modal-field-label,
+.openplan3d-modal-plan-name-label {
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--admin-muted, #64748b);
@@ -1710,8 +1753,25 @@ body.admin-dark .openplan3d-modal-body,
 .admin-dark .openplan3d-modal-body,
 html.admin-dark .openplan3d-modal-field-label,
 body.admin-dark .openplan3d-modal-field-label,
-.admin-dark .openplan3d-modal-field-label {
+.admin-dark .openplan3d-modal-field-label,
+html.admin-dark .openplan3d-modal-plan-name-label,
+body.admin-dark .openplan3d-modal-plan-name-label,
+.admin-dark .openplan3d-modal-plan-name-label {
   color: var(--admin-muted, #94a3b8);
+}
+
+html.admin-dark .util-ra-openplan3d-header__selectors,
+body.admin-dark .util-ra-openplan3d-header__selectors,
+.admin-dark .util-ra-openplan3d-header__selectors {
+  background: rgba(15, 23, 42, 0.72);
+  border-color: #1e293b;
+}
+
+html.admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer,
+body.admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer,
+.admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer {
+  border-color: #334155;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
 }
 
 html.admin-dark .openplan3d-modal[hidden],
