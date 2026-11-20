@@ -1445,7 +1445,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 
 @media (max-width: 640px) {
   .util-ra-openplan3d-wrap {
-    padding-bottom: 56px;
+    padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px));
   }
 
   .util-ra-openplan3d-header {
@@ -1495,10 +1495,10 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     left: 0;
     right: 0;
     z-index: 60;
-    min-height: 56px;
+    min-height: calc(56px + env(safe-area-inset-bottom, 0px));
     width: 100%;
     max-width: 100%;
-    padding: 6px;
+    padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
     background: var(--admin-surface, #f8fafc);
     border-top: 1px solid var(--admin-border, #e2e8f0);
     justify-content: space-between;
