@@ -752,7 +752,7 @@
       '#openplan3d-zanini-sidebar-reopen:hover{border-color:#38bdf8;color:#38bdf8;}',
       '#openplan3d-zanini-sidebar-reopen[hidden]{display:none!important;}',
       '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse,#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}}',
-      '@media (max-width:519px){.zanini-sidebar-panel{z-index:10060!important;padding-bottom:64px!important;}#openplan3d-zanini-finish-host{position:relative;z-index:10060;background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}'
+      '@media (max-width:519px){html.zanini-mobile-inspector-open button.fixed.bottom-4.left-4,html.zanini-mobile-inspector-open button[class*="bottom-4"][class*="left-4"][class*="rounded-full"]{display:none!important;}.zanini-sidebar-panel{z-index:10060!important;padding-bottom:64px!important;}#openplan3d-zanini-finish-host{position:relative;z-index:10060;background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -867,10 +867,17 @@
     return best ? climbToRightSidebarRoot(best) : null;
   }
 
+  function syncMobileInspectorClass(open) {
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.classList) {
+      document.documentElement.classList.toggle('zanini-mobile-inspector-open', !!open);
+    }
+  }
+
   function ensureFinishHost() {
     var sidebar = findWallSidebarHost();
     if (!sidebar) {
       if (state.sidebarReopenBtn) state.sidebarReopenBtn.hidden = true;
+      syncMobileInspectorClass(false);
       return null;
     }
     ensureSidebarCollapseChrome(sidebar);
@@ -904,6 +911,7 @@
       state.sidebarReopenBtn.hidden = !collapsed;
       state.sidebarReopenBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
     }
+    syncMobileInspectorClass(!collapsed && state.finishHost && !state.finishHost.hidden);
   }
 
   function ensureSidebarCollapseChrome(sidebar) {
@@ -1346,20 +1354,26 @@
   function renderFinishPanelNow() {
     var wallIds = readSelectedWallIds();
     var host = ensureFinishHost();
-    if (!host) return;
+    if (!host) {
+      syncMobileInspectorClass(false);
+      return;
+    }
     if (!wallIds.length && state.selectedBulkheadId) {
       host.removeAttribute('data-finish-walls');
       renderBulkheadFinishPanelNow(host);
+      syncMobileInspectorClass(!host.hidden && !state.sidebarCollapsed);
       return;
     }
     if (!wallIds.length) {
       host.innerHTML = '';
       host.hidden = true;
       host.removeAttribute('data-finish-walls');
+      syncMobileInspectorClass(false);
       if (host.parentElement) enhanceWallSidebar(host.parentElement);
       return;
     }
     host.hidden = false;
+    syncMobileInspectorClass(!state.sidebarCollapsed);
     state.selectedWallIds = wallIds.slice();
     var plan = readPlan();
     var zanini = (plan && plan.zanini) || {};
