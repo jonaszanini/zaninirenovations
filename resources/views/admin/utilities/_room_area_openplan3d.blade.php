@@ -1478,8 +1478,17 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     order: 2;
     width: 100%;
     flex-basis: 100%;
-    gap: 0.3rem;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.35rem;
     padding: 0.2rem;
+    overflow: hidden;
+  }
+
+  .util-ra-openplan3d-header__selectors .openplan3d-control-group {
+    flex: 1 1 100%;
+    width: 100%;
+    max-width: 100%;
   }
 
   .openplan3d-select,
@@ -1487,6 +1496,8 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     min-height: 44px;
     font-size: 0.85rem;
     padding: 0.35rem 0.45rem;
+    width: 100%;
+    max-width: 100%;
   }
 
   .util-ra-openplan3d-header__actions {

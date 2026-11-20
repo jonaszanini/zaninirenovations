@@ -1330,6 +1330,13 @@
     }
 
     function syncSelectorFieldWidths() {
+      var narrow = !!(win && win.innerWidth <= 640);
+      if (narrow) {
+        [projectSelect, roomSelect, roomNameInput].forEach(function (el) {
+          if (el && el.style) el.style.width = '100%';
+        });
+        return;
+      }
       autoSizeSelectorField(projectSelect, { minWidth: 96, maxWidth: 320 });
       autoSizeSelectorField(roomSelect, { minWidth: 64, maxWidth: 240 });
       autoSizeSelectorField(roomNameInput, { minWidth: 72, maxWidth: 260 });
