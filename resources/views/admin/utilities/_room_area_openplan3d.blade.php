@@ -1316,13 +1316,14 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 /* Responsive styles */
 @media (max-width: 1024px) {
   .util-ra-openplan3d-header {
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.45rem;
   }
   .util-ra-openplan3d-header__selectors {
     order: 3;
     flex-basis: 100%;
     max-width: 100%;
-    margin-top: 0.25rem;
+    margin-top: 0.15rem;
   }
 }
 
@@ -1335,7 +1336,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   }
 
   .util-ra-openplan3d-header {
-    padding: 0.5rem 0.75rem;
+    padding: 0.45rem 0.65rem;
   }
 
   .openplan3d-btn-label {
@@ -1346,7 +1347,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   .openplan3d-save-btn,
   .util-ra-engine-toggle {
     min-height: 44px;
-    padding: 0.5rem 0.75rem;
+    padding: 0.5rem 0.7rem;
   }
 
   .openplan3d-settings-grid {
@@ -1354,18 +1355,108 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   }
 }
 
-@media (max-width: 390px) {
-  .util-ra-openplan3d-header__actions {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    width: 100%;
-    max-width: 100%;
+@media (max-width: 640px) {
+  .util-ra-openplan3d-wrap {
+    padding-bottom: 56px;
+  }
+
+  .util-ra-openplan3d-header {
+    padding: 0.35rem 0.55rem;
     gap: 0.35rem;
   }
 
-  .openplan3d-save-btn {
+  .util-ra-openplan3d-header__primary {
+    width: 100%;
+    padding-right: 112px;
+    min-height: 44px;
+    gap: 0.4rem;
+  }
+
+  .util-ra-openplan3d-back {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    padding: 0 0.5rem;
+  }
+
+  .util-ra-openplan3d-back span,
+  .util-ra-badge--openplan3d,
+  .openplan3d-control-label,
+  .openplan3d-draw-toggle__btn span {
+    display: none;
+  }
+
+  .util-ra-openplan3d-header__selectors {
+    order: 2;
+    width: 100%;
+    flex-basis: 100%;
+    gap: 0.3rem;
+    padding: 0.2rem;
+  }
+
+  .openplan3d-select,
+  .openplan3d-input {
+    min-height: 44px;
+    font-size: 0.85rem;
+    padding: 0.35rem 0.45rem;
+  }
+
+  .util-ra-openplan3d-header__actions {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    min-height: 56px;
+    width: 100%;
+    max-width: 100%;
+    padding: 6px 8px;
+    background: var(--admin-surface, #f8fafc);
+    border-top: 1px solid var(--admin-border, #e2e8f0);
+    justify-content: flex-start;
+    overflow-x: auto;
+    gap: 0.35rem;
+    margin-left: 0;
+  }
+
+  .openplan3d-header-actions__group {
     flex-shrink: 0;
-    margin-left: auto;
+  }
+
+  .openplan3d-save-btn {
+    position: fixed;
+    top: 6px;
+    right: 8px;
+    z-index: 65;
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0 0.72rem;
+    margin-left: 0;
+  }
+
+  .openplan3d-tool-btn,
+  .openplan3d-draw-toggle__btn,
+  .openplan3d-takeoffs-toggle,
+  .openplan3d-header-actions .admin-info-tip {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+  }
+
+  .openplan3d-draw-toggle__btn {
+    padding: 6px 10px;
+  }
+
+  .openplan3d-header-actions .openplan3d-instant-tip::after {
+    top: auto;
+    bottom: calc(100% + 7px);
+  }
+
+  .openplan3d-header-actions .openplan3d-instant-tip::before {
+    top: auto;
+    bottom: calc(100% + 2px);
+    border-bottom-color: transparent;
+    border-top-color: #0f172a;
   }
 
   #openplan3d-delete-room-btn .fa-minus-circle {
@@ -1376,27 +1467,7 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     color: #991b1b;
   }
 
-  .openplan3d-control-label {
-    display: none;
-  }
-
-  .openplan3d-draw-toggle__btn span {
-    display: none;
-  }
-
-  .openplan3d-draw-toggle__btn {
-    padding: 6px 10px;
-    min-width: 40px;
-    min-height: 40px;
-    justify-content: center;
-  }
-
-.openplan3d-noscale-warning {
-    padding: 0.4rem 0.75rem;
-    font-size: 0.8rem;
-    flex-wrap: wrap;
-  }
-
+  .openplan3d-noscale-warning,
   .openplan3d-geometry-warning {
     padding: 0.4rem 0.75rem;
     font-size: 0.8rem;
@@ -1785,6 +1856,15 @@ body.admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer,
 .admin-dark .openplan3d-floating-overlays .openplan3d-settings-drawer {
   border-color: #334155;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+}
+
+@media (max-width: 640px) {
+  html.admin-dark .util-ra-openplan3d-header__actions,
+  body.admin-dark .util-ra-openplan3d-header__actions,
+  .admin-dark .util-ra-openplan3d-header__actions {
+    background: #0f172a;
+    border-top-color: #1e293b;
+  }
 }
 
 html.admin-dark .openplan3d-modal[hidden],
