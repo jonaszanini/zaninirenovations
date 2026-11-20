@@ -314,4 +314,47 @@ const statusWithoutCeiling = layout.importStatusText(noCeilingProposed, { name: 
 assert.ok(statusWithoutCeiling.indexOf('ceiling') === -1, statusWithoutCeiling);
 assert.ok(statusWithoutCeiling.indexOf('Walls only') !== -1, statusWithoutCeiling);
 
+// Phase 4A Extended Field IDs, extendedQuantities, and takeoffSummary tests
+assert.ok(layout.EXTENDED_FIELD_IDS);
+assert.strictEqual(layout.EXTENDED_FIELD_IDS.stairs_treads, 'br-stairs-treads');
+assert.strictEqual(layout.EXTENDED_FIELD_IDS.cabinet_base_lf, 'br-cabinet-base-lf');
+
+const extPresentOpt = {
+  stairs_treads: 14,
+  stairs_run_lf: 16.5,
+  stairs_count: 1,
+  cabinet_base_lf: 8.0,
+  cabinet_upper_lf: 6.0,
+  wall_area_sqft: 500,
+  ceiling_area_sqft: 400
+};
+const extPresent = layout.extendedQuantities(extPresentOpt);
+assert.strictEqual(extPresent.stairs_treads, 14);
+assert.strictEqual(extPresent.stairs_handrail_lf, 16.5);
+assert.strictEqual(extPresent.stairs_count, 1);
+assert.strictEqual(extPresent.include_stairs, true);
+assert.strictEqual(extPresent.cabinet_base_lf, 8.0);
+assert.strictEqual(extPresent.cabinet_upper_lf, 6.0);
+assert.strictEqual(extPresent.include_millwork, true);
+assert.strictEqual(extPresent.demo_drywall_suggested_sf, 900);
+
+const extAbsentOpt = { area_sqft: 400 };
+const extAbsent = layout.extendedQuantities(extAbsentOpt);
+assert.strictEqual(extAbsent.stairs_treads, null);
+assert.strictEqual(extAbsent.stairs_handrail_lf, null);
+assert.strictEqual(extAbsent.stairs_count, null);
+assert.strictEqual(extAbsent.include_stairs, false);
+assert.strictEqual(extAbsent.cabinet_base_lf, null);
+assert.strictEqual(extAbsent.cabinet_upper_lf, null);
+assert.strictEqual(extAbsent.include_millwork, false);
+
+const summaryItems = layout.takeoffSummary(extPresentOpt);
+assert.ok(Array.isArray(summaryItems));
+const stairsSummary = summaryItems.find(i => i.key === 'stairs');
+assert.ok(stairsSummary);
+assert.ok(stairsSummary.value.indexOf('14 treads') !== -1);
+const cabSummary = summaryItems.find(i => i.key === 'cabinets');
+assert.ok(cabSummary);
+assert.ok(cabSummary.value.indexOf('8 lf base') !== -1);
+
 console.log('admin-basement-layout-import: ok');

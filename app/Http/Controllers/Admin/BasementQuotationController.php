@@ -460,7 +460,8 @@ class BasementQuotationController extends Controller
         $storedInputs = is_array($existing?->inputs) ? $existing->inputs : null;
         $floats = [
             'area_sqft', 'ceiling_height_ft',
-            'partition_lf', 'bulkhead_lf', 'header_lf',
+            'partition_lf', 'framing_2x6_lf', 'bulkhead_lf', 'header_lf',
+            'stairs_handrail_lf', 'cabinet_base_lf', 'cabinet_upper_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
             'building_permit_amount',
@@ -468,7 +469,7 @@ class BasementQuotationController extends Controller
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
-            'insulation_wall_sf', 'insulation_ceiling_sf', 'underslab_sf',
+            'insulation_wall_sf', 'insulation_ceiling_sf', 'acoustic_insulation_sf', 'underslab_sf', 'dricore_sf',
             'drywall_wall_sf', 'drywall_ceiling_sf', 'drywall_opening_sf', 'ceiling_sf',
             'flooring_sf', 'baseboard_lf', 'shoe_lf',
             'paint_wall_sf', 'paint_ceiling_sf', 'paint_trim_lf',
@@ -484,6 +485,7 @@ class BasementQuotationController extends Controller
             'stud_spacing_in',
             'finish_level', 'transition_qty',
             'door_qty', 'casing_openings', 'window_trim_qty', 'paint_coats', 'paint_colors',
+            'stairs_treads', 'egress_window_qty',
             'fixture_qty', 'hardware_sets', 'bath_fixture_qty', 'bath_spot_qty',
         ];
         $bools = [
@@ -491,7 +493,9 @@ class BasementQuotationController extends Controller
             'demo_include_drywall', 'demo_include_baseboard',
             'panel_upgrade', 'include_plumbing', 'bath_rough_in',
             'sink_laundry', 'wet_bar', 'floor_drain', 'wh_reloc', 'insulate_walls',
-            'insulate_ceiling', 'underslab', 'subfloor_prep', 'underlayment',
+            'insulate_ceiling', 'include_acoustic_insulation', 'underslab', 'dricore_subfloor', 'subfloor_prep', 'underlayment',
+            'drywall_type_x_ceiling', 'drywall_resilient_channel',
+            'include_stairs', 'under_stair_storage', 'include_millwork', 'include_egress_window',
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups', 'include_shoe',

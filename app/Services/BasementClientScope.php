@@ -83,6 +83,31 @@ class BasementClientScope
             $included[] = $type.' finishing as specified on this quotation.';
         }
 
+        if (in_array('framing', $enabled, true) && (float) ($inputs['framing_2x6_lf'] ?? 0) > 0) {
+            $included[] = '2×6 plumbing / structural wall framing';
+        }
+        if (in_array('insulation', $enabled, true) && ! empty($inputs['include_acoustic_insulation'])) {
+            $included[] = 'Acoustic Safe\'n\'Sound batt insulation for ceiling / interior sound separation.';
+        }
+        if (in_array('drywall', $enabled, true) && ! empty($inputs['drywall_type_x_ceiling'])) {
+            $included[] = '5/8" Type X fire-rated ceiling drywall assembly (Ontario Building Code).';
+        }
+        if (in_array('drywall', $enabled, true) && ! empty($inputs['drywall_resilient_channel'])) {
+            $included[] = 'Resilient sound channel (RC-1) ceiling decoupling.';
+        }
+        if (in_array('flooring', $enabled, true) && ! empty($inputs['dricore_subfloor'])) {
+            $included[] = 'Insulated dimpled basement subfloor panel system.';
+        }
+        if (in_array('doors_trim', $enabled, true) && ! empty($inputs['include_stairs'])) {
+            $included[] = 'Basement stairs, handrail/guardrail, and finish trim installation.';
+        }
+        if (in_array('doors_trim', $enabled, true) && ! empty($inputs['include_millwork'])) {
+            $included[] = 'Wet bar / laundry cabinetry & countertop installation.';
+        }
+        if (in_array('finishing', $enabled, true) && ! empty($inputs['include_egress_window']) && (int) ($inputs['egress_window_qty'] ?? 0) > 0) {
+            $included[] = 'Basement egress window cut, enlargement, and window well installation.';
+        }
+
         $permitOn = ! empty($inputs['include_building_permit']);
         $bcinOn = ! empty($inputs['include_bcin_drawings']);
         if ($permitOn) {

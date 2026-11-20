@@ -463,4 +463,44 @@ class BasementQuotationPagesTest extends IntegrationTestCase
                 'outside_corners' => 0,
             ]);
     }
+
+    public function test_create_page_renders_workbench_mode_toggle_step_meta_and_scope_preview_modal(): void
+    {
+        $this->actingAsAdmin();
+
+        $response = $this->get(route('admin.quotations.basement.create'));
+
+        $response->assertOk();
+        $response->assertSee('id="br-workbench-bar"', false);
+        $response->assertSee('id="br-view-mode-toggle"', false);
+        $response->assertSee('id="br-preview-scope-btn"', false);
+        $response->assertSee('data-br-step-meta="framing"', false);
+        $response->assertSee('id="br-scope-preview-modal"', false);
+        $response->assertSee('id="br-send-options"', false);
+
+        $payload = array_merge(\App\Services\BasementQuotationCalculator::defaultInputs(), [
+            'client_name' => 'Ontario Test Client',
+            'scope_preset' => 'full',
+            'area_sqft' => 1000,
+            'framing_2x6_lf' => 40,
+            'include_stairs' => 1,
+            'stairs_treads' => 12,
+            'include_egress_window' => 1,
+            'egress_window_qty' => 2,
+            'payment_installments' => 2,
+            'include_commute' => 1,
+            'include_debris_removal' => 1,
+            'ask_reply_to_accept' => 1,
+            'debris_choice' => 'included',
+        ]);
+
+        $store = $this->post(route('admin.quotations.basement.store'), $payload);
+        $store->assertSessionHasNoErrors();
+
+        $quote = \App\Models\BasementQuotation::query()->where('client_name', 'Ontario Test Client')->first();
+        $this->assertNotNull($quote);
+        $this->assertEquals(40, $quote->inputs['framing_2x6_lf'] ?? null);
+        $this->assertEquals(12, $quote->inputs['stairs_treads'] ?? null);
+        $this->assertEquals(2, $quote->inputs['egress_window_qty'] ?? null);
+    }
 }

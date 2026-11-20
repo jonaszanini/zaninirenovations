@@ -67,6 +67,19 @@
       'clientFilled' => isset($brFilled) && $brFilled('panel_upgrade'),
     ])
   </div>
+  <div class="br-line-generator" id="br-elec-generator">
+    <span class="br-line-generator__lead">
+      <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-elec-generate-lines">
+        <i class="fa fa-magic" aria-hidden="true"></i> Generate electrical quote lines from scope
+      </button>
+      @include('admin.partials.info_tip', [
+        'tipId' => 'br-elec-generator-tip',
+        'tipLabel' => 'Generate electrical quote lines',
+        'tipText' => 'Populates draft allowance lines from the device counts above.',
+      ])
+    </span>
+    <span class="admin-form-help" id="br-elec-gen-status" role="status" hidden></span>
+  </div>
   @include('admin.quotations._amount_lines', [
     'field' => 'electrical_lines',
     'idPrefix' => 'br-elec-line',

@@ -148,8 +148,6 @@
   <div class="br-project-context-slot">
     @include('admin.partials.quotation_project_context', ['project' => $linkProject ?? ($isEdit ? ($quotation->project ?? $quotation->intendedProject) : null)])
   </div>
-  @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
-  @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
 
   @if ($isEdit && $quotation->project)
     <div class="admin-flash admin-flash--info" style="margin-bottom:16px;">
@@ -193,19 +191,34 @@
                   @endif>
             <span class="br-progress__num">{{ $n }}</span>
             <span class="br-progress__label">{{ $label }}</span>
+            <span class="br-progress__meta" data-br-step-meta="{{ $key }}"></span>
           </button>
         @endforeach
         <button type="button" class="br-progress__item" data-br-goto="client_scope">
           <span class="br-progress__num"><i class="fa fa-list" aria-hidden="true"></i></span>
           <span class="br-progress__label">Client scope</span>
+          <span class="br-progress__meta" data-br-step-meta="client_scope"></span>
         </button>
         <button type="button" class="br-progress__item" data-br-goto="review">
           <span class="br-progress__num"><i class="fa fa-list-alt" aria-hidden="true"></i></span>
           <span class="br-progress__label">Review &amp; totals</span>
+          <span class="br-progress__meta" data-br-step-meta="review"></span>
         </button>
       </nav>
 
       <div class="br-main">
+        <div class="br-workbench-bar" id="br-workbench-bar">
+          <div class="br-workbench-bar__left">
+            <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-view-mode-toggle" data-br-view-mode="guided" aria-pressed="false">
+              <i class="fa fa-th-list" aria-hidden="true"></i> <span>All sections</span>
+            </button>
+            <span class="admin-form-help br-workbench-bar__hint" id="br-workbench-summary">Guided step-by-step builder</span>
+          </div>
+          <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-preview-scope-btn" data-br-open-preview>
+            <i class="fa fa-file-text-o" aria-hidden="true"></i> Preview client scope
+          </button>
+        </div>
+
         <div class="admin-card fl-step-card br-client-card">
           <div class="br-client-card__row">
             <div class="admin-form-group">
@@ -400,6 +413,11 @@
                 'placeholder' => 'e.g. Dumpster',
             ])
 
+            <div class="br-send-options" id="br-send-options">
+              @include('admin.partials.quotation_client_email_message', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
+              @include('admin.partials.quotation_reply_to_accept', ['quotation' => $quotation ?? null, 'formId' => 'br-main-form'])
+            </div>
+
             @if (! $isEdit)
               @include('admin.quotations._link_to_project_save_first', [
                   'linkProject' => $linkProject ?? null,
@@ -439,6 +457,21 @@
       ],
     ])
   </form>
+
+  <div class="br-scope-modal" id="br-scope-preview-modal" hidden role="dialog" aria-modal="true" aria-labelledby="br-scope-preview-title">
+    <div class="br-scope-modal__backdrop" data-br-close-preview></div>
+    <div class="br-scope-modal__dialog admin-card">
+      <div class="br-scope-modal__head">
+        <h3 id="br-scope-preview-title">Client Proposal &amp; Scope Preview</h3>
+        <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" data-br-close-preview aria-label="Close preview">
+          <i class="fa fa-times" aria-hidden="true"></i> Close
+        </button>
+      </div>
+      <div class="br-scope-modal__body" id="br-scope-preview-body">
+        <p class="admin-form-help">Enter project dimensions to preview client scope.</p>
+      </div>
+    </div>
+  </div>
 
   @if ($isEdit && $canSendEmail)
     <form id="br-email-quote-form"

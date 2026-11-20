@@ -39,6 +39,13 @@
     import_bulkhead_corner_bead_lf: 'br-import-bh-bead'
   };
 
+  var EXTENDED_FIELD_IDS = {
+    stairs_treads: 'br-stairs-treads',
+    stairs_handrail_lf: 'br-stairs-handrail-lf',
+    cabinet_base_lf: 'br-cabinet-base-lf',
+    cabinet_upper_lf: 'br-cabinet-upper-lf'
+  };
+
   var LW_KEYS = {
     area_sqft: true,
     insulation_wall_sf: true,
@@ -398,6 +405,118 @@
     return parts.join(', ');
   }
 
+  function extendedQuantities(opt) {
+    opt = opt || {};
+    var stairsTreads = present(opt, 'stairs_treads') ? Math.max(0, parseInt(opt.stairs_treads, 10) || 0) : null;
+    var stairsHandrailLf = present(opt, 'stairs_run_lf') ? Math.round(Math.max(0, num(opt.stairs_run_lf)) * 100) / 100 : null;
+    var stairsCount = present(opt, 'stairs_count') ? Math.max(0, parseInt(opt.stairs_count, 10) || 0) : null;
+    var cabBase = present(opt, 'cabinet_base_lf') ? Math.round(Math.max(0, num(opt.cabinet_base_lf)) * 100) / 100 : null;
+    var cabUpper = present(opt, 'cabinet_upper_lf') ? Math.round(Math.max(0, num(opt.cabinet_upper_lf)) * 100) / 100 : null;
+
+    var includeStairs = ((stairsTreads || 0) > 0) || ((stairsHandrailLf || 0) > 0) || ((stairsCount || 0) > 0);
+    var includeMillwork = ((cabBase || 0) > 0) || ((cabUpper || 0) > 0);
+
+    var proposed = proposedQuantities(opt);
+    var demoSum = Math.round(Math.max(0, num(proposed.drywall_wall_sf) + num(proposed.ceiling_sf)) * 100) / 100;
+    var demoDrywallSuggestedSf = demoSum > 0 ? demoSum : null;
+
+    return {
+      stairs_treads: stairsTreads,
+      stairs_handrail_lf: stairsHandrailLf,
+      stairs_count: stairsCount,
+      include_stairs: includeStairs,
+      cabinet_base_lf: cabBase,
+      cabinet_upper_lf: cabUpper,
+      include_millwork: includeMillwork,
+      demo_drywall_suggested_sf: demoDrywallSuggestedSf
+    };
+  }
+
+  function takeoffSummary(opt, proposed, extras) {
+    opt = opt || {};
+    proposed = proposed || proposedQuantities(opt);
+    var ext = extendedQuantities(opt);
+    if (extras && typeof extras === 'object') {
+      ext = Object.assign({}, ext, extras);
+    }
+
+    var doors = proposed.drywall_door_openings;
+    var windows = proposed.drywall_window_openings;
+    var doorsWindowsVal = '—';
+    if (doors != null || windows != null) {
+      var dCount = doors != null ? doors : 0;
+      var wCount = windows != null ? windows : 0;
+      doorsWindowsVal = dCount + ' ' + (dCount === 1 ? 'door' : 'doors')
+        + ' / ' + wCount + ' ' + (wCount === 1 ? 'window' : 'windows');
+    }
+
+    var inside = proposed.drywall_inside_corners;
+    var outside = proposed.drywall_corners;
+    var cornersVal = (inside == null && outside == null)
+      ? '—'
+      : ((inside != null ? inside : 0) + ' inside / ' + (outside != null ? outside : 0) + ' outside');
+
+    var items = [
+      {
+        key: 'floor_area',
+        label: 'Floor area',
+        value: proposed.area_sqft != null ? formatQty(proposed.area_sqft) + ' sq ft' : '—'
+      },
+      {
+        key: 'perimeter_lf',
+        label: 'Exterior perimeter',
+        value: proposed.perimeter_lf != null ? formatQty(proposed.perimeter_lf) + ' lf' : '—'
+      },
+      {
+        key: 'partition_lf',
+        label: 'Interior partitions',
+        value: proposed.partition_lf != null ? formatQty(proposed.partition_lf) + ' lf' : '—'
+      },
+      {
+        key: 'bulkhead_lf',
+        label: 'Bulkheads',
+        value: proposed.bulkhead_lf != null ? formatQty(proposed.bulkhead_lf) + ' lf' : '—'
+      },
+      {
+        key: 'doors_windows',
+        label: 'Doors / Windows',
+        value: doorsWindowsVal
+      },
+      {
+        key: 'corners',
+        label: 'Inside / Outside corners',
+        value: cornersVal
+      }
+    ];
+
+    var stairParts = [];
+    if ((ext.stairs_treads || 0) > 0) {
+      stairParts.push(ext.stairs_treads + ' ' + (ext.stairs_treads === 1 ? 'tread' : 'treads'));
+    }
+    if ((ext.stairs_handrail_lf || 0) > 0) {
+      stairParts.push(formatQty(ext.stairs_handrail_lf) + ' lf rail');
+    }
+    if (stairParts.length === 0 && (ext.stairs_count || 0) > 0) {
+      stairParts.push(ext.stairs_count + ' ' + (ext.stairs_count === 1 ? 'flight' : 'flights'));
+    }
+    if (stairParts.length > 0) {
+      items.push({ key: 'stairs', label: 'Stairs', value: stairParts.join(', ') });
+    }
+
+    var cabParts = [];
+    if ((ext.cabinet_base_lf || 0) > 0) {
+      cabParts.push(formatQty(ext.cabinet_base_lf) + ' lf base');
+    }
+    if ((ext.cabinet_upper_lf || 0) > 0) {
+      cabParts.push(formatQty(ext.cabinet_upper_lf) + ' lf upper');
+    }
+    if (cabParts.length > 0) {
+      items.push({ key: 'cabinets', label: 'Cabinets', value: cabParts.join(', ') });
+    }
+
+    return items;
+  }
+
   var api = {
     formatQty: formatQty,
     present: present,
@@ -405,6 +524,8 @@
     resolveImportedCeilingArea: resolveImportedCeilingArea,
     resolveImportedPaintCeilingSf: resolveImportedPaintCeilingSf,
     proposedQuantities: proposedQuantities,
+    extendedQuantities: extendedQuantities,
+    takeoffSummary: takeoffSummary,
     currentQuantities: currentQuantities,
     formHasQuantities: formHasQuantities,
     wouldOverwrite: wouldOverwrite,
@@ -413,6 +534,7 @@
     confirmImportMessage: confirmImportMessage,
     importStatusText: importStatusText,
     FIELD_IDS: FIELD_IDS,
+    EXTENDED_FIELD_IDS: EXTENDED_FIELD_IDS,
     LW_KEYS: LW_KEYS,
     NEVER_OVERWRITE: NEVER_OVERWRITE,
     SKIP_FORM_KEYS: SKIP_FORM_KEYS,

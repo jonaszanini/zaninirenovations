@@ -142,12 +142,17 @@ async function typeField(page, selector, value) {
   report.shots.mobile = path.join(shotsDir, 'basement-trim-material-lf-390.png');
   await page.screenshot({ path: report.shots.mobile, fullPage: false });
 
+  report.waste = await page.evaluate(() => {
+    const el = document.querySelector('#br-material-waste');
+    return el ? parseFloat(el.value) : null;
+  });
   const m = report.materials;
   report.ok = m.hasRow
+    && Math.abs(report.waste - 0) < 0.001
     && m.label.toLowerCase().includes('per lin. ft')
-    && Math.abs(m.qty - 110) < 0.05
+    && Math.abs(m.qty - 100) < 0.05
     && Math.abs(m.unitPrice - 3) < 0.05
-    && Math.abs(m.amount - 330) < 0.05
+    && Math.abs(m.amount - 300) < 0.05
     && m.hasShoe
     && m.shoeLabel.toLowerCase().includes('per lin. ft');
 

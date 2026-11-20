@@ -2909,6 +2909,10 @@ html.admin-dark .cp-tab.is-active .cp-tab-count {
 }
 
 /* Basement progress items */
+html.admin-dark .br-progress__item:hover {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+}
 html.admin-dark .br-progress__item.is-current .br-progress__num {
   background: #024768;
   color: #fff;
@@ -2917,6 +2921,114 @@ html.admin-dark .br-progress__item .br-progress__num {
   background: var(--admin-surface);
   color: var(--admin-muted);
   border-color: var(--admin-border);
+}
+html.admin-dark .br-progress__meta {
+  background: var(--admin-input-bg);
+  color: var(--admin-muted);
+}
+html.admin-dark .br-progress__item.is-current .br-progress__meta {
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--admin-primary);
+}
+html.admin-dark .br-progress__item.is-ready .br-progress__meta {
+  background: var(--admin-success-soft);
+  color: var(--admin-success);
+}
+html.admin-dark .br-progress__item.is-attention .br-progress__meta {
+  background: var(--admin-warn-tile-bg);
+  color: #fbbf24;
+}
+
+/* Basement Phase 3C workbench, takeoff cards, generators & scope modal */
+html.admin-dark .br-layout .br-live-trade-row:hover,
+html.admin-dark .br-layout .br-live-trade-row:focus-visible {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .br-workbench-bar {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-takeoff-summary {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary-ring);
+  color: var(--admin-text);
+}
+html.admin-dark .br-takeoff-summary__title {
+  color: var(--admin-primary);
+}
+html.admin-dark .br-takeoff-chip {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-takeoff-chip__label {
+  color: var(--admin-muted);
+}
+html.admin-dark .br-takeoff-chip__value,
+html.admin-dark .br-takeoff-chip strong {
+  color: var(--admin-heading);
+}
+html.admin-dark .br-field-source-badge {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary-ring);
+  color: var(--admin-primary);
+}
+html.admin-dark .br-trade-generator,
+html.admin-dark .br-line-generator {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border-strong);
+  color: var(--admin-text);
+}
+html.admin-dark .br-scope-modal__backdrop {
+  background: rgba(2, 6, 23, 0.72);
+}
+html.admin-dark .br-scope-modal__dialog {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+  box-shadow: var(--admin-shadow-lg);
+}
+html.admin-dark .br-scope-modal__head,
+html.admin-dark .br-scope-modal__header,
+html.admin-dark .br-scope-modal__footer {
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-scope-modal__footer {
+  background: var(--admin-surface-hover);
+}
+html.admin-dark .br-scope-modal__head h3,
+html.admin-dark .br-scope-modal__header h3,
+html.admin-dark .br-scope-modal__title {
+  color: var(--admin-heading);
+}
+html.admin-dark .br-scope-modal__close {
+  color: var(--admin-muted);
+}
+html.admin-dark .br-scope-modal__close:hover,
+html.admin-dark .br-scope-modal__close:focus-visible {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+html.admin-dark .br-scope-preview__section,
+html.admin-dark .br-scope-preview__summary .pq-row--hl {
+  border-color: var(--admin-border);
+}
+html.admin-dark .br-scope-preview__spec {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+  color: var(--admin-muted);
+}
+html.admin-dark .br-scope-preview__spec strong,
+html.admin-dark .br-scope-preview__section h4 {
+  color: var(--admin-heading);
+}
+html.admin-dark .br-scope-preview__copy,
+html.admin-dark .br-scope-preview__summary .pq-row {
+  color: var(--admin-text);
+}
+html.admin-dark .br-scope-preview__summary .pq-row--hl {
+  color: var(--admin-primary);
 }
 
 /* Warning backgrounds */

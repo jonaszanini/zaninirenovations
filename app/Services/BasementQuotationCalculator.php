@@ -630,6 +630,7 @@ class BasementQuotationCalculator
             'demo_baseboard_lf' => null,
             'demo_bin_qty' => 1,
             'partition_lf' => 0,
+            'framing_2x6_lf' => 0,
             'bulkhead_lf' => 0,
             'header_lf' => 0,
             'header_qty' => 0,
@@ -657,6 +658,8 @@ class BasementQuotationCalculator
             'insulation_ceiling_sf' => null,
             'underslab' => false,
             'underslab_sf' => null,
+            'include_acoustic_insulation' => false,
+            'acoustic_insulation_sf' => null,
             'perimeter_lf' => null,
             'room_area_import_id' => '',
             'room_area_import_label' => '',
@@ -674,10 +677,14 @@ class BasementQuotationCalculator
             'drywall_window_openings' => 0,
             'drywall_opening_sf' => null,
             'drywall_sheet_size' => '4x8',
+            'drywall_type_x_ceiling' => false,
+            'drywall_resilient_channel' => false,
             'finish_level' => 4,
             'ceiling_type' => 'drywall',
             'ceiling_sf' => null,
             'subfloor_prep' => false,
+            'dricore_subfloor' => false,
+            'dricore_sf' => null,
             'underlayment' => true,
             'flooring_type' => 'lvp',
             'flooring_sf' => null,
@@ -688,6 +695,13 @@ class BasementQuotationCalculator
             'shoe_lf' => null,
             'casing_openings' => 0,
             'window_trim_qty' => 0,
+            'include_stairs' => false,
+            'stairs_treads' => 0,
+            'stairs_handrail_lf' => 0,
+            'under_stair_storage' => false,
+            'include_millwork' => false,
+            'cabinet_base_lf' => 0,
+            'cabinet_upper_lf' => 0,
             'paint_wall_sf' => null,
             'paint_ceiling_sf' => null,
             'paint_trim_lf' => null,
@@ -711,6 +725,8 @@ class BasementQuotationCalculator
             'building_permit_amount' => 0,
             'include_bcin_drawings' => false,
             'bcin_drawings_amount' => 0,
+            'include_egress_window' => false,
+            'egress_window_qty' => 0,
             'material_waste_percent' => 10,
             'client_scope_included' => '',
             'client_scope_not_included' => '',
@@ -1122,7 +1138,26 @@ class BasementQuotationCalculator
         $height = round(max(0, (float) $inputs['ceiling_height_ft']), 2) ?: 8;
         $partitionLf = max(0, (float) $inputs['partition_lf']);
         $bulkheadLf = max(0, (float) $inputs['bulkhead_lf']);
-        if ($area <= 0 && $partitionLf <= 0) {
+        $framing2x6Lf = max(0, (float) ($inputs['framing_2x6_lf'] ?? 0));
+        $hasPositiveStairs = ! empty($inputs['include_stairs']) && (
+            max(0, (int) ($inputs['stairs_treads'] ?? 0)) > 0
+            || max(0.0, (float) ($inputs['stairs_handrail_lf'] ?? 0)) > 0
+            || ! empty($inputs['under_stair_storage'])
+        );
+        $hasPositiveMillwork = ! empty($inputs['include_millwork']) && (
+            max(0.0, (float) ($inputs['cabinet_base_lf'] ?? 0)) > 0
+            || max(0.0, (float) ($inputs['cabinet_upper_lf'] ?? 0)) > 0
+        );
+        $hasPositiveEgress = ! empty($inputs['include_egress_window'])
+            && max(0, (int) ($inputs['egress_window_qty'] ?? 0)) > 0;
+        if (
+            $area <= 0
+            && $partitionLf <= 0
+            && $framing2x6Lf <= 0
+            && ! $hasPositiveStairs
+            && ! $hasPositiveMillwork
+            && ! $hasPositiveEgress
+        ) {
             return $this->emptyCalculation($originalInputs, $inputs, $settings, $height, $feePercent);
         }
         $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
@@ -1314,6 +1349,29 @@ class BasementQuotationCalculator
                 $addMat('stud_2x4', 'framing', $studs, 'stud_2x4');
                 $addMat('plate_2x4', 'framing', $plates, 'plate_2x4');
             }
+            if ($framing2x6Lf > 0) {
+                $addLabor(
+                    'framing_2x6',
+                    'framing',
+                    '2x6 plumbing / structural walls',
+                    number_format($framing2x6Lf, 0).' lf × '.$height.' ft, '.$studSpacing.'" o.c.',
+                    $perHr($framing2x6Lf, (float) ($prod['framing_2x6_lf_per_hr'] ?? 6))
+                );
+                $studs2x6 = max(1, (int) ceil($this->withMaterialWaste(($framing2x6Lf * 12 / $studSpacing) + 2, $inputs)));
+                $plates2x6 = round($this->withMaterialWaste($framing2x6Lf * 3, $inputs), 0);
+                $stud2x6Price = (float) ($matCatalog['stud_2x6']['unit_price'] ?? 8.50);
+                $stud2x6Override = is_array($inputs['materials_override']['stud_2x6'] ?? null)
+                    ? $inputs['materials_override']['stud_2x6']
+                    : [];
+                if (isset($stud2x6Override['unit_price']) && is_numeric($stud2x6Override['unit_price'])) {
+                    $stud2x6Price = round(max(0, (float) $stud2x6Override['unit_price']), 4);
+                }
+                $plate2x6Price = $stud2x6Price > 0
+                    ? round($stud2x6Price / BasementSettings::PLATE_FEET_PER_BOARD, 4)
+                    : 0.0;
+                $addMat('stud_2x6', 'framing', $studs2x6, 'stud_2x6');
+                $addMat('plate_2x6', 'framing', $plates2x6, 'plate_2x4', '2x6 plate lumber (lf)', 'lf', $plate2x6Price);
+            }
         }
 
         // --- Electrical ---
@@ -1340,6 +1398,25 @@ class BasementQuotationCalculator
             if (! empty($inputs['underslab'])) {
                 $addLabor('ins_slab', 'insulation', 'Under-slab insulation', number_format($insSlab, 0).' sq ft', $perHr($insSlab, (float) $prod['underslab_sf_per_hr']));
                 $addMat('underslab_insulation', 'insulation', $this->packages($this->withMaterialWaste($insSlab, $inputs), BasementSettings::PANEL_SF), 'underslab_insulation');
+            }
+            if (! empty($inputs['include_acoustic_insulation'])) {
+                $acousticDefault = $area > 0 ? $area : $wallBothSidesSf;
+                $acousticSf = $this->qtyOr($inputs['acoustic_insulation_sf'] ?? null, $acousticDefault);
+                if ($acousticSf > 0) {
+                    $addLabor(
+                        'ins_acoustic',
+                        'insulation',
+                        'Acoustic Safe\'n\'Sound insulation',
+                        number_format($acousticSf, 0).' sq ft',
+                        $perHr($acousticSf, (float) ($prod['acoustic_insulation_sf_per_hr'] ?? 45))
+                    );
+                    $addMat(
+                        'acoustic_batt',
+                        'insulation',
+                        $this->packages($this->withMaterialWaste($acousticSf, $inputs), BasementSettings::BATT_SF_PER_BAG),
+                        'acoustic_batt'
+                    );
+                }
             }
         }
 
@@ -1404,18 +1481,37 @@ class BasementQuotationCalculator
             $dwOrderSf = $this->withMaterialWaste($dwSf, $inputs);
             $sheetSf = self::drywallSheetSf($sheetSize);
             $sheetKey = self::drywallSheetCatalogKey($sheetSize);
-            $sheets = $dwOrderSf > 0 ? max(1, (int) ceil($dwOrderSf / $sheetSf)) : 0;
-            $addMat($sheetKey, 'drywall', $sheets, $sheetKey);
-            if ($sheets > 0) {
-                $screwsEach = $sheetSize === '4x12'
+            if (! empty($inputs['drywall_type_x_ceiling']) && $dwCeil > 0) {
+                $wallSheets = $dwWall > 0 ? max(1, (int) ceil($this->withMaterialWaste($dwWall, $inputs) / $sheetSf)) : 0;
+                $ceilSheets = max(1, (int) ceil($this->withMaterialWaste($dwCeil, $inputs) / BasementSettings::PANEL_SF));
+                $addMat($sheetKey, 'drywall', $wallSheets, $sheetKey);
+                $addMat('drywall_sheet_type_x', 'drywall', $ceilSheets, 'drywall_sheet_type_x');
+                $wallScrewsEach = $sheetSize === '4x12'
                     ? BasementSettings::DRYWALL_SCREWS_PER_4X12
                     : BasementSettings::DRYWALL_SCREWS_PER_4X8;
-                $addMat(
-                    'drywall_screws',
-                    'drywall',
-                    $this->packages($sheets * $screwsEach, BasementSettings::DRYWALL_SCREWS_PER_BOX),
-                    'drywall_screws'
-                );
+                $totalScrews = ($wallSheets * $wallScrewsEach) + ($ceilSheets * BasementSettings::DRYWALL_SCREWS_PER_4X8);
+                if ($totalScrews > 0) {
+                    $addMat(
+                        'drywall_screws',
+                        'drywall',
+                        $this->packages($totalScrews, BasementSettings::DRYWALL_SCREWS_PER_BOX),
+                        'drywall_screws'
+                    );
+                }
+            } else {
+                $sheets = $dwOrderSf > 0 ? max(1, (int) ceil($dwOrderSf / $sheetSf)) : 0;
+                $addMat($sheetKey, 'drywall', $sheets, $sheetKey);
+                if ($sheets > 0) {
+                    $screwsEach = $sheetSize === '4x12'
+                        ? BasementSettings::DRYWALL_SCREWS_PER_4X12
+                        : BasementSettings::DRYWALL_SCREWS_PER_4X8;
+                    $addMat(
+                        'drywall_screws',
+                        'drywall',
+                        $this->packages($sheets * $screwsEach, BasementSettings::DRYWALL_SCREWS_PER_BOX),
+                        'drywall_screws'
+                    );
+                }
             }
             $insideCorners = max(0, (int) ($inputs['drywall_inside_corners'] ?? 0));
             $openings = self::drywallOpeningCount($inputs);
@@ -1458,6 +1554,17 @@ class BasementQuotationCalculator
                 $openings.' opening(s)',
                 $openings * (float) ($prod['drywall_opening_hours_each'] ?? 0.4)
             );
+            if (! empty($inputs['drywall_resilient_channel']) && $dwCeil > 0) {
+                $addLabor(
+                    'dw_resilient_channel',
+                    'drywall',
+                    'Resilient sound channel (RC-1)',
+                    number_format($dwCeil, 0).' sq ft',
+                    $perHr($dwCeil, (float) ($prod['resilient_channel_sf_per_hr'] ?? 40))
+                );
+                $rcSticks = $this->packages($this->withMaterialWaste($dwCeil, $inputs), 16.0);
+                $addMat('resilient_channel', 'drywall', $rcSticks, 'resilient_channel');
+            }
         }
 
         // --- Ceiling ---
@@ -1478,6 +1585,23 @@ class BasementQuotationCalculator
                 'epoxy' => 'epoxy',
                 default => 'lvp',
             };
+            $dricoreOn = ! empty($inputs['dricore_subfloor']);
+            $dricoreSf = $dricoreOn ? $this->qtyOr($inputs['dricore_sf'] ?? null, ($flSf > 0 ? $flSf : $area)) : 0.0;
+            if ($dricoreOn && $dricoreSf > 0) {
+                $addLabor(
+                    'fl_dricore',
+                    'flooring',
+                    'Insulated dimpled subfloor (Dricore)',
+                    number_format($dricoreSf, 0).' sq ft',
+                    $perHr($dricoreSf, (float) ($prod['dricore_subfloor_sf_per_hr'] ?? 35))
+                );
+                $addMat(
+                    'dricore_panel',
+                    'flooring',
+                    $this->packages($this->withMaterialWaste($dricoreSf, $inputs), 4.0),
+                    'dricore_panel'
+                );
+            }
             if ($flType !== 'none' && $flSf > 0) {
                 if (! empty($inputs['subfloor_prep'])) {
                     $addLabor('fl_subfloor', 'flooring', 'Subfloor prep / leveling', number_format($flSf, 0).' sq ft', $perHr($flSf, (float) $prod['subfloor_sf_per_hr']));
@@ -1566,6 +1690,63 @@ class BasementQuotationCalculator
             $addMat('casing', 'doors_trim', $casing, 'casing');
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
             $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');
+            if (! empty($inputs['include_stairs'])) {
+                $treads = max(0, (int) ($inputs['stairs_treads'] ?? 0));
+                $handrailLf = max(0.0, (float) ($inputs['stairs_handrail_lf'] ?? 0));
+                if ($treads > 0) {
+                    $addLabor(
+                        'stairs_treads_install',
+                        'doors_trim',
+                        'Stair treads & risers finish',
+                        $treads.' step(s)',
+                        $treads * (float) ($prod['stair_tread_hours_each'] ?? 0.75)
+                    );
+                    $addMat('stair_tread_kit', 'doors_trim', $treads, 'stair_tread_kit');
+                }
+                if ($handrailLf > 0) {
+                    $addLabor(
+                        'stairs_handrail_install',
+                        'doors_trim',
+                        'Stair handrail & guard',
+                        number_format($handrailLf, 0).' lf',
+                        $perHr($handrailLf, (float) ($prod['stair_handrail_lf_per_hr'] ?? 6))
+                    );
+                    $addMat('stair_handrail', 'doors_trim', round($this->withMaterialWaste($handrailLf, $inputs), 2), 'stair_handrail');
+                }
+                if (! empty($inputs['under_stair_storage'])) {
+                    $addLabor(
+                        'stairs_under_storage',
+                        'doors_trim',
+                        'Under-stair storage framing & finish',
+                        'Closed closet enclosure',
+                        (float) ($prod['under_stair_storage_hours'] ?? 6)
+                    );
+                }
+            }
+            if (! empty($inputs['include_millwork'])) {
+                $cabBaseLf = max(0.0, (float) ($inputs['cabinet_base_lf'] ?? 0));
+                $cabUpperLf = max(0.0, (float) ($inputs['cabinet_upper_lf'] ?? 0));
+                if ($cabBaseLf > 0) {
+                    $addLabor(
+                        'millwork_base',
+                        'doors_trim',
+                        'Wet bar / laundry base cabinets',
+                        number_format($cabBaseLf, 0).' lf',
+                        $perHr($cabBaseLf, (float) ($prod['cabinet_install_lf_per_hr'] ?? 2.5))
+                    );
+                    $addMat('millwork_cabinet_base', 'doors_trim', round($cabBaseLf, 2), 'millwork_cabinet_base');
+                }
+                if ($cabUpperLf > 0) {
+                    $addLabor(
+                        'millwork_upper',
+                        'doors_trim',
+                        'Wet bar / laundry upper cabinets',
+                        number_format($cabUpperLf, 0).' lf',
+                        $perHr($cabUpperLf, (float) ($prod['cabinet_install_lf_per_hr'] ?? 2.5))
+                    );
+                    $addMat('millwork_cabinet_upper', 'doors_trim', round($cabUpperLf, 2), 'millwork_cabinet_upper');
+                }
+            }
         }
 
         // --- Painting ---
@@ -1736,6 +1917,12 @@ class BasementQuotationCalculator
             }
             if (! empty($inputs['include_bcin_drawings']) && $bcinAmt > 0) {
                 $addMat('bcin_drawings', 'finishing', 1, 'bcin_drawings', 'BCIN drawings (optional extra charge)');
+            }
+            if (! empty($inputs['include_egress_window'])) {
+                $egressQty = max(0, (int) ($inputs['egress_window_qty'] ?? 0));
+                if ($egressQty > 0) {
+                    $addMat('egress_window', 'finishing', $egressQty, 'egress_window');
+                }
             }
         }
 

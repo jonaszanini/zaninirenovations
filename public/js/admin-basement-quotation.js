@@ -25,9 +25,13 @@
   lastDebrisAmount = Number(initialExpenseTotals.debris || 0);
   lastAdditionalTaxIn = Number(initialExpenseTotals.additionalTaxIn || 0);
   var currentIndex = 0;
+  var isAllSections = form.classList.contains('br-layout--all-sections');
 
   var fmt = function (n) {
     return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  };
+  var fmtCompact = function (n) {
+    return fmt(n);
   };
   var formatLayoutQty = function (n) {
     var rounded = Math.round(Number(n) * 100) / 100;
@@ -257,6 +261,7 @@
     provideWrap.querySelectorAll('input[type="checkbox"]').forEach(function (el) {
       el.disabled = on;
     });
+    syncInlineClientProvides();
   }
   if (clientAll) {
     clientAll.addEventListener('change', function () {
@@ -396,6 +401,168 @@
     qty.value = (value === '' || value == null) ? '' : formatLayoutQty(value);
   }
 
+  function clearLayoutBadges() {
+    form.querySelectorAll('[data-br-layout-badge]').forEach(function (badge) {
+      badge.remove();
+    });
+    form.querySelectorAll('[data-br-layout-synced]').forEach(function (el) {
+      el.removeAttribute('data-br-layout-synced');
+    });
+  }
+
+  function layoutBadgeContainer(el) {
+    if (!el) return null;
+    var lw = el.closest ? el.closest('.br-lw') : null;
+    if (lw) {
+      var head = lw.querySelector('.br-lw__head');
+      if (head) return head;
+    }
+    return el.closest ? el.closest('.admin-form-group') : el.parentElement;
+  }
+
+  function removeLayoutBadgeForElement(el) {
+    if (!el) return;
+    el.removeAttribute('data-br-layout-synced');
+    var container = layoutBadgeContainer(el);
+    if (container) {
+      container.querySelectorAll('[data-br-layout-badge]').forEach(function (badge) {
+        badge.remove();
+      });
+    }
+    var group = el.closest ? el.closest('.admin-form-group') : null;
+    if (group && group !== container) {
+      group.querySelectorAll('[data-br-layout-badge]').forEach(function (badge) {
+        badge.remove();
+      });
+    }
+  }
+
+  function markLayoutSynced(el) {
+    if (!el) return;
+    el.setAttribute('data-br-layout-synced', '1');
+    var container = layoutBadgeContainer(el);
+    if (container) {
+      container.querySelectorAll('[data-br-layout-badge]').forEach(function (badge) {
+        badge.remove();
+      });
+      var badge = document.createElement('span');
+      badge.className = 'br-field-source-badge';
+      badge.setAttribute('data-br-layout-badge', '');
+      badge.textContent = 'Room Area';
+      var tipWrap = container.querySelector('.admin-label-with-tip');
+      if (tipWrap) {
+        tipWrap.appendChild(badge);
+      } else {
+        var lbl = container.querySelector('label');
+        if (lbl && lbl.parentNode === container) {
+          lbl.insertAdjacentElement('afterend', badge);
+        } else {
+          container.appendChild(badge);
+        }
+      }
+    }
+    if (el.dataset.brLayoutBadgeBound !== '1') {
+      el.dataset.brLayoutBadgeBound = '1';
+      el.addEventListener('input', function () {
+        if (applyingLayout) return;
+        removeLayoutBadgeForElement(el);
+      });
+    }
+  }
+
+  function renderLayoutTakeoffSummary(opt, proposed, layoutImport) {
+    var wrap = document.getElementById('br-layout-takeoff-summary');
+    var cards = document.getElementById('br-layout-takeoff-cards');
+    if (!wrap || !cards) return;
+    if (!opt || !layoutImport || typeof layoutImport.takeoffSummary !== 'function') {
+      cards.innerHTML = '';
+      wrap.hidden = true;
+      return;
+    }
+    var items = layoutImport.takeoffSummary(opt, proposed, { heightFt: ceilingHeightFt() }) || [];
+    if (!items.length) {
+      cards.innerHTML = '';
+      wrap.hidden = true;
+      return;
+    }
+    cards.innerHTML = items.map(function (item) {
+      return '<div class="br-takeoff-chip" data-br-takeoff-key="' + escapeHtml(item.key || '') + '">'
+        + '<span class="br-takeoff-chip__label">' + escapeHtml(item.label || '') + '</span>'
+        + '<strong class="br-takeoff-chip__value">' + escapeHtml(item.value || '—') + '</strong>'
+        + '</div>';
+    }).join('');
+    wrap.hidden = false;
+  }
+
+  function perimeterOrSquareLf() {
+    var periEl = document.getElementById('br-perimeter-lf');
+    var peri = periEl ? parseFloat(periEl.value) : 0;
+    if (isFinite(peri) && peri > 0) return peri;
+    var areaEl = document.getElementById('br-area');
+    var area = areaEl ? parseFloat(areaEl.value) : 0;
+    return (isFinite(area) && area > 0) ? (4 * Math.sqrt(area)) : 0;
+  }
+
+  function computeDemoDrywallSuggestedSf() {
+    var btn = document.getElementById('br-fill-demo-drywall');
+    var imported = btn ? parseFloat(btn.getAttribute('data-br-demo-suggested') || '0') : 0;
+    if (isFinite(imported) && imported > 0) return imported;
+    var h = ceilingHeightFt();
+    if (currentPreset() === 'wall') {
+      var partEl = document.getElementById('br-partition');
+      var partLf = partEl ? parseFloat(partEl.value) : 0;
+      if (isFinite(partLf) && partLf > 0) {
+        return Math.round(partLf * h * 2 * 100) / 100;
+      }
+      return 0;
+    }
+    var areaEl = document.getElementById('br-area');
+    var area = areaEl ? parseFloat(areaEl.value) : 0;
+    var dwWallEl = document.getElementById('br-dw-wall');
+    var dwWall = dwWallEl ? parseFloat(dwWallEl.value) : 0;
+    var ceilEl = document.getElementById('br-ceil-sf');
+    var ceilSf = ceilEl ? parseFloat(ceilEl.value) : 0;
+    var peri = perimeterOrSquareLf();
+    var wallBasis = (isFinite(dwWall) && dwWall > 0) ? dwWall : (peri * h);
+    var ceilBasis = (isFinite(ceilSf) && ceilSf > 0) ? ceilSf : (isFinite(area) && area > 0 ? area : 0);
+    var total = wallBasis + ceilBasis;
+    return total > 0 ? Math.round(total * 100) / 100 : 0;
+  }
+
+  function syncDemoDrywallHelper() {
+    var btn = document.getElementById('br-fill-demo-drywall');
+    if (!btn) return;
+    var suggested = computeDemoDrywallSuggestedSf();
+    btn.hidden = !(suggested > 0);
+  }
+
+  function syncPartitionHelpers() {
+    var partEl = document.getElementById('br-partition');
+    var dwPartBtn = document.getElementById('br-dw-add-partition-btn');
+    var basePartBtn = document.getElementById('br-base-add-partition-btn');
+    if (!dwPartBtn && !basePartBtn) return;
+    var partitionLf = partEl ? parseFloat(partEl.value) : 0;
+    var dwWallEl = document.getElementById('br-dw-wall');
+    var isMeasuredNetImport = !!(dwWallEl && dwWallEl.getAttribute('data-br-from-layout') === 'net');
+    if (!isFinite(partitionLf) || partitionLf <= 0 || isMeasuredNetImport) {
+      if (dwPartBtn) dwPartBtn.hidden = true;
+      if (basePartBtn) basePartBtn.hidden = true;
+      return;
+    }
+    var basePeri = currentPreset() === 'wall' ? 0 : perimeterOrSquareLf();
+    var h = ceilingHeightFt();
+    var targetDwWall = Math.round((basePeri * h + partitionLf * h * 2) * 100) / 100;
+    var targetBaseLf = Math.round((basePeri + partitionLf * 2) * 100) / 100;
+    if (dwPartBtn) {
+      dwPartBtn.hidden = false;
+      dwPartBtn.textContent = '+ Set walls w/ 2-sided partitions (' + formatLayoutQty(targetDwWall) + ' sq ft)';
+    }
+    if (basePartBtn) {
+      basePartBtn.hidden = false;
+      basePartBtn.textContent = '+ Set baseboard w/ partitions (' + formatLayoutQty(targetBaseLf) + ' lf)';
+    }
+  }
+
   function applyRoomLayout(opt) {
     var labelEl = document.getElementById('br-layout-import-label');
     var status = document.getElementById('br-layout-import-status');
@@ -407,6 +574,10 @@
         status.textContent = '';
         status.classList.remove('is-set', 'is-warning');
       }
+      renderLayoutTakeoffSummary(null, null, null);
+      var fillDemo = document.getElementById('br-fill-demo-drywall');
+      if (fillDemo) fillDemo.removeAttribute('data-br-demo-suggested');
+      syncDemoDrywallHelper();
       return;
     }
     if (opt.geometry_unmeasurable) {
@@ -460,6 +631,7 @@
 
   function applyRoomLayoutConfirmed(opt, proposed, layoutImport) {
     applyingLayout = true;
+    clearLayoutBadges();
     var labelEl = document.getElementById('br-layout-import-label');
     var status = document.getElementById('br-layout-import-status');
     var wall = document.getElementById('br-dw-wall');
@@ -470,7 +642,10 @@
     var heightKey = 'ceiling_height_ft';
     if (proposed[heightKey] != null && fieldIds[heightKey]) {
       var heightEl = document.getElementById(fieldIds[heightKey]);
-      if (heightEl) heightEl.value = formatLayoutQty(proposed[heightKey]);
+      if (heightEl) {
+        heightEl.value = formatLayoutQty(proposed[heightKey]);
+        markLayoutSynced(heightEl);
+      }
     }
 
     var skipForm = (layoutImport && layoutImport.SKIP_FORM_KEYS) || { drywall_ceiling_sf: true };
@@ -482,12 +657,61 @@
       if (!id) return;
       if (lwKeys[key]) {
         setLwToSqft(id, proposed[key]);
+        markLayoutSynced(document.getElementById(id));
         return;
       }
       var el = document.getElementById(id);
       if (!el) return;
       el.value = formatLayoutQty(proposed[key]);
+      markLayoutSynced(el);
     });
+
+    var ext = (layoutImport && typeof layoutImport.extendedQuantities === 'function')
+      ? layoutImport.extendedQuantities(opt)
+      : null;
+    if (ext) {
+      if (ext.include_stairs) {
+        var cbStairs = document.getElementById('br-include-stairs');
+        var stairsFields = document.getElementById('br-stairs-fields');
+        if (cbStairs) cbStairs.checked = true;
+        if (stairsFields) stairsFields.hidden = false;
+        var treadsEl = document.getElementById('br-stairs-treads');
+        if (treadsEl && ext.stairs_treads != null) {
+          treadsEl.value = formatLayoutQty(ext.stairs_treads);
+          markLayoutSynced(treadsEl);
+        }
+        var railEl = document.getElementById('br-stairs-handrail-lf');
+        if (railEl && ext.stairs_handrail_lf != null) {
+          railEl.value = formatLayoutQty(ext.stairs_handrail_lf);
+          markLayoutSynced(railEl);
+        }
+      }
+      if (ext.include_millwork) {
+        var cbMill = document.getElementById('br-include-millwork');
+        var millFields = document.getElementById('br-millwork-fields');
+        if (cbMill) cbMill.checked = true;
+        if (millFields) millFields.hidden = false;
+        var baseCabEl = document.getElementById('br-cabinet-base-lf');
+        if (baseCabEl && ext.cabinet_base_lf != null) {
+          baseCabEl.value = formatLayoutQty(ext.cabinet_base_lf);
+          markLayoutSynced(baseCabEl);
+        }
+        var upperCabEl = document.getElementById('br-cabinet-upper-lf');
+        if (upperCabEl && ext.cabinet_upper_lf != null) {
+          upperCabEl.value = formatLayoutQty(ext.cabinet_upper_lf);
+          markLayoutSynced(upperCabEl);
+        }
+      }
+      syncRevealTargets();
+      var fillDemoBtn = document.getElementById('br-fill-demo-drywall');
+      if (fillDemoBtn) {
+        if (ext.demo_drywall_suggested_sf != null && Number(ext.demo_drywall_suggested_sf) > 0) {
+          fillDemoBtn.setAttribute('data-br-demo-suggested', formatLayoutQty(ext.demo_drywall_suggested_sf));
+        } else {
+          fillDemoBtn.removeAttribute('data-br-demo-suggested');
+        }
+      }
+    }
 
     var measuredNet = (layoutImport && layoutImport.present)
       ? (layoutImport.present(opt, 'finish_drywall_sqft')
@@ -507,9 +731,12 @@
           })
         : ('Imported ' + (opt.short_name || opt.name || 'layout') + '.');
     }
+    renderLayoutTakeoffSummary(opt, proposed, layoutImport);
     applyingLayout = false;
     syncUnifiedCeilingArea();
     updateDwWallPlaceholder();
+    syncDemoDrywallHelper();
+    syncPartitionHelpers();
     schedulePreview();
   }
 
@@ -733,6 +960,12 @@
     relocateNestedTrades();
     syncBathroomElectricalHints();
     syncDemoChoiceRequired(false);
+    if (isAllSections) {
+      syncAllSectionsOpenState();
+    }
+    syncPartitionHelpers();
+    syncDemoDrywallHelper();
+    syncInlineClientProvides();
   }
 
   function relocateNestedTrades() {
@@ -967,6 +1200,62 @@
     return true;
   }
 
+  function syncAllSectionsOpenState() {
+    wizardKeys.forEach(function (k) {
+      var el = sectionEl(k);
+      if (!el) return;
+      el.setAttribute('open', '');
+    });
+  }
+
+  function syncViewModeUi() {
+    form.classList.toggle('br-layout--all-sections', isAllSections);
+    var toggleBtn = document.getElementById('br-view-mode-toggle');
+    if (toggleBtn) {
+      toggleBtn.setAttribute('aria-pressed', isAllSections ? 'true' : 'false');
+      var span = toggleBtn.querySelector('[data-br-view-mode-label], span');
+      (span || toggleBtn).textContent = isAllSections ? 'Guided steps' : 'All sections';
+    }
+    var summaryEl = document.getElementById('br-workbench-summary');
+    if (summaryEl) {
+      summaryEl.textContent = isAllSections ? 'All enabled sections open' : 'Guided step-by-step builder';
+    }
+  }
+
+  function setAllSectionsMode(on) {
+    isAllSections = !!on;
+    syncViewModeUi();
+    if (isAllSections) {
+      syncAllSectionsOpenState();
+    } else {
+      setWizardStep(currentIndex, false);
+    }
+  }
+
+  function jumpToSection(key) {
+    if (!key) return;
+    var idx = wizardKeys.indexOf(key);
+    if (idx >= 0) {
+      setWizardStep(idx, true);
+      return;
+    }
+    if (currentPreset() === 'bathroom' && (key === 'electrical' || key === 'plumbing' || key === 'framing')) {
+      var bathIdx = wizardKeys.indexOf('bathroom');
+      if (bathIdx >= 0) {
+        setWizardStep(bathIdx, false);
+        var nestedEl = document.getElementById('br-' + key + '-fields');
+        if (nestedEl && nestedEl.scrollIntoView) {
+          nestedEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          var bathEl = sectionEl('bathroom');
+          if (bathEl && bathEl.scrollIntoView) {
+            bathEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      }
+    }
+  }
+
   function setWizardStep(index, scroll) {
     if (index < 0) index = 0;
     if (index >= wizardKeys.length) index = wizardKeys.length - 1;
@@ -977,7 +1266,9 @@
       if (!el) return;
       var active = k === key;
       el.classList.toggle('is-active', active);
-      if (!isEdit) {
+      if (isAllSections) {
+        el.setAttribute('open', '');
+      } else if (!isEdit) {
         if (active) el.setAttribute('open', '');
         else el.removeAttribute('open');
       }
@@ -1031,7 +1322,28 @@
     if (stickyBar) new ResizeObserver(syncStickyBarSpace).observe(stickyBar);
   }
 
-  setWizardStep(isEdit ? Math.max(0, wizardKeys.indexOf('review')) : 0, false);
+  var reviewStepEl = sectionEl('review');
+  var hasSendOptionsError = !!(reviewStepEl && (
+    reviewStepEl.querySelector('#br-send-options .admin-form-error')
+    || reviewStepEl.querySelector('.cp-reply-to-accept--error')
+  ));
+  if (hasSendOptionsError) {
+    var sendOpts = reviewStepEl.querySelector('#br-send-options');
+    if (sendOpts && sendOpts.tagName === 'DETAILS') {
+      sendOpts.setAttribute('open', '');
+    }
+  }
+  var bootStepIndex = (isEdit || hasSendOptionsError)
+    ? Math.max(0, wizardKeys.indexOf('review'))
+    : 0;
+  syncViewModeUi();
+  setWizardStep(bootStepIndex, false);
+  var viewModeToggle = document.getElementById('br-view-mode-toggle');
+  if (viewModeToggle) {
+    viewModeToggle.addEventListener('click', function () {
+      setAllSectionsMode(!isAllSections);
+    });
+  }
   var prevBtn = document.getElementById('br-prev');
   var nextBtn = document.getElementById('br-next');
   if (prevBtn) prevBtn.addEventListener('click', function () { setWizardStep(currentIndex - 1, true); });
@@ -1055,15 +1367,134 @@
     });
   });
   form.addEventListener('change', function (e) {
-    if (e.target && e.target.getAttribute('data-br-wall-door') === '1') {
+    if (!e.target) return;
+    if (e.target.getAttribute('data-br-wall-door') === '1') {
       syncWallDoorFromToggle();
       schedulePreview();
+      return;
+    }
+    if (e.target.hasAttribute('data-br-inline-client-provides')) {
+      var sec = e.target.getAttribute('data-br-inline-client-provides') || '';
+      var auth = form.querySelector('input[name="client_provides_sections[]"][value="' + sec + '"]');
+      if (auth) {
+        auth.checked = !!e.target.checked;
+        try {
+          auth.dispatchEvent(new Event('change', { bubbles: true }));
+        } catch (err) {}
+      }
+      schedulePreview();
+      return;
+    }
+    if (e.target.name === 'client_provides_sections[]') {
+      syncInlineClientProvides();
     }
   });
   form.addEventListener('input', function (e) {
     if (!e.target) return;
     if (e.target.id === 'br-frame-doors' || e.target.id === 'br-doors') {
       syncWallDoorToggleFromOpenings();
+    }
+    if (
+      e.target.id === 'br-partition'
+      || e.target.id === 'br-area'
+      || e.target.id === 'br-perimeter-lf'
+      || e.target.id === 'br-height'
+      || e.target.id === 'br-dw-wall'
+      || e.target.id === 'br-ceil-sf'
+    ) {
+      syncPartitionHelpers();
+      syncDemoDrywallHelper();
+    }
+  });
+  form.addEventListener('click', function (e) {
+    var switchAllBtn = e.target && e.target.closest ? e.target.closest('[data-br-switch-all-sections]') : null;
+    if (switchAllBtn) {
+      e.preventDefault();
+      setAllSectionsMode(true);
+      return;
+    }
+    var jumpReviewBtn = e.target && e.target.closest ? e.target.closest('[data-br-jump-review]') : null;
+    if (jumpReviewBtn) {
+      e.preventDefault();
+      jumpToSection('review');
+      return;
+    }
+    var fillDemoBtn = e.target && e.target.closest ? e.target.closest('#br-fill-demo-drywall') : null;
+    if (fillDemoBtn) {
+      e.preventDefault();
+      var suggested = computeDemoDrywallSuggestedSf();
+      if (suggested > 0) {
+        setLwToSqft('br-demo-dw', suggested);
+        var dwEl = document.getElementById('br-demo-dw');
+        if (dwEl) {
+          try {
+            dwEl.dispatchEvent(new Event('input', { bubbles: true }));
+            dwEl.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (err) {}
+        }
+        schedulePreview();
+      }
+      return;
+    }
+    var dwPartBtn = e.target && e.target.closest ? e.target.closest('#br-dw-add-partition-btn') : null;
+    if (dwPartBtn) {
+      e.preventDefault();
+      var partEl = document.getElementById('br-partition');
+      var partLf = partEl ? parseFloat(partEl.value) : 0;
+      if (isFinite(partLf) && partLf > 0) {
+        var basePeri = currentPreset() === 'wall' ? 0 : perimeterOrSquareLf();
+        var h = ceilingHeightFt();
+        var targetWall = Math.round((basePeri * h + partLf * h * 2) * 100) / 100;
+        setLwToSqft('br-dw-wall', targetWall);
+        var dwWallInput = document.getElementById('br-dw-wall');
+        if (dwWallInput) {
+          dwWallInput.removeAttribute('data-br-from-layout');
+          try {
+            dwWallInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dwWallInput.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (err) {}
+        }
+        syncDemoDrywallHelper();
+        schedulePreview();
+      }
+      return;
+    }
+    var basePartBtn = e.target && e.target.closest ? e.target.closest('#br-base-add-partition-btn') : null;
+    if (basePartBtn) {
+      e.preventDefault();
+      var partEl2 = document.getElementById('br-partition');
+      var partLf2 = partEl2 ? parseFloat(partEl2.value) : 0;
+      if (isFinite(partLf2) && partLf2 > 0) {
+        var basePeri2 = currentPreset() === 'wall' ? 0 : perimeterOrSquareLf();
+        var targetBase = Math.round((basePeri2 + partLf2 * 2) * 100) / 100;
+        var baseInput = document.getElementById('br-base');
+        if (baseInput) {
+          baseInput.value = formatLayoutQty(targetBase);
+          try {
+            baseInput.dispatchEvent(new Event('input', { bubbles: true }));
+            baseInput.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (err) {}
+        }
+        schedulePreview();
+      }
+      return;
+    }
+    var elecGenBtn = e.target && e.target.closest ? e.target.closest('#br-elec-generate-lines') : null;
+    if (elecGenBtn) {
+      e.preventDefault();
+      generateElectricalLines(elecGenBtn);
+      return;
+    }
+    var plumbGenBtn = e.target && e.target.closest ? e.target.closest('#br-plumb-generate-lines') : null;
+    if (plumbGenBtn) {
+      e.preventDefault();
+      generatePlumbingLines(plumbGenBtn);
+      return;
+    }
+    var rowGoto = e.target && e.target.closest ? e.target.closest('[data-br-goto-row]') : null;
+    if (rowGoto) {
+      e.preventDefault();
+      jumpToSection(rowGoto.getAttribute('data-br-goto-row'));
     }
   });
   form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
@@ -1076,9 +1507,7 @@
   form.querySelectorAll('[data-br-goto]').forEach(function (btn) {
     btn.addEventListener('click', function () {
       var key = btn.getAttribute('data-br-goto');
-      var idx = wizardKeys.indexOf(key);
-      if (idx < 0) return;
-      setWizardStep(idx, true);
+      jumpToSection(key);
     });
   });
 
@@ -1130,6 +1559,29 @@
     }
   }
 
+  var SECTION_FALLBACK_LABELS = {
+    demolition: 'Demolition & Preparation',
+    framing: 'Framing',
+    electrical: 'Electrical',
+    plumbing: 'Plumbing',
+    insulation: 'Insulation & Vapour Barrier',
+    ceiling: 'Ceiling Options',
+    drywall: 'Drywall / Mud / Tape / Sand',
+    flooring: 'Flooring',
+    doors_trim: 'Doors, Trim & Baseboards',
+    painting: 'Painting',
+    bathroom: 'Bathroom',
+    finishing: 'Final Details & Cleanup'
+  };
+
+  function sectionDisplayLabel(key) {
+    var btn = form.querySelector('.br-progress__item[data-br-goto="' + key + '"] .br-progress__label');
+    if (btn && String(btn.textContent || '').trim() !== '') {
+      return String(btn.textContent || '').trim();
+    }
+    return SECTION_FALLBACK_LABELS[key] || key;
+  }
+
   function renderPreview(data) {
     lastPreviewData = data;
     var empty = document.getElementById('br-live-empty');
@@ -1144,6 +1596,11 @@
     if (!summary.grand_total || summary.grand_total <= 0) {
       if (empty) empty.hidden = false;
       if (body) body.hidden = true;
+      updateDrywallNetHint(data.scope || {});
+      updateClientScopeFromPreview(data);
+      updateClientScopeAllowanceStale(data);
+      updateSectionSubtotals(data);
+      updateClientProvidesSectionState(data);
       return;
     }
     if (empty) empty.hidden = true;
@@ -1157,11 +1614,30 @@
     if (isFinite(floorWastePct) && floorWastePct >= 0 && document.getElementById('br-fl-waste')) {
       html += '<div class="pq-row"><span class="admin-form-help">Flooring waste</span><span class="admin-form-help">' + floorWastePct + '%</span></div>';
     }
-  if (lastCommuteAmount > 0) {
+    if (lastCommuteAmount > 0) {
       html += '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
     }
     if (lastDebrisAmount > 0) {
       html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
+    }
+    var sectionSubtotals = summary.section_subtotals_pre_hst || {};
+    var enabledSections = enabledTradeKeys();
+    var tradeRowsHtml = '';
+    allSectionKeys.forEach(function (k) {
+      if (k === 'overview') return;
+      if (enabledSections.indexOf(k) === -1) return;
+      var subAmt = Number(sectionSubtotals[k] || 0);
+      if (subAmt <= 0) return;
+      tradeRowsHtml += '<button type="button" class="pq-row br-live-trade-row" data-br-goto-row="' + escapeHtml(k) + '">'
+        + '<span>' + escapeHtml(sectionDisplayLabel(k)) + '</span>'
+        + '<span>' + fmt(subAmt) + '</span>'
+        + '</button>';
+    });
+    if (tradeRowsHtml) {
+      html += '<div class="br-live-trades" data-br-live-trades="1">'
+        + '<p class="br-live-trades__title">Trade breakdown</p>'
+        + tradeRowsHtml
+        + '</div>';
     }
     var recon = summary.reconciliation || {};
     var reconLines = recon.lines || [];
@@ -1276,6 +1752,30 @@
     }
   }
 
+  function syncInlineClientProvides() {
+    var allOn = !!(clientAll && clientAll.checked);
+    form.querySelectorAll('[data-br-inline-client-provides]').forEach(function (inlineCb) {
+      var sec = inlineCb.getAttribute('data-br-inline-client-provides') || '';
+      var auth = form.querySelector('input[name="client_provides_sections[]"][value="' + sec + '"]');
+      if (!auth) return;
+      var hideInline = allOn || !!auth.hidden;
+      inlineCb.checked = !!auth.checked;
+      inlineCb.disabled = allOn || !!auth.disabled;
+      inlineCb.hidden = hideInline;
+      var inlineRow = inlineCb.closest('.br-inline-client-provides') || inlineCb.closest('label') || inlineCb.parentElement;
+      if (inlineRow && inlineRow !== form) {
+        inlineRow.hidden = hideInline;
+        inlineRow.classList.toggle('br-client-provides--inert', inlineCb.disabled && !inlineCb.checked);
+        var authRow = auth.closest('label') || auth.parentElement;
+        if (authRow) inlineRow.title = authRow.title || '';
+      }
+      var footerWrap = inlineCb.closest('.br-section-footer__client-provides');
+      if (footerWrap) {
+        footerWrap.hidden = hideInline;
+      }
+    });
+  }
+
   function updateClientProvidesSectionState(data) {
     var enabled = enabledTradeKeys();
     form.querySelectorAll('input[name="client_provides_sections[]"]').forEach(function (cb) {
@@ -1304,6 +1804,7 @@
           : 'This item has no priced materials to omit.'
       );
     });
+    syncInlineClientProvides();
   }
 
   function ceilingHangPricedInDrywallSection() {
@@ -1321,21 +1822,314 @@
     note.hidden = !show;
   }
 
-  function updateSectionSubtotals(data) {
-    if (!data || !data.summary) return;
-    var map = data.summary.section_subtotals_pre_hst || {};
+  function electricalScopeCount() {
+    return formIntVal('outlet_qty')
+      + formIntVal('switch_qty')
+      + formIntVal('light_qty')
+      + formIntVal('fixture_qty')
+      + formIntVal('detector_qty')
+      + (formChecked('include_bath_fixture') ? formIntVal('bath_fixture_qty') : 0)
+      + (formChecked('include_bath_spot') ? formIntVal('bath_spot_qty') : 0)
+      + (formChecked('panel_upgrade') ? 1 : 0);
+  }
+
+  function plumbingScopeCount() {
+    if (!formChecked('include_plumbing')) return 0;
+    return ['bath_rough_in', 'sink_laundry', 'wet_bar', 'floor_drain', 'wh_reloc'].reduce(function (sum, k) {
+      return sum + (formChecked(k) ? 1 : 0);
+    }, 0);
+  }
+
+  function updateStepRailMeta(data) {
+    var summary = (data && data.summary) || {};
+    var scope = (data && data.scope) || {};
+    var map = summary.section_subtotals_pre_hst || {};
     var enabled = enabledTradeKeys();
-    form.querySelectorAll('[data-br-section-subtotal]').forEach(function (wrap) {
-      var key = wrap.getAttribute('data-br-section-subtotal') || '';
-      var on = enabled.indexOf(key) !== -1;
-      var amt = Number(map[key] || 0);
-      var val = wrap.querySelector('[data-br-section-subtotal-amount]');
-      if (val) {
-        val.textContent = fmt(amt);
+    var areaEl = document.getElementById('br-area');
+    var areaDom = areaEl ? (parseFloat(areaEl.value) || 0) : 0;
+    var areaSqft = Number(scope.area_sqft != null ? scope.area_sqft : areaDom) || areaDom;
+    var partEl = document.getElementById('br-partition');
+    var partLf = partEl ? (parseFloat(partEl.value) || 0) : 0;
+    var wallPreset = currentPreset() === 'wall';
+    var overviewReady = wallPreset ? partLf > 0 : areaSqft > 0;
+    var hasWork = overviewReady;
+    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
+
+    form.querySelectorAll('.br-progress__item[data-br-goto]').forEach(function (btn) {
+      var key = btn.getAttribute('data-br-goto') || '';
+      var meta = btn.querySelector('[data-br-step-meta]');
+      btn.classList.remove('is-ready', 'is-attention');
+
+      if (key === 'overview') {
+        if (overviewReady) {
+          btn.classList.add('is-ready');
+          if (meta) meta.textContent = '✓ Ready';
+        } else {
+          btn.classList.add('is-attention');
+          if (meta) meta.textContent = 'Required';
+        }
+        return;
       }
-      wrap.hidden = !on;
+
+      if (key === 'client_scope') {
+        if (hasWork) {
+          btn.classList.add('is-ready');
+          if (meta) meta.textContent = 'Ready';
+        } else if (meta) {
+          meta.textContent = '';
+        }
+        return;
+      }
+
+      if (key === 'review') {
+        if (grand > 0) {
+          btn.classList.add('is-ready');
+          if (meta) meta.textContent = fmtCompact(grand);
+        } else {
+          if (meta) meta.textContent = 'Ready';
+        }
+        return;
+      }
+
+      var on = enabled.indexOf(key) !== -1;
+      if (!on) {
+        if (meta) meta.textContent = '';
+        return;
+      }
+      var amt = Number(map[key] || 0);
+      if (amt > 0) {
+        btn.classList.add('is-ready');
+        if (meta) meta.textContent = fmtCompact(amt);
+        return;
+      }
+
+      if (key === 'demolition') {
+        var demoChoice = form.querySelector('[data-br-demo-choice]:checked');
+        if (!demoChoice || demoChoice.value === '1') {
+          btn.classList.add('is-attention');
+          if (meta) meta.textContent = 'Check';
+        } else if (meta) {
+          meta.textContent = fmt(0);
+        }
+        return;
+      }
+
+      if (key === 'electrical' || key === 'plumbing') {
+        var hasScope = (key === 'electrical' && electricalScopeCount() > 0)
+          || (key === 'plumbing' && plumbingScopeCount() > 0);
+        if (hasWork || hasScope) {
+          btn.classList.add('is-attention');
+          if (meta) meta.textContent = hasScope ? 'Check' : fmt(0);
+        } else if (meta) {
+          meta.textContent = '';
+        }
+        return;
+      }
+
+      if (hasWork) {
+        btn.classList.add('is-attention');
+        if (meta) meta.textContent = fmt(0);
+      } else if (meta) {
+        meta.textContent = '';
+      }
     });
-    updateCeilingDrywallPricedNote();
+  }
+
+  function updateSectionSubtotals(data) {
+    if (data && data.summary) {
+      var map = data.summary.section_subtotals_pre_hst || {};
+      var enabled = enabledTradeKeys();
+      form.querySelectorAll('[data-br-section-subtotal]').forEach(function (wrap) {
+        var key = wrap.getAttribute('data-br-section-subtotal') || '';
+        var on = enabled.indexOf(key) !== -1;
+        var amt = Number(map[key] || 0);
+        var val = wrap.querySelector('[data-br-section-subtotal-amount]');
+        if (val) {
+          val.textContent = fmt(amt);
+        }
+        wrap.hidden = !on;
+      });
+      updateCeilingDrywallPricedNote();
+    }
+    updateStepRailMeta(data);
+  }
+
+  function formIntVal(name) {
+    var el = form.querySelector('[name="' + name + '"]');
+    var n = el ? parseInt(el.value || '0', 10) : 0;
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+
+  function formChecked(name) {
+    var el = form.querySelector('input[type="checkbox"][name="' + name + '"]:checked');
+    return !!el;
+  }
+
+  function normalizeTradePrefix(desc) {
+    return String(desc || '').replace(/^\d+x\s+/i, '').trim().toLowerCase();
+  }
+
+  function setGeneratorStatus(statusEl, message) {
+    if (!statusEl) return;
+    statusEl.textContent = message || '';
+    statusEl.hidden = !message;
+  }
+
+  function fillTradeRow(row, item) {
+    if (!row) return;
+    var descEl = row.querySelector('[data-ac-description]');
+    var amtEl = row.querySelector('[data-ac-amount]');
+    var hstEl = row.querySelector('[data-ac-hst-toggle]');
+    if (descEl) {
+      descEl.value = item.description;
+      try {
+        descEl.dispatchEvent(new Event('input', { bubbles: true }));
+        descEl.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {}
+    }
+    if (amtEl) {
+      amtEl.value = Number(item.amount || 0).toFixed(2);
+      if (window.cpMoneyMask && typeof window.cpMoneyMask.wire === 'function') {
+        window.cpMoneyMask.wire(amtEl);
+      }
+      try {
+        amtEl.dispatchEvent(new Event('input', { bubbles: true }));
+        amtEl.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {}
+    }
+    if (hstEl) {
+      hstEl.checked = false;
+      try {
+        hstEl.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {}
+    }
+  }
+
+  function appendGeneratedTradeLines(cardSelector, lines, statusEl) {
+    var card = document.querySelector(cardSelector);
+    if (!card) return 0;
+    if (!lines || !lines.length) {
+      setGeneratorStatus(statusEl, 'No scope items selected to generate.');
+      return 0;
+    }
+    var existingRows = Array.prototype.slice.call(card.querySelectorAll('.q-ac-row, [data-ac-row]'));
+    var existingPrefixes = {};
+    existingRows.forEach(function (row) {
+      var d = row.querySelector('[data-ac-description]');
+      var norm = normalizeTradePrefix(d ? d.value : '');
+      if (norm) existingPrefixes[norm] = true;
+    });
+    var added = 0;
+    var addBtn = card.querySelector('[data-ac-add]');
+    lines.forEach(function (item) {
+      var norm = normalizeTradePrefix(item.description);
+      if (!norm || existingPrefixes[norm]) return;
+      var targetRow = null;
+      var currentRows = card.querySelectorAll('.q-ac-row, [data-ac-row]');
+      for (var i = 0; i < currentRows.length; i++) {
+        var dEl = currentRows[i].querySelector('[data-ac-description]');
+        var aEl = currentRows[i].querySelector('[data-ac-amount]');
+        if (dEl && aEl && String(dEl.value || '').trim() === '' && String(aEl.value || '').trim() === '') {
+          targetRow = currentRows[i];
+          break;
+        }
+      }
+      if (!targetRow && addBtn) {
+        addBtn.click();
+        var afterRows = card.querySelectorAll('.q-ac-row, [data-ac-row]');
+        targetRow = afterRows.length ? afterRows[afterRows.length - 1] : null;
+      }
+      if (targetRow) {
+        fillTradeRow(targetRow, item);
+        existingPrefixes[norm] = true;
+        added += 1;
+      }
+    });
+    if (added > 0) {
+      setGeneratorStatus(statusEl, 'Added ' + added + ' allowance line' + (added === 1 ? '' : 's') + '.');
+      schedulePreview();
+    } else {
+      setGeneratorStatus(statusEl, 'All selected items are already in the quote.');
+    }
+    return added;
+  }
+
+  function generateElectricalLines(btn) {
+    var lines = [];
+    var outletQty = formIntVal('outlet_qty');
+    if (outletQty > 0) {
+      lines.push({ description: outletQty + 'x Basement electrical receptacle outlet(s)', amount: outletQty * 95 });
+    }
+    var switchQty = formIntVal('switch_qty');
+    if (switchQty > 0) {
+      lines.push({ description: switchQty + 'x Wall switch(es) & 3-way controls', amount: switchQty * 85 });
+    }
+    var lightTypeEl = form.querySelector('[name="lighting_type"]');
+    var lightType = lightTypeEl ? String(lightTypeEl.value || 'spot') : 'spot';
+    var lightQty = formIntVal('light_qty');
+    if (lightQty > 0) {
+      if (lightType === 'fixture') {
+        lines.push({ description: lightQty + 'x Ceiling surface light fixture(s)', amount: lightQty * 145 });
+      } else {
+        lines.push({ description: lightQty + 'x Recessed LED pot light(s)', amount: lightQty * 135 });
+      }
+    }
+    var fixtureQty = formIntVal('fixture_qty');
+    if (lightType === 'both' && fixtureQty > 0) {
+      lines.push({ description: fixtureQty + 'x Ceiling light fixture(s)', amount: fixtureQty * 145 });
+    }
+    var bathOn = bathroomSectionEnabled() || currentPreset() === 'bathroom';
+    var bathFixQty = formIntVal('bath_fixture_qty');
+    if (bathOn && formChecked('include_bath_fixture') && bathFixQty > 0) {
+      lines.push({ description: bathFixQty + 'x Bathroom vanity/ceiling fixture(s)', amount: bathFixQty * 145 });
+    }
+    var bathSpotQty = formIntVal('bath_spot_qty');
+    if (bathOn && formChecked('include_bath_spot') && bathSpotQty > 0) {
+      lines.push({ description: bathSpotQty + 'x Bathroom shower/ceiling pot light(s)', amount: bathSpotQty * 135 });
+    }
+    var detectorQty = formIntVal('detector_qty');
+    if (detectorQty > 0) {
+      lines.push({ description: detectorQty + 'x Interconnected smoke / CO detector(s) (OBC)', amount: detectorQty * 165 });
+    }
+    if (formChecked('panel_upgrade')) {
+      lines.push({ description: 'Electrical panel / sub-panel capacity upgrade', amount: 2400 });
+    }
+    var statusEl = document.getElementById('br-elec-generator-hint')
+      || document.getElementById('br-elec-gen-status')
+      || (btn && btn.parentElement && btn.parentElement.querySelector('[data-br-gen-status], [role="status"]'));
+    appendGeneratedTradeLines('#br-electrical-fields [data-ac-card]', lines, statusEl);
+  }
+
+  function generatePlumbingLines(btn) {
+    var incPlumb = form.querySelector('input[type="checkbox"][name="include_plumbing"]');
+    if (incPlumb && !incPlumb.checked) {
+      incPlumb.checked = true;
+      var plumbFields = document.getElementById('br-plumb-fields');
+      if (plumbFields) plumbFields.hidden = false;
+      try {
+        incPlumb.dispatchEvent(new Event('change', { bubbles: true }));
+      } catch (err) {}
+    }
+    var lines = [];
+    if (formChecked('bath_rough_in')) {
+      lines.push({ description: '3-piece basement bathroom drain, vent & supply rough-in', amount: 2400 });
+    }
+    if (formChecked('sink_laundry')) {
+      lines.push({ description: 'Laundry / utility sink rough-in', amount: 650 });
+    }
+    if (formChecked('wet_bar')) {
+      lines.push({ description: 'Wet bar sink drain & water supply rough-in', amount: 850 });
+    }
+    if (formChecked('floor_drain')) {
+      lines.push({ description: 'Mechanical / basement floor drain & trap', amount: 450 });
+    }
+    if (formChecked('wh_reloc')) {
+      lines.push({ description: 'Water heater relocation', amount: 750 });
+    }
+    var statusEl = document.getElementById('br-plumb-generator-hint')
+      || document.getElementById('br-plumb-gen-status')
+      || (btn && btn.parentElement && btn.parentElement.querySelector('[data-br-gen-status], [role="status"]'));
+    appendGeneratedTradeLines('#br-plumbing-fields [data-ac-card]', lines, statusEl);
   }
 
   function updateDrywallNetHint(scope) {
@@ -1544,7 +2338,12 @@
   }
   if (dwWallEl) {
     dwWallEl.addEventListener('input', function () {
-      if (!applyingLayout) dwWallEl.removeAttribute('data-br-from-layout');
+      if (!applyingLayout) {
+        dwWallEl.removeAttribute('data-br-from-layout');
+        var demoBtn = document.getElementById('br-fill-demo-drywall');
+        if (demoBtn) demoBtn.removeAttribute('data-br-demo-suggested');
+        syncDemoDrywallHelper();
+      }
     });
   }
   var heightEl = document.getElementById('br-height');
@@ -1668,7 +2467,14 @@
 
   var ceilSfEl = document.getElementById('br-ceil-sf');
   if (ceilSfEl) {
-    ceilSfEl.addEventListener('input', syncUnifiedCeilingArea);
+    ceilSfEl.addEventListener('input', function () {
+      if (!applyingLayout) {
+        var demoBtn = document.getElementById('br-fill-demo-drywall');
+        if (demoBtn) demoBtn.removeAttribute('data-br-demo-suggested');
+        syncDemoDrywallHelper();
+      }
+      syncUnifiedCeilingArea();
+    });
     ceilSfEl.addEventListener('change', syncUnifiedCeilingArea);
   }
   var adoptCeil = form.querySelector('[data-br-adopt-ceiling-hang]');
@@ -1677,11 +2483,142 @@
   }
   syncUnifiedCeilingArea();
 
+  var FLOORING_LABELS = {
+    hardwood: 'Hardwood',
+    engineered: 'Engineered wood',
+    lvp: 'LVP',
+    laminate: 'Laminate',
+    tile: 'Tile',
+    none: 'Skip flooring'
+  };
+
+  function resolveScopeCopyField(fieldId, fallbackVal) {
+    var el = document.getElementById(fieldId);
+    if (el && String(el.value || '').trim() !== '') {
+      return el.value;
+    }
+    return fallbackVal || '';
+  }
+
+  function formatScopeLinesHtml(text) {
+    var trimmed = String(text || '').trim();
+    if (!trimmed) return '<p class="admin-form-help">—</p>';
+    return '<div class="br-scope-preview__copy">' + escapeHtml(trimmed).replace(/\r\n|\r|\n/g, '<br>') + '</div>';
+  }
+
+  function openScopePreviewModal() {
+    var modal = document.getElementById('br-scope-preview-modal');
+    var body = document.getElementById('br-scope-preview-body');
+    if (!modal || !body) return;
+    var data = lastPreviewData;
+    if (!data) {
+      body.innerHTML = '<p class="admin-form-help">Enter the basement area or project scope to generate a client proposal preview.</p>';
+      modal.hidden = false;
+      return;
+    }
+    var scope = data.scope || {};
+    var clientScope = data.client_scope || {};
+    var summary = data.summary || {};
+    var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
+    var flRaw = String(scope.flooring_type || '').toLowerCase();
+    var flooringLabel = FLOORING_LABELS[flRaw] || scope.flooring_type || '—';
+    var areaText = Number(scope.area_sqft || 0) > 0 ? (formatLayoutQty(scope.area_sqft) + ' sq ft') : '—';
+    var heightText = Number(scope.ceiling_height_ft || 0) > 0 ? (formatLayoutQty(scope.ceiling_height_ft) + ' ft') : '—';
+    var finishText = scope.finish_label || '—';
+
+    var includedText = resolveScopeCopyField('br-scope-included', clientScope.included);
+    var notIncludedText = resolveScopeCopyField('br-scope-not-included', clientScope.not_included);
+    var assumptionsText = resolveScopeCopyField('br-scope-assumptions', clientScope.assumptions);
+    var allowancesText = resolveScopeCopyField('br-scope-allowances', clientScope.allowances);
+
+    var trades = summary.trades || {};
+    var elecTax = Number((trades.electrical && trades.electrical.tax_in) || 0);
+    var plumbTax = Number((trades.plumbing && trades.plumbing.tax_in) || 0);
+
+    var html = ''
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Project specifications</h4>'
+      +   '<div class="br-scope-preview__specs">'
+      +     '<div class="br-scope-preview__spec"><span>Finished area</span><strong>' + escapeHtml(areaText) + '</strong></div>'
+      +     '<div class="br-scope-preview__spec"><span>Ceiling height</span><strong>' + escapeHtml(heightText) + '</strong></div>'
+      +     '<div class="br-scope-preview__spec"><span>Drywall finish level</span><strong>' + escapeHtml(finishText) + '</strong></div>'
+      +     '<div class="br-scope-preview__spec"><span>Flooring type</span><strong>' + escapeHtml(flooringLabel) + '</strong></div>'
+      +   '</div>'
+      + '</section>'
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Included</h4>' + formatScopeLinesHtml(includedText)
+      + '</section>'
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Not included</h4>' + formatScopeLinesHtml(notIncludedText)
+      + '</section>'
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Assumptions</h4>' + formatScopeLinesHtml(assumptionsText)
+      + '</section>'
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Allowances</h4>' + formatScopeLinesHtml(allowancesText)
+      + '</section>'
+      + '<section class="br-scope-preview__section">'
+      +   '<h4>Investment Summary &amp; HST</h4>'
+      +   '<div class="br-scope-preview__summary">'
+      +     '<div class="pq-row"><span>Subtotal (pre-HST)</span><span>' + fmt(summary.subtotal_pre_hst || 0) + '</span></div>'
+      +     '<div class="pq-row"><span>HST (13%)</span><span>' + fmt(summary.hst || 0) + '</span></div>'
+      +     (elecTax > 0 ? '<div class="pq-row"><span>Electrical (incl. HST)</span><span>' + fmt(elecTax) + '</span></div>' : '')
+      +     (plumbTax > 0 ? '<div class="pq-row"><span>Plumbing (incl. HST)</span><span>' + fmt(plumbTax) + '</span></div>' : '')
+      +     (lastCommuteAmount > 0 ? '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>' : '')
+      +     (lastDebrisAmount > 0 ? '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>' : '')
+      +     (lastAdditionalTaxIn > 0 ? '<div class="pq-row"><span>Additional costs (incl. HST)</span><span>' + fmt(lastAdditionalTaxIn) + '</span></div>' : '')
+      +     '<div class="pq-row pq-row--hl"><span>Total investment (incl. HST)</span><span>' + fmt(grand) + '</span></div>'
+      +   '</div>'
+      + '</section>';
+
+    body.innerHTML = html;
+    modal.hidden = false;
+    var closeBtn = modal.querySelector('[data-br-close-preview]');
+    if (closeBtn && typeof closeBtn.focus === 'function') {
+      closeBtn.focus();
+    }
+  }
+
+  function closeScopePreviewModal() {
+    var modal = document.getElementById('br-scope-preview-modal');
+    if (modal) modal.hidden = true;
+  }
+
+  document.addEventListener('click', function (e) {
+    var openBtn = e.target && e.target.closest ? e.target.closest('#br-preview-scope-btn') : null;
+    if (openBtn) {
+      e.preventDefault();
+      openScopePreviewModal();
+      return;
+    }
+    var closeBtn = e.target && e.target.closest ? e.target.closest('[data-br-close-preview]') : null;
+    if (closeBtn) {
+      var modal = document.getElementById('br-scope-preview-modal');
+      if (modal && !modal.hidden) {
+        e.preventDefault();
+        closeScopePreviewModal();
+      }
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var modal = document.getElementById('br-scope-preview-modal');
+    if (modal && !modal.hidden) {
+      closeScopePreviewModal();
+    }
+  });
+
   hydratePersistedClientScope();
   bindAllowancesReset(document.getElementById('br-scope-allowances-reset'));
   if (cfg.initialPreview) {
     renderPreview(cfg.initialPreview);
+  } else {
+    updateStepRailMeta(null);
   }
+  syncPartitionHelpers();
+  syncDemoDrywallHelper();
+  syncInlineClientProvides();
   schedulePreview();
 })();
 

@@ -51,6 +51,18 @@ class BasementRoomAreaImportMapper
     ];
 
     /**
+     * Extended optional Ontario takeoff quantity key → wizard input id.
+     *
+     * @var array<string, string>
+     */
+    public const EXTENDED_FIELD_IDS = [
+        'stairs_treads' => 'br-stairs-treads',
+        'stairs_handrail_lf' => 'br-stairs-handrail-lf',
+        'cabinet_base_lf' => 'br-cabinet-base-lf',
+        'cabinet_upper_lf' => 'br-cabinet-upper-lf',
+    ];
+
+    /**
      * Sq ft fields that use the length×width toggle.
      *
      * @var list<string>
@@ -508,6 +520,39 @@ class BasementRoomAreaImportMapper
             'paint_trim_lf' => $paintTrim,
             'import_bulkhead_drywall_sqft' => $importBulkheadDrywall > 0 ? $importBulkheadDrywall : null,
             'import_bulkhead_corner_bead_lf' => $importBulkheadBead > 0 ? $importBulkheadBead : null,
+        ];
+    }
+
+    /**
+     * Extract optional Ontario takeoff values (stairs, millwork, demo) when present.
+     *
+     * @param  array<string, mixed>  $opt
+     * @return array<string, float|int|bool|null>
+     */
+    public static function extendedQuantities(array $opt): array
+    {
+        $stairsTreads = self::present($opt, 'stairs_treads') ? max(0, (int) $opt['stairs_treads']) : null;
+        $stairsHandrailLf = self::present($opt, 'stairs_run_lf') ? round(max(0.0, (float) $opt['stairs_run_lf']), 2) : null;
+        $stairsCount = self::present($opt, 'stairs_count') ? max(0, (int) $opt['stairs_count']) : null;
+        $cabBase = self::present($opt, 'cabinet_base_lf') ? round(max(0.0, (float) $opt['cabinet_base_lf']), 2) : null;
+        $cabUpper = self::present($opt, 'cabinet_upper_lf') ? round(max(0.0, (float) $opt['cabinet_upper_lf']), 2) : null;
+
+        $includeStairs = ($stairsTreads ?? 0) > 0 || ($stairsHandrailLf ?? 0) > 0 || ($stairsCount ?? 0) > 0;
+        $includeMillwork = ($cabBase ?? 0) > 0 || ($cabUpper ?? 0) > 0;
+
+        $proposed = self::proposedQuantities($opt);
+        $demoSum = round(max(0.0, (float) ($proposed['drywall_wall_sf'] ?? 0) + (float) ($proposed['ceiling_sf'] ?? 0)), 2);
+        $demoDrywallSuggestedSf = $demoSum > 0 ? $demoSum : null;
+
+        return [
+            'stairs_treads' => $stairsTreads,
+            'stairs_handrail_lf' => $stairsHandrailLf,
+            'stairs_count' => $stairsCount,
+            'include_stairs' => $includeStairs,
+            'cabinet_base_lf' => $cabBase,
+            'cabinet_upper_lf' => $cabUpper,
+            'include_millwork' => $includeMillwork,
+            'demo_drywall_suggested_sf' => $demoDrywallSuggestedSf,
         ];
     }
 }
