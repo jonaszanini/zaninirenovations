@@ -538,8 +538,11 @@ for (var oi = 0; oi < independentOffsetsCm.length; oi++) {
   }
 }
 
-// Test 13: Unmeasurable when outer loop cannot be recovered (never silent zero)
-var brokenPlan = jitterIndependentEndpoints(hand0Plan, 25);
+// Test 13: Unmeasurable when outer loop cannot be recovered (never silent zero).
+// An open pair of walls cannot close a ring. Random endpoint noise is not used
+// here: a 25 cm jitter sometimes still forms a simple loop and skips the flag.
+var brokenPlan = JSON.parse(JSON.stringify(hand0Plan));
+brokenPlan.floor.walls = brokenPlan.floor.walls.slice(0, 2);
 brokenPlan.floor.rooms = [];
 delete brokenPlan.floors;
 var brokenMetrics = bridge.layoutMetrics(brokenPlan, null, { wall_height_ft: 8.0 });

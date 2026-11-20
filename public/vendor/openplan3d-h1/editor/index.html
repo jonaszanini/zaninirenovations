@@ -14,10 +14,10 @@
 		</script>
 		<script src="/js/room-area-interior-geometry.js?v=17bd18200c566426"></script>
 		<script src="/js/openplan3d-measurement-bridge.js?v=12983bf35e196103"></script>
-		<script src="/js/openplan3d-editor-bridge.js?v=c60caa5467c3325c"></script>
+		<script src="/js/openplan3d-editor-bridge.js?v=727fd1ccd9a1ee2d"></script>
 		<script src="/js/openplan3d-zanini-extensions.js?v=48cf545d151daf3f"></script>
 		<script src="/js/admin-info-tip.js?v=9b053bdb726c83e4"></script>
-		<script src="/js/openplan3d-zanini-tools.js?v=c690139eba26fecb"></script>
+		<script src="/js/openplan3d-zanini-tools.js?v=ba799f77d74e4ea3"></script>
 		<script>
 			if (window.OpenPlan3DEditorBridge && typeof window.OpenPlan3DEditorBridge.syncHostedThemeFromParent === 'function') {
 				window.OpenPlan3DEditorBridge.syncHostedThemeFromParent();
@@ -347,6 +347,24 @@
 			}
 			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > .relative:has(> button svg path[d^="M21 15v4"]) {
 				display: none !important;
+			}
+			/* Hide orphaned left dividers, duplicate internal project title, and trailing divider before hidden Export/Save */
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px + button,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px + input,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px + button + div.h-5.w-px,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px + input + div.h-5.w-px,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > a.flex.items-center.gap-1 + div.h-5.w-px + div.h-5.w-px,
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 > div.relative.xl\:hidden + div.h-5.w-px {
+				display: none !important;
+			}
+			html.zanini-hosted-openplan3d div.bg-gradient-to-r.from-slate-800 {
+				min-height: 40px !important;
+				height: 40px !important;
+				padding-top: 2px !important;
+				padding-bottom: 2px !important;
+				padding-left: 10px !important;
+				padding-right: 10px !important;
 			}
 		</style>
 	</head>

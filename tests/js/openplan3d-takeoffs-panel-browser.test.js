@@ -184,14 +184,14 @@ async function captureTakeoffsPanel(width, height, filename) {
   assert.ok(Math.abs(chipState.finishBaseboard - 199.53) < 0.05, 'hand0 finish_baseboard_lf ~199.53 lf with all finishes');
 
   const layout = await page.evaluate(() => {
+    const header = document.querySelector('.util-ra-openplan3d-header');
+    const toggle = document.getElementById('openplan3d-takeoffs-toggle');
     const bar = document.querySelector('.openplan3d-takeoffs-strip__bar');
     const ribbon = document.getElementById('openplan3d-metrics-ribbon');
     const hint = document.getElementById('openplan3d-zones-empty-hint');
     const floor = document.getElementById('openplan3d-takeoffs-summary-floor');
     const head = hint ? hint.closest('.openplan3d-zones-panel__head') : null;
     const title = head ? head.querySelector('.openplan3d-zones-panel__title') : null;
-    const barRect = bar ? bar.getBoundingClientRect() : null;
-    const ribbonRect = ribbon ? ribbon.getBoundingClientRect() : null;
     const ribbonParent = ribbon ? ribbon.parentElement : null;
     const chipsInBar = !!(ribbonParent && ribbonParent.classList.contains('openplan3d-takeoffs-strip__bar'));
     const ribbonScrollW = ribbon ? ribbon.scrollWidth : 0;
@@ -214,6 +214,8 @@ async function captureTakeoffsPanel(width, height, filename) {
     }
     return {
       chipsInBar,
+      toggleInHeader: !!(header && toggle && header.contains(toggle)),
+      summaryInHeader: !!(header && floor && header.contains(floor)),
       ribbonRowCount,
       ribbonOverflows: ribbonScrollW > ribbonClientW + 2,
       hintVisible: !!(
@@ -226,25 +228,18 @@ async function captureTakeoffsPanel(width, height, filename) {
       hintBesideTitle: !!(hintRect && titleRect
         && hintRect.left >= titleRect.left - 2
         && Math.abs(hintRect.top - titleRect.top) < 28),
-      floorBelowToggle: barRect && floor
-        ? floor.getBoundingClientRect().top >= barRect.top - 1
-        : false,
-      ribbonBesideSummary: barRect && ribbonRect && floor
-        ? ribbonRect.left >= floor.getBoundingClientRect().right - 4
-        : false,
       clipViolations,
     };
   });
 
   assert.strictEqual(layout.chipsInBar, true, 'metric chips must live in the takeoffs top bar');
+  assert.strictEqual(layout.toggleInHeader, true, 'takeoffs toggle must live in the top header bar');
+  assert.strictEqual(layout.summaryInHeader, true, 'takeoffs floor summary must live in the top header bar');
   assert.strictEqual(layout.ribbonOverflows, false, `${width}px: metrics ribbon must not scroll horizontally`);
   assert.strictEqual(layout.clipViolations.length, 0, `${width}px: chip text must not clip: ${layout.clipViolations.join('; ')}`);
   assert.strictEqual(layout.hintVisible, true, 'empty zones hint must show when there are no zones');
   assert.strictEqual(layout.hintInHead, true, 'zones empty hint must live in the Area zones header');
   assert.strictEqual(layout.hintBesideTitle, true, 'zones empty hint must sit beside the Area zones label');
-  if (width >= 1024) {
-    assert.ok(layout.ribbonBesideSummary, `${width}px: chips should sit to the right of the floor summary`);
-  }
   if (width === 1280) {
     assert.ok(layout.ribbonRowCount <= 3, `1280px ribbon must not grow past 3 rows (got ${layout.ribbonRowCount})`);
   }
