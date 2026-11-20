@@ -8977,7 +8977,7 @@ body.cp-modal-open {
   min-height: 0;
 }
 
-.cp-schedule-dates .admin-form-group>label.cp-schedule-date-label,
+.cp-schedule-dates .admin-form-group > label.cp-schedule-date-label,
 .cp-schedule-dates .admin-form-group>.admin-label-with-tip {
   display: flex;
   align-items: center;
@@ -12084,7 +12084,7 @@ html.admin-dark .br-hardwood-caution {
   border-color: var(--admin-primary);
 }
 
-.br-desc-acc[open]>.br-desc-acc__summary {
+.br-desc-acc[open] > .br-desc-acc__summary {
   background: var(--admin-primary-soft);
   border-color: var(--admin-border);
 }
@@ -13255,14 +13255,14 @@ html.admin-dark .br-hardwood-caution {
   align-items: center;
 }
 
-.tm-chip-row>.admin-label-with-tip,
-.tm-chip-row>.admin-checkbox-row {
+.tm-chip-row > .admin-label-with-tip,
+.tm-chip-row > .admin-checkbox-row {
   min-width: 0;
   max-width: 100%;
 }
 
 @media (max-width: 700px) {
-  .tm-chip-row>.admin-checkbox-row {
+  .tm-chip-row > .admin-checkbox-row {
     flex: 1 1 100%;
   }
 }
