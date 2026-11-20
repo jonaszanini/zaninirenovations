@@ -716,7 +716,7 @@
       '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
       '.admin-info-tip{min-width:20px;min-height:20px;width:20px;height:20px;padding:0;border:1px solid rgba(148,163,184,.5);border-radius:50%;background:transparent;color:inherit;font-size:12px;line-height:18px;text-align:center;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
       '.admin-info-tip__bubble{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:10080;min-width:210px;max-width:min(calc(100vw - 24px),280px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;border:1px solid rgba(148,163,184,.3);font-size:11.5px;line-height:1.4;white-space:normal;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
-      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble,.admin-info-tip-wrap:hover .admin-info-tip__bubble{display:block;}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble{display:block;}',
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
       '.openplan3d-finish-drywall-tip-wrap .admin-info-tip__bubble{left:auto;right:-24px;}',
       '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin:0 0 10px;padding:0 0 10px;border-bottom:1px solid rgba(148,163,184,.3);}',
@@ -999,15 +999,16 @@
     function closeTip() {
       wrap.classList.remove('is-open');
     }
-    wrap.addEventListener('mouseenter', openTip);
-    wrap.addEventListener('mouseleave', closeTip);
-    btn.addEventListener('focus', openTip);
-    btn.addEventListener('blur', closeTip);
     btn.addEventListener('click', function (ev) {
       ev.preventDefault();
       ev.stopPropagation();
       if (wrap.classList.contains('is-open')) closeTip();
       else openTip();
+    });
+    document.addEventListener('pointerdown', function (ev) {
+      if (!wrap.classList.contains('is-open')) return;
+      if (wrap.contains(ev.target)) return;
+      closeTip();
     });
     return wrap;
   }
