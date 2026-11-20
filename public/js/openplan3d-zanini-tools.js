@@ -34,7 +34,10 @@
     canvasObserver: null,
     wallHooked: false,
     writingPlan: false,
-    selectionRestoreGen: 0
+    selectionRestoreGen: 0,
+    collapsedSections: {},
+    sidebarCollapsed: false,
+    sidebarReopenBtn: null
   };
 
   function uid(prefix) {
@@ -711,13 +714,41 @@
       '#openplan3d-zanini-toolbar{position:fixed;left:50%;top:12px;transform:translateX(-50%);display:flex;gap:6px;padding:6px;background:rgba(15,23,42,.88);border-radius:10px;z-index:45;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
       '#openplan3d-zanini-toolbar button{white-space:nowrap;font-size:11px;padding:0 8px;min-height:44px;min-width:44px;border-radius:8px;border:0;background:#1e293b;color:#f8fafc;font-weight:600;}',
       '.admin-info-tip-wrap{position:relative;display:inline-flex;align-items:center;}',
-      '.admin-info-tip{min-width:24px;min-height:24px;width:24px;height:24px;padding:0;border:1px solid #94a3b8;border-radius:50%;background:#fff;color:#334155;font-size:14px;line-height:22px;text-align:center;cursor:pointer;}',
-      '.admin-info-tip__bubble{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:80;min-width:220px;max-width:min(calc(100vw - 24px),320px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
-      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble{display:block;}',
+      '.admin-info-tip{min-width:20px;min-height:20px;width:20px;height:20px;padding:0;border:1px solid rgba(148,163,184,.5);border-radius:50%;background:transparent;color:inherit;font-size:12px;line-height:18px;text-align:center;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
+      '.admin-info-tip__bubble{display:none;position:absolute;left:0;top:calc(100% + 6px);z-index:10080;min-width:210px;max-width:min(calc(100vw - 24px),280px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;border:1px solid rgba(148,163,184,.3);font-size:11.5px;line-height:1.4;white-space:normal;box-shadow:0 8px 24px rgba(0,0,0,.35);}',
+      '.admin-info-tip-wrap.is-open .admin-info-tip__bubble,.admin-info-tip-wrap:hover .admin-info-tip__bubble{display:block;}',
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
-      '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);}',
-      '#openplan3d-zanini-finish-host .openplan3d-finish-row label{min-height:44px;display:flex;align-items:center;gap:8px;}',
-      '#openplan3d-zanini-finish-host input[type=checkbox],#openplan3d-zanini-finish-host button.admin-info-tip{min-width:44px;min-height:44px;}',
+      '.openplan3d-finish-drywall-tip-wrap .admin-info-tip__bubble{left:auto;right:-24px;}',
+      '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin:0 0 10px;padding:0 0 10px;border-bottom:1px solid rgba(148,163,184,.3);}',
+      '.zanini-sec-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;background:transparent;border:0;color:inherit;font-weight:700;font-size:12px;text-align:left;cursor:pointer;}',
+      '.zanini-sec-chevron{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:11px;opacity:.75;transition:transform .15s ease;flex-shrink:0;}',
+      '.zanini-sec-toggle[aria-expanded="false"] .zanini-sec-chevron,.zanini-sec-header[data-zanini-collapsed="1"] .zanini-sec-chevron{transform:rotate(-90deg);}',
+      '.zanini-sec-header{cursor:pointer;user-select:none;}',
+      '.zanini-sec-body[hidden]{display:none!important;}',
+      '.openplan3d-finish-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px;}',
+      '.openplan3d-finish-chip{display:flex;align-items:center;gap:7px;min-height:36px;padding:5px 8px;border-radius:8px;border:1px solid rgba(148,163,184,.3);background:rgba(148,163,184,.08);font-size:12px;font-weight:500;cursor:pointer;user-select:none;transition:border-color .15s,background-color .15s;}',
+      '.openplan3d-finish-chip:hover{border-color:rgba(56,189,248,.5);}',
+      '.openplan3d-finish-chip.is-checked{border-color:rgba(56,189,248,.65);background:rgba(56,189,248,.14);}',
+      '.openplan3d-finish-chip.is-indeterminate{border-style:dashed;border-color:rgba(251,191,36,.6);}',
+      '#openplan3d-zanini-finish-host input[type=checkbox]{width:15px;height:15px;min-width:15px;min-height:15px;margin:0;accent-color:#38bdf8;cursor:pointer;flex-shrink:0;}',
+      '#openplan3d-zanini-finish-host button.admin-info-tip{width:18px;height:18px;min-width:18px;min-height:18px;padding:0;border:1px solid rgba(148,163,184,.45);border-radius:50%;background:transparent;color:inherit;opacity:.8;}',
+      '#openplan3d-zanini-finish-host button.admin-info-tip:hover{opacity:1;border-color:#38bdf8;color:#38bdf8;}',
+      '.openplan3d-finish-select-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:8px;font-size:12px;}',
+      '.openplan3d-finish-select-label{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;font-size:12px;}',
+      '.openplan3d-finish-select{min-height:32px;max-width:132px;padding:4px 8px;border-radius:6px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.12);color:inherit;font-size:12px;}',
+      '.zanini-hover-tip-wrap{position:relative;display:inline-flex;align-items:center;vertical-align:middle;margin-left:5px;}',
+      '.zanini-hover-tip{width:17px;height:17px;min-width:17px;min-height:17px;padding:0;border:1px solid rgba(148,163,184,.5);border-radius:50%;background:transparent;color:inherit;opacity:.78;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;line-height:1;cursor:pointer;}',
+      '.zanini-hover-tip:hover,.zanini-hover-tip:focus-visible{opacity:1;border-color:#38bdf8;color:#38bdf8;outline:none;}',
+      '.zanini-hover-tip__bubble{display:none;position:fixed;z-index:10090;width:236px;max-width:calc(100vw - 24px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;border:1px solid rgba(148,163,184,.35);font-size:11.5px;font-weight:400;line-height:1.4;white-space:normal;box-shadow:0 10px 26px rgba(0,0,0,.45);pointer-events:none;}',
+      '.zanini-hover-tip-wrap.is-open .zanini-hover-tip__bubble{display:block;}',
+      '[data-zanini-panel-collapsed="1"]{display:none!important;}',
+      '#openplan3d-zanini-sidebar-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.25);}',
+      '.zanini-sidebar-bar__title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.72;}',
+      '#openplan3d-zanini-sidebar-collapse{min-width:28px;min-height:28px;padding:2px 7px;border-radius:6px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.1);color:inherit;font-size:12px;font-weight:600;line-height:1;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}',
+      '#openplan3d-zanini-sidebar-collapse:hover{border-color:#38bdf8;color:#38bdf8;}',
+      '#openplan3d-zanini-sidebar-reopen{position:fixed;right:12px;top:52px;z-index:10075;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.4);background:rgba(15,23,42,.92);color:#f8fafc;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer;display:inline-flex;align-items:center;gap:6px;}',
+      '#openplan3d-zanini-sidebar-reopen:hover{border-color:#38bdf8;color:#38bdf8;}',
+      '#openplan3d-zanini-sidebar-reopen[hidden]{display:none!important;}',
       '@media (max-width:519px){#openplan3d-zanini-finish-host{background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}}'
     ].join('');
     document.head.appendChild(style);
@@ -776,9 +807,22 @@
     buildFloatingToolbarFallback();
   }
 
+  function climbToRightSidebarRoot(panel) {
+    var cur = panel;
+    var narrow = window.innerWidth < 520;
+    while (cur && cur.parentElement && cur.parentElement !== document.body) {
+      var pr = cur.parentElement.getBoundingClientRect();
+      if (!narrow && (pr.width > 420 || pr.left < window.innerWidth * 0.48)) break;
+      if (narrow && (cur.parentElement.querySelector('canvas') || pr.height > window.innerHeight * 0.85)) break;
+      if ((cur.parentElement.textContent || '').toLowerCase().indexOf('thickness') === -1) break;
+      cur = cur.parentElement;
+    }
+    return cur;
+  }
+
   function findWallSidebarHost() {
     var finishMount = document.getElementById('openplan3d-zanini-finish-host');
-    if (finishMount && finishMount.parentElement) {
+    if (finishMount && finishMount.parentElement && finishMount.parentElement.isConnected) {
       return finishMount.parentElement;
     }
     var elevBtn = document.querySelector('button.bg-blue-50.text-blue-700');
@@ -791,7 +835,7 @@
         var sideOk = narrow || rect.left > window.innerWidth * 0.45;
         if (rect.width >= 120 && rect.height >= 80 && sideOk
           && (txt.indexOf('thickness') !== -1 || txt.indexOf('height') !== -1 || txt.indexOf('elevation') !== -1)) {
-          return panel;
+          return climbToRightSidebarRoot(panel);
         }
         panel = panel.parentElement;
       }
@@ -817,27 +861,259 @@
         best = el;
       }
     }
-    return best;
+    return best ? climbToRightSidebarRoot(best) : null;
   }
 
   function ensureFinishHost() {
     var sidebar = findWallSidebarHost();
-    if (!sidebar) return null;
+    if (!sidebar) {
+      if (state.sidebarReopenBtn) state.sidebarReopenBtn.hidden = true;
+      return null;
+    }
+    ensureSidebarCollapseChrome(sidebar);
     if (!state.finishHost || state.finishHost.parentNode !== sidebar) {
       if (state.finishHost && state.finishHost.parentNode) {
         state.finishHost.parentNode.removeChild(state.finishHost);
       }
       state.finishHost = document.createElement('div');
       state.finishHost.id = 'openplan3d-zanini-finish-host';
-      state.finishHost.style.cssText = 'position:relative;z-index:10050;margin-top:8px;padding-top:8px;border-top:1px solid rgba(148,163,184,.35);';
-      if (window.innerWidth < 520) {
-        sidebar.insertBefore(state.finishHost, sidebar.firstChild);
-      } else {
-        sidebar.appendChild(state.finishHost);
-      }
       state.finishPanel = state.finishHost;
     }
+    var bar = document.getElementById('openplan3d-zanini-sidebar-bar');
+    var insertRef = (bar && bar.parentNode === sidebar) ? bar.nextSibling : sidebar.firstChild;
+    if (state.finishHost.previousSibling !== bar && !(bar == null && sidebar.firstChild === state.finishHost)) {
+      sidebar.insertBefore(state.finishHost, insertRef);
+    }
     return state.finishHost;
+  }
+
+  function syncSidebarCollapseState(sidebar) {
+    if (!sidebar) return;
+    var collapsed = !!state.sidebarCollapsed;
+    if (collapsed) {
+      sidebar.setAttribute('data-zanini-panel-collapsed', '1');
+    } else {
+      sidebar.removeAttribute('data-zanini-panel-collapsed');
+    }
+    var collapseBtn = document.getElementById('openplan3d-zanini-sidebar-collapse');
+    if (collapseBtn) collapseBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    if (state.sidebarReopenBtn) {
+      state.sidebarReopenBtn.hidden = !collapsed;
+      state.sidebarReopenBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    }
+  }
+
+  function ensureSidebarCollapseChrome(sidebar) {
+    if (!sidebar) return;
+    if (!state.sidebarReopenBtn || !state.sidebarReopenBtn.isConnected) {
+      var existingReopen = document.getElementById('openplan3d-zanini-sidebar-reopen');
+      if (existingReopen) {
+        state.sidebarReopenBtn = existingReopen;
+      } else {
+        var reopen = document.createElement('button');
+        reopen.type = 'button';
+        reopen.id = 'openplan3d-zanini-sidebar-reopen';
+        reopen.setAttribute('aria-label', 'Show properties panel');
+        reopen.setAttribute('aria-expanded', state.sidebarCollapsed ? 'false' : 'true');
+        reopen.hidden = !state.sidebarCollapsed;
+        reopen.innerHTML = '<span>&#9666;</span><span>Properties</span>';
+        reopen.addEventListener('click', function () {
+          state.sidebarCollapsed = false;
+          var target = findWallSidebarHost();
+          if (target) syncSidebarCollapseState(target);
+        });
+        document.body.appendChild(reopen);
+        state.sidebarReopenBtn = reopen;
+      }
+    }
+    var bar = sidebar.querySelector('#openplan3d-zanini-sidebar-bar');
+    if (!bar) {
+      bar = document.createElement('div');
+      bar.id = 'openplan3d-zanini-sidebar-bar';
+      bar.innerHTML = '<span class="zanini-sidebar-bar__title">Inspector</span>' +
+        '<button type="button" id="openplan3d-zanini-sidebar-collapse" aria-label="Collapse properties panel" aria-expanded="true" title="Toggle properties panel">&#187;</button>';
+      sidebar.insertBefore(bar, sidebar.firstChild);
+      var colBtn = bar.querySelector('#openplan3d-zanini-sidebar-collapse');
+      if (colBtn) {
+        colBtn.addEventListener('click', function () {
+          state.sidebarCollapsed = !state.sidebarCollapsed;
+          syncSidebarCollapseState(sidebar);
+        });
+      }
+    } else if (sidebar.firstChild !== bar) {
+      sidebar.insertBefore(bar, sidebar.firstChild);
+    }
+    syncSidebarCollapseState(sidebar);
+  }
+
+  function positionHoverTipBubble(wrap) {
+    var btn = wrap && wrap.querySelector('.zanini-hover-tip');
+    var bubble = wrap && wrap.querySelector('.zanini-hover-tip__bubble');
+    if (!btn || !bubble) return;
+    var r = btn.getBoundingClientRect();
+    var bw = Math.min(236, window.innerWidth - 24);
+    var left = Math.max(12, Math.min(r.left - 8, window.innerWidth - bw - 12));
+    var top = r.bottom + 6;
+    if (top + 110 > window.innerHeight && r.top > 120) {
+      top = Math.max(12, r.top - 86);
+    }
+    bubble.style.width = bw + 'px';
+    bubble.style.left = left + 'px';
+    bubble.style.top = top + 'px';
+  }
+
+  function createHoverTipWrap(key, text, ariaLabel) {
+    var wrap = document.createElement('span');
+    wrap.className = 'zanini-hover-tip-wrap';
+    wrap.setAttribute('data-zanini-inline-tip', key);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'zanini-hover-tip';
+    btn.setAttribute('aria-label', ariaLabel);
+    btn.textContent = 'i';
+    var bubble = document.createElement('span');
+    bubble.className = 'zanini-hover-tip__bubble';
+    bubble.setAttribute('role', 'tooltip');
+    bubble.textContent = text;
+    wrap.appendChild(btn);
+    wrap.appendChild(bubble);
+
+    function openTip() {
+      positionHoverTipBubble(wrap);
+      wrap.classList.add('is-open');
+    }
+    function closeTip() {
+      wrap.classList.remove('is-open');
+    }
+    wrap.addEventListener('mouseenter', openTip);
+    wrap.addEventListener('mouseleave', closeTip);
+    btn.addEventListener('focus', openTip);
+    btn.addEventListener('blur', closeTip);
+    btn.addEventListener('click', function (ev) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (wrap.classList.contains('is-open')) closeTip();
+      else openTip();
+    });
+    return wrap;
+  }
+
+  function attachInlineTipToLabel(sidebar, key, labelRegex, text, ariaLabel) {
+    if (!sidebar || !text) return;
+    if (sidebar.querySelector('[data-zanini-inline-tip="' + key + '"]')) return;
+    var candidates = sidebar.querySelectorAll('label, span, div, p');
+    for (var i = 0; i < candidates.length; i++) {
+      var el = candidates[i];
+      if (el.closest && (el.closest('#openplan3d-zanini-finish-host') || el.closest('.zanini-hover-tip-wrap'))) continue;
+      if (el.querySelector('input, select, textarea, button')) continue;
+      var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!labelRegex.test(txt) || txt.length > 40) continue;
+      el.appendChild(createHoverTipWrap(key, text, ariaLabel));
+      return;
+    }
+  }
+
+  function applySectionCollapse(hdr, bodyEls, collapsed) {
+    if (!hdr) return;
+    hdr.setAttribute('data-zanini-collapsed', collapsed ? '1' : '0');
+    hdr.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    for (var i = 0; i < bodyEls.length; i++) {
+      var b = bodyEls[i];
+      if (!b || (b.getAttribute && b.getAttribute('data-zanini-tip-hidden'))) continue;
+      b.hidden = !!collapsed;
+      b.style.display = collapsed ? 'none' : '';
+    }
+  }
+
+  function enhanceWallSidebar(sidebar) {
+    if (!sidebar) return;
+
+    // 1. Move Length and Keep fixed helper paragraphs into hover (i) tooltips
+    var blocks = sidebar.querySelectorAll('p, div, span');
+    for (var i = 0; i < blocks.length; i++) {
+      var el = blocks[i];
+      if (el.closest && (el.closest('#openplan3d-zanini-finish-host') || el.closest('.zanini-hover-tip-wrap'))) continue;
+      if (el.querySelector('input, select, textarea, button, p, div')) continue;
+      var txt = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (!txt) continue;
+      if (/^(Enter cm, or include units|Matches the plan dimension label)/i.test(txt)) {
+        el.style.display = 'none';
+        el.setAttribute('data-zanini-tip-hidden', 'length');
+        attachInlineTipToLabel(sidebar, 'length', /^Length\b/i, txt, 'Wall length units help');
+      } else if (/^Joined corners follow the moving endpoint/i.test(txt)) {
+        el.style.display = 'none';
+        el.setAttribute('data-zanini-tip-hidden', 'keep-fixed');
+        attachInlineTipToLabel(sidebar, 'keep-fixed', /^Keep fixed\b/i, txt, 'Keep fixed endpoint help');
+      }
+    }
+
+    // 2. Make all Svelte-rendered sections in the side panel collapsible
+    function isFlatSectionHeader(el) {
+      if (!el || el.nodeType !== 1) return false;
+      if (el.id === 'openplan3d-zanini-finish-host' || el.id === 'openplan3d-zanini-sidebar-bar') return false;
+      if (el.tagName === 'BUTTON' || el.tagName === 'LABEL') return false;
+      if (el.querySelector('input, select, textarea, button')) return false;
+      var t = (el.textContent || '').replace(/[▾▸]/g, '').replace(/\s+/g, ' ').trim();
+      if (!t || t.length > 42) return false;
+      return !!/Wall Properties|Openings|Room Properties|Door|Window|Properties/i.test(t) || (el.querySelector('svg') !== null);
+    }
+
+    function wireHeader(hdr, getBodyEls) {
+      var title = (hdr.textContent || '').replace(/[▾▸]/g, '').replace(/\s+/g, ' ').trim();
+      var secKey = title.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'section';
+      if (!hdr.hasAttribute('data-zanini-sec-header')) {
+        hdr.setAttribute('data-zanini-sec-header', secKey);
+        hdr.classList.add('zanini-sec-header');
+        hdr.style.display = 'flex';
+        hdr.style.alignItems = 'center';
+        hdr.style.justifyContent = 'space-between';
+        var chev = document.createElement('span');
+        chev.className = 'zanini-sec-chevron';
+        chev.setAttribute('data-zanini-chevron', '1');
+        chev.setAttribute('aria-hidden', 'true');
+        chev.textContent = '▾';
+        hdr.appendChild(chev);
+        hdr.addEventListener('click', function (ev) {
+          if (ev.target && ev.target.closest && ev.target.closest('button, input, select, a, .zanini-hover-tip-wrap')) return;
+          state.collapsedSections[secKey] = !state.collapsedSections[secKey];
+          applySectionCollapse(hdr, getBodyEls(), !!state.collapsedSections[secKey]);
+        });
+      }
+      applySectionCollapse(hdr, getBodyEls(), !!state.collapsedSections[secKey]);
+    }
+
+    var children = Array.prototype.slice.call(sidebar.children || []);
+    for (var ci = 0; ci < children.length; ci++) {
+      var child = children[ci];
+      if (!child || child.id === 'openplan3d-zanini-finish-host' || child.id === 'openplan3d-zanini-sidebar-bar') continue;
+      if (isFlatSectionHeader(child)) {
+        (function (hdrEl, startIdx) {
+          function getFlatBody() {
+            var list = [];
+            var sibs = sidebar.children || [];
+            for (var si = startIdx + 1; si < sibs.length; si++) {
+              var s = sibs[si];
+              if (!s || s.id === 'openplan3d-zanini-finish-host' || s.id === 'openplan3d-zanini-sidebar-bar') continue;
+              if (s.hasAttribute('data-zanini-sec-header') || isFlatSectionHeader(s)) break;
+              list.push(s);
+            }
+            return list;
+          }
+          wireHeader(hdrEl, getFlatBody);
+        })(child, ci);
+      } else if (child.children && child.children.length > 1 && isFlatSectionHeader(child.children[0])) {
+        (function (container, hdrEl) {
+          function getWrappedBody() {
+            var list = [];
+            for (var bi = 1; bi < container.children.length; bi++) {
+              list.push(container.children[bi]);
+            }
+            return list;
+          }
+          wireHeader(hdrEl, getWrappedBody);
+        })(child, child.children[0]);
+      }
+    }
   }
 
   function wallIsBoundary(wallId) {
@@ -987,6 +1263,29 @@
     }
   }
 
+  function buildCollapsibleFinishHost(host, secKey, heading) {
+    var collapsed = !!state.collapsedSections[secKey];
+    host.innerHTML = '';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'zanini-sec-toggle';
+    btn.setAttribute('data-zanini-sec-id', secKey);
+    btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    btn.innerHTML = '<span>' + heading + '</span><span class="zanini-sec-chevron" aria-hidden="true">&#9662;</span>';
+    var body = document.createElement('div');
+    body.className = 'zanini-sec-body';
+    if (collapsed) body.hidden = true;
+    btn.addEventListener('click', function () {
+      state.collapsedSections[secKey] = !state.collapsedSections[secKey];
+      var nextCollapsed = !!state.collapsedSections[secKey];
+      btn.setAttribute('aria-expanded', nextCollapsed ? 'false' : 'true');
+      body.hidden = nextCollapsed;
+    });
+    host.appendChild(btn);
+    host.appendChild(body);
+    return body;
+  }
+
   function renderBulkheadFinishPanelNow(host) {
     var id = state.selectedBulkheadId;
     var plan = readPlan();
@@ -1006,21 +1305,26 @@
     host.hidden = false;
     var hasKey = Object.prototype.hasOwnProperty.call(bulkhead, 'paint');
     var checked = hasKey ? !!bulkhead.paint : false;
-    host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">Bulkhead finishes · '
-      + (bulkhead.name || id) + '</div>';
+    var body = buildCollapsibleFinishHost(host, 'bulkhead-finishes', 'Bulkhead finishes · ' + (bulkhead.name || id));
+    var grid = document.createElement('div');
+    grid.className = 'openplan3d-finish-grid';
     var row = document.createElement('label');
-    row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
-    row.innerHTML = '<input type="checkbox" data-bulkhead-paint="1"' + (checked ? ' checked' : '') + '> Paint';
-    host.appendChild(row);
+    row.className = 'openplan3d-finish-chip' + (checked ? ' is-checked' : (!hasKey ? ' is-indeterminate' : ''));
+    row.innerHTML = '<input type="checkbox" data-bulkhead-paint="1"' + (checked ? ' checked' : '') + '> <span>Paint</span>';
+    row.appendChild(createHoverTipWrap(
+      'bulkhead-paint',
+      'Unchecked/unassigned bulkheads are not added to wall paint. Drywall takeoff is separate.',
+      'Bulkhead paint help'
+    ));
+    grid.appendChild(row);
+    body.appendChild(grid);
     var input = row.querySelector('input');
     if (input && !hasKey) input.indeterminate = true;
-    var note = document.createElement('p');
-    note.style.cssText = 'margin:4px 0 0;opacity:.85;font-size:11px;line-height:1.35;';
-    note.textContent = 'Unchecked/unassigned bulkheads are not added to wall paint. Drywall takeoff is separate.';
-    host.appendChild(note);
     if (input) {
       input.addEventListener('change', function () {
         var val = input.checked;
+        row.classList.toggle('is-checked', val);
+        row.classList.remove('is-indeterminate');
         writePlan(function (next) {
           var list = next.zanini.bulkheads || [];
           for (var bi = 0; bi < list.length; bi++) {
@@ -1046,6 +1350,7 @@
       host.innerHTML = '';
       host.hidden = true;
       host.removeAttribute('data-finish-walls');
+      if (host.parentElement) enhanceWallSidebar(host.parentElement);
       return;
     }
     host.hidden = false;
@@ -1113,6 +1418,11 @@
       if (!input || !input.getAttribute) return;
       var key = input.getAttribute('data-finish-key');
       var val = input.checked;
+      var chip = input.closest ? input.closest('.openplan3d-finish-chip') : input.parentElement;
+      if (chip) {
+        chip.classList.toggle('is-checked', !!val);
+        chip.classList.remove('is-indeterminate');
+      }
       writePlan(function (plan) {
         plan.zanini.wallFinishes = plan.zanini.wallFinishes || {};
         wallIds.forEach(function (wallId) {
@@ -1136,34 +1446,45 @@
         var st = finishBoxState(key);
         existing.indeterminate = !!st.indeterminate;
         existing.checked = !!st.checked;
+        var chip = existing.closest ? existing.closest('.openplan3d-finish-chip') : existing.parentElement;
+        if (chip) {
+          chip.classList.toggle('is-checked', !!st.checked && !st.indeterminate);
+          chip.classList.toggle('is-indeterminate', !!st.indeterminate);
+        }
       });
+      if (host.parentElement) enhanceWallSidebar(host.parentElement);
       return;
     }
     host.setAttribute('data-finish-walls', wallsKey);
-    host.innerHTML = '<div style="font-weight:700;margin-bottom:6px;font-size:12px;">' + heading + '</div>';
+    var body = buildCollapsibleFinishHost(host, 'wall-finishes', heading);
+    var grid = document.createElement('div');
+    grid.className = 'openplan3d-finish-grid';
     finishKeys.forEach(function (key) {
       var st = finishBoxState(key);
       var row = document.createElement('label');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;font-size:12px;';
+      row.className = 'openplan3d-finish-chip' + (st.checked && !st.indeterminate ? ' is-checked' : (st.indeterminate ? ' is-indeterminate' : ''));
       var inputEl = document.createElement('input');
       inputEl.type = 'checkbox';
       inputEl.setAttribute('data-finish-key', key);
       if (st.checked) inputEl.checked = true;
       inputEl.addEventListener('change', onFinishChange);
       row.appendChild(inputEl);
-      row.appendChild(document.createTextNode(' ' + (finishLabels[key] || key)));
-      host.appendChild(row);
+      var lblSpan = document.createElement('span');
+      lblSpan.textContent = finishLabels[key] || key;
+      row.appendChild(lblSpan);
+      grid.appendChild(row);
       if (st.indeterminate) inputEl.indeterminate = true;
     });
+    body.appendChild(grid);
     if (sidesEligible.length === 0 && wallIds.length > 0 && wallIds.some(wallIsBoundary)) {
       var perimeterRow = document.createElement('div');
-      perimeterRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0 0;font-size:12px;';
+      perimeterRow.className = 'openplan3d-finish-select-row';
       perimeterRow.innerHTML =
-        '<span>Perimeter baseboard</span>' +
+        '<span class="openplan3d-finish-select-label">Perimeter baseboard' +
         '<span class="admin-info-tip-wrap" data-finish-perimeter-tip-wrap>' +
         '<button type="button" class="admin-info-tip" data-finish-perimeter-tip aria-label="Perimeter baseboard help">&#9432;</button>' +
-        '<span class="admin-info-tip__bubble" role="tooltip" hidden>Exterior walls measure baseboard on the interior face only. The outside face has none.</span></span>';
-      host.appendChild(perimeterRow);
+        '<span class="admin-info-tip__bubble" role="tooltip" hidden>Exterior walls measure baseboard on the interior face only. The outside face has none.</span></span></span>';
+      body.appendChild(perimeterRow);
       if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
         window.AdminInfoTip.sealClosed(perimeterRow);
       }
@@ -1180,10 +1501,10 @@
         }
       }
       var drywallRow = document.createElement('div');
-      drywallRow.style.cssText = 'display:flex;align-items:flex-start;gap:6px;min-height:44px;margin-top:6px;font-size:12px;flex-wrap:wrap;';
+      drywallRow.className = 'openplan3d-finish-select-row';
       var drywallLabel = sidesEligible.length === wallIds.length
         ? 'Drywall faces'
-        : ('Drywall faces (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
+        : ('Drywall (' + sidesEligible.length + ')');
       var sideWall = null;
       for (var swi = 0; floor && swi < floor.walls.length; swi++) {
         if (String(floor.walls[swi].id) === String(sidesEligible[0])) {
@@ -1194,27 +1515,27 @@
       var sideInfo = drywallSideOptionLabels(sidesEligible[0], floor);
       var sideLabels = { a: sideInfo.a, b: sideInfo.b };
       drywallRow.innerHTML =
-        '<span>' + drywallLabel + '</span>' +
+        '<span class="openplan3d-finish-select-label">' + drywallLabel +
         '<span class="admin-info-tip-wrap openplan3d-finish-drywall-tip-wrap" data-finish-drywall-tip-wrap>' +
         '<button type="button" class="admin-info-tip openplan3d-finish-drywall-tip" data-finish-drywall-tip aria-label="Drywall faces help" aria-expanded="false">' +
-        '<svg class="openplan3d-finish-info-glyph" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
+        '<svg class="openplan3d-finish-info-glyph" width="12" height="12" viewBox="0 0 16 16" aria-hidden="true" focusable="false">' +
         '<circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
         '<text x="8" y="11.5" text-anchor="middle" font-size="10" font-weight="700" fill="currentColor">i</text></svg></button>' +
         '<span class="admin-info-tip__bubble openplan3d-finish-drywall-tip__bubble" role="tooltip" hidden>Interior partitions default to drywall on both faces. ' +
         'Choose a single face when only one room gets drywall; labels match adjacent rooms (' + sideInfo.tipRooms + '). ' +
-        'Exterior perimeter walls always measure the interior face only.</span></span>' +
-        '<select data-finish-drywall-faces style="min-height:44px;flex:1;">' +
+        'Exterior perimeter walls always measure the interior face only.</span></span></span>' +
+        '<select class="openplan3d-finish-select" data-finish-drywall-faces>' +
         '<option value="both">Both sides</option>' +
         '<option value="a">' + sideLabels.a + '</option>' +
         '<option value="b">' + sideLabels.b + '</option></select>';
-      host.appendChild(drywallRow);
+      body.appendChild(drywallRow);
       if (window.AdminInfoTip && typeof window.AdminInfoTip.refreshControlIds === 'function') {
-        window.AdminInfoTip.refreshControlIds(host);
+        window.AdminInfoTip.refreshControlIds(body);
       }
       if (window.AdminInfoTip && typeof window.AdminInfoTip.sealClosed === 'function') {
         window.AdminInfoTip.sealClosed(drywallRow);
       }
-      var drywallSel = host.querySelector('[data-finish-drywall-faces]');
+      var drywallSel = body.querySelector('[data-finish-drywall-faces]');
       if (drywallSel) {
         if (drywallMixed) {
           drywallSel.value = 'both';
@@ -1235,7 +1556,7 @@
         });
       }
       var sidesRow = document.createElement('label');
-      sidesRow.style.cssText = 'display:flex;align-items:center;gap:8px;min-height:44px;margin-top:4px;font-size:12px;';
+      sidesRow.className = 'openplan3d-finish-select-row';
       var sidesPrimary = readBaseboardSidesForWall(wallFinishes, sidesEligible[0]);
       var sidesMixed = false;
       if (sidesEligible.length > 1) {
@@ -1248,10 +1569,10 @@
       }
       var sidesLabel = sidesEligible.length === wallIds.length
         ? 'Baseboard sides'
-        : ('Baseboard sides (' + sidesEligible.length + ' partition wall' + (sidesEligible.length === 1 ? '' : 's') + ')');
-      sidesRow.innerHTML = sidesLabel + ' <select data-finish-sides style="min-height:44px;"><option value="1">1 side</option><option value="2">2 sides</option></select>';
-      host.appendChild(sidesRow);
-      var sel = host.querySelector('[data-finish-sides]');
+        : ('Baseboard (' + sidesEligible.length + ')');
+      sidesRow.innerHTML = '<span class="openplan3d-finish-select-label">' + sidesLabel + '</span><select class="openplan3d-finish-select" data-finish-sides><option value="1">1 side</option><option value="2">2 sides</option></select>';
+      body.appendChild(sidesRow);
+      var sel = body.querySelector('[data-finish-sides]');
       if (sel) {
         if (sidesMixed) {
           sel.value = '2';
@@ -1261,7 +1582,7 @@
         }
       }
     }
-    var sidesSelect = host.querySelector('[data-finish-sides]');
+    var sidesSelect = body.querySelector('[data-finish-sides]');
     if (sidesSelect) {
       sidesSelect.addEventListener('change', function () {
         var sidesVal = Number(sidesSelect.value) === 1 ? 1 : 2;
@@ -1279,19 +1600,20 @@
       var sidesCount = readBaseboardSidesForWall(wallFinishes, primary);
       var wallBbLf = wallLenLf * sidesCount;
       var info = document.createElement('p');
-      info.style.cssText = 'margin:6px 0 0;opacity:.85;font-size:11px;';
+      info.style.cssText = 'margin:6px 0 0;opacity:.8;font-size:11px;';
       info.textContent = 'Baseboard on this wall: ' + wallBbLf.toFixed(2) + ' lf';
-      host.appendChild(info);
+      body.appendChild(info);
     }
+    if (host.parentElement) enhanceWallSidebar(host.parentElement);
   }
 
   function sidebarMutationIsOwnFinishHost(mutations) {
-    if (!state.finishHost) return false;
     for (var i = 0; i < mutations.length; i++) {
       var m = mutations[i];
       var target = m.target;
-      if (target === state.finishHost) return true;
-      if (target && target.nodeType === 1 && state.finishHost.contains(target)) return true;
+      if (state.finishHost && (target === state.finishHost || (target && target.nodeType === 1 && state.finishHost.contains(target)))) return true;
+      if (state.sidebarReopenBtn && (target === state.sidebarReopenBtn || (target && target.nodeType === 1 && state.sidebarReopenBtn.contains(target)))) return true;
+      if (target && target.closest && (target.closest('.zanini-hover-tip-wrap') || target.closest('[data-zanini-chevron]') || target.closest('#openplan3d-zanini-sidebar-bar') || target.closest('#openplan3d-zanini-sidebar-reopen'))) return true;
     }
     return false;
   }
@@ -1302,8 +1624,25 @@
       if (state.sidebarObserverPaused) return;
       if (sidebarMutationIsOwnFinishHost(mutations)) return;
       var sidebar = findWallSidebarHost();
-      if (!sidebar) return;
-      if (state.finishHost && sidebar.contains(state.finishHost)) return;
+      if (!sidebar) {
+        if (state.sidebarReopenBtn) state.sidebarReopenBtn.hidden = true;
+        return;
+      }
+      if (state.finishHost && sidebar.contains(state.finishHost)) {
+        state.sidebarObserverPaused = true;
+        try {
+          ensureSidebarCollapseChrome(sidebar);
+          var bar = document.getElementById('openplan3d-zanini-sidebar-bar');
+          var ref = (bar && bar.parentNode === sidebar) ? bar.nextSibling : sidebar.firstChild;
+          if (state.finishHost.previousSibling !== bar && !(bar == null && sidebar.firstChild === state.finishHost)) {
+            sidebar.insertBefore(state.finishHost, ref);
+          }
+          enhanceWallSidebar(sidebar);
+        } finally {
+          state.sidebarObserverPaused = false;
+        }
+        return;
+      }
       state.finishHost = null;
       renderFinishPanel();
     });
