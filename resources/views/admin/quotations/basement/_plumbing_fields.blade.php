@@ -22,6 +22,12 @@
     @include('admin.partials.checkbox', ['name' => 'floor_drain', 'hiddenFallback' => true, 'checked' => $brOn('floor_drain'), 'label' => 'Floor drain', 'info' => $brInfo['floor_drain'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => isset($brFilled) && $brFilled('floor_drain')])
     @include('admin.partials.checkbox', ['name' => 'wh_reloc', 'hiddenFallback' => true, 'checked' => $brOn('wh_reloc'), 'label' => 'Water heater relocation', 'info' => $brInfo['wh_reloc'], 'inputClass' => 'admin-checkbox__input br-preview', 'clientFilled' => isset($brFilled) && $brFilled('wh_reloc')])
   </div>
+  <div class="br-line-generator" id="br-plumb-generator">
+    <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm" id="br-plumb-generate-lines">
+      <i class="fa fa-magic" aria-hidden="true"></i> Generate plumbing quote lines from scope
+    </button>
+    <span class="admin-form-help" id="br-plumb-generator-hint">Populates draft allowance lines from the checked fixtures above.</span>
+  </div>
   @include('admin.quotations._amount_lines', [
     'field' => 'plumbing_lines',
     'idPrefix' => 'br-plumb-line',

@@ -5,6 +5,16 @@
     @endunless
   </div>
   <div class="admin-form-group">
+    @include('admin.partials.tipped_label', [
+      'label' => '2×6 plumbing / structural walls (lin. ft)',
+      'for' => 'br-framing-2x6-lf',
+      'tipText' => $brInfo['framing_2x6_lf'] ?? 'Linear feet of 2×6 walls (plumbing wet walls or structural partitions) at 16″ o.c.',
+      'tipLabel' => '2×6 plumbing / structural walls (lin. ft)',
+    ])
+    <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-framing-2x6-lf" name="framing_2x6_lf"
+           value="{{ $brVal('framing_2x6_lf', 0) }}">
+  </div>
+  <div class="admin-form-group">
     <span class="admin-label-with-tip">
   <label for="br-bulkhead">Duct boxing (lin. ft)</label>
   @include('admin.partials.info_tip', ['tipText' => $brInfo['bulkhead_lf'], 'tipLabel' => 'Duct boxing (lin. ft)'])

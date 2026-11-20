@@ -621,6 +621,41 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringContainsString('id="br-dw-ceil"', $html);
     }
 
+    public function test_ontario_scope_fields_and_room_area_takeoff_cards_render(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('full');
+
+        $html = view(
+            'admin.quotations.basement._wizard_sections',
+            $this->wizardData($inputs, 'full', $enabledNow)
+        )->render();
+
+        $this->assertStringContainsString('id="br-layout-takeoff-summary"', $html);
+        $this->assertStringContainsString('id="br-layout-takeoff-cards"', $html);
+        $this->assertStringContainsString('id="br-fill-demo-drywall"', $html);
+        $this->assertStringContainsString('name="framing_2x6_lf"', $html);
+        $this->assertStringContainsString('name="include_acoustic_insulation"', $html);
+        $this->assertStringContainsString('name="acoustic_insulation_sf"', $html);
+        $this->assertStringContainsString('name="drywall_type_x_ceiling"', $html);
+        $this->assertStringContainsString('name="drywall_resilient_channel"', $html);
+        $this->assertStringContainsString('name="dricore_subfloor"', $html);
+        $this->assertStringContainsString('name="dricore_sf"', $html);
+        $this->assertStringContainsString('name="include_stairs"', $html);
+        $this->assertStringContainsString('name="stairs_treads"', $html);
+        $this->assertStringContainsString('name="stairs_handrail_lf"', $html);
+        $this->assertStringContainsString('name="under_stair_storage"', $html);
+        $this->assertStringContainsString('name="include_millwork"', $html);
+        $this->assertStringContainsString('name="cabinet_base_lf"', $html);
+        $this->assertStringContainsString('name="cabinet_upper_lf"', $html);
+        $this->assertStringContainsString('name="include_egress_window"', $html);
+        $this->assertStringContainsString('name="egress_window_qty"', $html);
+        $this->assertStringContainsString('id="br-elec-generate-lines"', $html);
+        $this->assertStringContainsString('id="br-plumb-generate-lines"', $html);
+        $this->assertStringContainsString('data-br-inline-client-provides="flooring"', $html);
+        $this->assertStringNotContainsString('name="client_provides_sections[]"', $html);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow

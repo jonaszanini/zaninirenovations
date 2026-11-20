@@ -357,6 +357,48 @@ class BasementQuotation extends Model
             }
         }
 
+        if (BasementQuotationCalculator::sectionEnabled($inputs, 'electrical')) {
+            $outletQty = (int) ($inputs['outlet_qty'] ?? 0);
+            if ($outletQty > 0) {
+                $groups['Electrical'][] = $outletQty.' receptacle outlet(s)';
+            }
+            $switchQty = (int) ($inputs['switch_qty'] ?? 0);
+            if ($switchQty > 0) {
+                $groups['Electrical'][] = $switchQty.' wall switch(es)';
+            }
+            $lightQty = (int) ($inputs['light_qty'] ?? 0);
+            if ($lightQty > 0) {
+                $groups['Electrical'][] = ($inputs['lighting_type'] ?? 'spot') === 'fixture'
+                    ? $lightQty.' surface ceiling fixture(s)'
+                    : $lightQty.' recessed pot light(s)';
+            }
+            $fixtureQty = (int) ($inputs['fixture_qty'] ?? 0);
+            if ($fixtureQty > 0 && ($inputs['lighting_type'] ?? '') === 'both') {
+                $groups['Electrical'][] = $fixtureQty.' ceiling light fixture(s)';
+            }
+            $detectorQty = (int) ($inputs['detector_qty'] ?? 0);
+            if ($detectorQty > 0) {
+                $groups['Electrical'][] = $detectorQty.' interconnected smoke / CO detector(s)';
+            }
+            if (! empty($inputs['panel_upgrade'])) {
+                $groups['Electrical'][] = 'Electrical panel upgrade / sub-panel capacity';
+            }
+        }
+
+        if (BasementQuotationCalculator::sectionEnabled($inputs, 'plumbing') && ! empty($inputs['include_plumbing'])) {
+            foreach ([
+                'bath_rough_in' => 'Bathroom drain, vent & supply rough-in',
+                'sink_laundry' => 'Laundry / utility sink rough-in',
+                'wet_bar' => 'Wet bar sink rough-in',
+                'floor_drain' => 'Floor drain & trap',
+                'wh_reloc' => 'Water heater relocation',
+            ] as $flag => $description) {
+                if (! empty($inputs[$flag])) {
+                    $groups['Plumbing'][] = $description;
+                }
+            }
+        }
+
         foreach ($calc['labor'] ?? [] as $row) {
             if (! is_array($row) || (float) ($row['hours'] ?? 0) <= 0) {
                 continue;

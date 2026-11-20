@@ -392,6 +392,42 @@ class BasementRoomAreaImportMapperTest extends TestCase
         ));
     }
 
+    public function test_extended_field_ids_and_quantities_mapping(): void
+    {
+        $this->assertArrayHasKey('stairs_treads', BasementRoomAreaImportMapper::EXTENDED_FIELD_IDS);
+        $this->assertArrayHasKey('cabinet_base_lf', BasementRoomAreaImportMapper::EXTENDED_FIELD_IDS);
+
+        $extPresent = BasementRoomAreaImportMapper::extendedQuantities([
+            'stairs_treads' => 14,
+            'stairs_run_lf' => 16.5,
+            'stairs_count' => 1,
+            'cabinet_base_lf' => 8.0,
+            'cabinet_upper_lf' => 6.0,
+            'drywall_wall_sf' => 500,
+            'area_sqft' => 400,
+        ]);
+
+        $this->assertSame(14, $extPresent['stairs_treads']);
+        $this->assertSame(16.5, $extPresent['stairs_handrail_lf']);
+        $this->assertSame(1, $extPresent['stairs_count']);
+        $this->assertTrue($extPresent['include_stairs']);
+        $this->assertSame(8.0, $extPresent['cabinet_base_lf']);
+        $this->assertSame(6.0, $extPresent['cabinet_upper_lf']);
+        $this->assertTrue($extPresent['include_millwork']);
+
+        $extAbsent = BasementRoomAreaImportMapper::extendedQuantities([
+            'area_sqft' => 400,
+        ]);
+
+        $this->assertNull($extAbsent['stairs_treads']);
+        $this->assertNull($extAbsent['stairs_handrail_lf']);
+        $this->assertNull($extAbsent['stairs_count']);
+        $this->assertFalse($extAbsent['include_stairs']);
+        $this->assertNull($extAbsent['cabinet_base_lf']);
+        $this->assertNull($extAbsent['cabinet_upper_lf']);
+        $this->assertFalse($extAbsent['include_millwork']);
+    }
+
     public function test_bulkhead_corner_bead_lf_imports_for_boxing_cb2(): void
     {
         $proposed = BasementRoomAreaImportMapper::proposedQuantities([
