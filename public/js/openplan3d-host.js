@@ -1760,9 +1760,15 @@
             quoteBtn.hidden = false;
           }
 
-          currentPlan = mergePlanZanini(currentPlan, sentPlan);
-          loadedPlanBaseline = clonePlan(currentPlan);
-          setDirty(false);
+          var editedDuringSave = !plansMatch(currentPlan, sentPlan);
+          if (!editedDuringSave) {
+            currentPlan = mergePlanZanini(currentPlan, sentPlan);
+            loadedPlanBaseline = clonePlan(currentPlan);
+            setDirty(false);
+          } else {
+            loadedPlanBaseline = clonePlan(sentPlan);
+            setDirty(true);
+          }
           postToEditor({
             type: 'OPENPLAN3D_SAVE_ACK',
             ok: true,
