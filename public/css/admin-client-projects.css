@@ -9014,12 +9014,12 @@ body.cp-modal-open {
   white-space: nowrap;
 }
 
-.cp-schedule-dates .admin-label-with-tip__end>.admin-info-tip-wrap {
+.cp-schedule-dates .admin-label-with-tip__end > .admin-info-tip-wrap {
+  max-height: 1.25rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   height: 1.25rem;
-  max-height: 1.25rem;
   flex-shrink: 0;
 }
 
@@ -12575,7 +12575,7 @@ html.admin-dark .br-hardwood-caution {
   }
 
   .br-check-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+    grid-template-columns: repeat(3, minmax(max-content, 1fr));
   }
 }
 
