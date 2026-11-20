@@ -751,7 +751,7 @@
       '#openplan3d-zanini-sidebar-reopen{position:fixed;right:12px;top:52px;z-index:10075;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.4);background:rgba(15,23,42,.92);color:#f8fafc;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer;display:inline-flex;align-items:center;gap:6px;}',
       '#openplan3d-zanini-sidebar-reopen:hover{border-color:#38bdf8;color:#38bdf8;}',
       '#openplan3d-zanini-sidebar-reopen[hidden]{display:none!important;}',
-      '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse,#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}}',
+      '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse,#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}#openplan3d-zanini-finish-host input[type=checkbox]{width:44px;height:44px;min-width:44px;min-height:44px;}}',
       '@media (max-width:519px){html.zanini-mobile-inspector-open button.fixed.bottom-4.left-4,html.zanini-mobile-inspector-open button[class*="bottom-4"][class*="left-4"][class*="rounded-full"]{display:none!important;}.zanini-sidebar-panel{z-index:10060!important;padding-bottom:64px!important;}#openplan3d-zanini-finish-host{position:relative;z-index:10060;background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}'
     ].join('');
     document.head.appendChild(style);
