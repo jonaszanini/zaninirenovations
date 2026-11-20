@@ -1688,8 +1688,9 @@
             quoteBtn.hidden = false;
           }
 
-          loadedPlanBaseline = sentPlan;
-          setDirty(!plansMatch(currentPlan, sentPlan));
+          currentPlan = mergePlanZanini(currentPlan, sentPlan);
+          loadedPlanBaseline = clonePlan(currentPlan);
+          setDirty(false);
           postToEditor({
             type: 'OPENPLAN3D_SAVE_ACK',
             ok: true,

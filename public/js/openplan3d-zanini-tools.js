@@ -752,7 +752,7 @@
       '#openplan3d-zanini-sidebar-reopen:hover{border-color:#38bdf8;color:#38bdf8;}',
       '#openplan3d-zanini-sidebar-reopen[hidden]{display:none!important;}',
       '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse,#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}}',
-      '@media (max-width:519px){#openplan3d-zanini-finish-host{background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}'
+      '@media (max-width:519px){.zanini-sidebar-panel{z-index:10060!important;padding-bottom:64px!important;}#openplan3d-zanini-finish-host{position:relative;z-index:10060;background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -908,6 +908,9 @@
 
   function ensureSidebarCollapseChrome(sidebar) {
     if (!sidebar) return;
+    if (sidebar.classList && !sidebar.classList.contains('zanini-sidebar-panel')) {
+      sidebar.classList.add('zanini-sidebar-panel');
+    }
     if (!state.sidebarReopenBtn || !state.sidebarReopenBtn.isConnected) {
       var existingReopen = document.getElementById('openplan3d-zanini-sidebar-reopen');
       if (existingReopen) {

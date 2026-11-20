@@ -406,13 +406,18 @@
   align-items: center;
   flex-wrap: nowrap;
   gap: 0.4rem;
-  flex: 0 1 auto;
   min-width: 0;
 }
 
+.util-ra-openplan3d-header__primary,
+.util-ra-openplan3d-header__actions {
+  flex: 0 0 auto;
+}
+
 .util-ra-openplan3d-header__selectors {
-  max-width: 100%;
-  flex: 1 1 auto;
+  max-width: 460px;
+  flex: 1 1 260px;
+  overflow: hidden;
   background: var(--admin-surface-hover, rgba(15, 23, 42, 0.04));
   border: 1px solid var(--admin-border, #e2e8f0);
   border-radius: 10px;
@@ -609,6 +614,21 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   transform: rotate(180deg);
 }
 
+.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-strip__bar {
+  align-items: center;
+  padding: 0.15rem 0.65rem;
+}
+
+.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-summary {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-summary__zones::before {
+  content: '· ';
+}
+
 .openplan3d-takeoffs-strip.is-collapsed .openplan3d-takeoffs-body,
 .openplan3d-takeoffs-strip.is-collapsed .openplan3d-metrics-ribbon {
   display: none;
@@ -738,9 +758,10 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  flex: 1 1 auto;
-  max-width: 540px;
+  flex: 1 1 260px;
+  max-width: 460px;
   min-width: 0;
+  overflow: hidden;
 }
 
 .openplan3d-control-group {
@@ -1314,6 +1335,18 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
 }
 
 /* Responsive styles */
+@media (max-width: 1440px) {
+  .util-ra-badge--openplan3d {
+    display: none;
+  }
+}
+
+@media (max-width: 1360px) {
+  .openplan3d-control-label {
+    display: none;
+  }
+}
+
 @media (max-width: 1024px) {
   .util-ra-openplan3d-header {
     flex-wrap: wrap;
@@ -1410,17 +1443,21 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
     min-height: 56px;
     width: 100%;
     max-width: 100%;
-    padding: 6px 8px;
+    padding: 6px;
     background: var(--admin-surface, #f8fafc);
     border-top: 1px solid var(--admin-border, #e2e8f0);
-    justify-content: flex-start;
+    justify-content: space-between;
     overflow-x: auto;
-    gap: 0.35rem;
+    gap: 2px;
     margin-left: 0;
   }
 
   .openplan3d-header-actions__group {
     flex-shrink: 0;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    gap: 2px;
   }
 
   .openplan3d-save-btn {
@@ -1437,14 +1474,16 @@ body.admin-dark #openplan3d-delete-project-btn .fa-trash,
   .openplan3d-tool-btn,
   .openplan3d-draw-toggle__btn,
   .openplan3d-takeoffs-toggle,
+  .openplan3d-header-actions .admin-info-tip-wrap,
   .openplan3d-header-actions .admin-info-tip {
     min-width: 44px;
     min-height: 44px;
+    padding: 0;
     justify-content: center;
   }
 
   .openplan3d-draw-toggle__btn {
-    padding: 6px 10px;
+    padding: 0;
   }
 
   .openplan3d-header-actions .openplan3d-instant-tip::after {
