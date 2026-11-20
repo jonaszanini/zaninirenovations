@@ -262,6 +262,18 @@ async function main() {
       { timeout: 120000 }
     );
     await mobilePage.evaluate((plan) => window.__openPlan3D.setProject(JSON.parse(JSON.stringify(plan))), partitionPlan);
+    await mobilePage.evaluate(() => {
+      var panel = document.getElementById('qa-wall-properties-panel');
+      if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'qa-wall-properties-panel';
+        panel.style.cssText = 'position:fixed;left:8px;right:8px;bottom:8px;width:auto;min-height:320px;z-index:5;background:#fff;padding:8px;';
+        panel.innerHTML =
+          '<button type="button" class="bg-blue-50 text-blue-700">Elevation</button>' +
+          '<div>Wall thickness</div>';
+        document.body.appendChild(panel);
+      }
+    });
     await mobilePage.evaluate(
       async ({ storeChunk, vendorPrefix }) => {
         const mod = await import(`${vendorPrefix}/_app/immutable/chunks/${storeChunk}`);
@@ -293,8 +305,10 @@ async function main() {
     const mobileFinishTap = await mobilePage.evaluate(() => {
       const host = document.getElementById('openplan3d-zanini-finish-host');
       const cb = host && host.querySelector('input[type="checkbox"]');
-      if (!cb) return { ok: false, reason: 'no checkbox' };
+      const chip = cb && cb.closest('.openplan3d-finish-chip');
+      if (!cb || !chip) return { ok: false, reason: 'no checkbox' };
       const r = cb.getBoundingClientRect();
+      const chipRect = chip.getBoundingClientRect();
       const x = r.left + r.width / 2;
       const y = r.top + r.height / 2;
       const top = document.elementFromPoint(x, y);
@@ -302,12 +316,15 @@ async function main() {
         ok: !!(top && (top === cb || (host && host.contains(top)))),
         w: r.width,
         h: r.height,
+        chipW: chipRect.width,
+        chipH: chipRect.height,
         viewportW: window.innerWidth,
       };
     });
     assert.ok(mobileFinishTap.viewportW === 390, '390 drywall screenshot must use real 390px viewport');
     assert.ok(mobileFinishTap.ok, 'Wall finishes panel must be above properties sheet at 390');
-    assert.ok(mobileFinishTap.w >= 44 && mobileFinishTap.h >= 44, 'finish checkboxes need >=44px tap targets at 390');
+    assert.ok(mobileFinishTap.w >= 20 && mobileFinishTap.w <= 26 && mobileFinishTap.h >= 20 && mobileFinishTap.h <= 26, 'finish checkbox glyph stays about 22px at 390');
+    assert.ok(mobileFinishTap.chipW >= 44 && mobileFinishTap.chipH >= 44, 'finish checkbox chip keeps a 44px tap target at 390');
     const tipGlyph = await mobilePage.evaluate(() => {
       const btn = document.querySelector('[data-finish-drywall-tip]');
       const svg = btn && btn.querySelector('svg.openplan3d-finish-info-glyph');

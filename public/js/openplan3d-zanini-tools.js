@@ -719,7 +719,7 @@
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble{display:block;}',
       '.admin-info-tip-wrap.is-open .admin-info-tip__bubble[hidden]{display:block;}',
       '.openplan3d-finish-drywall-tip-wrap .admin-info-tip__bubble{left:auto;right:-24px;}',
-      '#openplan3d-zanini-finish-host{position:relative;z-index:10050;margin:0 0 10px;padding:0 0 10px;border-bottom:1px solid rgba(148,163,184,.3);}',
+      '#openplan3d-zanini-finish-host{position:relative;z-index:auto;margin:0 0 10px;padding:0 0 10px;background:transparent;border-radius:0;box-shadow:none;border-bottom:1px solid rgba(148,163,184,.3);}',
       '.zanini-sec-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0;background:transparent;border:0;color:inherit;font-weight:700;font-size:12px;text-align:left;cursor:pointer;}',
       '.zanini-sec-chevron{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;font-size:11px;opacity:.75;transition:transform .15s ease;flex-shrink:0;}',
       '.zanini-sec-toggle[aria-expanded="false"] .zanini-sec-chevron,.zanini-sec-header[data-zanini-collapsed="1"] .zanini-sec-chevron{transform:rotate(-90deg);}',
@@ -744,15 +744,15 @@
       '.zanini-hover-tip__bubble{display:none;position:fixed;z-index:10090;width:236px;max-width:calc(100vw - 24px);padding:8px 10px;border-radius:8px;background:#0f172a;color:#f8fafc;border:1px solid rgba(148,163,184,.35);font-size:11.5px;font-weight:400;line-height:1.4;white-space:normal;box-shadow:0 10px 26px rgba(0,0,0,.45);pointer-events:none;}',
       '.zanini-hover-tip-wrap.is-open .zanini-hover-tip__bubble{display:block;}',
       '[data-zanini-panel-collapsed="1"]{display:none!important;}',
-      '#openplan3d-zanini-sidebar-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(148,163,184,.25);}',
-      '.zanini-sidebar-bar__title{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;opacity:.72;}',
-      '#openplan3d-zanini-sidebar-collapse{min-width:28px;min-height:28px;padding:2px 7px;border-radius:6px;border:1px solid rgba(148,163,184,.35);background:rgba(148,163,184,.1);color:inherit;font-size:12px;font-weight:600;line-height:1;cursor:pointer;display:inline-flex;align-items:center;gap:4px;}',
+      '#openplan3d-zanini-sidebar-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 4px;padding:4px 0;background:transparent;color:inherit;border-bottom:1px solid rgba(148,163,184,.25);}',
+      '.zanini-sidebar-bar__title{font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;opacity:1;color:inherit;line-height:1.3;}',
+      '#openplan3d-zanini-sidebar-collapse{box-sizing:border-box;width:36px;height:36px;min-width:36px;min-height:36px;padding:0;border-radius:8px;border:1px solid rgba(148,163,184,.55);background:transparent;color:inherit;font-size:16px;font-weight:600;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;}',
       '#openplan3d-zanini-sidebar-collapse:hover{border-color:#38bdf8;color:#38bdf8;}',
       '#openplan3d-zanini-sidebar-reopen{position:fixed;right:12px;top:52px;z-index:10075;min-height:36px;padding:6px 12px;border-radius:999px;border:1px solid rgba(148,163,184,.4);background:rgba(15,23,42,.92);color:#f8fafc;font-size:12px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer;display:inline-flex;align-items:center;gap:6px;}',
       '#openplan3d-zanini-sidebar-reopen:hover{border-color:#38bdf8;color:#38bdf8;}',
       '#openplan3d-zanini-sidebar-reopen[hidden]{display:none!important;}',
-      '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse,#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}#openplan3d-zanini-finish-host input[type=checkbox]{width:44px;height:44px;min-width:44px;min-height:44px;}}',
-      '@media (max-width:519px){html.zanini-mobile-inspector-open button.fixed.bottom-4.left-4,html.zanini-mobile-inspector-open button[class*="bottom-4"][class*="left-4"][class*="rounded-full"]{display:none!important;}.zanini-sidebar-panel{z-index:10060!important;}#openplan3d-zanini-finish-host{position:relative;z-index:10060;background:rgba(255,255,255,.98);padding:12px;margin:0 0 12px;border-radius:10px;box-shadow:0 8px 24px rgba(15,23,42,.18);}html.dark #openplan3d-zanini-finish-host{background:rgba(15,23,42,.96);border:1px solid rgba(51,65,85,.8);}}',
+      '@media (max-width:640px){#openplan3d-zanini-sidebar-collapse{width:44px;height:44px;min-width:44px;min-height:44px;}#openplan3d-zanini-sidebar-reopen,.zanini-sec-toggle,.zanini-sec-header,.openplan3d-finish-chip,.openplan3d-finish-select,.zanini-hover-tip{min-width:44px;min-height:44px;}#openplan3d-zanini-finish-host input[type=checkbox]{width:22px;height:22px;min-width:22px;min-height:22px;margin:0;flex:0 0 22px;}}',
+      '@media (max-width:519px){html.zanini-mobile-inspector-open button.fixed.bottom-4.left-4,html.zanini-mobile-inspector-open button[class*="bottom-4"][class*="left-4"][class*="rounded-full"]{display:none!important;}#openplan3d-zanini-finish-host{position:relative;z-index:auto;background:transparent;padding:0 0 10px;margin:0 0 10px;border-radius:0;box-shadow:none;}}',
       '@media (max-width:640px){div[class*="max-md:max-h-[45vh]"]{box-sizing:border-box;overflow-x:hidden;padding-bottom:calc(64px + env(safe-area-inset-bottom, 0px))!important;scroll-padding-bottom:calc(64px + env(safe-area-inset-bottom, 0px));max-height:calc(45vh - env(safe-area-inset-bottom, 0px))!important;}}'
     ].join('');
     document.head.appendChild(style);
@@ -811,61 +811,64 @@
     buildFloatingToolbarFallback();
   }
 
-  function climbToRightSidebarRoot(panel) {
-    var cur = panel;
-    var narrow = window.innerWidth < 520;
-    while (cur && cur.parentElement && cur.parentElement !== document.body) {
-      var pr = cur.parentElement.getBoundingClientRect();
-      if (!narrow && (pr.width > 420 || pr.left < window.innerWidth * 0.48)) break;
-      if (narrow && (cur.parentElement.querySelector('canvas') || pr.height > window.innerHeight * 0.85)) break;
-      if ((cur.parentElement.textContent || '').toLowerCase().indexOf('thickness') === -1) break;
-      cur = cur.parentElement;
+  function isPropertiesSheet(el) {
+    if (!el || el.nodeType !== 1) return false;
+    var cls = el.className && String(el.className);
+    if (!cls) return false;
+    return cls.indexOf('overflow-y-auto') !== -1 && cls.indexOf('max-md:rounded-t-xl') !== -1;
+  }
+
+  function propertiesSheetEl() {
+    var nodes = document.querySelectorAll('div');
+    for (var i = 0; i < nodes.length; i++) {
+      if (isPropertiesSheet(nodes[i])) return nodes[i];
     }
-    return cur;
+    return null;
+  }
+
+  function scrubShellInspectorChrome() {
+    var shells = document.querySelectorAll('div.h-screen.zanini-sidebar-panel');
+    for (var si = 0; si < shells.length; si++) {
+      if (!isPropertiesSheet(shells[si])) shells[si].classList.remove('zanini-sidebar-panel');
+    }
+    var sheet = propertiesSheetEl();
+    var ids = ['openplan3d-zanini-sidebar-bar', 'openplan3d-zanini-finish-host'];
+    for (var ii = 0; ii < ids.length; ii++) {
+      var el = document.getElementById(ids[ii]);
+      if (!el || !el.parentElement) continue;
+      if (sheet && (el.parentElement === sheet || sheet.contains(el))) continue;
+      el.parentElement.removeChild(el);
+      if (ids[ii] === 'openplan3d-zanini-finish-host' && state.finishHost === el) state.finishHost = null;
+    }
+  }
+
+  function sheetIsOpen(sheet) {
+    if (!sheet || sheet.hidden || sheet.hasAttribute('hidden')) return false;
+    var rect = sheet.getBoundingClientRect();
+    return rect.width >= 80 && rect.height >= 40;
+  }
+
+  function visibleElevationPanel() {
+    var elevBtn = document.querySelector('button.bg-blue-50.text-blue-700');
+    if (!elevBtn) return null;
+    var panel = elevBtn.parentElement;
+    while (panel && panel !== document.body) {
+      var cls = String(panel.className || '');
+      if (cls.indexOf('h-screen') !== -1) break;
+      var rect = panel.getBoundingClientRect();
+      var text = (panel.textContent || '').toLowerCase();
+      if (rect.width >= 120 && rect.height >= 80 && text.indexOf('thickness') !== -1) return panel;
+      panel = panel.parentElement;
+    }
+    return null;
   }
 
   function findWallSidebarHost() {
-    var finishMount = document.getElementById('openplan3d-zanini-finish-host');
-    if (finishMount && finishMount.parentElement && finishMount.parentElement.isConnected) {
-      return finishMount.parentElement;
-    }
-    var elevBtn = document.querySelector('button.bg-blue-50.text-blue-700');
-    if (elevBtn) {
-      var panel = elevBtn.parentElement;
-      while (panel && panel !== document.body) {
-        var rect = panel.getBoundingClientRect();
-        var txt = (panel.textContent || '').toLowerCase();
-        var narrow = window.innerWidth < 520;
-        var sideOk = narrow || rect.left > window.innerWidth * 0.45;
-        if (rect.width >= 120 && rect.height >= 80 && sideOk
-          && (txt.indexOf('thickness') !== -1 || txt.indexOf('height') !== -1 || txt.indexOf('elevation') !== -1)) {
-          return climbToRightSidebarRoot(panel);
-        }
-        panel = panel.parentElement;
-      }
-    }
-    var divs = document.querySelectorAll('div');
-    var best = null;
-    var bestScore = 0;
-    for (var i = 0; i < divs.length; i++) {
-      var el = divs[i];
-      if (el.id === 'openplan3d-zanini-finish-host') continue;
-      if (el.offsetParent === null) continue;
-      var r = el.getBoundingClientRect();
-      if (r.width < 120 || r.height < 80) continue;
-      if (window.innerWidth >= 520 && r.left < window.innerWidth * 0.5) continue;
-      var text = (el.textContent || '').toLowerCase();
-      var score = 0;
-      if (text.indexOf('thickness') !== -1) score += 3;
-      if (text.indexOf('height') !== -1) score += 1;
-      if (el.querySelector('button.bg-blue-50.text-blue-700')) score += 4;
-      if (el.querySelector('button.rounded-full')) score += 1;
-      if (score > bestScore) {
-        bestScore = score;
-        best = el;
-      }
-    }
-    return best ? climbToRightSidebarRoot(best) : null;
+    var sheet = propertiesSheetEl();
+    if (sheetIsOpen(sheet)) return sheet;
+    var fallback = visibleElevationPanel();
+    if (fallback) return fallback;
+    return null;
   }
 
   function syncMobileInspectorClass(open) {
@@ -877,6 +880,7 @@
   function ensureFinishHost() {
     var sidebar = findWallSidebarHost();
     if (!sidebar) {
+      scrubShellInspectorChrome();
       if (state.sidebarReopenBtn) state.sidebarReopenBtn.hidden = true;
       syncMobileInspectorClass(false);
       return null;
@@ -917,6 +921,10 @@
 
   function ensureSidebarCollapseChrome(sidebar) {
     if (!sidebar) return;
+    var shells = document.querySelectorAll('div.h-screen.zanini-sidebar-panel');
+    for (var si = 0; si < shells.length; si++) {
+      if (shells[si] !== sidebar) shells[si].classList.remove('zanini-sidebar-panel');
+    }
     if (sidebar.classList && !sidebar.classList.contains('zanini-sidebar-panel')) {
       sidebar.classList.add('zanini-sidebar-panel');
     }
@@ -941,13 +949,12 @@
         state.sidebarReopenBtn = reopen;
       }
     }
-    var bar = sidebar.querySelector('#openplan3d-zanini-sidebar-bar');
+    var bar = document.getElementById('openplan3d-zanini-sidebar-bar');
     if (!bar) {
       bar = document.createElement('div');
       bar.id = 'openplan3d-zanini-sidebar-bar';
       bar.innerHTML = '<span class="zanini-sidebar-bar__title">Inspector</span>' +
         '<button type="button" id="openplan3d-zanini-sidebar-collapse" aria-label="Collapse properties panel" aria-expanded="true" title="Toggle properties panel">&#187;</button>';
-      sidebar.insertBefore(bar, sidebar.firstChild);
       var colBtn = bar.querySelector('#openplan3d-zanini-sidebar-collapse');
       if (colBtn) {
         colBtn.addEventListener('click', function () {
@@ -955,7 +962,8 @@
           syncSidebarCollapseState(sidebar);
         });
       }
-    } else if (sidebar.firstChild !== bar) {
+    }
+    if (bar.parentElement !== sidebar || sidebar.firstChild !== bar) {
       sidebar.insertBefore(bar, sidebar.firstChild);
     }
     syncSidebarCollapseState(sidebar);
@@ -1647,6 +1655,7 @@
       if (sidebarMutationIsOwnFinishHost(mutations)) return;
       var sidebar = findWallSidebarHost();
       if (!sidebar) {
+        scrubShellInspectorChrome();
         if (state.sidebarReopenBtn) state.sidebarReopenBtn.hidden = true;
         return;
       }
