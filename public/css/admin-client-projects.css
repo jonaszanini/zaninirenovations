@@ -10786,7 +10786,9 @@ body.cp-modal-open {
   border-radius: 8px;
   background: var(--admin-surface);
   color: var(--admin-text);
+  font-family: inherit;
   font-size: 13px;
+  line-height: 1.25;
   text-align: left;
   cursor: pointer;
   scroll-snap-align: start;
@@ -12492,11 +12494,11 @@ html.admin-dark .br-hardwood-caution {
   }
 
   .br-provide-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
   }
 
   .br-bath-provide__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr));
   }
 
   .br-shell {
@@ -12573,7 +12575,7 @@ html.admin-dark .br-hardwood-caution {
   }
 
   .br-check-grid {
-    grid-template-columns: repeat(3, minmax(max-content, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
   }
 }
 
@@ -12735,6 +12737,13 @@ html.admin-dark .br-hardwood-caution {
   border: 1px solid var(--admin-primary-ring);
   margin-left: 6px;
   vertical-align: middle;
+}
+
+.br-line-generator__lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
 }
 
 .br-trade-generator,
