@@ -31,14 +31,7 @@
     return 'CA$' + Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   };
   var fmtCompact = function (n) {
-    var val = Number(n || 0);
-    if (!isFinite(val)) val = 0;
-    if (Math.abs(val) < 0.005) return '$0.00';
-    var rounded = Math.round(val);
-    if (Math.abs(val - rounded) < 0.005) {
-      return '$' + rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    }
-    return '$' + val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return fmt(n);
   };
   var formatLayoutQty = function (n) {
     var rounded = Math.round(Number(n) * 100) / 100;
@@ -1916,7 +1909,7 @@
           btn.classList.add('is-attention');
           if (meta) meta.textContent = 'Check';
         } else if (meta) {
-          meta.textContent = '$0.00';
+          meta.textContent = fmt(0);
         }
         return;
       }
@@ -1926,7 +1919,7 @@
           || (key === 'plumbing' && plumbingScopeCount() > 0);
         if (hasWork || hasScope) {
           btn.classList.add('is-attention');
-          if (meta) meta.textContent = hasScope ? 'Check' : '$0.00';
+          if (meta) meta.textContent = hasScope ? 'Check' : fmt(0);
         } else if (meta) {
           meta.textContent = '';
         }
@@ -1935,7 +1928,7 @@
 
       if (hasWork) {
         btn.classList.add('is-attention');
-        if (meta) meta.textContent = '$0.00';
+        if (meta) meta.textContent = fmt(0);
       } else if (meta) {
         meta.textContent = '';
       }
