@@ -18,6 +18,7 @@ tests/Unit/Services/BasementClientScopeGeneratedCopyTest.php
 tests/Unit/Services/BasementQuotationCalculatorTest.php
 tests/Unit/Services/BasementQuotationFeeWasteScopeTest.php
 tests/Unit/Services/BasementClientScopeAllowanceSyncTest.php
+tests/Unit/Services/BasementFloodRestorationCalculatorTest.php
 tests/Unit/Services/BasementRoomAreaImportMapperTest.php
 tests/Unit/Services/BlogPostQualityTest.php
 tests/Unit/Services/CutOptimizerEngineTest.php

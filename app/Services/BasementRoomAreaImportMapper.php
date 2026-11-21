@@ -118,6 +118,9 @@ class BasementRoomAreaImportMapper
         'insulate_walls',
         'insulate_ceiling',
         'underslab',
+        'flood_cut_height_in',
+        'flood_partition_both_faces',
+        'flood_casing_mode',
     ];
 
     /**
@@ -379,9 +382,10 @@ class BasementRoomAreaImportMapper
 
     /**
      * @param  array<string, mixed>  $opt
+     * @param  array<string, mixed>  $options
      * @return array<string, float|int|null>
      */
-    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null, ?string $formCeilingType = null): array
+    public static function proposedQuantities(array $opt, ?float $formCeilingHeightFt = null, ?string $formCeilingType = null, array $options = []): array
     {
         $height = 8.0;
         if (self::present($opt, 'ceiling_height_ft') && (float) $opt['ceiling_height_ft'] > 0) {
@@ -490,6 +494,31 @@ class BasementRoomAreaImportMapper
             $paintWallBasis = max(0.0, $wallSf - $openingDeduction);
         }
 
+        $paintWallSf = self::resolveImportedPaintWallSf($opt, $paintWallBasis);
+        if (BasementQuotationCalculator::normalizePreset($options['scope_preset'] ?? null) === 'flood') {
+            $cutFt = round(BasementQuotationCalculator::normalizeFloodCutHeightIn($options['flood_cut_height_in'] ?? 24) / 12, 4);
+            $bothFaces = array_key_exists('flood_partition_both_faces', $options)
+                ? (bool) $options['flood_partition_both_faces']
+                : true;
+            $partWallLf = $partition !== null ? ($bothFaces ? $partition * 2 : $partition) : 0.0;
+            $floodRunLf = $peri !== null
+                ? round($peri + $partWallLf, 2)
+                : ($partition !== null ? round($partWallLf, 2) : null);
+            if ($floodRunLf !== null) {
+                $wallSf = round($floodRunLf * $cutFt, 2);
+                $openingSf = null;
+                $paintWallSf = self::present($opt, 'finish_paint_sqft')
+                    ? (float) $opt['finish_paint_sqft']
+                    : round($floodRunLf * $height, 2);
+            }
+            if ($peri !== null) {
+                $insWall = round($peri * $cutFt, 2);
+            }
+            if ($baseboard === null && $floodRunLf !== null) {
+                $baseboard = $floodRunLf;
+            }
+        }
+
         return [
             'area_sqft' => $area,
             'ceiling_height_ft' => self::present($opt, 'ceiling_height_ft') ? $height : null,
@@ -515,7 +544,7 @@ class BasementRoomAreaImportMapper
             'baseboard_lf' => $baseboard,
             'casing_openings' => $casingOpenings,
             'window_trim_qty' => $windows,
-            'paint_wall_sf' => self::resolveImportedPaintWallSf($opt, $paintWallBasis),
+            'paint_wall_sf' => $paintWallSf,
             'paint_ceiling_sf' => self::resolveImportedPaintCeilingSf($ceilingArea, $formCeilingType),
             'paint_trim_lf' => $paintTrim,
             'import_bulkhead_drywall_sqft' => $importBulkheadDrywall > 0 ? $importBulkheadDrywall : null,

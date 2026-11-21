@@ -449,6 +449,44 @@ class BasementRoomAreaImportMapperTest extends TestCase
         $this->assertNotContains('partition_lf', BasementRoomAreaImportMapper::UNMAPPED_LAYOUT_KEYS);
     }
 
+    public function test_flood_preset_import_maps_perimeter_partition_cut_drywall_insulation_and_full_paint(): void
+    {
+        $proposed = BasementRoomAreaImportMapper::proposedQuantities(
+            $this->fullOption(),
+            8,
+            'none',
+            [
+                'scope_preset' => 'flood',
+                'flood_cut_height_in' => 24,
+                'flood_partition_both_faces' => true,
+            ]
+        );
+
+        $this->assertSame(90.0, $proposed['perimeter_lf']);
+        $this->assertSame(12.0, $proposed['partition_lf']);
+        $this->assertSame(180.0, $proposed['insulation_wall_sf']);
+        $this->assertSame(228.0, $proposed['drywall_wall_sf']);
+        $this->assertSame(480.0, $proposed['paint_wall_sf']);
+
+        $optWithoutPaint = $this->fullOption();
+        unset($optWithoutPaint['finish_paint_sqft']);
+        $proposedNoPaint = BasementRoomAreaImportMapper::proposedQuantities(
+            $optWithoutPaint,
+            8,
+            'none',
+            [
+                'scope_preset' => 'flood',
+                'flood_cut_height_in' => 24,
+                'flood_partition_both_faces' => true,
+            ]
+        );
+        $this->assertSame(912.0, $proposedNoPaint['paint_wall_sf']);
+
+        foreach (['flood_cut_height_in', 'flood_partition_both_faces', 'flood_casing_mode'] as $floodKey) {
+            $this->assertContains($floodKey, BasementRoomAreaImportMapper::NEVER_OVERWRITE);
+        }
+    }
+
     /**
      * @return array<string, mixed>
      */

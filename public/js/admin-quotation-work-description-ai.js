@@ -289,10 +289,12 @@
     form.querySelectorAll('input[name="enabled_sections[]"]:checked').forEach(function (el) {
       enabledSections.push(el.value);
     });
+    var presetEl = form.querySelector('input[name="scope_preset"]:checked');
+    var casingEl = form.querySelector('input[name="flood_casing_mode"]:checked');
 
     return {
       client_name: formValue(form, 'client_name'),
-      scope_preset: formSelectValue(form, 'scope_preset') || formValue(form, 'scope_preset'),
+      scope_preset: presetEl ? String(presetEl.value || '').trim() : (formSelectValue(form, 'scope_preset') || formValue(form, 'scope_preset')),
       enabled_sections: enabledSections,
       area_sqft: formValue(form, 'area_sqft'),
       area_entry_mode: formValue(form, 'area_entry_mode'),
@@ -300,7 +302,11 @@
       area_width_ft: formValue(form, 'area_width_ft'),
       ceiling_height_ft: formValue(form, 'ceiling_height_ft'),
       room_count: formValue(form, 'room_count'),
+      perimeter_lf: formValue(form, 'perimeter_lf'),
       partition_lf: formValue(form, 'partition_lf'),
+      flood_cut_height_in: formValue(form, 'flood_cut_height_in'),
+      flood_partition_both_faces: isChecked(form, 'flood_partition_both_faces'),
+      flood_casing_mode: casingEl ? String(casingEl.value || '').trim() : (formSelectValue(form, 'flood_casing_mode') || formValue(form, 'flood_casing_mode')),
       flooring_type: formSelectValue(form, 'flooring_type'),
       ceiling_type: formSelectValue(form, 'ceiling_type'),
       include_bathroom: form.elements['include_bathroom'] && form.elements['include_bathroom'].checked,

@@ -191,6 +191,10 @@
       'flooring_waste_percent' => 'Ordering buffer for finish flooring only. Defaults: vinyl (LVP) 7%, wood (hardwood / engineered / laminate) 8%, tile 10%. Drywall sheets, batt bags, and studs at 16 inch centres still use the global material waste below. No carpet.',
       'material_waste_percent' => 'Ordering buffer on bulk materials other than finish flooring (drywall sheets, lumber, paint, insulation batts, trim). Doors and toilets stay exact. Default 10%. Finish flooring has its own waste on the Flooring step.',
       'client_provides_all' => 'Labour only, you do not supply materials. Totals drop material cost (HST on labour still applies as configured).',
+      'flood_perimeter_lf' => 'Exterior basement wall perimeter in linear feet. Used for flood drywall, exterior insulation, vapour barrier patch, baseboards, and full-height wall paint. Blank falls back to a square estimate from floor area, or import from Room Area.',
+      'flood_cut_height_in' => 'Drywall cut height already removed from the floor (typically 24 in or 48 in). Drives wall drywall and exterior wall insulation square footage.',
+      'flood_partition_both_faces' => 'Count both faces of interior partition walls for flood-cut drywall, horizontal joint taping, baseboards, and full-height repainting.',
+      'flood_casing_mode' => 'Side legs only replaces both water-damaged side legs and reuses the existing head trim. Full casing replaces both legs and the head.',
   ];
 @endphp
 
@@ -201,15 +205,21 @@
       'full' => 'Total basement area (sq ft)',
       'bathroom' => 'Bathroom / work area (sq ft)',
       'wall' => 'Basement area (sq ft, optional)',
+      'flood' => 'Affected floor area (sq ft)',
       'custom' => 'Work area (sq ft)',
   ];
   $presetHelp = [
       'full' => 'Walks every trade. Area auto-fills insulation, drywall, flooring, paint, and cleanup.',
       'bathroom' => 'Plumbing and electrical questions stay as qualified-trade scope, plus drywall, paint, fixtures, and cleanup in one bathroom flow — not whole-basement flooring or insulation.',
       'wall' => 'Enter wall length and whether it needs a door. Framing, drywall, doors / trim / baseboard, paint — both sides of the new wall.',
+      'flood' => 'Rebuild after water damage. Drywall is already cut and removed at the flood line.',
       'custom' => 'Only the trades you check below. Overview and Review always stay.',
   ];
+  $presetCardTips = [
+      'flood' => 'Rebuild after water damage. Drywall is already cut and removed at the flood line.',
+  ];
   $wallPreset = $scopePreset === 'wall';
+  $floodPreset = $scopePreset === 'flood';
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Project Overview</summary>
@@ -230,21 +240,28 @@
           <x-admin.info-tip label="What are you quoting?">
             {{ $brInfo['scope_preset'] }}
             @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
-              <br><strong>{{ $presetLabel }}:</strong> {{ $presetHelp[$presetKey] }}
+              <br><strong>{{ $presetLabel }}:</strong> {{ $presetHelp[$presetKey] ?? '' }}
             @endforeach
           </x-admin.info-tip>
         </span>
       </legend>
       <div class="br-scope-presets__grid">
         @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
-          <label class="br-scope-option">
-            <input type="radio" class="br-preview" name="scope_preset" value="{{ $presetKey }}"
-                   data-br-scope-preset
-                   @checked($scopePreset === $presetKey)>
-            <span class="br-scope-option__body">
-              <strong>{{ $presetLabel }}</strong>
-            </span>
-          </label>
+          <div class="br-scope-option">
+            <label class="br-scope-option__label">
+              <input type="radio" class="br-preview" name="scope_preset" value="{{ $presetKey }}"
+                     data-br-scope-preset
+                     @checked($scopePreset === $presetKey)>
+              <span class="br-scope-option__body">
+                <strong>{{ $presetLabel }}</strong>
+              </span>
+            </label>
+            @if (! empty($presetCardTips[$presetKey]))
+              <span class="br-scope-option__tip">
+                <x-admin.info-tip :label="$presetLabel">{{ $presetCardTips[$presetKey] }}</x-admin.info-tip>
+              </span>
+            @endif
+          </div>
         @endforeach
       </div>
     </fieldset>
@@ -273,7 +290,6 @@
     </fieldset>
 
     <div class="br-layout-import" data-br-layout-import data-br-skip-on-wall @if($scopePreset === 'wall') hidden @endif>
-      <input type="hidden" name="perimeter_lf" id="br-perimeter-lf" class="br-preview" value="{{ $layoutPerimeter }}">
       <input type="hidden" name="room_area_import_label" id="br-layout-import-label" value="{{ $layoutImportLabel }}">
       <div class="admin-form-group br-layout-import__field">
         <span class="admin-label-with-tip">
@@ -345,6 +361,31 @@
         'value' => $brVal('ceiling_height_ft', 8),
         'filledKeys' => $filledKeys,
       ])
+    </div>
+    <div class="br-qty-grid br-flood-geom" data-br-flood-only @unless($floodPreset) hidden @endunless>
+      <div class="admin-form-group">
+        @include('admin.partials.tipped_label', [
+          'label' => 'Exterior perimeter (lin. ft)',
+          'for' => 'br-perimeter-lf',
+          'tipText' => $brInfo['flood_perimeter_lf'],
+          'tipLabel' => 'Exterior perimeter (lin. ft)',
+        ])
+        <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-perimeter-lf" name="perimeter_lf"
+               value="{{ $layoutPerimeter }}" placeholder="Auto">
+      </div>
+      <div id="br-flood-partition-slot" class="br-flood-partition-slot">
+        @if ($floodPreset)
+          <div id="br-partition-field" class="admin-form-group">
+            <span class="admin-label-with-tip">
+              <label for="br-partition">@include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys ?? []]) New wall (lin. ft)</label>
+              @include('admin.partials.info_tip', ['tipText' => $brInfo['partition_lf'], 'tipLabel' => 'New wall (lin. ft)'])
+            </span>
+            <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
+                   value="{{ $brVal('partition_lf', 0) }}"
+                   title="Interior walls only. Height uses the ceiling height from Overview.">
+          </div>
+        @endif
+      </div>
     </div>
     <div class="br-qty-grid">
       <div class="admin-form-group" data-br-hide-on-wall @if($wallPreset) hidden @endif>
@@ -772,10 +813,41 @@
 @php
   $wizardStep++;
   $sheetSizeNow = \App\Services\BasementQuotationCalculator::normalizeSheetSize($brVal('drywall_sheet_size', '4x8'));
+  $cutHeightRaw = $brVal('flood_cut_height_in', 24);
+  $cutHeightNow = ($cutHeightRaw === '' || $cutHeightRaw === null) ? 24 : $cutHeightRaw;
 @endphp
 <details class="br-acc admin-card" data-br-step="drywall" @unless(in_array('drywall', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Drywall / Mud / Tape / Sand</summary>
   <div class="br-acc__body">
+    <div class="br-flood-panel" data-br-flood-only @unless($floodPreset) hidden @endunless>
+      <div class="admin-form-group">
+        @include('admin.partials.tipped_label', [
+          'label' => 'Flood cut height (in)',
+          'for' => 'br-flood-cut-height',
+          'tipText' => $brInfo['flood_cut_height_in'],
+          'tipLabel' => 'Flood cut height (in)',
+        ])
+        <div class="br-flood-cut-row">
+          <input type="number" step="1" min="1" max="144" class="admin-input br-preview br-input--narrow"
+                 id="br-flood-cut-height" name="flood_cut_height_in" value="{{ $cutHeightNow }}">
+          <button type="button" class="br-flood-chip{{ (float) $cutHeightNow === 24.0 ? ' is-active' : '' }}"
+                  data-br-flood-cut="24" aria-pressed="{{ (float) $cutHeightNow === 24.0 ? 'true' : 'false' }}">24"</button>
+          <button type="button" class="br-flood-chip{{ (float) $cutHeightNow === 48.0 ? ' is-active' : '' }}"
+                  data-br-flood-cut="48" aria-pressed="{{ (float) $cutHeightNow === 48.0 ? 'true' : 'false' }}">48"</button>
+        </div>
+      </div>
+      <div class="admin-form-group br-flood-panel__check">
+        @include('admin.partials.checkbox', [
+          'name' => 'flood_partition_both_faces',
+          'id' => 'br-flood-both-faces',
+          'hiddenFallback' => true,
+          'checked' => $brOn('flood_partition_both_faces', true),
+          'label' => 'Partitions cut on both faces',
+          'info' => $brInfo['flood_partition_both_faces'],
+          'inputClass' => 'admin-checkbox__input br-preview',
+        ])
+      </div>
+    </div>
     <fieldset class="br-sheet-size">
       <legend>
         <span class="admin-label-with-tip">
@@ -1087,6 +1159,29 @@
         ])
       </div>
     </div>
+    @php
+      $casingModeNow = strtolower((string) $brVal('flood_casing_mode', 'legs'));
+    @endphp
+    <fieldset class="br-sheet-size br-flood-casing" data-br-flood-only @unless($floodPreset) hidden @endunless>
+      <legend>
+        <span class="admin-label-with-tip">
+          <span>Door casing replacement</span>
+          @include('admin.partials.info_tip', ['tipText' => $brInfo['flood_casing_mode'], 'tipLabel' => 'Door casing replacement'])
+        </span>
+      </legend>
+      <div class="br-sheet-size__grid">
+        <label class="br-sheet-size__option">
+          <input type="radio" class="br-preview" name="flood_casing_mode" value="legs"
+                 @checked($casingModeNow !== 'full')>
+          <span>Side legs only (reuse head)</span>
+        </label>
+        <label class="br-sheet-size__option">
+          <input type="radio" class="br-preview" name="flood_casing_mode" value="full"
+                 @checked($casingModeNow === 'full')>
+          <span>Full casing (legs + head)</span>
+        </label>
+      </div>
+    </fieldset>
     <button type="button" class="admin-btn admin-btn--ghost admin-btn--sm br-inline-calc-btn" id="br-base-add-partition-btn" data-br-add-interior-wall-baseboard hidden>+ Add interior partition baseboard (2 sides)</button>
     <div class="br-check-grid br-check-grid--inset">
       @include('admin.partials.checkbox', [

@@ -36,7 +36,10 @@
       );
   }
   $sectionList = $sections ?? BasementQuotationCalculator::SECTIONS;
-  $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
+  $defaultPreset = (! $isEdit && request()->filled('scope_preset'))
+      ? request('scope_preset')
+      : ($inputs['scope_preset'] ?? 'full');
+  $scopePreset = BasementQuotationCalculator::normalizePreset(old('scope_preset', $defaultPreset));
   if (! $isEdit) {
       foreach (BasementQuotationCalculator::electricalDefaultsForPreset($scopePreset) as $elecKey => $elecVal) {
           if (old($elecKey) === null) {
@@ -53,6 +56,10 @@
           if (old('include_cleaning') === null) {
               $inputs['include_cleaning'] = false;
           }
+      } elseif ($scopePreset === 'flood') {
+          if (old('ceiling_type') === null) {
+              $inputs['ceiling_type'] = 'none';
+          }
       }
   }
   $enabledNow = BasementQuotationCalculator::enabledSections([
@@ -64,6 +71,7 @@
       'full' => BasementQuotationCalculator::presetEnabledSections('full'),
       'bathroom' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
       'wall' => BasementQuotationCalculator::presetEnabledSections('wall'),
+      'flood' => BasementQuotationCalculator::presetEnabledSections('flood'),
       'custom' => BasementQuotationCalculator::presetEnabledSections('custom'),
   ];
   $electricalByPreset = [];

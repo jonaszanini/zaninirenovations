@@ -582,6 +582,29 @@ class QuotationWorkDescriptionContextBuilder
         if ($height > 0) {
             $this->appendLine($lines, 'Ceiling height', $height.' ft');
         }
+        if (BasementQuotationCalculator::normalizePreset($c['scope_preset'] ?? null) === 'flood') {
+            $perimeterLf = round(max(0, (float) ($c['perimeter_lf'] ?? 0)), 2);
+            if ($perimeterLf > 0) {
+                $this->appendLine($lines, 'Exterior perimeter', rtrim(rtrim(number_format($perimeterLf, 2, '.', ''), '0'), '.').' lf');
+            }
+            $partitionLf = round(max(0, (float) ($c['partition_lf'] ?? 0)), 2);
+            if ($partitionLf > 0) {
+                $bothFaces = ! array_key_exists('flood_partition_both_faces', $c) || ! empty($c['flood_partition_both_faces']);
+                $this->appendLine(
+                    $lines,
+                    'Partition walls',
+                    rtrim(rtrim(number_format($partitionLf, 2, '.', ''), '0'), '.').' lf ('.($bothFaces ? 'both faces' : 'single face').')'
+                );
+            }
+            $cutIn = BasementQuotationCalculator::normalizeFloodCutHeightIn($c['flood_cut_height_in'] ?? 24);
+            $this->appendLine($lines, 'Flood cut height', rtrim(rtrim(number_format($cutIn, 2, '.', ''), '0'), '.').' in');
+            $casingMode = BasementQuotationCalculator::normalizeFloodCasingMode($c['flood_casing_mode'] ?? 'legs');
+            $this->appendLine(
+                $lines,
+                'Door casing mode',
+                $casingMode === 'full' ? 'full casing (legs and head)' : 'side legs only (reuse head)'
+            );
+        }
 
         // Explicitly contrast included trades vs excluded trades when custom sections or preset are set
         $hasCustomSections = (isset($c['enabled_sections']) && is_array($c['enabled_sections'])) || isset($c['scope_preset']);
@@ -773,7 +796,7 @@ class QuotationWorkDescriptionContextBuilder
         // Calculate accurate labor tasks and materials from the calculator
         $calculatedLabor = false;
         $calculatedMats = false;
-        if ($area > 0 || (float) ($c['partition_lf'] ?? 0) > 0) {
+        if ($area > 0 || (float) ($c['partition_lf'] ?? 0) > 0 || (float) ($c['perimeter_lf'] ?? 0) > 0) {
             try {
                 $calc = (new BasementQuotationCalculator)->calculate($c);
 

@@ -385,9 +385,18 @@
     // Basement
     if (form.querySelector('[name="area_sqft"], [name="partition_lf"]')) {
       var preset = form.querySelector('[name="scope_preset"]:checked');
-      var isWall = !!(preset && preset.value === 'wall');
-      if (isWall) {
+      var presetVal = preset ? preset.value : '';
+      if (presetVal === 'wall') {
         if (fieldNumber(form, 'partition_lf') <= 0) {
+          return false;
+        }
+      } else if (presetVal === 'flood') {
+        if (
+          fieldNumber(form, 'area_sqft') <= 0
+          && !(fieldNumber(form, 'area_length_ft') > 0 && fieldNumber(form, 'area_width_ft') > 0)
+          && fieldNumber(form, 'perimeter_lf') <= 0
+          && fieldNumber(form, 'partition_lf') <= 0
+        ) {
           return false;
         }
       } else if (

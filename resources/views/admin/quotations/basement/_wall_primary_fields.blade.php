@@ -1,14 +1,16 @@
-{{-- Primary new-wall inputs; relocated between Overview (wall preset) and Framing. --}}
+{{-- Primary new-wall inputs; relocated between Overview (wall/flood presets) and Framing. --}}
 <div id="br-wall-primary-fields" class="br-wall-primary-fields">
-  <div class="admin-form-group">
-    <span class="admin-label-with-tip">
-  <label for="br-partition">@include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys ?? []]) New wall (lin. ft)</label>
-  @include('admin.partials.info_tip', ['tipText' => $brInfo['partition_lf'], 'tipLabel' => 'New wall (lin. ft)'])
-</span>
-    <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
-           value="{{ $brVal('partition_lf', 0) }}"
-           title="Interior walls only. Height uses the ceiling height from Overview.">
-  </div>
+  @if (empty($floodPreset))
+    <div id="br-partition-field" class="admin-form-group">
+      <span class="admin-label-with-tip">
+        <label for="br-partition">@include('admin.quotations.basement._client_filled', ['key' => 'partition_lf', 'filledKeys' => $filledKeys ?? []]) New wall (lin. ft)</label>
+        @include('admin.partials.info_tip', ['tipText' => $brInfo['partition_lf'], 'tipLabel' => 'New wall (lin. ft)'])
+      </span>
+      <input type="number" step="0.01" min="0" class="admin-input br-preview" id="br-partition" name="partition_lf"
+             value="{{ $brVal('partition_lf', 0) }}"
+             title="Interior walls only. Height uses the ceiling height from Overview.">
+    </div>
+  @endif
   <div class="admin-form-group" data-br-door-field>
     <div data-br-door-toggle-ui @if(($scopePreset ?? '') !== 'wall') hidden @endif>
       @include('admin.partials.checkbox', [

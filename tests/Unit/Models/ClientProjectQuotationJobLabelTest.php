@@ -47,6 +47,26 @@ class ClientProjectQuotationJobLabelTest extends TestCase
         $this->assertSame('New bathroom', $quote->jobLabelForPdf());
     }
 
+    public function test_basement_flood_restoration_job_label(): void
+    {
+        $basement = new BasementQuotation([
+            'quote_number' => 'BR-2026-0003',
+            'inputs' => [
+                'scope_preset' => 'flood',
+                'include_bathroom' => false,
+            ],
+        ]);
+
+        $quote = new ClientProjectQuotation([
+            'source_type' => ClientProjectQuotation::SOURCE_BASEMENT,
+            'source_id' => 3,
+            'source_snapshot' => $basement->only(['quote_number', 'inputs']),
+        ]);
+
+        $this->assertSame('Flood restoration', $basement->jobLabelForPdf());
+        $this->assertSame('Flood restoration', $quote->jobLabelForPdf());
+    }
+
     public function test_strip_display_title_quote_number(): void
     {
         $this->assertSame(

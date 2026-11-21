@@ -357,4 +357,30 @@ const cabSummary = summaryItems.find(i => i.key === 'cabinets');
 assert.ok(cabSummary);
 assert.ok(cabSummary.value.indexOf('8 lf base') !== -1);
 
+// Flood Restoration preset layout import
+const floodProposed = layout.proposedQuantities(opt, 8, 'none', {
+  scope_preset: 'flood',
+  flood_cut_height_in: 24,
+  flood_partition_both_faces: true
+});
+assert.strictEqual(floodProposed.perimeter_lf, 90);
+assert.strictEqual(floodProposed.partition_lf, 12);
+assert.strictEqual(floodProposed.drywall_wall_sf, 228);
+assert.strictEqual(floodProposed.insulation_wall_sf, 180);
+assert.strictEqual(floodProposed.paint_wall_sf, 912);
+
+const floodSingleFace48 = layout.proposedQuantities(opt, 8, 'none', {
+  scope_preset: 'flood',
+  flood_cut_height_in: 48,
+  flood_partition_both_faces: false
+});
+assert.strictEqual(floodSingleFace48.drywall_wall_sf, 408);
+assert.strictEqual(floodSingleFace48.insulation_wall_sf, 360);
+assert.strictEqual(floodSingleFace48.paint_wall_sf, 816);
+
+['flood_cut_height_in', 'flood_partition_both_faces', 'flood_casing_mode'].forEach(function (key) {
+  assert.ok(layout.NEVER_OVERWRITE.indexOf(key) !== -1, 'NEVER_OVERWRITE must include ' + key);
+  assert.ok(!Object.prototype.hasOwnProperty.call(floodProposed, key), 'must not map ' + key);
+});
+
 console.log('admin-basement-layout-import: ok');

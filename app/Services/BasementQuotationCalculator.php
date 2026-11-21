@@ -49,6 +49,7 @@ class BasementQuotationCalculator
         'bathroom' => 'New bathroom',
         'wall' => 'New wall',
         'custom' => 'Custom',
+        'flood' => 'Flood Restoration',
     ];
 
     /**
@@ -119,6 +120,7 @@ class BasementQuotationCalculator
             'bathroom' => ['overview', 'framing', 'plumbing', 'electrical', 'drywall', 'painting', 'bathroom', 'finishing'],
             'wall' => ['overview', 'framing', 'drywall', 'doors_trim', 'painting', 'finishing'],
             'custom' => ['overview'],
+            'flood' => ['overview', 'insulation', 'drywall', 'flooring', 'doors_trim', 'painting', 'finishing'],
             default => array_keys(self::SECTIONS),
         };
     }
@@ -127,7 +129,21 @@ class BasementQuotationCalculator
     {
         $value = strtolower(trim((string) $preset));
 
-        return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom'], true) ? $preset : 'full';
+        return in_array($preset = $value, ['full', 'bathroom', 'wall', 'custom', 'flood'], true) ? $preset : 'full';
+    }
+
+    public static function normalizeFloodCutHeightIn(mixed $val): float
+    {
+        if ($val === null || $val === '' || ! is_numeric($val) || (float) $val <= 0) {
+            return 24.0;
+        }
+
+        return round(max(1.0, min(144.0, (float) $val)), 2);
+    }
+
+    public static function normalizeFloodCasingMode(mixed $mode): string
+    {
+        return strtolower(trim((string) $mode)) === 'full' ? 'full' : 'legs';
     }
 
     public static function normalizeFinishLevel(mixed $level, int $default = 4): int
@@ -185,6 +201,21 @@ class BasementQuotationCalculator
         $windows = max(0, (int) ($inputs['drywall_window_openings'] ?? 0));
         $listed = max(0, (int) ($inputs['drywall_openings'] ?? 0));
         $extra = max(0, $listed - $doors - $windows);
+
+        if (self::normalizePreset($inputs['scope_preset'] ?? null) === 'flood') {
+            $cutFt = round(self::normalizeFloodCutHeightIn($inputs['flood_cut_height_in'] ?? 24) / 12, 4);
+            $doorDeduction = 3.0 * min(7.0, $cutFt);
+            $windowDeduction = $cutFt > 4.0
+                ? min(BasementSettings::DRYWALL_WINDOW_SF, 4.0 * ($cutFt - 4.0))
+                : 0.0;
+
+            return round(
+                ($doors * $doorDeduction)
+                + ($windows * $windowDeduction)
+                + ($extra * $doorDeduction),
+                2
+            );
+        }
 
         return round(
             ($doors * BasementSettings::DRYWALL_DOOR_SF)
@@ -599,6 +630,7 @@ class BasementQuotationCalculator
             'bathroom' => 'New bathroom',
             'wall' => 'New wall',
             'custom' => 'Custom',
+            'flood' => 'Flood restoration',
             default => $bath ? 'Full finish with bathroom' : 'Full finish',
         };
     }
@@ -618,6 +650,9 @@ class BasementQuotationCalculator
             'room_count' => 1,
             'existing_notes' => '',
             'scope_preset' => 'full',
+            'flood_cut_height_in' => 24,
+            'flood_partition_both_faces' => true,
+            'flood_casing_mode' => 'legs',
             'enabled_sections' => null,
             'include_demolition' => false,
             'demo_include_flooring' => true,
@@ -922,9 +957,14 @@ class BasementQuotationCalculator
         $mode = self::normalizeAreaMode($inputs['area_entry_mode'] ?? 'sqft');
         $area = max(0, (float) ($inputs['area_sqft'] ?? 0));
         $partition = max(0, (float) ($inputs['partition_lf'] ?? 0));
+        $perimeterInput = max(0, (float) ($inputs['perimeter_lf'] ?? 0));
         if ($preset === 'wall') {
             if ($partition <= 0) {
                 $hints[] = 'Enter the new wall length in linear feet.';
+            }
+        } elseif ($preset === 'flood') {
+            if ($area <= 0 && $perimeterInput <= 0 && $partition <= 0) {
+                $hints[] = 'Enter the affected floor area or exterior wall perimeter in linear feet.';
             }
         } elseif ($area <= 0) {
             if ($mode === 'dimensions') {
@@ -988,15 +1028,30 @@ class BasementQuotationCalculator
             return true;
         }
         if (! empty($merged['demo_include_baseboard'])) {
-            $baseFallback = ($merged['scope_preset'] ?? '') === 'wall'
-                ? round($partitionLf * 2, 2)
-                : $perimeter;
+            $baseFallback = self::demoBaseboardFallback($merged, $perimeter, $partitionLf);
             if ($qty($merged['demo_baseboard_lf'] ?? null, $baseFallback) > 0) {
                 return true;
             }
         }
 
         return max(0, (int) ($merged['demo_bin_qty'] ?? 0)) > 0;
+    }
+
+    /**
+     * @param  array<string, mixed>  $merged
+     */
+    private static function demoBaseboardFallback(array $merged, float $perimeter, float $partitionLf): float
+    {
+        return match (self::normalizePreset($merged['scope_preset'] ?? null)) {
+            'wall' => round($partitionLf * 2, 2),
+            'flood' => round(
+                $perimeter + ((! array_key_exists('flood_partition_both_faces', $merged) || ! empty($merged['flood_partition_both_faces']))
+                    ? round($partitionLf * 2, 2)
+                    : $partitionLf),
+                2
+            ),
+            default => $perimeter,
+        };
     }
 
     /**
@@ -1021,9 +1076,7 @@ class BasementQuotationCalculator
         $measuredPerimeter = round(max(0, (float) ($merged['perimeter_lf'] ?? 0)), 2);
         $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
         $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
-        $baseFallback = ($merged['scope_preset'] ?? '') === 'wall'
-            ? round($partitionLf * 2, 2)
-            : $perimeter;
+        $baseFallback = self::demoBaseboardFallback($merged, $perimeter, $partitionLf);
 
         $lines = [
             ['demo_include_flooring', 'demo_flooring_sf', $area, 'flooring'],
@@ -1093,9 +1146,7 @@ class BasementQuotationCalculator
             $measuredPerimeter = round(max(0, (float) ($storedMerged['perimeter_lf'] ?? 0)), 2);
             $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
             $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
-            $storedFallback = ($storedMerged['scope_preset'] ?? '') === 'wall'
-                ? round($partitionLf * 2, 2)
-                : $perimeter;
+            $storedFallback = self::demoBaseboardFallback($storedMerged, $perimeter, $partitionLf);
         }
 
         return self::resolvedDemoQty($storedMerged, $qtyKey, $storedFallback) <= 0;
@@ -1148,6 +1199,8 @@ class BasementQuotationCalculator
             max(0.0, (float) ($inputs['cabinet_base_lf'] ?? 0)) > 0
             || max(0.0, (float) ($inputs['cabinet_upper_lf'] ?? 0)) > 0
         );
+        $isFlood = $inputs['scope_preset'] === 'flood';
+        $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
         $hasPositiveEgress = ! empty($inputs['include_egress_window'])
             && max(0, (int) ($inputs['egress_window_qty'] ?? 0)) > 0;
         if (
@@ -1157,15 +1210,30 @@ class BasementQuotationCalculator
             && ! $hasPositiveStairs
             && ! $hasPositiveMillwork
             && ! $hasPositiveEgress
+            && ! ($isFlood && $measuredPerimeter > 0)
         ) {
             return $this->emptyCalculation($originalInputs, $inputs, $settings, $height, $feePercent);
         }
-        $measuredPerimeter = round(max(0, (float) ($inputs['perimeter_lf'] ?? 0)), 2);
         $squarePerimeter = $area > 0 ? round(4 * sqrt($area), 2) : 0;
         $perimeter = $measuredPerimeter > 0 ? $measuredPerimeter : $squarePerimeter;
+        $floodCutIn = $isFlood ? self::normalizeFloodCutHeightIn($inputs['flood_cut_height_in'] ?? 24) : 24.0;
+        $floodCutFt = $isFlood ? round($floodCutIn / 12, 4) : 2.0;
+        $floodBothFaces = $isFlood
+            ? (! array_key_exists('flood_partition_both_faces', $inputs) ? true : ! empty($inputs['flood_partition_both_faces']))
+            : true;
+        $floodCasingMode = $isFlood ? self::normalizeFloodCasingMode($inputs['flood_casing_mode'] ?? 'legs') : 'legs';
+        $floodPartitionWallLf = $floodBothFaces ? round($partitionLf * 2, 2) : $partitionLf;
+        $floodWallRunLf = round($perimeter + $floodPartitionWallLf, 2);
+        if ($isFlood) {
+            $inputs['flood_cut_height_in'] = $floodCutIn;
+            $inputs['flood_partition_both_faces'] = $floodBothFaces;
+            $inputs['flood_casing_mode'] = $floodCasingMode;
+        }
         $suggestedWallSf = round($perimeter * $height, 2);
         $wallBothSidesSf = round($partitionLf * $height * 2, 2);
-        $dwWallFallback = $inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf;
+        $dwWallFallback = $isFlood
+            ? round($floodWallRunLf * $floodCutFt, 2)
+            : ($inputs['scope_preset'] === 'wall' ? $wallBothSidesSf : $suggestedWallSf);
         if ($inputs['scope_preset'] === 'bathroom' && self::usesLegacyDrywallBoxing($originalInputs)) {
             $dwWallFallback = round(
                 $suggestedWallSf
@@ -1194,11 +1262,14 @@ class BasementQuotationCalculator
         $ceilingType = (string) ($inputs['ceiling_type'] ?? 'drywall');
         $flType = (string) ($inputs['flooring_type'] ?? 'lvp');
         $flooringWastePercent = self::resolvedFlooringWastePercent($originalInputs, $flType, $inputs);
+        $insWall = 0.0;
         $dwWall = 0.0;
         $dwCeil = 0.0;
         $baseLf = 0.0;
         $casing = 0;
         $windows = 0;
+        $pWall = 0.0;
+        $primerSf = 0.0;
 
         $labor = [];
         $materials = [];
@@ -1324,7 +1395,9 @@ class BasementQuotationCalculator
                 $addLabor('demo_drywall', 'demolition', 'Remove drywall / ceiling', number_format($demoDrywall, 0).' sq ft', $perHr($demoDrywall, (float) $prod['demo_drywall_sf_per_hr']));
             }
             if (! empty($inputs['demo_include_baseboard'])) {
-                $demoBaseFallback = $inputs['scope_preset'] === 'wall' ? round($partitionLf * 2, 2) : $perimeter;
+                $demoBaseFallback = $isFlood
+                    ? $floodWallRunLf
+                    : ($inputs['scope_preset'] === 'wall' ? round($partitionLf * 2, 2) : $perimeter);
                 $demoBase = $this->qtyOr($inputs['demo_baseboard_lf'], $demoBaseFallback);
                 $addLabor('demo_baseboard', 'demolition', 'Remove existing baseboard', number_format($demoBase, 0).' lf', $perHr($demoBase, (float) $prod['demo_baseboard_lf_per_hr']));
             }
@@ -1383,13 +1456,26 @@ class BasementQuotationCalculator
 
         // --- Insulation ---
         if ($on('insulation')) {
-            $insWall = $this->qtyOr($inputs['insulation_wall_sf'], ! empty($inputs['insulate_walls']) ? $suggestedWallSf : 0);
+            $insWallFallback = ! empty($inputs['insulate_walls'])
+                ? ($isFlood ? round($perimeter * $floodCutFt, 2) : $suggestedWallSf)
+                : 0.0;
+            $insWall = $this->qtyOr($inputs['insulation_wall_sf'], $insWallFallback);
             $insCeil = $this->qtyOr($inputs['insulation_ceiling_sf'], ! empty($inputs['insulate_ceiling']) ? $area : 0);
             $insSlab = $this->qtyOr($inputs['underslab_sf'], ! empty($inputs['underslab']) ? $area : 0);
             if (! empty($inputs['insulate_walls'])) {
-                $addLabor('ins_walls', 'insulation', 'Wall insulation + vapour barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
-                $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
-                $addMat('vapor_barrier', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
+                if ($isFlood) {
+                    if ($insWall > 0) {
+                        $addLabor('ins_walls', 'insulation', 'Exterior wall insulation', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
+                        $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+                        $patchLf = $perimeter > 0 ? $perimeter : ($floodCutFt > 0 ? round($insWall / $floodCutFt, 2) : 0.0);
+                        $addLabor('ins_vapor_patch', 'insulation', 'Vapour barrier patch & seal (acoustic sealant / tape)', number_format($patchLf, 0).' lf exterior wall', $perHr($patchLf, (float) ($prod['vapor_barrier_patch_lf_per_hr'] ?? 35)));
+                        $addMat('vapor_barrier_patch', 'insulation', round($this->withMaterialWaste($patchLf, $inputs), 2), 'vapor_barrier_patch');
+                    }
+                } else {
+                    $addLabor('ins_walls', 'insulation', 'Wall insulation + vapour barrier', number_format($insWall, 0).' sq ft', $perHr($insWall, (float) $prod['insulation_wall_sf_per_hr']));
+                    $addMat('insulation_batt', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::BATT_SF_PER_BAG), 'insulation_batt');
+                    $addMat('vapor_barrier', 'insulation', $this->packages($this->withMaterialWaste($insWall, $inputs), BasementSettings::VAPOR_SF_PER_ROLL), 'vapor_barrier');
+                }
             }
             if (! empty($inputs['insulate_ceiling'])) {
                 $addLabor('ins_ceiling', 'insulation', 'Ceiling insulation', number_format($insCeil, 0).' sq ft', $perHr($insCeil, (float) $prod['insulation_ceiling_sf_per_hr']));
@@ -1425,7 +1511,7 @@ class BasementQuotationCalculator
         $inputs['drywall_sheet_size'] = $sheetSize;
         $openingSf = 0.0;
         $dwWallGross = 0.0;
-        $skipCeilingFinish = $inputs['scope_preset'] === 'wall' && ! $on('ceiling');
+        $skipCeilingFinish = in_array($inputs['scope_preset'], ['wall', 'flood'], true) && ! $on('ceiling');
         $dwCeil = $this->resolvedDrywallCeilingSf(
             $inputs,
             $originalInputs,
@@ -1476,7 +1562,19 @@ class BasementQuotationCalculator
                     $finishHours *= BasementSettings::TWO_COLOR_DRYWALL_FINISH_FACTOR;
                     $finishDetail .= ', two-color';
                 }
+                if ($isFlood) {
+                    $finishDetail .= ', blend into existing upper wall';
+                }
                 $addLabor('dw_finish', 'drywall', 'Mud / tape / sand (Level '.$level.')', $finishDetail, $finishHours);
+                if ($isFlood && $floodWallRunLf > 0) {
+                    $addLabor(
+                        'dw_flood_joint',
+                        'drywall',
+                        'Tape & blend horizontal flood cut joint',
+                        number_format($floodWallRunLf, 0).' lf horizontal joint',
+                        $perHr($floodWallRunLf, (float) ($prod['drywall_flood_joint_lf_per_hr'] ?? 15))
+                    );
+                }
             }
             $dwOrderSf = $this->withMaterialWaste($dwSf, $inputs);
             $sheetSf = self::drywallSheetSf($sheetSize);
@@ -1622,7 +1720,11 @@ class BasementQuotationCalculator
         // --- Doors / trim ---
         if ($on('doors_trim')) {
             $doors = max(0, (int) $inputs['door_qty']);
-            $baseFallback = $inputs['scope_preset'] === 'wall' ? round($partitionLf * 2, 2) : $perimeter;
+            $baseFallback = match ($inputs['scope_preset']) {
+                'wall' => round($partitionLf * 2, 2),
+                'flood' => $floodWallRunLf,
+                default => $perimeter,
+            };
             $baseLf = $this->qtyOr($inputs['baseboard_lf'], $baseFallback);
             $casing = max(0, (int) $inputs['casing_openings']);
             if ($casing <= 0) {
@@ -1631,7 +1733,11 @@ class BasementQuotationCalculator
             $windows = max(0, (int) $inputs['window_trim_qty']);
             $addLabor('trim_doors', 'doors_trim', 'Interior doors', $doors.' door(s)', $doors * (float) $prod['door_install_hours_each']);
             $addLabor('trim_base', 'doors_trim', 'Baseboards', number_format($baseLf, 0).' lf', $perHr($baseLf, (float) $prod['baseboard_lf_per_hr']));
-            $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
+            if ($isFlood && $floodCasingMode === 'legs') {
+                $addLabor('trim_casing', 'doors_trim', 'Door casing legs (reuse head)', $casing.' opening(s)', $casing * (float) ($prod['casing_legs_opening_hours'] ?? 0.7));
+            } else {
+                $addLabor('trim_casing', 'doors_trim', 'Door casing', $casing.' opening(s)', $casing * (float) $prod['casing_opening_hours']);
+            }
             $addLabor('trim_windows', 'doors_trim', 'Window trim', $windows.' window(s)', $windows * (float) $prod['window_trim_hours_each']);
             $addMat('interior_door', 'doors_trim', $doors, 'interior_door');
             $legacyTrimSticks = self::usesLegacyTrimMaterialSticks($originalInputs);
@@ -1687,7 +1793,11 @@ class BasementQuotationCalculator
                     $addMat('shoe', 'doors_trim', round($this->withMaterialWaste($shoeLf, $inputs), 2), 'shoe');
                 }
             }
-            $addMat('casing', 'doors_trim', $casing, 'casing');
+            if ($isFlood && $floodCasingMode === 'legs') {
+                $addMat('casing', 'doors_trim', $casing, 'casing_legs');
+            } else {
+                $addMat('casing', 'doors_trim', $casing, 'casing');
+            }
             $addMat('window_trim', 'doors_trim', $windows, 'window_trim');
             $addMat('door_hardware', 'doors_trim', $doors, 'door_hardware');
             if (! empty($inputs['include_stairs'])) {
@@ -1752,7 +1862,8 @@ class BasementQuotationCalculator
         // --- Painting ---
         if ($on('painting')) {
             $coats = max(1, (int) ($inputs['paint_coats'] ?? 2));
-            $pWall = $this->qtyOr($inputs['paint_wall_sf'], $dwWall ?: $dwWallFallback);
+            $pWallFallback = $isFlood ? round($floodWallRunLf * $height, 2) : ($dwWall ?: $dwWallFallback);
+            $pWall = $this->qtyOr($inputs['paint_wall_sf'], $pWallFallback);
             $pCeil = $this->resolvedPaintCeilingSf(
                 $inputs,
                 $originalInputs,
@@ -1763,7 +1874,8 @@ class BasementQuotationCalculator
                 $on('drywall'),
                 $skipCeilingFinish
             );
-            $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * 17) + ($windows * 16));
+            $casingPaintLf = ($isFlood && $floodCasingMode === 'legs') ? 14 : 17;
+            $pTrim = $this->qtyOr($inputs['paint_trim_lf'], $baseLf + ($casing * $casingPaintLf) + ($windows * 16));
             $colorFactor = $paintColors === 2 ? BasementSettings::TWO_COLOR_PAINT_FACTOR : 1.0;
             $addLabor(
                 'paint_walls',
@@ -1780,7 +1892,11 @@ class BasementQuotationCalculator
                 $perHr($pCeil * $coats, (float) $prod['paint_ceiling_sf_per_hr']) * $colorFactor
             );
             $addLabor('paint_trim', 'painting', 'Paint trim', number_format($pTrim, 0).' lf', $perHr($pTrim, (float) $prod['paint_trim_lf_per_hr']));
-            $colorBreakLf = $inputs['scope_preset'] === 'wall' ? $partitionLf : $perimeter;
+            $colorBreakLf = match ($inputs['scope_preset']) {
+                'wall' => $partitionLf,
+                'flood' => $floodWallRunLf,
+                default => $perimeter,
+            };
             if ($paintColors === 2 && $colorBreakLf > 0) {
                 $addLabor(
                     'paint_two_color',
@@ -1803,7 +1919,9 @@ class BasementQuotationCalculator
                 }
             };
 
-            $addPaintPack('primer', $pWall + $pCeil, 1, BasementSettings::primerCanSizes());
+            $primerWallSf = $isFlood ? ($on('drywall') ? $dwWall : 0.0) : $pWall;
+            $primerSf = round($primerWallSf + $pCeil, 2);
+            $addPaintPack('primer', $primerSf, 1, BasementSettings::primerCanSizes());
             if ($paintColors === 2) {
                 $addPaintPack('paint_walls', $pWall, $coats, BasementSettings::paintCanSizes(), 'walls');
                 $addPaintPack('paint_ceil', $pCeil, $coats, BasementSettings::paintCanSizes(), 'ceiling');
@@ -1844,6 +1962,9 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_toilet'])) {
                 $addLabor('bath_toilet', 'bathroom', 'Toilet', 'Install', (float) $prod['toilet_hours']);
                 $addMat('toilet', 'bathroom', 1, 'toilet');
+                if ($isFlood) {
+                    $addMat('toilet_wax_ring', 'bathroom', 1, 'toilet_wax_ring');
+                }
             }
             if (! $half && ! empty($inputs['include_shower'])) {
                 $addLabor('bath_shower', 'bathroom', 'Shower', 'Install', (float) $prod['shower_hours']);
@@ -2095,6 +2216,14 @@ class BasementQuotationCalculator
                 'drywall_wall_gross_sf' => $dwWallGross,
                 'drywall_wall_net_sf' => $dwWall,
                 'drywall_ceiling_sf' => $dwCeil,
+                'insulation_wall_sf' => $insWall,
+                'baseboard_lf' => $baseLf,
+                'paint_wall_sf' => $pWall,
+                'paint_primer_sf' => $primerSf,
+                'flood_cut_height_in' => $isFlood ? $floodCutIn : null,
+                'flood_partition_both_faces' => $isFlood ? $floodBothFaces : null,
+                'flood_casing_mode' => $isFlood ? $floodCasingMode : null,
+                'flood_wall_run_lf' => $isFlood ? $floodWallRunLf : null,
             ],
             'labor' => $labor,
             'materials' => $materials,

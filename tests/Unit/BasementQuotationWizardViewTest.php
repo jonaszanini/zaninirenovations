@@ -656,6 +656,62 @@ class BasementQuotationWizardViewTest extends TestCase
         $this->assertStringNotContainsString('name="client_provides_sections[]"', $html);
     }
 
+    public function test_flood_restoration_preset_renders_radio_tip_trades_and_flood_controls(): void
+    {
+        $inputs = BasementQuotationCalculator::defaultInputs();
+        $inputs['scope_preset'] = 'flood';
+        $inputs['ceiling_type'] = 'none';
+        $enabledNow = BasementQuotationCalculator::presetEnabledSections('flood');
+
+        $html = view('admin.quotations.basement._wizard_sections', $this->wizardData($inputs, 'flood', $enabledNow))->render();
+
+        // 5th radio card "Flood Restoration" (value="flood") + click-to-open info icon
+        $this->assertSame(5, preg_match_all('/name="scope_preset"\s+value="([^"]+)"/', $html, $presetMatches));
+        $this->assertSame('flood', $presetMatches[1][4]);
+        $this->assertMatchesRegularExpression(
+            '/name="scope_preset"\s+value="flood"[^>]*\bchecked\b[\s\S]{0,250}Flood Restoration/s',
+            $html
+        );
+        $this->assertStringContainsString('aria-label="About Flood Restoration"', $html);
+        $this->assertStringContainsString(
+            'Rebuild after water damage. Drywall is already cut and removed at the flood line.',
+            $html
+        );
+
+        // Exact 6 trade checkboxes checked and 6 unchecked
+        $expectedChecked = ['insulation', 'drywall', 'flooring', 'doors_trim', 'painting', 'finishing'];
+        $expectedUnchecked = ['demolition', 'framing', 'electrical', 'plumbing', 'ceiling', 'bathroom'];
+        foreach ($expectedChecked as $key) {
+            $this->assertSame(
+                1,
+                preg_match('/<input\b[^>]*data-br-enabled-section="'.preg_quote($key, '/').'"[^>]*>/s', $html, $match),
+                $key.' trade checkbox should render'
+            );
+            $this->assertMatchesRegularExpression('/\bchecked\b/i', $match[0], $key.' should be checked for flood preset');
+        }
+        foreach ($expectedUnchecked as $key) {
+            $this->assertSame(
+                1,
+                preg_match('/<input\b[^>]*data-br-enabled-section="'.preg_quote($key, '/').'"[^>]*>/s', $html, $match),
+                $key.' trade checkbox should render'
+            );
+            $this->assertDoesNotMatchRegularExpression('/\bchecked\b/i', $match[0], $key.' should be unchecked for flood preset');
+        }
+
+        // Single perimeter & partition inputs + flood-specific drywall and casing controls
+        $this->assertSame(1, substr_count($html, 'id="br-perimeter-lf"'));
+        $this->assertSame(1, substr_count($html, 'id="br-partition"'));
+        $this->assertStringContainsString('id="br-flood-cut-height"', $html);
+        $this->assertStringContainsString('id="br-flood-both-faces"', $html);
+        $this->assertMatchesRegularExpression('/name="flood_casing_mode"\s+value="legs"/', $html);
+        $this->assertMatchesRegularExpression('/name="flood_casing_mode"\s+value="full"/', $html);
+
+        // Forbidden credential terms absent
+        $this->assertStringNotContainsStringIgnoringCase('licensed', $html);
+        $this->assertStringNotContainsStringIgnoringCase('licence', $html);
+        $this->assertStringNotContainsStringIgnoringCase('WSIB', $html);
+    }
+
     /**
      * @param  array<string, mixed>  $inputs
      * @param  list<string>  $enabledNow

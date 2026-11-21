@@ -11193,6 +11193,8 @@ html.admin-dark .br-hardwood-caution {
   margin: 0 0 0.75rem;
   padding: 0;
   border: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .br-scope-presets legend,
@@ -11206,21 +11208,39 @@ html.admin-dark .br-hardwood-caution {
 
 .br-scope-presets__grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   gap: 8px;
 }
 
 .br-scope-option {
   display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
   min-height: 44px;
+  min-width: 0;
   margin: 0;
-  padding: 0.5rem 0.75rem;
+  padding: 0;
   border: 1px solid var(--admin-border);
   border-radius: 10px;
-  cursor: pointer;
   background: var(--admin-surface);
+}
+
+.br-scope-option__label {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.55rem 0.75rem;
+  margin: 0;
+  cursor: pointer;
+}
+
+.br-scope-option__tip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  padding-right: 0.55rem;
 }
 
 .br-scope-option:has(input:checked) {
@@ -11230,7 +11250,7 @@ html.admin-dark .br-hardwood-caution {
 }
 
 .br-scope-option input {
-  margin-top: 0.35rem;
+  margin: 0;
   width: 18px;
   height: 18px;
   flex-shrink: 0;
@@ -11241,6 +11261,7 @@ html.admin-dark .br-hardwood-caution {
   flex-direction: column;
   gap: 0.15rem;
   min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .br-scope-option__body .admin-form-help {
@@ -12336,10 +12357,6 @@ html.admin-dark .br-hardwood-caution {
     grid-template-columns: 1fr 1fr;
   }
 
-  .br-scope-presets__grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .br-provide-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13362,4 +13379,99 @@ html.admin-dark .br-hardwood-caution {
     width: 100%;
     justify-content: center;
   }
+}
+
+/* Basement Flood Restoration preset */
+[data-br-flood-only][hidden] {
+  display: none !important;
+}
+
+.br-qty-grid.br-flood-geom {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  min-width: 0;
+}
+
+.br-flood-partition-slot:not(:empty) {
+  display: contents;
+}
+
+.br-flood-partition-slot:empty {
+  display: none;
+}
+
+.br-flood-panel {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  margin-bottom: 0.85rem;
+  border: 1px solid var(--admin-border);
+  border-left: 3px solid var(--admin-primary, #024768);
+  border-radius: 10px;
+  background: var(--admin-surface);
+  min-width: 0;
+}
+
+.br-flood-panel .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.br-flood-panel__check {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+@media (min-width: 640px) {
+  .br-qty-grid.br-flood-geom {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .br-flood-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+}
+
+.br-flood-cut-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.br-flood-cut-row .admin-input {
+  flex: 0 1 6.5rem;
+  min-width: 4.75rem;
+}
+
+.br-flood-chip {
+  min-height: 36px;
+  padding: 0 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background: var(--admin-surface);
+  color: var(--admin-text);
+  font-weight: 600;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.br-flood-chip:hover {
+  border-color: var(--admin-primary, #024768);
+}
+
+.br-flood-chip.is-active {
+  border-color: var(--admin-primary, #024768);
+  background: var(--admin-primary-soft);
+  color: var(--admin-primary, #024768);
+}
+
+.br-flood-casing {
+  margin-top: 12px;
+  margin-bottom: 6px;
 }
