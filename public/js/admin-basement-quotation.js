@@ -365,7 +365,7 @@
     if (qty && qty.id === 'br-ceil-sf') {
       syncUnifiedCeilingArea();
     }
-    if (qty && qty.id === 'br-dw-wall' && !applyingFloodPrefill && !applyingLayout) {
+    if (qty && qty.id === 'br-dw-wall' && currentPreset() === 'flood' && !applyingFloodPrefill && !applyingLayout) {
       qty.dataset.brFloodManual = (String(qty.value || '').trim() !== '') ? '1' : '';
       qty.dataset.brFloodAuto = '';
     }
@@ -511,7 +511,7 @@
     return (isFinite(area) && area > 0) ? (4 * Math.sqrt(area)) : 0;
   }
 
-  function computeFloodDrywallWallSf() {
+  function floodGeometry() {
     var peri = perimeterOrSquareLf();
     var partEl = document.getElementById('br-partition');
     var part = partEl ? Math.max(0, parseFloat(partEl.value) || 0) : 0;
@@ -521,7 +521,32 @@
     var cutRaw = cutEl ? parseFloat(cutEl.value) : NaN;
     var cutIn = (isFinite(cutRaw) && cutRaw > 0) ? cutRaw : 24;
     var wallRun = peri + (both ? part * 2 : part);
-    return Math.round(wallRun * (cutIn / 12) * 100) / 100;
+    return {
+      peri: peri,
+      wallRun: wallRun,
+      cutFt: cutIn / 12,
+      height: ceilingHeightFt()
+    };
+  }
+
+  function computeFloodDrywallWallSf() {
+    var geo = floodGeometry();
+    return Math.round(geo.wallRun * geo.cutFt * 100) / 100;
+  }
+
+  function refreshFloodAutoQty(id, value) {
+    var el = document.getElementById(id);
+    if (!el || el.dataset.brFloodQtyAuto !== '1' || el.dataset.brFloodQtyManual === '1') return;
+    el.value = value > 0 ? formatLayoutQty(value) : '';
+  }
+
+  function markFloodImportedQty(id, key) {
+    if (currentPreset() !== 'flood') return;
+    if (key !== 'insulation_wall_sf' && key !== 'paint_wall_sf' && key !== 'baseboard_lf') return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.brFloodQtyAuto = '1';
+    el.dataset.brFloodQtyManual = '';
   }
 
   function syncFloodCutChips() {
@@ -548,21 +573,154 @@
       return;
     }
     var currentEmpty = String(dwWall.value || '').trim() === '';
-    if (dwWall.dataset.brFloodManual === '1' && !currentEmpty) {
-      return;
+    if (!(dwWall.dataset.brFloodManual === '1' && !currentEmpty)) {
+      var sf = computeFloodDrywallWallSf();
+      if (sf > 0) {
+        applyingFloodPrefill = true;
+        setLwToSqft('br-dw-wall', sf);
+        dwWall.dataset.brFloodAuto = '1';
+        applyingFloodPrefill = false;
+      } else if (forceWhenEmpty && dwWall.dataset.brFloodManual !== '1') {
+        applyingFloodPrefill = true;
+        setLwToSqft('br-dw-wall', '');
+        dwWall.dataset.brFloodAuto = '';
+        applyingFloodPrefill = false;
+      }
     }
-    var sf = computeFloodDrywallWallSf();
-    if (sf > 0) {
-      applyingFloodPrefill = true;
-      setLwToSqft('br-dw-wall', sf);
-      dwWall.dataset.brFloodAuto = '1';
-      applyingFloodPrefill = false;
-    } else if (forceWhenEmpty && dwWall.dataset.brFloodAuto === '1') {
-      applyingFloodPrefill = true;
-      setLwToSqft('br-dw-wall', '');
-      dwWall.dataset.brFloodAuto = '';
-      applyingFloodPrefill = false;
+    var geo = floodGeometry();
+    refreshFloodAutoQty('br-ins-wall-sf', Math.round(geo.peri * geo.cutFt * 100) / 100);
+    refreshFloodAutoQty('br-p-wall', Math.round(geo.wallRun * geo.height * 100) / 100);
+    refreshFloodAutoQty('br-base', Math.round(geo.wallRun * 100) / 100);
+  }
+
+  var lastAppliedPreset = null;
+  var presetQtyMemory = {};
+  var PRESET_QTY_IDS = [
+    'br-dw-wall',
+    'br-ins-wall-sf',
+    'br-ins-ceil-sf',
+    'br-ins-slab-sf',
+    'br-ceil-sf',
+    'br-dw-ceil',
+    'br-p-wall',
+    'br-p-ceil',
+    'br-p-trim',
+    'br-base',
+    'br-fl-sf',
+    'br-shoe',
+    'br-flood-cut-height'
+  ];
+  var PRESET_CHECK_NAMES = [
+    'include_building_permit',
+    'flood_partition_both_faces'
+  ];
+  var PRESET_VALUE_NAMES = ['ceiling_type', 'flooring_type'];
+  var FLOOD_DERIVED_QTY_IDS = [
+    'br-dw-wall',
+    'br-ins-wall-sf',
+    'br-ins-ceil-sf',
+    'br-ins-slab-sf',
+    'br-ceil-sf',
+    'br-dw-ceil',
+    'br-p-wall',
+    'br-p-ceil',
+    'br-p-trim',
+    'br-base',
+    'br-fl-sf',
+    'br-shoe'
+  ];
+  var FLOOD_QTY_FLAG_IDS = ['br-ins-wall-sf', 'br-p-wall', 'br-base'];
+
+  function capturePresetQty() {
+    var snap = { fields: {}, checks: {}, values: {}, qtyFlags: {}, dw: null, casing: '' };
+    PRESET_QTY_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      snap.fields[id] = el.value;
+    });
+    var dw = document.getElementById('br-dw-wall');
+    if (dw) {
+      snap.dw = {
+        manual: dw.dataset.brFloodManual || '',
+        auto: dw.dataset.brFloodAuto || '',
+        fromLayout: dw.getAttribute('data-br-from-layout') || ''
+      };
     }
+    PRESET_CHECK_NAMES.forEach(function (name) {
+      var el = form.querySelector('input[type="checkbox"][name="' + name + '"]');
+      if (!el) return;
+      snap.checks[name] = !!el.checked;
+    });
+    PRESET_VALUE_NAMES.forEach(function (name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (!el || el.type === 'checkbox') return;
+      snap.values[name] = el.value;
+    });
+    var casing = form.querySelector('input[name="flood_casing_mode"]:checked');
+    snap.casing = casing ? casing.value : '';
+    FLOOD_QTY_FLAG_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      snap.qtyFlags[id] = {
+        auto: el.dataset.brFloodQtyAuto || '',
+        manual: el.dataset.brFloodQtyManual || ''
+      };
+    });
+    return snap;
+  }
+
+  function restorePresetQty(snap) {
+    if (!snap) return;
+    Object.keys(snap.fields || {}).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'br-dw-wall') {
+        setLwToSqft(id, snap.fields[id]);
+      } else {
+        el.value = snap.fields[id];
+      }
+    });
+    var dw = document.getElementById('br-dw-wall');
+    if (dw && snap.dw) {
+      dw.dataset.brFloodManual = snap.dw.manual || '';
+      dw.dataset.brFloodAuto = snap.dw.auto || '';
+      if (snap.dw.fromLayout) dw.setAttribute('data-br-from-layout', snap.dw.fromLayout);
+      else dw.removeAttribute('data-br-from-layout');
+    }
+    Object.keys(snap.checks || {}).forEach(function (name) {
+      setNamedCheck(name, !!snap.checks[name]);
+    });
+    Object.keys(snap.values || {}).forEach(function (name) {
+      setNamedValue(name, snap.values[name]);
+    });
+    if (snap.casing) {
+      var radio = form.querySelector('input[name="flood_casing_mode"][value="' + snap.casing + '"]');
+      if (radio) radio.checked = true;
+    }
+    Object.keys(snap.qtyFlags || {}).forEach(function (id) {
+      var flagged = document.getElementById(id);
+      if (!flagged || !snap.qtyFlags[id]) return;
+      flagged.dataset.brFloodQtyAuto = snap.qtyFlags[id].auto || '';
+      flagged.dataset.brFloodQtyManual = snap.qtyFlags[id].manual || '';
+    });
+    syncFloodCutChips();
+  }
+
+  function clearFloodDerivedQty() {
+    FLOOD_DERIVED_QTY_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'br-dw-wall') {
+        setLwToSqft(id, '');
+        el.dataset.brFloodManual = '';
+        el.dataset.brFloodAuto = '';
+        el.removeAttribute('data-br-from-layout');
+        return;
+      }
+      el.value = '';
+      el.dataset.brFloodQtyAuto = '';
+      el.dataset.brFloodQtyManual = '';
+    });
   }
 
   function computeDemoDrywallSuggestedSf() {
@@ -734,12 +892,14 @@
       if (lwKeys[key]) {
         setLwToSqft(id, proposed[key]);
         markLayoutSynced(document.getElementById(id));
+        markFloodImportedQty(id, key);
         return;
       }
       var el = document.getElementById(id);
       if (!el) return;
       el.value = formatLayoutQty(proposed[key]);
       markLayoutSynced(el);
+      markFloodImportedQty(id, key);
     });
 
     var ext = (layoutImport && typeof layoutImport.extendedQuantities === 'function')
@@ -1207,6 +1367,9 @@
   }
 
   function applyPreset(preset) {
+    if (lastAppliedPreset && lastAppliedPreset !== preset) {
+      presetQtyMemory[lastAppliedPreset] = capturePresetQty();
+    }
     var keys = presetSections[preset]
       || (preset === 'flood' ? FLOOD_FALLBACK_SECTIONS : null)
       || presetSections.full
@@ -1264,9 +1427,21 @@
     }
     applyElectricalDefaults(preset);
     applyScope();
+    if (lastAppliedPreset && lastAppliedPreset !== preset && presetQtyMemory[preset]) {
+      restorePresetQty(presetQtyMemory[preset]);
+    } else if (lastAppliedPreset === 'flood' && preset !== 'flood') {
+      clearFloodDerivedQty();
+    } else if (preset === 'flood') {
+      var dwEnter = document.getElementById('br-dw-wall');
+      if (dwEnter) {
+        dwEnter.dataset.brFloodManual = '';
+        dwEnter.dataset.brFloodAuto = '';
+      }
+    }
     if (preset === 'flood') {
       syncFloodDrywallPrefill(true);
     }
+    lastAppliedPreset = preset;
     syncRevealTargets();
     syncBathroomElectricalHints();
     syncBathSinkQty();
@@ -1463,10 +1638,11 @@
   }
 
   var dwWallBoot = document.getElementById('br-dw-wall');
-  if (dwWallBoot && String(dwWallBoot.value || '').trim() !== '') {
+  if (dwWallBoot && currentPreset() === 'flood' && String(dwWallBoot.value || '').trim() !== '') {
     dwWallBoot.dataset.brFloodManual = '1';
   }
   applyScope();
+  lastAppliedPreset = currentPreset();
   bindLw();
 
   function syncStickyBarSpace() {
@@ -2507,7 +2683,7 @@
   }
   if (dwWallEl) {
     dwWallEl.addEventListener('input', function () {
-      if (!applyingFloodPrefill && !applyingLayout) {
+      if (currentPreset() === 'flood' && !applyingFloodPrefill && !applyingLayout) {
         dwWallEl.dataset.brFloodManual = (String(dwWallEl.value || '').trim() !== '') ? '1' : '';
         dwWallEl.dataset.brFloodAuto = '';
       }
@@ -2519,6 +2695,15 @@
       }
     });
   }
+  ['br-ins-wall-sf', 'br-p-wall', 'br-base'].forEach(function (id) {
+    var qtyEl = document.getElementById(id);
+    if (!qtyEl) return;
+    qtyEl.addEventListener('input', function () {
+      if (applyingFloodPrefill || applyingLayout || currentPreset() !== 'flood') return;
+      qtyEl.dataset.brFloodQtyAuto = '';
+      qtyEl.dataset.brFloodQtyManual = '1';
+    });
+  });
   function handleFloodDimChange() {
     syncFloodCutChips();
     if (currentPreset() === 'flood') {

@@ -124,7 +124,7 @@
       'underslab_sf' => 'Floor area of under-slab foam. Blank uses the work area.',
       'include_acoustic_insulation' => "Mineral wool sound-deadening batts (Safe'n'Sound) between ceiling joists or interior partition studs.",
       'acoustic_insulation_sf' => "Area to receive acoustic Safe'n'Sound batts. Blank uses ceiling area.",
-      'drywall_wall_sf' => 'Wall area to hang and finish. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides.',
+      'drywall_wall_sf' => 'Wall area to hang and finish, before opening deductions. Blank uses the imported Room Area perimeter × ceiling height, or a square from the floor area if you have not imported a layout. On New wall, blank is wall length × ceiling height × both sides. On Flood Restoration, blank is (exterior perimeter + partition faces) × flood cut height. Paint still uses the full wall height.',
       'drywall_ceiling_sf' => 'Saved hang area for this quote. Totals keep this figure — including leftover hang on drop or skip — until you confirm using Ceiling area.',
       'drywall_corners' => 'Outside corners for metal or paper bead. Sticks are counted per corner from your ceiling height and the live corner bead stick length from Materials (typically 8 ft).',
       'drywall_inside_corners' => 'Inside wall angles to tape and mud. These take extra finish time; they are skipped on Level 0 (hang only).',
@@ -249,6 +249,11 @@
         @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
           <div class="br-scope-option">
             <label class="br-scope-option__label">
+              @if (! empty($presetCardTips[$presetKey]))
+                <span class="br-scope-option__tip">
+                  <x-admin.info-tip :label="$presetLabel">{{ $presetCardTips[$presetKey] }}</x-admin.info-tip>
+                </span>
+              @endif
               <input type="radio" class="br-preview" name="scope_preset" value="{{ $presetKey }}"
                      data-br-scope-preset
                      @checked($scopePreset === $presetKey)>
@@ -256,11 +261,6 @@
                 <strong>{{ $presetLabel }}</strong>
               </span>
             </label>
-            @if (! empty($presetCardTips[$presetKey]))
-              <span class="br-scope-option__tip">
-                <x-admin.info-tip :label="$presetLabel">{{ $presetCardTips[$presetKey] }}</x-admin.info-tip>
-              </span>
-            @endif
           </div>
         @endforeach
       </div>

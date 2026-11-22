@@ -99,6 +99,110 @@ class BasementFloodRestorationCalculatorTest extends TestCase
         $this->assertFalse($materials->has('building_permit'));
     }
 
+    public function test_openings_deduct_from_editable_gross_and_48_in_doubles_before_that_deduction(): void
+    {
+        $settings = $this->settings();
+        $calculator = new BasementQuotationCalculator;
+
+        $cut24 = $calculator->calculate($this->acceptanceFixture([
+            'drywall_door_openings' => 2,
+            'drywall_window_openings' => 1,
+        ]), $settings);
+        // Hand check: wall run 120 + 40×2 = 200 lf. 24 in = 2 ft. Gross 400 sf.
+        // Each door in the cut is 3 ft × 2 ft = 6 sf. Windows start at a 4 ft sill, so a 2 ft cut deducts nothing.
+        // Net 400 − 12 = 388. Insulation stays exterior only: 120 × 2 = 240. Paint stays full height: 200 × 8 = 1600.
+        $this->assertSame(388.0, $cut24['scope']['drywall_wall_net_sf']);
+        $this->assertSame(240.0, $cut24['scope']['insulation_wall_sf']);
+        $this->assertSame(1600.0, $cut24['scope']['paint_wall_sf']);
+
+        $cut48 = $calculator->calculate($this->acceptanceFixture([
+            'flood_cut_height_in' => 48,
+            'drywall_door_openings' => 2,
+            'drywall_window_openings' => 1,
+        ]), $settings);
+        // 48 in = 4 ft doubles gross to 800. Door deduction is 3 × 4 = 12 sf each (24). The cut meets the sill, so windows stay 0.
+        $this->assertSame(776.0, $cut48['scope']['drywall_wall_net_sf']);
+        $this->assertSame(480.0, $cut48['scope']['insulation_wall_sf']);
+        $this->assertSame(1600.0, $cut48['scope']['paint_wall_sf']);
+
+        $edited = $calculator->calculate($this->acceptanceFixture([
+            'drywall_wall_sf' => 350,
+            'drywall_door_openings' => 1,
+        ]), $settings);
+        $this->assertSame(344.0, $edited['scope']['drywall_wall_net_sf']);
+    }
+
+    public function test_flood_only_inputs_do_not_change_non_flood_summary(): void
+    {
+        $calculator = new BasementQuotationCalculator;
+        $settings = $this->settings();
+        $bases = [
+            'full' => [
+                'scope_preset' => 'full',
+                'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('full'),
+                'area_sqft' => 800,
+                'ceiling_height_ft' => 8,
+                'partition_lf' => 40,
+                'insulate_walls' => true,
+                'ceiling_type' => 'drywall',
+                'flooring_type' => 'lvp',
+                'owner_hourly_rate' => 85,
+            ],
+            'bathroom' => [
+                'scope_preset' => 'bathroom',
+                'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('bathroom'),
+                'area_sqft' => 80,
+                'include_bathroom' => true,
+                'include_toilet' => true,
+                'owner_hourly_rate' => 85,
+            ],
+            'wall' => [
+                'scope_preset' => 'wall',
+                'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('wall'),
+                'partition_lf' => 20,
+                'door_qty' => 1,
+                'owner_hourly_rate' => 85,
+            ],
+            'custom' => [
+                'scope_preset' => 'custom',
+                'enabled_sections' => ['overview', 'flooring'],
+                'area_sqft' => 500,
+                'flooring_type' => 'lvp',
+                'owner_hourly_rate' => 85,
+            ],
+        ];
+
+        foreach ($bases as $preset => $inputs) {
+            $plain = $calculator->calculate($inputs, $settings);
+            $withFloodKeys = $calculator->calculate($inputs + [
+                'flood_cut_height_in' => 48,
+                'flood_partition_both_faces' => false,
+                'flood_casing_mode' => 'full',
+            ], $settings);
+
+            $this->assertSame(
+                json_encode($plain['summary']),
+                json_encode($withFloodKeys['summary']),
+                $preset.' summary changed when flood-only keys were present'
+            );
+            $this->assertSame(
+                json_encode($plain['labor']),
+                json_encode($withFloodKeys['labor']),
+                $preset.' labor changed when flood-only keys were present'
+            );
+            $this->assertSame(
+                json_encode($plain['materials']),
+                json_encode($withFloodKeys['materials']),
+                $preset.' materials changed when flood-only keys were present'
+            );
+        }
+
+        $legsLabel = (string) (collect($calculator->calculate($this->acceptanceFixture(), $settings)['materials'])
+            ->firstWhere('key', 'casing')['label'] ?? '');
+        $this->assertStringNotContainsString('—', $legsLabel);
+        $this->assertStringNotContainsString('–', $legsLabel);
+    }
+
     public function test_48_in_cut_scales_drywall_insulation_and_primer_while_baseboard_and_wall_paint_stay_unchanged(): void
     {
         $inputs = $this->acceptanceFixture(['flood_cut_height_in' => 48]);

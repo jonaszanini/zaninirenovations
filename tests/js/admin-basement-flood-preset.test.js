@@ -439,6 +439,9 @@ const includeDemoCb = makeElement('input', { type: 'checkbox', name: 'include_de
 const includeCleaningCb = makeElement('input', { type: 'checkbox', name: 'include_cleaning', checked: true });
 const includeTouchupsCb = makeElement('input', { type: 'checkbox', name: 'include_touchups', checked: true });
 const includePermitCb = makeElement('input', { type: 'checkbox', name: 'include_building_permit', checked: false });
+const insWallInput = makeElement('input', { type: 'number', id: 'br-ins-wall-sf', name: 'insulation_wall_sf', value: '' });
+const paintWallInput = makeElement('input', { type: 'number', id: 'br-p-wall', name: 'paint_wall_sf', value: '' });
+const baseInput = makeElement('input', { type: 'number', id: 'br-base', name: 'baseboard_lf', value: '' });
 
 const form = makeElement('form', { id: 'br-main-form', class: 'pq-layout br-layout' }, [
   ...presetRadios,
@@ -463,6 +466,9 @@ const form = makeElement('form', { id: 'br-main-form', class: 'pq-layout br-layo
   includeCleaningCb,
   includeTouchupsCb,
   includePermitCb,
+  insWallInput,
+  paintWallInput,
+  baseInput,
   makeElement('span', { id: 'br-step-status' }),
   makeElement('div', { id: 'br-sticky-total' }),
 ]);
@@ -624,12 +630,23 @@ bothFacesCheckbox.dispatchEvent(new sandbox.Event('change', { bubbles: true }));
 
 assert.strictEqual(dwWallInput.value, '400', '#br-dw-wall must prefill 400 for 120 perimeter + 40*2 partition at 24"');
 
+insWallInput.dataset.brFloodQtyAuto = '1';
+insWallInput.value = '240';
+paintWallInput.dataset.brFloodQtyAuto = '1';
+paintWallInput.value = '1600';
+baseInput.dataset.brFloodQtyAuto = '1';
+baseInput.value = '200';
+
 // Click 48" chip -> #br-flood-cut-height becomes '48' and #br-dw-wall becomes '800'
+// Imported insulation follows exterior cut only. Paint and baseboard stay full height / full run.
 cutChip48.click();
 assert.strictEqual(cutHeightInput.value, '48');
 assert.strictEqual(cutChip48.classList.contains('is-active'), true);
 assert.strictEqual(cutChip24.classList.contains('is-active'), false);
 assert.strictEqual(dwWallInput.value, '800');
+assert.strictEqual(insWallInput.value, '480', '48 in cut doubles imported exterior insulation');
+assert.strictEqual(paintWallInput.value, '1600', 'paint stays full wall height when the cut changes');
+assert.strictEqual(baseInput.value, '200', 'baseboard stays the full wall run when the cut changes');
 
 // Manually edit #br-dw-wall to '350' -> changing cut height back to 24" preserves '350'
 dwWallInput.value = '350';
@@ -638,10 +655,33 @@ cutChip24.click();
 assert.strictEqual(cutHeightInput.value, '24');
 assert.strictEqual(dwWallInput.value, '350', 'manual drywall edit must be preserved when cut height changes');
 
-// 4. Switch back to 'full' -> [data-br-flood-only] hides again
+// 4. Switch back to 'full' -> flood panels hide and flood drywall qty does not stick
 selectPreset('full');
 assert.strictEqual(floodOnlyGeom.hidden, true, '[data-br-flood-only] geom hides on full');
 assert.strictEqual(floodOnlyPanel.hidden, true, '[data-br-flood-only] drywall panel hides on full');
 assert.strictEqual(floodOnlyCasing.hidden, true, '[data-br-flood-only] casing fieldset hides on full');
+assert.strictEqual(dwWallInput.value, '', 'flood drywall quantity must not stay on the full preset');
+assert.strictEqual(insWallInput.value, '', 'flood insulation quantity must not stay on the full preset');
+assert.strictEqual(paintWallInput.value, '', 'flood paint quantity must not stay on the full preset');
+assert.strictEqual(baseInput.value, '', 'flood baseboard quantity must not stay on the full preset');
+assert.strictEqual(ceilingTypeSelect.value, 'drywall', 'full preset ceiling must not stay on the flood none value');
+assert.strictEqual(includePermitCb.checked, false, 'building permit stays off');
+
+// 5. Back to flood restores the manual drywall edit and flood panels
+selectPreset('flood');
+assert.strictEqual(floodOnlyPanel.hidden, false, 'flood drywall panel returns');
+assert.strictEqual(dwWallInput.value, '350', 'manual flood drywall edit is restored');
+assert.strictEqual(insWallInput.dataset.brFloodQtyAuto, '1', 'imported insulation stays auto after a round trip');
+assert.strictEqual(insWallInput.value, '240', 'imported insulation is restored from the flood geometry');
+assert.strictEqual(paintWallInput.value, '1600');
+assert.strictEqual(baseInput.value, '200');
+cutChip48.click();
+assert.strictEqual(dwWallInput.value, '350', 'manual drywall edit stays after returning to flood');
+assert.strictEqual(insWallInput.value, '480', 'cut change still refreshes insulation after a round trip');
+assert.strictEqual(paintWallInput.value, '1600');
+cutChip24.click();
+assert.strictEqual(cutHeightInput.value, '24');
+assert.strictEqual(ceilingTypeSelect.value, 'none');
+assert.strictEqual(includePermitCb.checked, false);
 
 console.log('admin-basement-flood-preset: ok');
