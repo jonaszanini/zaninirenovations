@@ -11195,6 +11195,8 @@ html.admin-dark .br-hardwood-caution {
   border: 0;
   min-width: 0;
   max-width: 100%;
+  container-type: inline-size;
+  container-name: br-scope-presets;
 }
 
 .br-scope-presets legend,
@@ -13474,6 +13476,13 @@ html.admin-dark .br-hardwood-caution {
     gap: 6px;
   }
 
+  .br-scope-option,
+  .br-scope-option__label,
+  .br-scope-option__body {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   /* Five cards share the column beside the live-total aside. The info
      button stays outside the label (so it does not toggle the radio) and
      sits under the radio, leaving the title the rest of the card width. */
@@ -13504,9 +13513,30 @@ html.admin-dark .br-hardwood-caution {
     padding: 0;
   }
 
+  .br-scope-option__body {
+    flex: 1 1 auto;
+  }
+
   .br-scope-option__body strong {
+    display: block;
+    max-width: 100%;
     font-size: 13px;
     line-height: 1.25;
+    white-space: normal;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+}
+
+/* Five columns only while the card row itself is wide enough for the
+   titles. A 1200px window with the sidebar and live-total aside can
+   still leave a narrow row; fall back to two columns instead of
+   clipping "Flood Restoration". */
+@media (min-width: 700px) {
+  @container br-scope-presets (max-width: 39.99rem) {
+    .br-scope-presets__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
   }
 }
 
