@@ -11223,50 +11223,49 @@ html.admin-dark .br-hardwood-caution {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
+  white-space: nowrap;
   overflow-wrap: normal;
   word-break: normal;
-}
-
-.br-scope-option__tip .admin-info-tip {
-  width: 44px;
-  height: 44px;
-  margin: 0;
-}
-
-.br-scope-option__tip .admin-info-tip__bubble {
-  left: auto;
-  right: 0;
 }
 
 .br-scope-option {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 0;
+  height: 100%;
   min-height: 44px;
   min-width: 0;
   margin: 0;
-  padding: 0;
+  padding: 0 0.2rem 0 0;
   border: 1px solid var(--admin-border);
   border-radius: 10px;
   background: var(--admin-surface);
+  box-sizing: border-box;
 }
 
 .br-scope-option__label {
-  flex: 1 1 auto;
+  flex: 0 1 auto;
   min-width: 0;
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.55rem 0.75rem;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.35rem 0.15rem 0.35rem 0.6rem;
   margin: 0;
   cursor: pointer;
 }
 
+/* Tip stays outside the label. The shared .admin-info-tip is a 16px icon
+   with a 44px hit area from its negative margin, so the flood card stays
+   the same height as the other four. */
 .br-scope-option__tip {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
-  padding-right: 0.55rem;
+  align-self: center;
+  margin: 0;
+  padding: 0;
 }
 
 .br-scope-option:has(input:checked) {
@@ -13457,6 +13456,12 @@ html.admin-dark .br-hardwood-caution {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  /* Five presets in two columns would leave Flood Restoration alone at
+     half width. Let that last card use the full row. */
+  .br-scope-presets__grid > .br-scope-option:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+
   .br-qty-grid.br-flood-geom {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -13467,77 +13472,16 @@ html.admin-dark .br-hardwood-caution {
   }
 }
 
-@media (min-width: 1200px) {
-  .br-scope-presets {
-    margin-left: -2rem;
-    margin-right: -2rem;
-  }
-
-  .br-scope-presets__grid {
-    gap: 6px;
-  }
-
-  .br-scope-option,
-  .br-scope-option__label,
-  .br-scope-option__body {
-    min-width: 0;
-    max-width: 100%;
-  }
-
-  /* Five cards share the column beside the live-total aside. The info
-     button stays outside the label (so it does not toggle the radio) and
-     sits under the radio, leaving the title the rest of the card width. */
-  .br-scope-option {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    column-gap: 0.4rem;
-    row-gap: 0;
-    min-height: 44px;
-    padding: 0.35rem 0.5rem 0.35rem 0.45rem;
-  }
-
-  .br-scope-option__label {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    display: flex;
-    align-items: center;
-    min-height: 44px;
-    padding: 0;
-    gap: 0.45rem;
-  }
-
-  .br-scope-option__tip {
-    grid-column: 1;
-    grid-row: 2;
-    justify-self: start;
-    padding: 0;
-  }
-
-  .br-scope-option__body {
-    flex: 1 1 auto;
-  }
-
-  .br-scope-option__body strong {
-    display: block;
-    max-width: 100%;
-    font-size: 13px;
-    line-height: 1.25;
-    white-space: normal;
-    overflow-wrap: normal;
-    word-break: normal;
-  }
-}
-
-/* Column count follows the preset row, not the window. Below 1200px the
-   info button sits beside the title, so two columns need a wider row or
-   "Restoration" breaks. From 1200px the button sits under the radio and
-   1280px (about 19rem) can hold two columns. Five columns only once each
-   card can hold "Restoration" (row at least 46rem, roughly a 1700px window). */
+/* Column count follows the preset row. Five columns only once each card
+   can hold the title and the inline info icon (row at least 46rem). */
 @media (min-width: 700px) and (max-width: 1199.98px) {
   @container br-scope-presets (max-width: 26.99rem) {
     .br-scope-presets__grid {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .br-scope-presets__grid > .br-scope-option:last-child:nth-child(odd) {
+      grid-column: auto;
     }
   }
 }
@@ -13547,6 +13491,10 @@ html.admin-dark .br-hardwood-caution {
     .br-scope-presets__grid {
       grid-template-columns: minmax(0, 1fr);
     }
+
+    .br-scope-presets__grid > .br-scope-option:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
   }
 }
 
@@ -13554,6 +13502,14 @@ html.admin-dark .br-hardwood-caution {
   @container br-scope-presets (min-width: 46rem) {
     .br-scope-presets__grid {
       grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+
+    .br-scope-presets__grid > .br-scope-option:last-child:nth-child(odd) {
+      grid-column: auto;
+    }
+
+    .br-scope-option__body strong {
+      white-space: normal;
     }
   }
 }
