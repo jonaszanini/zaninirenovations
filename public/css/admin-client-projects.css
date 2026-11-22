@@ -11223,6 +11223,8 @@ html.admin-dark .br-hardwood-caution {
   font-size: 14px;
   font-weight: 700;
   line-height: 1.3;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .br-scope-option__tip .admin-info-tip {
@@ -13472,7 +13474,6 @@ html.admin-dark .br-hardwood-caution {
   }
 
   .br-scope-presets__grid {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 6px;
   }
 
@@ -13528,14 +13529,31 @@ html.admin-dark .br-hardwood-caution {
   }
 }
 
-/* Five columns only while the card row itself is wide enough for the
-   titles. A 1200px window with the sidebar and live-total aside can
-   still leave a narrow row; fall back to two columns instead of
-   clipping "Flood Restoration". */
-@media (min-width: 700px) {
-  @container br-scope-presets (max-width: 39.99rem) {
+/* Column count follows the preset row, not the window. Below 1200px the
+   info button sits beside the title, so two columns need a wider row or
+   "Restoration" breaks. From 1200px the button sits under the radio and
+   1280px (about 19rem) can hold two columns. Five columns only once each
+   card can hold "Restoration" (row at least 46rem, roughly a 1700px window). */
+@media (min-width: 700px) and (max-width: 1199.98px) {
+  @container br-scope-presets (max-width: 26.99rem) {
     .br-scope-presets__grid {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+@media (min-width: 1200px) {
+  @container br-scope-presets (max-width: 18.99rem) {
+    .br-scope-presets__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}
+
+@media (min-width: 700px) {
+  @container br-scope-presets (min-width: 46rem) {
+    .br-scope-presets__grid {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
     }
   }
 }
