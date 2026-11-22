@@ -13474,32 +13474,34 @@ html.admin-dark .br-hardwood-caution {
     gap: 6px;
   }
 
-  /* Five cards share a narrow column beside the live-total aside.
-     Float the radio and the info button so a long second word
-     ("Restoration", "basement") drops onto a full-width line
-     instead of breaking mid-word. */
+  /* Five cards share the column beside the live-total aside. The info
+     button stays outside the label (so it does not toggle the radio) and
+     sits under the radio, leaving the title the rest of the card width. */
   .br-scope-option {
-    display: flow-root;
-    min-height: 72px;
-    align-items: stretch;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.4rem;
+    row-gap: 0;
+    min-height: 44px;
+    padding: 0.35rem 0.5rem 0.35rem 0.45rem;
   }
 
   .br-scope-option__label {
-    display: flow-root;
-    min-height: 72px;
-    padding: 0.4rem 0.45rem 0.5rem;
-  }
-
-  .br-scope-option input {
-    float: left;
-    width: 18px;
-    height: 18px;
-    margin: 0.65rem 0.4rem 0.2rem 0;
+    grid-column: 1 / -1;
+    grid-row: 1;
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0;
+    gap: 0.45rem;
   }
 
   .br-scope-option__tip {
-    float: right;
-    padding: 0 0 0 0.15rem;
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+    padding: 0;
   }
 
   .br-scope-option__body strong {

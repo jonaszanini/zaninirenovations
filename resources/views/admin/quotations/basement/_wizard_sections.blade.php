@@ -249,11 +249,6 @@
         @foreach (\App\Services\BasementQuotationCalculator::SCOPE_PRESETS as $presetKey => $presetLabel)
           <div class="br-scope-option">
             <label class="br-scope-option__label">
-              @if (! empty($presetCardTips[$presetKey]))
-                <span class="br-scope-option__tip">
-                  <x-admin.info-tip :label="$presetLabel">{{ $presetCardTips[$presetKey] }}</x-admin.info-tip>
-                </span>
-              @endif
               <input type="radio" class="br-preview" name="scope_preset" value="{{ $presetKey }}"
                      data-br-scope-preset
                      @checked($scopePreset === $presetKey)>
@@ -261,6 +256,11 @@
                 <strong>{{ $presetLabel }}</strong>
               </span>
             </label>
+            @if (! empty($presetCardTips[$presetKey]))
+              <span class="br-scope-option__tip">
+                <x-admin.info-tip :label="$presetLabel">{{ $presetCardTips[$presetKey] }}</x-admin.info-tip>
+              </span>
+            @endif
           </div>
         @endforeach
       </div>
