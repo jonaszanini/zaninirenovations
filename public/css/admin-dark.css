@@ -2101,6 +2101,36 @@ html.admin-dark .br-sheet-size__option:has(input:checked) {
   border-color: var(--admin-primary);
   color: var(--admin-primary);
 }
+html.admin-dark .br-scope-option {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-scope-option:has(input:checked) {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  box-shadow: inset 3px 0 0 var(--admin-primary);
+}
+html.admin-dark .br-flood-panel {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  border-left-color: var(--admin-primary);
+  color: var(--admin-text);
+}
+html.admin-dark .br-flood-chip {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  color: var(--admin-text);
+}
+html.admin-dark .br-flood-chip:hover {
+  border-color: var(--admin-primary);
+  color: var(--admin-heading);
+}
+html.admin-dark .br-flood-chip.is-active {
+  background: var(--admin-primary-soft);
+  border-color: var(--admin-primary);
+  color: var(--admin-primary);
+}
 html.admin-dark .br-field-error {
   color: #fca5a5;
 }

@@ -85,7 +85,10 @@
     'materials_override',
     'insulate_walls',
     'insulate_ceiling',
-    'underslab'
+    'underslab',
+    'flood_cut_height_in',
+    'flood_partition_both_faces',
+    'flood_casing_mode'
   ];
 
   function formatQty(n) {
@@ -164,7 +167,7 @@
     return isFinite(n) ? n : 0;
   }
 
-  function proposedQuantities(opt, ceilingHeightFt, ceilingType) {
+  function proposedQuantities(opt, ceilingHeightFt, ceilingType, options) {
     opt = opt || {};
     var height = 8;
     if (present(opt, 'ceiling_height_ft') && num(opt.ceiling_height_ft) > 0) {
@@ -243,6 +246,27 @@
     var paintWallBasis = wallSf;
     if (wallSf !== null && !present(opt, 'finish_paint_sqft') && !measuredNet) {
       paintWallBasis = Math.max(0, wallSf - drywallOpeningSfFromLayout(doors, windows, openings));
+    }
+
+    if (options && options.scope_preset === 'flood') {
+      var cutIn = num(options.flood_cut_height_in) > 0 ? num(options.flood_cut_height_in) : 24;
+      var cutFt = cutIn / 12;
+      var bothFaces = Object.prototype.hasOwnProperty.call(options, 'flood_partition_both_faces')
+        ? !!options.flood_partition_both_faces
+        : true;
+      var partWallLf = partition !== null ? (bothFaces ? partition * 2 : partition) : 0;
+      var floodRunLf = peri !== null ? (peri + partWallLf) : (partition !== null ? partWallLf : null);
+      if (floodRunLf !== null) {
+        wallSf = Math.round(floodRunLf * cutFt * 100) / 100;
+        measuredNet = false;
+        paintWallBasis = Math.round(floodRunLf * height * 100) / 100;
+      }
+      if (peri !== null) {
+        insWall = Math.round(peri * cutFt * 100) / 100;
+      }
+      if (baseboard === null && floodRunLf !== null) {
+        baseboard = Math.round(floodRunLf * 100) / 100;
+      }
     }
 
     return {

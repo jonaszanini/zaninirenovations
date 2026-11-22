@@ -9,6 +9,9 @@
   var sectionKeys = allSectionKeys.slice();
   var wizardKeys = sectionKeys.concat(['review']);
   var presetSections = cfg.presetSections || {};
+  var FLOOD_FALLBACK_SECTIONS = ['overview', 'insulation', 'drywall', 'flooring', 'doors_trim', 'painting', 'finishing'];
+  var applyingFloodPrefill = false;
+  var applyingLayout = false;
   var tokenEl = document.querySelector('meta[name="csrf-token"]');
   var token = tokenEl ? tokenEl.getAttribute('content') : '';
   var debounceTimer = null;
@@ -362,6 +365,13 @@
     if (qty && qty.id === 'br-ceil-sf') {
       syncUnifiedCeilingArea();
     }
+    if (qty && qty.id === 'br-dw-wall' && currentPreset() === 'flood' && !applyingFloodPrefill && !applyingLayout) {
+      qty.dataset.brFloodManual = (String(qty.value || '').trim() !== '') ? '1' : '';
+      qty.dataset.brFloodAuto = '';
+    }
+    if (qty && qty.id === 'br-area' && currentPreset() === 'flood' && !applyingFloodPrefill && !applyingLayout) {
+      syncFloodDrywallPrefill(true);
+    }
   }
 
   function bindLw() {
@@ -378,8 +388,6 @@
       syncLw(root);
     });
   }
-
-  var applyingLayout = false;
 
   function ceilingHeightFt() {
     var el = document.getElementById('br-height');
@@ -503,6 +511,218 @@
     return (isFinite(area) && area > 0) ? (4 * Math.sqrt(area)) : 0;
   }
 
+  function floodGeometry() {
+    var peri = perimeterOrSquareLf();
+    var partEl = document.getElementById('br-partition');
+    var part = partEl ? Math.max(0, parseFloat(partEl.value) || 0) : 0;
+    var bothEl = document.getElementById('br-flood-both-faces');
+    var both = bothEl ? !!bothEl.checked : true;
+    var cutEl = document.getElementById('br-flood-cut-height');
+    var cutRaw = cutEl ? parseFloat(cutEl.value) : NaN;
+    var cutIn = (isFinite(cutRaw) && cutRaw > 0) ? cutRaw : 24;
+    var wallRun = peri + (both ? part * 2 : part);
+    return {
+      peri: peri,
+      wallRun: wallRun,
+      cutFt: cutIn / 12,
+      height: ceilingHeightFt()
+    };
+  }
+
+  function computeFloodDrywallWallSf() {
+    var geo = floodGeometry();
+    return Math.round(geo.wallRun * geo.cutFt * 100) / 100;
+  }
+
+  function refreshFloodAutoQty(id, value) {
+    var el = document.getElementById(id);
+    if (!el || el.dataset.brFloodQtyAuto !== '1' || el.dataset.brFloodQtyManual === '1') return;
+    el.value = value > 0 ? formatLayoutQty(value) : '';
+  }
+
+  function markFloodImportedQty(id, key) {
+    if (currentPreset() !== 'flood') return;
+    if (key !== 'insulation_wall_sf' && key !== 'paint_wall_sf' && key !== 'baseboard_lf') return;
+    var el = document.getElementById(id);
+    if (!el) return;
+    el.dataset.brFloodQtyAuto = '1';
+    el.dataset.brFloodQtyManual = '';
+  }
+
+  function syncFloodCutChips() {
+    var cutEl = document.getElementById('br-flood-cut-height');
+    var cutVal = cutEl ? parseFloat(cutEl.value) : NaN;
+    form.querySelectorAll('[data-br-flood-cut]').forEach(function (btn) {
+      var chipVal = parseFloat(btn.getAttribute('data-br-flood-cut') || '');
+      var active = isFinite(cutVal) && isFinite(chipVal) && Math.abs(cutVal - chipVal) < 0.01;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function syncFloodDrywallPrefill(forceWhenEmpty) {
+    var dwWall = document.getElementById('br-dw-wall');
+    if (!dwWall) return;
+    if (currentPreset() !== 'flood') {
+      if (dwWall.dataset.brFloodAuto === '1') {
+        applyingFloodPrefill = true;
+        setLwToSqft('br-dw-wall', '');
+        dwWall.dataset.brFloodAuto = '';
+        applyingFloodPrefill = false;
+      }
+      return;
+    }
+    var currentEmpty = String(dwWall.value || '').trim() === '';
+    if (!(dwWall.dataset.brFloodManual === '1' && !currentEmpty)) {
+      var sf = computeFloodDrywallWallSf();
+      if (sf > 0) {
+        applyingFloodPrefill = true;
+        setLwToSqft('br-dw-wall', sf);
+        dwWall.dataset.brFloodAuto = '1';
+        applyingFloodPrefill = false;
+      } else if (forceWhenEmpty && dwWall.dataset.brFloodManual !== '1') {
+        applyingFloodPrefill = true;
+        setLwToSqft('br-dw-wall', '');
+        dwWall.dataset.brFloodAuto = '';
+        applyingFloodPrefill = false;
+      }
+    }
+    var geo = floodGeometry();
+    refreshFloodAutoQty('br-ins-wall-sf', Math.round(geo.peri * geo.cutFt * 100) / 100);
+    refreshFloodAutoQty('br-p-wall', Math.round(geo.wallRun * geo.height * 100) / 100);
+    refreshFloodAutoQty('br-base', Math.round(geo.wallRun * 100) / 100);
+  }
+
+  var lastAppliedPreset = null;
+  var presetQtyMemory = {};
+  var PRESET_QTY_IDS = [
+    'br-dw-wall',
+    'br-ins-wall-sf',
+    'br-ins-ceil-sf',
+    'br-ins-slab-sf',
+    'br-ceil-sf',
+    'br-dw-ceil',
+    'br-p-wall',
+    'br-p-ceil',
+    'br-p-trim',
+    'br-base',
+    'br-fl-sf',
+    'br-shoe',
+    'br-flood-cut-height'
+  ];
+  var PRESET_CHECK_NAMES = [
+    'include_building_permit',
+    'flood_partition_both_faces'
+  ];
+  var PRESET_VALUE_NAMES = ['ceiling_type', 'flooring_type'];
+  var FLOOD_DERIVED_QTY_IDS = [
+    'br-dw-wall',
+    'br-ins-wall-sf',
+    'br-ins-ceil-sf',
+    'br-ins-slab-sf',
+    'br-ceil-sf',
+    'br-dw-ceil',
+    'br-p-wall',
+    'br-p-ceil',
+    'br-p-trim',
+    'br-base',
+    'br-fl-sf',
+    'br-shoe'
+  ];
+  var FLOOD_QTY_FLAG_IDS = ['br-ins-wall-sf', 'br-p-wall', 'br-base'];
+
+  function capturePresetQty() {
+    var snap = { fields: {}, checks: {}, values: {}, qtyFlags: {}, dw: null, casing: '' };
+    PRESET_QTY_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      snap.fields[id] = el.value;
+    });
+    var dw = document.getElementById('br-dw-wall');
+    if (dw) {
+      snap.dw = {
+        manual: dw.dataset.brFloodManual || '',
+        auto: dw.dataset.brFloodAuto || '',
+        fromLayout: dw.getAttribute('data-br-from-layout') || ''
+      };
+    }
+    PRESET_CHECK_NAMES.forEach(function (name) {
+      var el = form.querySelector('input[type="checkbox"][name="' + name + '"]');
+      if (!el) return;
+      snap.checks[name] = !!el.checked;
+    });
+    PRESET_VALUE_NAMES.forEach(function (name) {
+      var el = form.querySelector('[name="' + name + '"]');
+      if (!el || el.type === 'checkbox') return;
+      snap.values[name] = el.value;
+    });
+    var casing = form.querySelector('input[name="flood_casing_mode"]:checked');
+    snap.casing = casing ? casing.value : '';
+    FLOOD_QTY_FLAG_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      snap.qtyFlags[id] = {
+        auto: el.dataset.brFloodQtyAuto || '',
+        manual: el.dataset.brFloodQtyManual || ''
+      };
+    });
+    return snap;
+  }
+
+  function restorePresetQty(snap) {
+    if (!snap) return;
+    Object.keys(snap.fields || {}).forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'br-dw-wall') {
+        setLwToSqft(id, snap.fields[id]);
+      } else {
+        el.value = snap.fields[id];
+      }
+    });
+    var dw = document.getElementById('br-dw-wall');
+    if (dw && snap.dw) {
+      dw.dataset.brFloodManual = snap.dw.manual || '';
+      dw.dataset.brFloodAuto = snap.dw.auto || '';
+      if (snap.dw.fromLayout) dw.setAttribute('data-br-from-layout', snap.dw.fromLayout);
+      else dw.removeAttribute('data-br-from-layout');
+    }
+    Object.keys(snap.checks || {}).forEach(function (name) {
+      setNamedCheck(name, !!snap.checks[name]);
+    });
+    Object.keys(snap.values || {}).forEach(function (name) {
+      setNamedValue(name, snap.values[name]);
+    });
+    if (snap.casing) {
+      var radio = form.querySelector('input[name="flood_casing_mode"][value="' + snap.casing + '"]');
+      if (radio) radio.checked = true;
+    }
+    Object.keys(snap.qtyFlags || {}).forEach(function (id) {
+      var flagged = document.getElementById(id);
+      if (!flagged || !snap.qtyFlags[id]) return;
+      flagged.dataset.brFloodQtyAuto = snap.qtyFlags[id].auto || '';
+      flagged.dataset.brFloodQtyManual = snap.qtyFlags[id].manual || '';
+    });
+    syncFloodCutChips();
+  }
+
+  function clearFloodDerivedQty() {
+    FLOOD_DERIVED_QTY_IDS.forEach(function (id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      if (id === 'br-dw-wall') {
+        setLwToSqft(id, '');
+        el.dataset.brFloodManual = '';
+        el.dataset.brFloodAuto = '';
+        el.removeAttribute('data-br-from-layout');
+        return;
+      }
+      el.value = '';
+      el.dataset.brFloodQtyAuto = '';
+      el.dataset.brFloodQtyManual = '';
+    });
+  }
+
   function computeDemoDrywallSuggestedSf() {
     var btn = document.getElementById('br-fill-demo-drywall');
     var imported = btn ? parseFloat(btn.getAttribute('data-br-demo-suggested') || '0') : 0;
@@ -541,6 +761,11 @@
     var dwPartBtn = document.getElementById('br-dw-add-partition-btn');
     var basePartBtn = document.getElementById('br-base-add-partition-btn');
     if (!dwPartBtn && !basePartBtn) return;
+    if (currentPreset() === 'flood') {
+      if (dwPartBtn) dwPartBtn.hidden = true;
+      if (basePartBtn) basePartBtn.hidden = true;
+      return;
+    }
     var partitionLf = partEl ? parseFloat(partEl.value) : 0;
     var dwWallEl = document.getElementById('br-dw-wall');
     var isMeasuredNetImport = !!(dwWallEl && dwWallEl.getAttribute('data-br-from-layout') === 'net');
@@ -598,8 +823,17 @@
     var layoutImport = window.BasementLayoutImport;
     var ceilingTypeEl = document.getElementById('br-ceil-type');
     var ceilingType = ceilingTypeEl ? ceilingTypeEl.value : '';
+    var cutHeightEl = document.getElementById('br-flood-cut-height');
+    var bothFacesEl = document.getElementById('br-flood-both-faces');
+    var casingModeEl = form.querySelector('input[name="flood_casing_mode"]:checked');
+    var layoutOptions = {
+      scope_preset: currentPreset(),
+      flood_cut_height_in: cutHeightEl ? cutHeightEl.value : 24,
+      flood_partition_both_faces: bothFacesEl ? !!bothFacesEl.checked : true,
+      flood_casing_mode: casingModeEl ? casingModeEl.value : 'legs'
+    };
     var proposed = layoutImport
-      ? layoutImport.proposedQuantities(opt, ceilingHeightFt(), ceilingType)
+      ? layoutImport.proposedQuantities(opt, ceilingHeightFt(), ceilingType, layoutOptions)
       : {};
     if (layoutImport) {
       var current = layoutImport.currentQuantities(document);
@@ -658,12 +892,14 @@
       if (lwKeys[key]) {
         setLwToSqft(id, proposed[key]);
         markLayoutSynced(document.getElementById(id));
+        markFloodImportedQty(id, key);
         return;
       }
       var el = document.getElementById(id);
       if (!el) return;
       el.value = formatLayoutQty(proposed[key]);
       markLayoutSynced(el);
+      markFloodImportedQty(id, key);
     });
 
     var ext = (layoutImport && typeof layoutImport.extendedQuantities === 'function')
@@ -713,12 +949,21 @@
       }
     }
 
-    var measuredNet = (layoutImport && layoutImport.present)
-      ? (layoutImport.present(opt, 'finish_drywall_sqft')
-        || layoutImport.present(opt, 'net_wall_area_sqft')
-        || layoutImport.present(opt, 'wall_area_sqft'))
-      : Number(opt.wall_area_sqft || 0) > 0;
-    if (wall) wall.setAttribute('data-br-from-layout', measuredNet ? 'net' : '1');
+    var isFloodPreset = currentPreset() === 'flood';
+    var measuredNet = isFloodPreset
+      ? false
+      : ((layoutImport && layoutImport.present)
+        ? (layoutImport.present(opt, 'finish_drywall_sqft')
+          || layoutImport.present(opt, 'net_wall_area_sqft')
+          || layoutImport.present(opt, 'wall_area_sqft'))
+        : Number(opt.wall_area_sqft || 0) > 0);
+    if (wall) {
+      wall.setAttribute('data-br-from-layout', measuredNet ? 'net' : '1');
+      if (isFloodPreset && proposed.drywall_wall_sf != null) {
+        wall.dataset.brFloodManual = '';
+        wall.dataset.brFloodAuto = '1';
+      }
+    }
 
     if (status) {
       status.classList.remove('is-warning');
@@ -769,6 +1014,7 @@
   }
 
   function refreshLayoutWallFromHeight() {
+    if (currentPreset() === 'flood') return;
     var wall = document.getElementById('br-dw-wall');
     var periEl = document.getElementById('br-perimeter-lf');
     var from = wall ? wall.getAttribute('data-br-from-layout') : '';
@@ -919,6 +1165,7 @@
         full: 'Total basement area (sq ft)',
         bathroom: 'Bathroom / work area (sq ft)',
         wall: 'Basement area (sq ft, optional)',
+        flood: 'Affected floor area (sq ft)',
         custom: 'Work area (sq ft)'
       };
       var nextLabel = labels[currentPreset()] || labels.full;
@@ -930,12 +1177,17 @@
     if (baseEl) {
       baseEl.placeholder = 'Auto';
     }
-    var wallOnly = currentPreset() === 'wall';
+    var preset = currentPreset();
+    var wallOnly = preset === 'wall';
+    var floodOnly = preset === 'flood';
     form.querySelectorAll('[data-br-skip-on-wall]').forEach(function (el) {
       el.hidden = wallOnly;
     });
     form.querySelectorAll('[data-br-hide-on-wall]').forEach(function (el) {
       el.hidden = wallOnly;
+    });
+    form.querySelectorAll('[data-br-flood-only]').forEach(function (el) {
+      el.hidden = !floodOnly;
     });
     var areaOverview = form.querySelector('[data-br-area-overview]');
     var wallOverview = form.querySelector('[data-br-wall-overview]');
@@ -946,6 +1198,10 @@
       overviewGeom.setAttribute('data-br-overview-mode', wallOnly ? 'wall' : 'area');
     }
     relocateWallPrimary();
+    syncFloodCutChips();
+    if (!floodOnly) {
+      syncFloodDrywallPrefill(false);
+    }
     updateDwWallPlaceholder();
     var pWall = document.getElementById('br-p-wall');
     if (pWall) {
@@ -1010,12 +1266,23 @@
   }
 
   function relocateWallPrimary() {
-    var wall = currentPreset() === 'wall';
+    var preset = currentPreset();
+    var wall = preset === 'wall';
+    var flood = preset === 'flood';
     var fields = document.getElementById('br-wall-primary-fields');
     var overviewSlot = document.getElementById('br-wall-primary-slot');
     var framingSlot = document.getElementById('br-framing-primary-slot');
+    var partField = document.getElementById('br-partition-field');
+    var floodSlot = document.getElementById('br-flood-partition-slot');
     if (fields && overviewSlot && framingSlot) {
       (wall ? overviewSlot : framingSlot).appendChild(fields);
+    }
+    if (partField) {
+      if (flood && floodSlot) {
+        floodSlot.appendChild(partField);
+      } else if (!flood && fields) {
+        fields.insertBefore(partField, fields.firstChild);
+      }
     }
     if (fields) {
       var toggleUi = fields.querySelector('[data-br-door-toggle-ui]');
@@ -1100,7 +1367,13 @@
   }
 
   function applyPreset(preset) {
-    var keys = presetSections[preset] || presetSections.full || allSectionKeys;
+    if (lastAppliedPreset && lastAppliedPreset !== preset) {
+      presetQtyMemory[lastAppliedPreset] = capturePresetQty();
+    }
+    var keys = presetSections[preset]
+      || (preset === 'flood' ? FLOOD_FALLBACK_SECTIONS : null)
+      || presetSections.full
+      || allSectionKeys;
     form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
       cb.checked = keys.indexOf(cb.value) !== -1;
     });
@@ -1123,6 +1396,27 @@
       setNamedValue('area_sqft', 0);
       setNamedCheck('include_cleaning', false);
       setNamedCheck('include_touchups', false);
+    } else if (preset === 'flood') {
+      setNamedCheck('insulate_walls', true);
+      setNamedCheck('insulate_ceiling', false);
+      setNamedCheck('underslab', false);
+      setNamedValue('flooring_type', 'lvp');
+      setNamedValue('ceiling_type', 'none');
+      setNamedCheck('include_bathroom', false);
+      setNamedCheck('include_demolition', false);
+      setNamedCheck('include_cleaning', true);
+      setNamedCheck('include_touchups', true);
+      setNamedCheck('include_building_permit', false);
+      setNamedCheck('flood_partition_both_faces', true);
+      var cutEl = document.getElementById('br-flood-cut-height');
+      var cutVal = cutEl ? parseFloat(cutEl.value) : NaN;
+      if (!isFinite(cutVal) || cutVal <= 0) {
+        setNamedValue('flood_cut_height_in', '24');
+      }
+      if (!form.querySelector('input[name="flood_casing_mode"]:checked')) {
+        var legsRadio = form.querySelector('input[name="flood_casing_mode"][value="legs"]');
+        if (legsRadio) legsRadio.checked = true;
+      }
     } else if (preset === 'full') {
       setNamedCheck('insulate_walls', true);
       setNamedValue('flooring_type', 'lvp');
@@ -1133,6 +1427,21 @@
     }
     applyElectricalDefaults(preset);
     applyScope();
+    if (lastAppliedPreset && lastAppliedPreset !== preset && presetQtyMemory[preset]) {
+      restorePresetQty(presetQtyMemory[preset]);
+    } else if (lastAppliedPreset === 'flood' && preset !== 'flood') {
+      clearFloodDerivedQty();
+    } else if (preset === 'flood') {
+      var dwEnter = document.getElementById('br-dw-wall');
+      if (dwEnter) {
+        dwEnter.dataset.brFloodManual = '';
+        dwEnter.dataset.brFloodAuto = '';
+      }
+    }
+    if (preset === 'flood') {
+      syncFloodDrywallPrefill(true);
+    }
+    lastAppliedPreset = preset;
     syncRevealTargets();
     syncBathroomElectricalHints();
     syncBathSinkQty();
@@ -1170,6 +1479,29 @@
       if (!isFinite(lf) || lf <= 0) {
         showFieldError(wall, 'Enter the new wall length in linear feet.');
         if (wall && wall.focus) wall.focus();
+        return false;
+      }
+      return true;
+    }
+    if (preset === 'flood') {
+      var modeFlood = form.querySelector('[name="area_entry_mode"]:checked');
+      var useDimsFlood = modeFlood && modeFlood.value === 'dimensions';
+      var areaFloodEl = document.getElementById('br-area');
+      var areaFlood = areaFloodEl ? parseFloat(areaFloodEl.value) : 0;
+      var lenFloodEl = form.querySelector('[name="area_length_ft"]');
+      var widFloodEl = form.querySelector('[name="area_width_ft"]');
+      var lFlood = lenFloodEl ? parseFloat(lenFloodEl.value) : 0;
+      var wFlood = widFloodEl ? parseFloat(widFloodEl.value) : 0;
+      var periFloodEl = document.getElementById('br-perimeter-lf');
+      var periFlood = periFloodEl ? parseFloat(periFloodEl.value) : 0;
+      var partFloodEl = document.getElementById('br-partition');
+      var partFlood = partFloodEl ? parseFloat(partFloodEl.value) : 0;
+      var hasArea = useDimsFlood ? (lFlood > 0 && wFlood > 0) : (isFinite(areaFlood) && areaFlood > 0);
+      var hasLinear = (isFinite(periFlood) && periFlood > 0) || (isFinite(partFlood) && partFlood > 0);
+      if (!hasArea && !hasLinear) {
+        var errTarget = periFloodEl || areaFloodEl;
+        showFieldError(errTarget, 'Enter the affected floor area or exterior wall perimeter in linear feet.');
+        if (errTarget && errTarget.focus) errTarget.focus();
         return false;
       }
       return true;
@@ -1305,7 +1637,12 @@
     schedulePreview();
   }
 
+  var dwWallBoot = document.getElementById('br-dw-wall');
+  if (dwWallBoot && currentPreset() === 'flood' && String(dwWallBoot.value || '').trim() !== '') {
+    dwWallBoot.dataset.brFloodManual = '1';
+  }
   applyScope();
+  lastAppliedPreset = currentPreset();
   bindLw();
 
   function syncStickyBarSpace() {
@@ -1499,6 +1836,10 @@
   });
   form.querySelectorAll('[data-br-enabled-section]').forEach(function (cb) {
     cb.addEventListener('change', function () {
+      if (cb.getAttribute('data-br-enabled-section') === 'bathroom' && currentPreset() === 'flood') {
+        setNamedCheck('include_bathroom', cb.checked);
+        syncRevealTargets();
+      }
       applyScope();
       if (!isEdit) setWizardStep(currentIndex, false);
     });
@@ -1850,8 +2191,12 @@
     var areaSqft = Number(scope.area_sqft != null ? scope.area_sqft : areaDom) || areaDom;
     var partEl = document.getElementById('br-partition');
     var partLf = partEl ? (parseFloat(partEl.value) || 0) : 0;
-    var wallPreset = currentPreset() === 'wall';
-    var overviewReady = wallPreset ? partLf > 0 : areaSqft > 0;
+    var periEl = document.getElementById('br-perimeter-lf');
+    var periLf = periEl ? (parseFloat(periEl.value) || 0) : 0;
+    var presetNow = currentPreset();
+    var overviewReady = presetNow === 'wall'
+      ? partLf > 0
+      : (presetNow === 'flood' ? (areaSqft > 0 || periLf > 0 || partLf > 0) : areaSqft > 0);
     var hasWork = overviewReady;
     var grand = Number(summary.grand_total || 0) + lastDebrisAmount + lastAdditionalTaxIn + lastCommuteAmount;
 
@@ -2338,6 +2683,10 @@
   }
   if (dwWallEl) {
     dwWallEl.addEventListener('input', function () {
+      if (currentPreset() === 'flood' && !applyingFloodPrefill && !applyingLayout) {
+        dwWallEl.dataset.brFloodManual = (String(dwWallEl.value || '').trim() !== '') ? '1' : '';
+        dwWallEl.dataset.brFloodAuto = '';
+      }
       if (!applyingLayout) {
         dwWallEl.removeAttribute('data-br-from-layout');
         var demoBtn = document.getElementById('br-fill-demo-drywall');
@@ -2346,6 +2695,46 @@
       }
     });
   }
+  ['br-ins-wall-sf', 'br-p-wall', 'br-base'].forEach(function (id) {
+    var qtyEl = document.getElementById(id);
+    if (!qtyEl) return;
+    qtyEl.addEventListener('input', function () {
+      if (applyingFloodPrefill || applyingLayout || currentPreset() !== 'flood') return;
+      qtyEl.dataset.brFloodQtyAuto = '';
+      qtyEl.dataset.brFloodQtyManual = '1';
+    });
+  });
+  function handleFloodDimChange() {
+    syncFloodCutChips();
+    if (currentPreset() === 'flood') {
+      syncFloodDrywallPrefill(true);
+    }
+  }
+  [
+    document.getElementById('br-perimeter-lf'),
+    document.getElementById('br-area'),
+    form.querySelector('[name="area_length_ft"]'),
+    form.querySelector('[name="area_width_ft"]'),
+    document.getElementById('br-partition'),
+    document.getElementById('br-flood-cut-height'),
+    document.getElementById('br-flood-both-faces')
+  ].forEach(function (el) {
+    if (!el) return;
+    el.addEventListener('input', handleFloodDimChange);
+    el.addEventListener('change', handleFloodDimChange);
+  });
+  form.querySelectorAll('[data-br-flood-cut]').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var cutEl = document.getElementById('br-flood-cut-height');
+      var val = btn.getAttribute('data-br-flood-cut') || '24';
+      if (cutEl) cutEl.value = val;
+      syncFloodCutChips();
+      if (currentPreset() === 'flood') {
+        syncFloodDrywallPrefill(true);
+      }
+      schedulePreview();
+    });
+  });
   var heightEl = document.getElementById('br-height');
   if (heightEl) {
     heightEl.addEventListener('input', refreshLayoutWallFromHeight);

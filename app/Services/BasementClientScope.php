@@ -48,6 +48,7 @@ class BasementClientScope
      */
     public static function generatedCopy(array $inputs, array $calc = []): array
     {
+        $isFlood = BasementQuotationCalculator::normalizePreset($inputs['scope_preset'] ?? null) === 'flood';
         $enabled = BasementQuotationCalculator::enabledSections($inputs);
         $included = [];
         $notIncluded = [];
@@ -70,6 +71,20 @@ class BasementClientScope
                 } elseif ($key === 'demolition' && empty($inputs['include_demolition'])) {
                     $notIncluded[] = $label;
                     continue;
+                } elseif ($isFlood && $key === 'insulation') {
+                    $included[] = ! empty($inputs['insulate_walls'])
+                        ? 'Exterior wall batt insulation to the flood cut line plus 6 mil vapour barrier patch and seal (acoustic sealant or tape) meeting Ontario Building Code (O.Reg. 332/12) requirements.'
+                        : $label;
+                } elseif ($isFlood && $key === 'drywall') {
+                    $cutHeight = rtrim(rtrim(number_format(BasementQuotationCalculator::normalizeFloodCutHeightIn($inputs['flood_cut_height_in'] ?? 24), 1, '.', ''), '0'), '.');
+                    $included[] = 'Drywall rebuild to '.$cutHeight.' in flood cut height, horizontal cut joint taping, finishing, and blending into existing upper walls.';
+                } elseif ($isFlood && $key === 'doors_trim') {
+                    $casingPhrase = BasementQuotationCalculator::normalizeFloodCasingMode($inputs['flood_casing_mode'] ?? 'legs') === 'full'
+                        ? 'full door casing (legs and head)'
+                        : 'door casing side legs replaced (reusing existing head)';
+                    $included[] = 'Baseboards, shoe moulding (where selected), and '.$casingPhrase.'.';
+                } elseif ($isFlood && $key === 'painting') {
+                    $included[] = 'Full-height wall repainting (primer on new drywall board only), plus baseboards, trim, and door casings.';
                 } else {
                     $included[] = $label;
                 }
@@ -134,6 +149,9 @@ class BasementClientScope
             'The client provides clear access to the work area during standard working hours, plus electricity and water at no cost to Zanini.',
             'Finish materials, colours, and fixture models are confirmed before ordering. Substitutions of equal quality may be used if a specified item is unavailable.',
         ];
+        if ($isFlood) {
+            array_unshift($assumptions, 'Water extraction, drying, moisture readings and mould remediation are completed by others before we start.');
+        }
 
         $allowances = [];
         $trades = is_array($calc['summary']['trades'] ?? null) ? $calc['summary']['trades'] : [];

@@ -91,4 +91,27 @@ class BasementClientScopeGeneratedCopyTest extends TestCase
             $copy['not_included']
         );
     }
+
+    public function test_flood_restoration_generated_copy_has_required_assumptions_and_no_forbidden_terms(): void
+    {
+        $copy = BasementClientScope::generatedCopy([
+            'scope_preset' => 'flood',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('flood'),
+            'insulate_walls' => true,
+            'flood_cut_height_in' => 24,
+            'flood_casing_mode' => 'legs',
+            'flooring_type' => 'lvp',
+        ]);
+
+        $this->assertStringContainsString(
+            'Water extraction, drying, moisture readings and mould remediation are completed by others before we start.',
+            $copy['assumptions']
+        );
+        $this->assertStringContainsString('O.Reg. 332/12', $copy['assumptions']);
+        $this->assertStringContainsString('fully insured', $copy['assumptions']);
+
+        $allCopy = $copy['included']."\n".$copy['not_included']."\n".$copy['assumptions']."\n".$copy['allowances'];
+        $this->assertDoesNotMatchRegularExpression('/\bR-?\d+/i', $allCopy);
+        $this->assertDoesNotMatchRegularExpression('/\b(Buy|Purchase|Discount|licensed|licence|WSIB|Price)\b/i', $allCopy);
+    }
 }

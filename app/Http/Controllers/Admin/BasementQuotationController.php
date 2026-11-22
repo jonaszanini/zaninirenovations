@@ -464,6 +464,7 @@ class BasementQuotationController extends Controller
             'stairs_handrail_lf', 'cabinet_base_lf', 'cabinet_upper_lf',
             'bath_tile_sf', 'owner_hourly_rate', 'helper_hourly_rate',
             'material_waste_percent',
+            'flood_cut_height_in',
             'building_permit_amount',
             'bcin_drawings_amount',
         ];
@@ -504,8 +505,9 @@ class BasementQuotationController extends Controller
             'ceiling_hang_unified',
             'client_provides_all', 'include_helper',
             'corner_bead_by_height', 'drywall_boxing_v2', 'trim_material_lf_v2',
+            'flood_partition_both_faces',
         ];
-        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
+        $strings = ['existing_notes', 'ceiling_type', 'flooring_type', 'bath_type', 'lighting_type', 'scope_preset', 'flood_casing_mode', 'area_entry_mode', 'room_area_import_id', 'room_area_import_label', 'drywall_sheet_size', 'client_scope_included', 'client_scope_not_included', 'client_scope_assumptions', 'client_scope_allowances'];
 
         $out = $defaults;
         foreach ($floats as $key) {
@@ -515,6 +517,19 @@ class BasementQuotationController extends Controller
                     $storedInputs,
                     $existing === null
                 ), 4);
+                continue;
+            }
+            if ($key === 'flood_cut_height_in') {
+                $fallback = ($storedInputs !== null && array_key_exists('flood_cut_height_in', $storedInputs))
+                    ? $storedInputs['flood_cut_height_in']
+                    : $defaults['flood_cut_height_in'];
+                $raw = $request->exists('flood_cut_height_in')
+                    ? $request->input('flood_cut_height_in')
+                    : $fallback;
+                if (is_string($raw)) {
+                    $raw = str_replace([',', '$', ' '], '', $raw);
+                }
+                $out[$key] = BasementQuotationCalculator::normalizeFloodCutHeightIn($raw);
                 continue;
             }
             $raw = $request->input($key, $defaults[$key]);
@@ -591,6 +606,9 @@ class BasementQuotationController extends Controller
                 $out[$key] = $request->boolean($key);
             }
         }
+        if (! $request->exists('flood_partition_both_faces')) {
+            $out['flood_partition_both_faces'] = (bool) ($storedInputs['flood_partition_both_faces'] ?? $defaults['flood_partition_both_faces']);
+        }
         if ($request->exists('include_demolition')) {
             $out['include_demolition'] = $request->boolean('include_demolition');
         } elseif (is_array($storedInputs) && array_key_exists('include_demolition', $storedInputs)) {
@@ -620,6 +638,7 @@ class BasementQuotationController extends Controller
         $out['paint_colors'] = ((int) $out['paint_colors'] === 2) ? 2 : 1;
         $out['bath_sink_qty'] = ((int) $request->input('bath_sink_qty', $defaults['bath_sink_qty'])) === 2 ? 2 : 1;
         $out['scope_preset'] = BasementQuotationCalculator::normalizePreset($out['scope_preset'] ?? 'full');
+        $out['flood_casing_mode'] = BasementQuotationCalculator::normalizeFloodCasingMode($out['flood_casing_mode'] ?? 'legs');
         $out['qty_dims'] = $this->qtyDimsFromRequest($request);
         $out['bath_tile_areas'] = $request->input('bath_tile_areas', []);
         $out = BasementQuotationCalculator::applyAreaEntry($out);
