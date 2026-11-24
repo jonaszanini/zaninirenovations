@@ -2749,6 +2749,20 @@ html.admin-dark #admin-app .cp-projects-pagination .admin-pagination-nav a:hover
 }
 
 /* Inline quick note & status menu */
+html.admin-dark .cp-inline-title__display:hover,
+html.admin-dark .cp-inline-title__display:focus-visible {
+  background: rgba(56, 189, 248, 0.12);
+  color: #7dd3fc;
+}
+html.admin-dark .cp-inline-title__display:hover .cp-inline-title__icon,
+html.admin-dark .cp-inline-title__display:focus-visible .cp-inline-title__icon {
+  color: #7dd3fc;
+}
+html.admin-dark .cp-inline-title__input.admin-input {
+  background: #0f172a;
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #f8fafc;
+}
 html.admin-dark .cp-inline-note__display:not(.cp-inline-note__display--locked):hover,
 html.admin-dark .cp-inline-note__display:not(.cp-inline-note__display--locked):focus-visible {
   background: rgba(56, 189, 248, 0.12);

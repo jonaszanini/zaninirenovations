@@ -661,6 +661,44 @@ class ClientProjectController extends Controller
     }
 
     /**
+     * Inline project title update from the project header card.
+     * Kept separate from full update so renaming never touches contact, dates, or emails.
+     */
+    public function updateName(Request $request, ClientProject $client_project)
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $name = trim((string) $data['name']);
+        if ($name === '') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => 'Project title cannot be empty.',
+                ], 422);
+            }
+
+            return back()->withErrors(['name' => 'Project title cannot be empty.']);
+        }
+
+        if ($name !== (string) $client_project->name) {
+            $client_project->name = $name;
+            $client_project->save();
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'name' => $client_project->name,
+                'message' => 'Project title updated.',
+            ]);
+        }
+
+        return back()->with('success', 'Project title updated.');
+    }
+
+    /**
      * Save only the start and end dates chosen in the calendar picker.
      * Kept separate from the full project update so a problem in another
      * field (phone, email, notes) cannot block the dates from being stored.

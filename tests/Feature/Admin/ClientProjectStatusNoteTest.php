@@ -116,4 +116,81 @@ class ClientProjectStatusNoteTest extends IntegrationTestCase
         $this->assertSame(ClientProject::STATUS_VISIT_SCHEDULED, $updated->status);
         $this->assertNull($updated->status_note);
     }
+
+    public function test_awaiting_client_status_is_available_and_can_be_selected(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_QUOTE_SENT,
+        ]);
+
+        $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertSee('value="awaiting_client"', false)
+            ->assertSee('Awaiting Client');
+
+        $this->postJson(route('admin.client-projects.status.update', $project), [
+            'status' => ClientProject::STATUS_AWAITING_CLIENT,
+            'note' => 'Waiting on client colour choice',
+        ])
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'status' => ClientProject::STATUS_AWAITING_CLIENT,
+                'status_label' => 'Awaiting Client',
+                'status_note' => 'Waiting on client colour choice',
+            ]);
+
+        $project->refresh();
+        $this->assertSame(ClientProject::STATUS_AWAITING_CLIENT, $project->status);
+        $this->assertSame('Awaiting Client', $project->statusLabel());
+        $this->assertTrue($project->canPromoteToProposalAcceptedFromQuotation());
+        $this->assertContains(ClientProject::STATUS_PROPOSAL_ACCEPTED, $project->quickStatusOptions());
+    }
+
+    public function test_show_page_renders_click_to_edit_quick_note_empty_state_and_inline_title(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Initial Project Name',
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+            'status_note' => null,
+        ]);
+
+        $this->get(route('admin.client-projects.show', $project))
+            ->assertOk()
+            ->assertSee('data-cp-inline-title', false)
+            ->assertSee('data-cp-project-name-mirror', false)
+            ->assertSee('data-cp-show-inline-note', false)
+            ->assertSee('No notes');
+    }
+
+    public function test_inline_title_update_renames_project_and_rejects_blank(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Old Title',
+            'client_name' => 'Louis Chinnam',
+        ]);
+
+        $this->patchJson(route('admin.client-projects.name.update', $project), [
+            'name' => '   ',
+        ])->assertStatus(422);
+
+        $this->patchJson(route('admin.client-projects.name.update', $project), [
+            'name' => 'Updated MDF Sideboard Panels',
+        ])
+            ->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'name' => 'Updated MDF Sideboard Panels',
+            ]);
+
+        $project->refresh();
+        $this->assertSame('Updated MDF Sideboard Panels', $project->name);
+        $this->assertSame('Louis Chinnam', $project->client_name);
+    }
 }

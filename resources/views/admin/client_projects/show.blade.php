@@ -24,7 +24,39 @@
           <h2 class="cp-header-name">
             <span class="cp-header-ref" title="Project reference">{{ $project->referenceCode() }}</span>
             <span class="cp-header-ref-sep" aria-hidden="true"> — </span>
-            <span class="cp-header-project-name">{{ $project->name }}</span>
+            <span class="cp-inline-title"
+                  data-cp-inline-title
+                  data-name-url="{{ route('admin.client-projects.name.update', $project) }}">
+              <span class="cp-header-project-name cp-inline-title__display"
+                    role="button"
+                    tabindex="0"
+                    title="Click to edit project title">
+                <span class="cp-inline-title__text">{{ $project->name }}</span>
+                <i class="fa fa-pencil cp-inline-title__icon" aria-hidden="true"></i>
+              </span>
+              <span class="cp-inline-title__editor" hidden>
+                <input type="text"
+                       id="cp-inline-title-input"
+                       class="admin-input cp-inline-title__input"
+                       maxlength="255"
+                       value="{{ $project->name }}"
+                       aria-label="Project title">
+                <button type="button"
+                        class="cp-inline-note__btn cp-inline-note__btn--save"
+                        data-cp-title-save
+                        title="Save title"
+                        aria-label="Save title">
+                  <i class="fa fa-check" aria-hidden="true"></i>
+                </button>
+                <button type="button"
+                        class="cp-inline-note__btn cp-inline-note__btn--cancel"
+                        data-cp-title-cancel
+                        title="Cancel"
+                        aria-label="Cancel">
+                  <i class="fa fa-times" aria-hidden="true"></i>
+                </button>
+              </span>
+            </span>
           </h2>
 
           <div class="cp-header-badges">
@@ -95,9 +127,10 @@
           <span class="cp-badge cp-badge--lg" style="background: {{ $project->statusColor() }}20; color: {{ $project->statusColor() }};">
             {{ $project->statusLabel() }}
           </span>
-          @if (filled($project->status_note))
-            <div class="cp-header-status-note" title="{{ $project->status_note }}">{{ \Illuminate\Support\Str::limit(trim((string) $project->status_note), 80) }}</div>
-          @endif
+          <div class="cp-header-status-note"
+               id="cp-header-status-note"
+               @unless (filled($project->status_note)) hidden @endunless
+               title="{{ $project->status_note }}">{{ filled($project->status_note) ? \Illuminate\Support\Str::limit(trim((string) $project->status_note), 80) : '' }}</div>
           @php $quickStatuses = $project->quickStatusOptions(); @endphp
           @if (count($quickStatuses) > 0)
             <div class="cp-quick-status">
@@ -481,16 +514,20 @@
     @endif
 
     @unless ($isClosed)
-      {{-- Status form: label + help on one line, then status | quick note | save.
-           Status still auto-saves on change; Save note keeps a note on the current status. --}}
+      @php
+        $initialStatusNote = trim((string) old('note', $project->status_note));
+        $hasInitialStatusNote = $initialStatusNote !== '';
+      @endphp
+      {{-- Status form: label + help on one line, then status select | click-to-edit quick note.
+           Status auto-saves on change; quick note saves inline on Enter / blur / check button. --}}
       <form action="{{ route('admin.client-projects.status.update', $project) }}" method="post" class="cp-status-form" id="cp-status-form" data-current-status="{{ $project->status }}">
         @csrf
         <div class="cp-status-form-head">
           <span class="admin-label-with-tip">
             <label for="cp-status-select" class="cp-status-form-label">Change status</label>
             <x-admin.info-tip label="Change status">
-              Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.
-              Status saves on change. Optional note is for this status only.
+              Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Awaiting Client → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward.
+              Status saves on change. Click the quick note beside it to add or edit a note for this status.
             </x-admin.info-tip>
           </span>
         </div>
@@ -500,18 +537,43 @@
               <option value="{{ $key }}" @selected($project->status === $key)>{{ $statusLabel }}</option>
             @endforeach
           </select>
-          <input type="text"
-                 id="cp-status-note"
-                 name="note"
-                 class="admin-input cp-status-note"
-                 maxlength="2000"
-                 value="{{ old('note', $project->status_note) }}"
-                 placeholder="Quick note for this status…"
-                 aria-label="Quick note for this status"
-                 title="Saved with this status. Changing status starts a new note unless you type one as you change.">
-          <button type="submit" class="admin-btn admin-btn--primary cp-status-save" id="cp-status-save">
-            <i class="fa fa-save" aria-hidden="true"></i> Save note
-          </button>
+          <div class="cp-inline-note cp-status-inline-note"
+               data-cp-show-inline-note
+               data-status-url="{{ route('admin.client-projects.status.update', $project) }}"
+               data-current-status="{{ $project->status }}">
+            <div class="cp-inline-note__display cp-status-inline-note__display"
+                 role="button"
+                 tabindex="0"
+                 title="{{ $hasInitialStatusNote ? $initialStatusNote : 'Click to add a quick note' }}">
+              <span class="cp-inline-note__text {{ $hasInitialStatusNote ? '' : 'cp-inline-note__text--empty' }}">{{ $hasInitialStatusNote ? $initialStatusNote : 'No notes' }}</span>
+              <i class="fa fa-pencil cp-inline-note__icon" aria-hidden="true"></i>
+            </div>
+            <div class="cp-inline-note__editor cp-status-inline-note__editor" hidden>
+              <input type="text"
+                     id="cp-status-note"
+                     name="note"
+                     class="admin-input cp-inline-note__input cp-status-note"
+                     maxlength="2000"
+                     value="{{ $initialStatusNote }}"
+                     placeholder="Quick note for this status…"
+                     aria-label="Quick note for this status"
+                     title="Saved with this status. Changing status starts a new note unless you type one as you change.">
+              <button type="button"
+                      class="cp-inline-note__btn cp-inline-note__btn--save"
+                      data-cp-show-note-save
+                      title="Save note"
+                      aria-label="Save note">
+                <i class="fa fa-check" aria-hidden="true"></i>
+              </button>
+              <button type="button"
+                      class="cp-inline-note__btn cp-inline-note__btn--cancel"
+                      data-cp-show-note-cancel
+                      title="Cancel"
+                      aria-label="Cancel">
+                <i class="fa fa-times" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
         </div>
       </form>
 
@@ -624,6 +686,175 @@
               closeCancelModal(true);
             }
           });
+
+          // Inline quick note editing (click text → edit → Enter / blur / check saves via JSON)
+          var noteWrap = form.querySelector('[data-cp-show-inline-note]');
+          if (noteWrap && noteInput) {
+            var noteDisplay = noteWrap.querySelector('.cp-inline-note__display');
+            var noteTextSpan = noteWrap.querySelector('.cp-inline-note__text');
+            var noteEditor = noteWrap.querySelector('.cp-inline-note__editor');
+            var noteSaveBtn = noteWrap.querySelector('[data-cp-show-note-save]');
+            var noteCancelBtn = noteWrap.querySelector('[data-cp-show-note-cancel]');
+            var headerStatusNote = document.getElementById('cp-header-status-note');
+            var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+            var noteSaving = false;
+            var noteCancelling = false;
+            var noteSavingViaBtn = false;
+
+            function notifyToast(msg, isError) {
+              if (window.AdminToast && typeof window.AdminToast.show === 'function') {
+                window.AdminToast.show(msg, isError ? 'error' : 'success');
+              }
+            }
+
+            function renderNoteDisplay(val) {
+              var clean = val ? String(val).trim() : '';
+              if (noteTextSpan) {
+                if (clean !== '') {
+                  noteTextSpan.textContent = clean;
+                  noteTextSpan.classList.remove('cp-inline-note__text--empty');
+                } else {
+                  noteTextSpan.textContent = 'No notes';
+                  noteTextSpan.classList.add('cp-inline-note__text--empty');
+                }
+              }
+              if (noteDisplay) {
+                noteDisplay.setAttribute('title', clean || 'Click to add a quick note');
+              }
+              noteInput.value = clean;
+              if (headerStatusNote) {
+                if (clean !== '') {
+                  headerStatusNote.textContent = clean.length > 80 ? clean.slice(0, 80) + '…' : clean;
+                  headerStatusNote.setAttribute('title', clean);
+                  headerStatusNote.hidden = false;
+                } else {
+                  headerStatusNote.textContent = '';
+                  headerStatusNote.removeAttribute('title');
+                  headerStatusNote.hidden = true;
+                }
+              }
+            }
+
+            function openNoteEditor() {
+              if (noteSaving || submitting) return;
+              noteInput.value = originalNote;
+              noteDisplay.hidden = true;
+              noteEditor.hidden = false;
+              noteInput.focus();
+              noteInput.select();
+            }
+
+            function closeNoteEditor(restore) {
+              if (restore) {
+                noteInput.value = originalNote;
+              }
+              noteEditor.hidden = true;
+              noteDisplay.hidden = false;
+            }
+
+            function commitNote() {
+              if (noteSaving || submitting) return;
+              var nextVal = String(noteInput.value || '').trim();
+              var prevVal = String(originalNote || '').trim();
+              if (nextVal === prevVal) {
+                closeNoteEditor(true);
+                return;
+              }
+
+              noteSaving = true;
+              noteInput.disabled = true;
+              if (noteSaveBtn) noteSaveBtn.disabled = true;
+              if (noteCancelBtn) noteCancelBtn.disabled = true;
+
+              var url = noteWrap.getAttribute('data-status-url') || form.getAttribute('action');
+              fetch(url, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'X-CSRF-TOKEN': csrfToken,
+                  'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: JSON.stringify({
+                  status: currentStatus,
+                  note: nextVal
+                })
+              }).then(function (res) {
+                return res.json().catch(function () { return {}; }).then(function (data) {
+                  if (!res.ok) {
+                    throw new Error((data && data.message) || 'Could not save quick note.');
+                  }
+                  return data;
+                });
+              }).then(function (data) {
+                var savedNote = data.status_note || '';
+                originalNote = savedNote;
+                renderNoteDisplay(savedNote);
+                closeNoteEditor(false);
+                notifyToast(data.message || (savedNote ? 'Status note saved.' : 'Status note cleared.'), false);
+              }).catch(function (err) {
+                notifyToast(err.message || 'Could not save quick note.', true);
+                noteInput.focus();
+              }).finally(function () {
+                noteSaving = false;
+                noteInput.disabled = false;
+                if (noteSaveBtn) noteSaveBtn.disabled = false;
+                if (noteCancelBtn) noteCancelBtn.disabled = false;
+              });
+            }
+
+            if (noteDisplay) {
+              noteDisplay.addEventListener('click', function () {
+                openNoteEditor();
+              });
+              noteDisplay.addEventListener('keydown', function (ev) {
+                if (ev.key === 'Enter' || ev.key === ' ') {
+                  ev.preventDefault();
+                  openNoteEditor();
+                }
+              });
+            }
+
+            noteInput.addEventListener('keydown', function (ev) {
+              if (ev.key === 'Enter') {
+                ev.preventDefault();
+                commitNote();
+              } else if (ev.key === 'Escape') {
+                ev.preventDefault();
+                noteCancelling = true;
+                closeNoteEditor(true);
+                if (noteDisplay) noteDisplay.focus();
+                setTimeout(function () { noteCancelling = false; }, 0);
+              }
+            });
+
+            noteInput.addEventListener('blur', function () {
+              setTimeout(function () {
+                if (noteCancelling || noteSavingViaBtn || noteSaving || noteEditor.hidden) return;
+                commitNote();
+              }, 120);
+            });
+
+            if (noteSaveBtn) {
+              noteSaveBtn.addEventListener('mousedown', function () { noteSavingViaBtn = true; });
+              noteSaveBtn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                noteSavingViaBtn = false;
+                commitNote();
+              });
+            }
+
+            if (noteCancelBtn) {
+              noteCancelBtn.addEventListener('mousedown', function () { noteCancelling = true; });
+              noteCancelBtn.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                closeNoteEditor(true);
+                if (noteDisplay) noteDisplay.focus();
+                setTimeout(function () { noteCancelling = false; }, 0);
+              });
+            }
+          }
         })();
       </script>
       @if (filled($project->notes))
@@ -728,6 +959,159 @@
       @endif
     </div>
   </div>
+
+  <script>
+    (function () {
+      var wrap = document.querySelector('[data-cp-inline-title]');
+      if (!wrap) return;
+      var display = wrap.querySelector('.cp-inline-title__display');
+      var textSpan = wrap.querySelector('.cp-inline-title__text');
+      var editor = wrap.querySelector('.cp-inline-title__editor');
+      var input = wrap.querySelector('.cp-inline-title__input');
+      var saveBtn = wrap.querySelector('[data-cp-title-save]');
+      var cancelBtn = wrap.querySelector('[data-cp-title-cancel]');
+      if (!display || !textSpan || !editor || !input) return;
+
+      var url = wrap.getAttribute('data-name-url');
+      var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+      var csrfToken = csrfMeta ? csrfMeta.getAttribute('content') : '';
+      var currentTitle = String(input.value || '').trim();
+      var saving = false;
+      var cancelling = false;
+      var savingViaBtn = false;
+
+      function notifyToast(msg, isError) {
+        if (window.AdminToast && typeof window.AdminToast.show === 'function') {
+          window.AdminToast.show(msg, isError ? 'error' : 'success');
+        }
+      }
+
+      function syncTitleEverywhere(newTitle) {
+        textSpan.textContent = newTitle;
+        input.value = newTitle;
+        var pageH1 = document.querySelector('.admin-topbar h1, header h1');
+        if (pageH1) pageH1.textContent = newTitle;
+        document.querySelectorAll('[data-cp-project-name-mirror]').forEach(function (el) {
+          el.textContent = newTitle;
+        });
+        document.querySelectorAll('form input[type="hidden"][name="name"]').forEach(function (el) {
+          el.value = newTitle;
+        });
+      }
+
+      function openEditor() {
+        if (saving) return;
+        input.value = currentTitle;
+        display.hidden = true;
+        editor.hidden = false;
+        input.focus();
+        input.select();
+      }
+
+      function closeEditor(restore) {
+        if (restore) {
+          input.value = currentTitle;
+        }
+        editor.hidden = true;
+        display.hidden = false;
+      }
+
+      function commitTitle() {
+        if (saving) return;
+        var nextTitle = String(input.value || '').trim();
+        if (nextTitle === '') {
+          notifyToast('Project title cannot be empty.', true);
+          input.focus();
+          return;
+        }
+        if (nextTitle === currentTitle) {
+          closeEditor(true);
+          return;
+        }
+
+        saving = true;
+        input.disabled = true;
+        if (saveBtn) saveBtn.disabled = true;
+        if (cancelBtn) cancelBtn.disabled = true;
+
+        fetch(url, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'X-Requested-With': 'XMLHttpRequest'
+          },
+          body: JSON.stringify({ name: nextTitle })
+        }).then(function (res) {
+          return res.json().catch(function () { return {}; }).then(function (data) {
+            if (!res.ok) {
+              throw new Error((data && data.message) || 'Could not update project title.');
+            }
+            return data;
+          });
+        }).then(function (data) {
+          currentTitle = (data && data.name) ? String(data.name) : nextTitle;
+          syncTitleEverywhere(currentTitle);
+          closeEditor(false);
+          notifyToast((data && data.message) || 'Project title updated.', false);
+        }).catch(function (err) {
+          notifyToast(err.message || 'Could not update project title.', true);
+          input.focus();
+        }).finally(function () {
+          saving = false;
+          input.disabled = false;
+          if (saveBtn) saveBtn.disabled = false;
+          if (cancelBtn) cancelBtn.disabled = false;
+        });
+      }
+
+      display.addEventListener('click', function () {
+        openEditor();
+      });
+      display.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          openEditor();
+        }
+      });
+      input.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') {
+          ev.preventDefault();
+          commitTitle();
+        } else if (ev.key === 'Escape') {
+          ev.preventDefault();
+          cancelling = true;
+          closeEditor(true);
+          display.focus();
+          setTimeout(function () { cancelling = false; }, 0);
+        }
+      });
+      input.addEventListener('blur', function () {
+        setTimeout(function () {
+          if (cancelling || savingViaBtn || saving || editor.hidden) return;
+          commitTitle();
+        }, 120);
+      });
+      if (saveBtn) {
+        saveBtn.addEventListener('mousedown', function () { savingViaBtn = true; });
+        saveBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          savingViaBtn = false;
+          commitTitle();
+        });
+      }
+      if (cancelBtn) {
+        cancelBtn.addEventListener('mousedown', function () { cancelling = true; });
+        cancelBtn.addEventListener('click', function (ev) {
+          ev.preventDefault();
+          closeEditor(true);
+          display.focus();
+          setTimeout(function () { cancelling = false; }, 0);
+        });
+      }
+    })();
+  </script>
 
   {{-- TABS ---------------------------------------------------------------- --}}
   @php

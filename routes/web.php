@@ -331,6 +331,8 @@ Route::middleware(['auth', 'restrict.destructive'])->prefix('admin')->name('admi
         ->name('calendar.personal-events.destroy');
     Route::post('client-projects/{client_project}/status', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'update'])
         ->name('client-projects.status.update');
+    Route::patch('client-projects/{client_project}/name', [\App\Http\Controllers\Admin\ClientProjectController::class, 'updateName'])
+        ->name('client-projects.name.update');
     Route::post('client-projects/{client_project}/status/quick', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'quick'])
         ->name('client-projects.status.quick');
     Route::post('client-projects/{client_project}/reopen', [\App\Http\Controllers\Admin\ClientProjectStatusController::class, 'reopen'])

@@ -36,7 +36,7 @@
 <div class="admin-card cp-overview-details-card">
   <h3>Details</h3>
   <dl class="cp-dl">
-    <dt>Project name</dt><dd>{{ $project->name }}</dd>
+    <dt>Project name</dt><dd data-cp-project-name-mirror>{{ $project->name }}</dd>
     <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [
       'project' => $project,
       'label' => $project->client_name,
