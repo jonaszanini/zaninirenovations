@@ -28,6 +28,7 @@ tests/Feature/Admin/DashboardActionFirstLayoutTest.php
 tests/Feature/Admin/FenceQuotationFormRestoreTest.php
 tests/Feature/Admin/FenceQuotationInfoTipTest.php
 tests/Feature/Admin/GlobalSearchApiTest.php
+tests/Feature/Admin/LumberBoardCalculationUpdateTest.php
 tests/Feature/Admin/MaterialHomeDepotPickerImportTest.php
 tests/Feature/Admin/MillworkCreateBrowserTest.php
 tests/Feature/Admin/MillworkCutPlanPlacementTest.php

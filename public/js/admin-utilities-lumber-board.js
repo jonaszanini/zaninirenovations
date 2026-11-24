@@ -2,6 +2,50 @@
 (function () {
   'use strict';
 
+  /**
+   * A new calculation still needs a typed name. An update keeps the saved
+   * name when the field is left blank (the server does the same).
+   */
+  function lumberBoardResolveSaveName(isUpdate, typedName, storedName) {
+    var typed = String(typedName == null ? '' : typedName).replace(/^\s+|\s+$/g, '');
+    if (typed) {
+      return { blocked: false, name: typed };
+    }
+    if (isUpdate) {
+      var stored = String(storedName == null ? '' : storedName).replace(/^\s+|\s+$/g, '');
+      return { blocked: false, name: stored };
+    }
+    return { blocked: true, name: '' };
+  }
+
+  /** Prefill the update form from a saved calculation (name + linked project). */
+  function lumberBoardApplyLoadedIdentity(fields, calculation) {
+    var name = '';
+    if (calculation && calculation.name != null) {
+      name = String(calculation.name);
+    }
+    var projectId = '';
+    if (calculation && calculation.client_project_id != null && String(calculation.client_project_id) !== '') {
+      projectId = String(calculation.client_project_id);
+    }
+    if (fields && fields.nameInput) {
+      fields.nameInput.value = name;
+    }
+    if (fields && fields.projectSelect) {
+      fields.projectSelect.value = projectId;
+    }
+    return { name: name, clientProjectId: projectId };
+  }
+
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      lumberBoardResolveSaveName: lumberBoardResolveSaveName,
+      lumberBoardApplyLoadedIdentity: lumberBoardApplyLoadedIdentity
+    };
+  }
+
+  if (typeof document === 'undefined') return;
+
   var root = document.querySelector('[data-lumber-board]');
   if (!root) return;
 
@@ -49,6 +93,7 @@
     btIdSeq: 1,
     stockIdSeq: 1,
     loadedCalculationId: null,
+    loadedCalculationName: '',
     dragBtId: null
   };
 
@@ -201,6 +246,15 @@
   function setLinkProject(id) {
     if (!els.linkProject) return;
     els.linkProject.value = id ? String(id) : '';
+  }
+
+  function rememberLoadedIdentity(calculation) {
+    var applied = lumberBoardApplyLoadedIdentity({
+      nameInput: els.saveName,
+      projectSelect: els.linkProject
+    }, calculation || {});
+    state.loadedCalculationName = applied.name;
+    return applied;
   }
 
   function updateSaveUi() {
@@ -1410,6 +1464,7 @@
       });
     });
     state.loadedCalculationId = null;
+    state.loadedCalculationName = '';
     updateSaveUi();
     loadBoardTypes(types);
     render();
@@ -1874,16 +1929,20 @@
 
   function saveCalculation() {
     if (!lastResults) return;
-    var name = (els.saveName.value || '').trim();
-    if (!name) {
+    var isUpdate = !!state.loadedCalculationId;
+    var resolved = lumberBoardResolveSaveName(isUpdate, els.saveName && els.saveName.value, state.loadedCalculationName);
+    if (resolved.blocked) {
       showSaveFeedback('Give this calculation a name first.', false);
-      els.saveName.focus();
+      if (els.saveName) els.saveName.focus();
       return;
     }
+    if (isUpdate && els.saveName && String(els.saveName.value || '').trim() === '' && resolved.name) {
+      els.saveName.value = resolved.name;
+    }
+    var name = resolved.name;
     var btn = root.querySelector('[data-lb-save]');
     if (btn) btn.disabled = true;
     var clientProjectId = els.linkProject && els.linkProject.value ? parseInt(els.linkProject.value, 10) : null;
-    var isUpdate = !!state.loadedCalculationId;
     var url = isUpdate
       ? root.getAttribute('data-update-template').replace('__ID__', state.loadedCalculationId)
       : root.getAttribute('data-save-url');
@@ -1906,15 +1965,16 @@
       .then(function (res) { return res.ok ? res.json() : Promise.reject(res); })
       .then(function (data) {
         if (btn) btn.disabled = false;
-        state.loadedCalculationId = data.calculation.id;
+        var saved = data.calculation || {};
+        state.loadedCalculationId = saved.id != null ? String(saved.id) : state.loadedCalculationId;
+        rememberLoadedIdentity(saved);
         updateSaveUi();
         if (isUpdate) {
-          showSaveFeedback('Updated "' + data.calculation.name + '".', true);
-          replaceSaved(data.calculation);
+          showSaveFeedback('Updated "' + saved.name + '".', true);
+          replaceSaved(saved);
         } else {
-          els.saveName.value = '';
-          showSaveFeedback('Saved "' + data.calculation.name + '".', true);
-          prependSaved(data.calculation);
+          showSaveFeedback('Saved "' + saved.name + '".', true);
+          prependSaved(saved);
         }
       })
       .catch(function () {
@@ -1991,6 +2051,7 @@
       .then(function () {
         if (String(state.loadedCalculationId) === String(id)) {
           state.loadedCalculationId = null;
+          state.loadedCalculationName = '';
           updateSaveUi();
         }
         li.remove();
@@ -2016,8 +2077,10 @@
     if (els.roundUp) els.roundUp.checked = !!migrated.round_up;
     if (els.kerf) els.kerf.checked = migrated.kerf !== false;
     loadBoardTypes(migrated.board_types);
-    setLinkProject(clientProjectId);
-    if (els.saveName) els.saveName.value = calcName ? String(calcName) : '';
+    rememberLoadedIdentity({
+      name: calcName,
+      client_project_id: clientProjectId
+    });
     updateSaveUi();
     render();
     if (lastResults && lastResults.entries.some(function (e) { return e.result && !e.result.error; })) {
@@ -2027,6 +2090,7 @@
 
   function resetAll() {
     state.loadedCalculationId = null;
+    state.loadedCalculationName = '';
     state.btIdSeq = 1;
     state.stockIdSeq = 1;
     if (els.roundUp) els.roundUp.checked = false;
