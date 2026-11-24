@@ -147,24 +147,24 @@
         </div>
 
         <div class="admin-card util-lb-save-card" data-lb-save-card hidden>
-          <h3 class="util-lb-card-title">Save this calculation</h3>
+          <h3 class="util-lb-card-title">{{ $openCalculation ? 'Update this calculation' : 'Save this calculation' }}</h3>
           <div class="util-lb-save-form">
             <div class="admin-form-group">
               <label for="lb-link-project">Link to client project <span class="util-lb-optional">(optional)</span></label>
               <select class="admin-input" id="lb-link-project" data-lb-link-project>
                 <option value="">— None —</option>
                 @foreach ($clientProjects as $cp)
-                  <option value="{{ $cp->id }}" @selected($linkProject && (int) $linkProject->id === (int) $cp->id)>{{ $cp->linkSelectLabel() }}</option>
+                  <option value="{{ $cp->id }}" @selected($selectedProjectId && (int) $selectedProjectId === (int) $cp->id)>{{ $cp->linkSelectLabel() }}</option>
                 @endforeach
               </select>
             </div>
             <div class="util-lb-save-row">
               <div class="admin-form-group">
                 <label for="lb-save-name" class="util-sr-only">Calculation name</label>
-                <input class="admin-input" type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Scott deck — all lumber">
+                <input class="admin-input" type="text" id="lb-save-name" maxlength="120" placeholder="e.g. Scott deck — all lumber" value="{{ $openCalculation?->name ?? '' }}">
               </div>
               <button type="button" class="admin-btn admin-btn--primary" data-lb-save>
-                <i class="fa fa-save"></i> Save
+                <i class="fa fa-save"></i> {{ $openCalculation ? 'Update' : 'Save' }}
               </button>
             </div>
           </div>

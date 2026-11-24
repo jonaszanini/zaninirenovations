@@ -104,14 +104,23 @@ class UtilitiesController extends Controller
             ? ClientProject::query()->find($linkProjectId, ['id', 'name', 'client_name'])
             : null;
 
-        if ($linkProject && ! $clientProjects->contains('id', $linkProject->id)) {
-            $clientProjects->prepend($linkProject);
+        $openCalculationId = max(0, (int) $request->query('calculation', 0)) ?: null;
+        $openCalculation = $openCalculationId
+            ? $saved->firstWhere('id', $openCalculationId)
+            : null;
+
+        foreach ([$openCalculation?->clientProject, $linkProject] as $extraProject) {
+            if ($extraProject && ! $clientProjects->contains('id', $extraProject->id)) {
+                $clientProjects->prepend($extraProject);
+            }
         }
 
         return view('admin.utilities.lumber_board', [
             'savedCalculations' => $saved,
             'clientProjects' => $clientProjects,
             'linkProject' => $linkProject,
+            'openCalculation' => $openCalculation,
+            'selectedProjectId' => $openCalculation?->client_project_id ?: $linkProject?->id,
         ]);
     }
 
@@ -336,7 +345,9 @@ class UtilitiesController extends Controller
     {
         $data = $request->validate([
             'tool' => ['required', 'string', 'max:60'],
-            'name' => ['required', 'string', 'max:120'],
+            // Name is optional on update. A blank field keeps the stored name
+            // so adding items does not force the user to retype it.
+            'name' => ['nullable', 'string', 'max:120'],
             'client_project_id' => ['nullable', 'integer', 'exists:client_projects,id'],
             'payload' => ['required', 'array'],
         ]);
@@ -345,8 +356,13 @@ class UtilitiesController extends Controller
             return response()->json(['message' => 'Tool mismatch.'], 422);
         }
 
+        $name = trim((string) ($data['name'] ?? ''));
+        if ($name === '') {
+            $name = $utility_calculation->name;
+        }
+
         $utility_calculation->update([
-            'name' => $data['name'],
+            'name' => $name,
             'client_project_id' => $data['client_project_id'] ?? null,
             'payload' => $data['payload'],
         ]);

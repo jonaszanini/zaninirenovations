@@ -3,3 +3,4 @@ tests/Feature/Smoke/PublicGetRoutesSmokeTest.php
 tests/Feature/Admin/ClientShowPageTest.php
 tests/Feature/Admin/ClientIndexAddressColumnLayoutTest.php
 tests/Feature/Admin/GlobalSearchApiTest.php
+tests/Feature/Admin/LumberBoardCalculationUpdateTest.php
