@@ -21,6 +21,20 @@
     </tr>
   </table>
 
+  @if ($invoice->paymentMethodLabel() || filled($invoice->payment_reference))
+    <p>
+      @if ($invoice->paymentMethodLabel())
+        <strong>Payment method:</strong> {{ $invoice->paymentMethodLabel() }}
+      @endif
+      @if (filled($invoice->payment_reference))
+        @if ($invoice->paymentMethodLabel())
+          <br>
+        @endif
+        <strong>Reference:</strong> {{ $invoice->payment_reference }}
+      @endif
+    </p>
+  @endif
+
   <p>
     If you need the receipt in a different format, or have any questions, just reply
     to this email and I'll be happy to help.

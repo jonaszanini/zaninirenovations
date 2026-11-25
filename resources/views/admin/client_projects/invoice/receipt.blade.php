@@ -327,6 +327,12 @@
         <td class="value" style="font-weight:400;color:#1f2937;">{{ $invoice->paymentMethodLabel() }}</td>
       </tr>
     @endif
+    @if (filled($invoice->payment_reference))
+      <tr>
+        <td class="label">Reference</td>
+        <td class="value" style="font-weight:400;color:#1f2937;">{{ $invoice->payment_reference }}</td>
+      </tr>
+    @endif
     <tr class="paid-row">
       <td class="label">Amount paid</td>
       <td class="value">{{ $fmt($paidAmount) }}</td>

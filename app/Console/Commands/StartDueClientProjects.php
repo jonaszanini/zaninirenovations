@@ -32,6 +32,7 @@ class StartDueClientProjects extends Command
             ->whereDate('start_date', $today)
             ->whereNotIn('status', [
                 ClientProject::STATUS_IN_PROGRESS,
+                ClientProject::STATUS_PENDING_CUSTOMER,
                 ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
                 ClientProject::STATUS_COMPLETED,
                 ClientProject::STATUS_CANCELLED,

@@ -568,6 +568,7 @@ class ClientProjectController extends Controller
             ])],
             'hourly_rate' => ['nullable', 'numeric', 'min:0.01', 'required_if:billing_type,'.ClientProject::BILLING_HOURLY],
             'sync_client_directory' => ['sometimes', 'boolean'],
+            'status' => ['sometimes', 'nullable', Rule::in(ClientProject::statuses())],
         ];
 
         if ($client_project->isCompleted()) {
@@ -603,6 +604,13 @@ class ClientProjectController extends Controller
         }
 
         $data = $validator->validated();
+        // Edit Details always posts the status that was on screen. Capture it
+        // before visit-date sync, which may promote Visit Required to Visit
+        // Scheduled (or the reverse when the date is cleared). Only apply the
+        // posted status when the admin actually changed the dropdown.
+        $originalStatus = $client_project->status;
+        $nextStatus = array_key_exists('status', $data) ? $data['status'] : null;
+        unset($data['status']);
 
         foreach (['invoice_billing_name', 'invoice_billing_address', 'conversation_on'] as $k) {
             if (array_key_exists($k, $data) && $data[$k] === '') {
@@ -649,6 +657,19 @@ class ClientProjectController extends Controller
 
         $client_project->fill($data)->save();
         $client_project = $service->syncVisitStatusFromFields($client_project->fresh());
+
+        if (
+            is_string($nextStatus)
+            && $nextStatus !== ''
+            && $nextStatus !== $originalStatus
+            && $nextStatus !== $client_project->status
+            && ! $client_project->isClosed()
+        ) {
+            $note = $nextStatus === ClientProject::STATUS_CANCELLED
+                ? 'Cancelled from project details.'
+                : 'Status set from project details.';
+            $client_project = $service->transition($client_project, $nextStatus, $note, false);
+        }
 
         return $this->redirectAfterScheduleDateChange(
             $client_project,
@@ -1093,6 +1114,7 @@ class ClientProjectController extends Controller
         // Do not regress projects already in active work or finished.
         $statusesPastScheduled = [
             ClientProject::STATUS_IN_PROGRESS,
+            ClientProject::STATUS_PENDING_CUSTOMER,
             ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
             ClientProject::STATUS_COMPLETED,
             ClientProject::STATUS_CANCELLED,

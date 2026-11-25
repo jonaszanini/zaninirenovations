@@ -114,6 +114,7 @@
                   </span>
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -297,6 +298,7 @@
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -509,6 +511,7 @@
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -585,6 +588,7 @@
                   @include('admin.client_projects._invoice_reminders_paused_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_refund_note', ['invoice' => $invoice])
                   @include('admin.client_projects._invoice_due_label', ['invoice' => $invoice])
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
                 </td>
                 <td data-label="Actions">
                   @include('admin.client_projects._invoice_row_actions', [
@@ -619,6 +623,7 @@
       </div>
       <form method="post" id="cp-mark-paid-form">
         @csrf
+        <input type="hidden" name="return_fragment" id="cp-mark-paid-return-fragment" value="invoice">
         <div class="cp-modal-body">
           @php
             $markPaidCanEmail = filled(trim((string) $project->client_email));
@@ -630,20 +635,22 @@
           <p class="admin-form-help" style="margin-top:0;" id="cp-mark-paid-intro">
             This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>
             as paid and generate a <strong>Receipt PDF</strong>.
-            @if ($markPaidCanEmail || $markPaidCanSms)
-              You can optionally deliver the receipt to the client
-              @if ($markPaidCanEmail && $markPaidCanSms)
-                by email or SMS
-              @elseif ($markPaidCanEmail)
-                by email
+            <span class="cp-mark-paid-intro-extra">
+              @if ($markPaidCanEmail || $markPaidCanSms)
+                You can optionally deliver the receipt to the client
+                @if ($markPaidCanEmail && $markPaidCanSms)
+                  by email or SMS
+                @elseif ($markPaidCanEmail)
+                  by email
+                @else
+                  by SMS
+                @endif
+                using the options below.
               @else
-                by SMS
+                No client email or SMS-capable phone is on file, the receipt will be saved for you to send manually.
               @endif
-              using the options below.
-            @else
-              No client email or SMS-capable phone is on file, the receipt will be saved for you to send manually.
-            @endif
-            @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
+              @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
+            </span>
           </p>
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
@@ -663,28 +670,31 @@
                      required data-cp-money-entry="direct">
             </div>
           </div>
-          <div class="admin-form-group cp-mark-paid-method">
-            <label class="cp-mark-paid-method-label">Payment method</label>
-            <div class="cp-mark-paid-method-options" role="radiogroup" aria-label="Payment method">
-              <label class="cp-mark-paid-method-option">
-                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER }}" checked>
-                <span><i class="fa fa-bank"></i> e-Transfer</span>
-              </label>
-              <label class="cp-mark-paid-method-option">
-                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CASH }}">
-                <span><i class="fa fa-money"></i> Cash</span>
-              </label>
-              <label class="cp-mark-paid-method-option">
-                <input type="radio" name="payment_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CHECK }}">
-                <span><i class="fa fa-file-text-o"></i> Check</span>
-              </label>
+          <div class="admin-form-grid-2">
+            <div class="admin-form-group">
+              <label for="cp-mark-paid-method">Payment method</label>
+              <select id="cp-mark-paid-method" name="payment_method" class="admin-input" required>
+                @foreach (\App\Models\ClientProjectInvoice::PAYMENT_METHOD_LABELS as $methodValue => $methodLabel)
+                  <option value="{{ $methodValue }}" @selected($methodValue === \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER)>{{ $methodLabel }}</option>
+                @endforeach
+              </select>
+            </div>
+            <div class="admin-form-group">
+              <span class="admin-label-with-tip">
+                <label for="cp-mark-paid-reference">Reference</label>
+                <x-admin.info-tip label="Payment reference">Optional. Use an E-transfer confirmation or a cheque number.</x-admin.info-tip>
+              </span>
+              <input class="admin-input" type="text" id="cp-mark-paid-reference" name="payment_reference" maxlength="120" autocomplete="off">
             </div>
           </div>
 
-          @php
-            $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
-              ->reject(fn ($label, $key) => in_array($key, \App\Models\ClientProject::terminalStatuses(), true));
-          @endphp
+        </div>
+
+        @php
+          $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
+            ->reject(fn ($label, $key) => in_array($key, \App\Models\ClientProject::terminalStatuses(), true));
+        @endphp
+        <div class="cp-mark-paid-pinned">
           <fieldset id="cp-mark-paid-status-fieldset" class="cp-mark-paid-project-status" disabled>
             <legend class="cp-mark-paid-project-status-legend">Project status</legend>
             <p class="admin-form-help" style="margin:0 0 8px;">
@@ -750,10 +760,19 @@
       // ---- Mark-paid modal ---------------------------------------
       var modal = document.getElementById('cp-mark-paid-modal');
       var form = document.getElementById('cp-mark-paid-form');
+      // The dialog is rendered with the Invoice tab. That panel is
+      // display:none while Financials is open, which hides a fixed
+      // modal too. Park it on body so Mark paid works from either tab.
+      if (modal && modal.parentElement !== document.body) {
+        document.body.appendChild(modal);
+      }
       var amountInput = document.getElementById('cp-mark-paid-amount');
       var label = document.getElementById('cp-mark-paid-invoice-label');
       var statusFieldset = document.getElementById('cp-mark-paid-status-fieldset');
       var statusSelect = document.getElementById('cp-mark-paid-project-status');
+      var referenceInput = document.getElementById('cp-mark-paid-reference');
+      var fragmentInput = document.getElementById('cp-mark-paid-return-fragment');
+      var methodSelect = document.getElementById('cp-mark-paid-method');
 
       function openModal(trigger) {
         var action = trigger.getAttribute('data-cp-markpaid-url');
@@ -763,6 +782,9 @@
         form.action = action;
         amountInput.value = amount;
         label.textContent = invoiceLabel;
+        if (referenceInput) referenceInput.value = '';
+        if (fragmentInput) fragmentInput.value = trigger.getAttribute('data-cp-markpaid-fragment') || 'invoice';
+        if (methodSelect) methodSelect.value = '{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER }}';
 
         if (statusFieldset) {
           statusFieldset.disabled = !askStatus;
@@ -856,7 +878,7 @@
           <div class="cp-mark-paid-method-options" role="radiogroup" aria-label="Refund method">
             <label class="cp-mark-paid-method-option">
               <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER }}" checked>
-              <span><i class="fa fa-bank"></i> e-Transfer</span>
+              <span><i class="fa fa-bank"></i> E-transfer</span>
             </label>
             <label class="cp-mark-paid-method-option">
               <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CASH }}">
@@ -864,7 +886,7 @@
             </label>
             <label class="cp-mark-paid-method-option">
               <input type="radio" name="refund_method" value="{{ \App\Models\ClientProjectInvoice::PAYMENT_METHOD_CHECK }}">
-              <span><i class="fa fa-file-text-o"></i> Check</span>
+              <span><i class="fa fa-file-text-o"></i> Cheque</span>
             </label>
           </div>
         </div>

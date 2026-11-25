@@ -173,6 +173,7 @@
                 <td data-label="Total"><strong>{{ \App\Models\ClientProject::formatMoney($invoice->total) }}</strong></td>
                 <td data-label="Status">
                   <span class="cp-badge" style="background: {{ $statusColor }}20; color: {{ $statusColor }};">{{ $statusLabel }}</span>
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
                 </td>
                 <td data-label="Due">{{ $invoice->dueOnLabel() }}</td>
                 <td data-label="Date">{{ \App\Models\ClientProject::formatDate($invoiceDate) }}</td>

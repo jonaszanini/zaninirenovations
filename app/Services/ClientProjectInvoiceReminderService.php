@@ -40,13 +40,26 @@ class ClientProjectInvoiceReminderService
 
         return ClientProjectInvoice::query()
             ->collectible()
-            ->with('project')
+            ->with(['project.installments'])
             ->where('status', ClientProjectInvoice::STATUS_SENT)
             ->whereNull('reminders_paused_at')
             ->whereNotNull('due_on')
             ->whereDate('due_on', '<', $today)
             ->orderBy('due_on')
-            ->get();
+            ->get()
+            ->reject(fn (ClientProjectInvoice $invoice) => $this->remindersMustSkip($invoice))
+            ->values();
+    }
+
+    /**
+     * Defensive guard: never remind on a paid invoice, or one whose
+     * installment was marked paid while the invoice status lagged behind.
+     */
+    public function remindersMustSkip(ClientProjectInvoice $invoice): bool
+    {
+        return $invoice->isPaid()
+            || $invoice->isRefunded()
+            || $invoice->linkedInstallmentIsPaid();
     }
 
     /**
@@ -62,7 +75,7 @@ class ClientProjectInvoiceReminderService
             return ['ok' => false, 'channel' => null, 'detail' => 'Invoice has not been sent yet.'];
         }
 
-        if ($invoice->isPaid()) {
+        if ($invoice->isPaid() || $invoice->linkedInstallmentIsPaid()) {
             return ['ok' => false, 'channel' => null, 'detail' => 'Invoice is already paid.'];
         }
 

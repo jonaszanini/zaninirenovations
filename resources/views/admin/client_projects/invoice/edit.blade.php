@@ -90,6 +90,7 @@
           <span class="cp-badge cp-badge--draft cp-badge--ml">Draft</span>
         @endif
       </h3>
+      @include('admin.client_projects._invoice_payment_meta', ['invoice' => $invoice])
       <p class="admin-form-help admin-form-help--tight">
         @if ($isFromTimeEntries)
           Hourly invoice, prefilled from {{ $invoice->timeEntries->count() }} unbilled time entr{{ $invoice->timeEntries->count() === 1 ? 'y' : 'ies' }}.

@@ -287,6 +287,7 @@ class GlobalFinancialsController extends Controller
                 ClientProject::STATUS_PENDING_FIRST_PAYMENT,
                 ClientProject::STATUS_SCHEDULED,
                 ClientProject::STATUS_IN_PROGRESS,
+                ClientProject::STATUS_PENDING_CUSTOMER,
                 ClientProject::STATUS_AWAITING_FINAL_PAYMENT,
             ])
             ->where(function ($sub) use ($q) {

@@ -83,6 +83,7 @@ tests/Unit/Views/AdminActionsDropdownScriptTest.php
 tests/Unit/Views/AdminDarkThemeCoverageTest.php
 tests/Unit/Views/ClientsDirectoryCopyViewTest.php
 tests/Unit/Models/ClientProjectStreetLineTest.php
+tests/Unit/Models/ClientProjectInvoiceTest.php
 tests/Unit/Views/AdminDashboardLayoutMarkupTest.php
 tests/Unit/Views/AdminDatePickerThemeTest.php
 tests/Unit/Views/AdminInfoTipBehaviourTest.php

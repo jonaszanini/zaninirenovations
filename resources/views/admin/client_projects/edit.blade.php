@@ -34,6 +34,19 @@
         </div>
 
         <div class="admin-form-group">
+          <span class="admin-label-with-tip">
+            <label for="cp-status">Status</label>
+            <x-admin.info-tip label="Project status">Pending Customer means this project is waiting on the client.</x-admin.info-tip>
+          </span>
+          <select id="cp-status" name="status" class="admin-input" @disabled($project->isClosed())>
+            @foreach (\App\Models\ClientProject::statusLabels() as $statusKey => $statusLabel)
+              <option value="{{ $statusKey }}" @selected(old('status', $project->status) === $statusKey)>{{ $statusLabel }}</option>
+            @endforeach
+          </select>
+          @error('status') <p class="admin-form-error">{{ $message }}</p> @enderror
+        </div>
+
+        <div class="admin-form-group">
           <label for="cp-contacted-via">Contact via <span class="cp-required">*</span></label>
           <select id="cp-contacted-via" name="contacted_via" required @class(['admin-input', 'is-invalid' => $errors->has('contacted_via')])>
             @if (old('contacted_via', $project->contacted_via) === null || old('contacted_via', $project->contacted_via) === '')

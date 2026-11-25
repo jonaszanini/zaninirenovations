@@ -33,6 +33,8 @@ class ClientProject extends Model
     public const STATUS_QUOTE_SENT = 'quote_sent';
     /** Waiting on client action, decision, or requested information. */
     public const STATUS_AWAITING_CLIENT = 'awaiting_client';
+    /** Work is paused because we are waiting on the client. */
+    public const STATUS_PENDING_CUSTOMER = 'pending_customer';
     public const STATUS_PROPOSAL_ACCEPTED = 'proposal_accepted';
     public const STATUS_PENDING_FIRST_PAYMENT = 'pending_first_payment';
     public const STATUS_SCHEDULED = 'scheduled';
@@ -654,6 +656,7 @@ class ClientProject extends Model
             self::STATUS_PENDING_FIRST_PAYMENT,
             self::STATUS_SCHEDULED,
             self::STATUS_IN_PROGRESS,
+            self::STATUS_PENDING_CUSTOMER,
             self::STATUS_AWAITING_FINAL_PAYMENT,
             self::STATUS_COMPLETED,
             self::STATUS_CANCELLED,
@@ -865,6 +868,7 @@ class ClientProject extends Model
             self::STATUS_PENDING_FIRST_PAYMENT => 'Pending First Payment',
             self::STATUS_SCHEDULED => 'Scheduled',
             self::STATUS_IN_PROGRESS => 'In Progress',
+            self::STATUS_PENDING_CUSTOMER => 'Pending Customer',
             self::STATUS_AWAITING_FINAL_PAYMENT => 'Awaiting Final Payment',
             self::STATUS_COMPLETED => 'Completed',
             self::STATUS_CANCELLED => 'Cancelled',
@@ -885,6 +889,7 @@ class ClientProject extends Model
             self::STATUS_PENDING_FIRST_PAYMENT => '#f97316', // orange
             self::STATUS_SCHEDULED => '#8b5cf6',             // violet
             self::STATUS_IN_PROGRESS => '#6366f1',           // indigo
+            self::STATUS_PENDING_CUSTOMER => '#64748b',      // slate — mid-work pause, waiting on the client
             self::STATUS_AWAITING_FINAL_PAYMENT => '#0d9488', // teal — work done, payment outstanding
             self::STATUS_COMPLETED => '#22c55e',             // bright green
             self::STATUS_CANCELLED => '#a855f7',             // purple
@@ -972,8 +977,9 @@ class ClientProject extends Model
             self::STATUS_AWAITING_CLIENT => [self::STATUS_QUOTE_PENDING, self::STATUS_QUOTE_SENT, self::STATUS_PROPOSAL_ACCEPTED],
             self::STATUS_PROPOSAL_ACCEPTED => [self::STATUS_PENDING_FIRST_PAYMENT, self::STATUS_SCHEDULED],
             self::STATUS_PENDING_FIRST_PAYMENT => [self::STATUS_SCHEDULED],
-            self::STATUS_SCHEDULED => [self::STATUS_IN_PROGRESS],
-            self::STATUS_IN_PROGRESS => [self::STATUS_AWAITING_FINAL_PAYMENT, self::STATUS_COMPLETED],
+            self::STATUS_SCHEDULED => [self::STATUS_IN_PROGRESS, self::STATUS_PENDING_CUSTOMER],
+            self::STATUS_IN_PROGRESS => [self::STATUS_PENDING_CUSTOMER, self::STATUS_AWAITING_FINAL_PAYMENT, self::STATUS_COMPLETED],
+            self::STATUS_PENDING_CUSTOMER => [self::STATUS_IN_PROGRESS, self::STATUS_AWAITING_FINAL_PAYMENT],
             self::STATUS_AWAITING_FINAL_PAYMENT => [self::STATUS_COMPLETED],
             self::STATUS_COMPLETED => [],
             default => [],
@@ -988,6 +994,7 @@ class ClientProject extends Model
             self::STATUS_PENDING_FIRST_PAYMENT,
             self::STATUS_SCHEDULED,
             self::STATUS_IN_PROGRESS,
+            self::STATUS_PENDING_CUSTOMER,
             self::STATUS_AWAITING_FINAL_PAYMENT,
             self::STATUS_COMPLETED,
         ], true);
