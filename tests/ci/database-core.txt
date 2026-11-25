@@ -3,6 +3,9 @@ tests/Feature/SharedWorksNormalizedLabelMigrationTest.php
 tests/Feature/QuoteAcceptance
 tests/Feature/Etransfer
 tests/Feature/Invoices/MarkPaidInvoiceTest.php
+tests/Feature/Invoices/InstallmentMarkPaidTest.php
+tests/Feature/Invoices/RepairPaidInvoiceMismatchTest.php
+tests/Feature/Admin/PendingCustomerStatusTest.php
 tests/Feature/Invoices/HourlyInvoiceUpdateTest.php
 tests/Feature/Admin/GlobalFinancialsTest.php
 tests/Feature/Admin/PrepareBillingTest.php

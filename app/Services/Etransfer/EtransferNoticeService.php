@@ -154,6 +154,7 @@ class EtransferNoticeService
                 false,
                 null,
                 $extra,
+                filled($notice->reference_number) ? (string) $notice->reference_number : null,
             );
 
             if (! ($result['ok'] ?? false)) {

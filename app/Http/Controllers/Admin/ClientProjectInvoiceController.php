@@ -646,12 +646,17 @@ class ClientProjectInvoiceController extends Controller
             return $redirect;
         }
 
-        if (! $invoice->isSent()) {
-            return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
+        // Paid and refunded invoices are not reminded. Treat pause as a no-op
+        // so a sent invoice never errors just because its status moved on.
+        if ($invoice->isSettled()) {
+            return redirect()
+                ->route('admin.client-projects.show', $client_project)
+                ->withFragment('invoice')
+                ->with('success', 'Daily reminders are not sent for this invoice.');
         }
 
-        if ($invoice->isSettled()) {
-            return back()->with('error', 'Paid or refunded invoices do not receive payment reminders.');
+        if (! $invoice->hasBeenSentForReminders()) {
+            return back()->with('error', 'Daily reminders can only be paused after the invoice has been sent.');
         }
 
         if ($invoice->dailyRemindersPaused()) {
@@ -716,6 +721,8 @@ class ClientProjectInvoiceController extends Controller
             'also_email_receipt' => ['nullable', 'boolean'],
             'also_sms_receipt' => ['nullable', 'boolean'],
             'payment_method' => ['required', Rule::in(array_keys(ClientProjectInvoice::PAYMENT_METHOD_LABELS))],
+            'payment_reference' => ['nullable', 'string', 'max:120'],
+            'return_fragment' => ['nullable', 'string', Rule::in(['invoice', 'financials'])],
             'project_status' => [
                 'nullable',
                 'string',
@@ -732,15 +739,19 @@ class ClientProjectInvoiceController extends Controller
             $request->boolean('also_email_receipt'),
             $request->boolean('also_sms_receipt'),
             isset($data['project_status']) ? trim((string) $data['project_status']) : null,
+            null,
+            $data['payment_reference'] ?? null,
         );
 
         if (! ($result['ok'] ?? false)) {
             return back()->with('error', $result['error'] ?? 'Could not mark the invoice paid.');
         }
 
+        $fragment = $data['return_fragment'] ?? 'invoice';
+
         $redirect = redirect()
             ->route('admin.client-projects.show', $client_project)
-            ->withFragment('invoice')
+            ->withFragment($fragment)
             ->with('success', $result['flash'] ?? 'Invoice marked paid.');
 
         if (! empty($result['warning'])) {

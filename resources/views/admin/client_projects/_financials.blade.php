@@ -360,23 +360,41 @@
                 @if ($finInvoice)
                   <a href="{{ route('admin.client-projects.invoices.edit', [$project, $finInvoice]) }}">{{ $finInvoice->invoice_number }}</a>
                   <span class="admin-form-help">{{ \App\Models\ClientProjectInvoice::statusLabel($finInvoice->status) }}</span>
+                  @include('admin.client_projects._invoice_payment_meta', ['invoice' => $finInvoice])
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
               </td>
               <td>{{ \App\Models\ClientProject::formatDate($inst->paid_on) }}</td>
               <td>
-                <form action="{{ route('admin.client-projects.installments.toggle-paid', [$project, $inst]) }}" method="post" class="cp-inline-form">
-                  @csrf
-                  @if ($inst->is_paid)
-                    <input type="hidden" name="is_paid" value="0">
-                    <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Mark unpaid</button>
-                  @else
-                    <input type="hidden" name="is_paid" value="1">
-                    <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}" class="cp-paid-date">
-                    <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Mark paid</button>
-                  @endif
-                </form>
+                @php
+                  $finMarkPaidViaInvoice = $finInvoice && ! $finInvoice->isSettled();
+                  $finFirstPaid = $project->invoices->where('status', \App\Models\ClientProjectInvoice::STATUS_PAID)->isEmpty()
+                      && ! $project->isClosed();
+                @endphp
+                @if ($finMarkPaidViaInvoice)
+                  <button type="button"
+                          class="admin-btn admin-btn--primary admin-btn--sm"
+                          data-cp-markpaid-url="{{ route('admin.client-projects.invoices.mark-paid', [$project, $finInvoice]) }}"
+                          data-cp-markpaid-amount="{{ number_format((float) $finInvoice->total, 2, '.', '') }}"
+                          data-cp-markpaid-label="Invoice #{{ $finInvoice->invoice_number }}"
+                          data-cp-markpaid-first-paid="{{ $finFirstPaid ? '1' : '0' }}"
+                          data-cp-markpaid-fragment="financials">
+                    Mark paid
+                  </button>
+                @else
+                  <form action="{{ route('admin.client-projects.installments.toggle-paid', [$project, $inst]) }}" method="post" class="cp-inline-form">
+                    @csrf
+                    @if ($inst->is_paid)
+                      <input type="hidden" name="is_paid" value="0">
+                      <button type="submit" class="admin-btn admin-btn--ghost admin-btn--sm">Mark unpaid</button>
+                    @else
+                      <input type="hidden" name="is_paid" value="1">
+                      <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}" aria-label="Paid date for installment {{ $idx + 1 }}">
+                      <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Mark paid</button>
+                    @endif
+                  </form>
+                @endif
               </td>
             </tr>
           @endforeach

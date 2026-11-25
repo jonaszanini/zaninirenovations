@@ -568,6 +568,13 @@ details.cp-filter-accordion:not([open]) .cp-filter-accordion__hide-label {
   margin-left: 8px;
 }
 
+.cp-invoice-payment-meta {
+  margin-top: 4px;
+  color: var(--admin-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .cp-badge--sent {
   background: rgba(59, 130, 246, 0.12);
   color: #1e40af;
@@ -6417,6 +6424,41 @@ body.cp-modal-open {
 
   .cp-modal {
     max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+
+  .cp-modal-backdrop {
+    padding: 12px;
+    align-items: flex-start;
+  }
+
+  /* Header sits outside the form. Body and footer are inside it, so the
+     form has to be the scrolling flex column or the footer is clipped. */
+  .cp-modal > form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .cp-modal-header,
+  .cp-modal-footer {
+    flex-shrink: 0;
+  }
+
+  .cp-modal-body {
+    overflow-y: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+  }
+
+  .cp-modal-footer {
+    flex-wrap: wrap;
+  }
+
+  .cp-modal-footer .admin-btn {
+    min-height: 44px;
   }
 
   /* Stack signatures and parties vertically on mobile. */

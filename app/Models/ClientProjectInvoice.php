@@ -39,12 +39,18 @@ class ClientProjectInvoice extends Model
     public const PAYMENT_METHOD_CASH = 'cash';
     public const PAYMENT_METHOD_CHECK = 'check';
     public const PAYMENT_METHOD_ETRANSFER = 'etransfer';
+    public const PAYMENT_METHOD_CREDIT_CARD = 'credit_card';
+    public const PAYMENT_METHOD_DEBIT = 'debit';
+    public const PAYMENT_METHOD_OTHER = 'other';
 
     /** Display labels for the receipt PDF + admin UI. */
     public const PAYMENT_METHOD_LABELS = [
+        self::PAYMENT_METHOD_ETRANSFER => 'E-transfer',
         self::PAYMENT_METHOD_CASH => 'Cash',
-        self::PAYMENT_METHOD_CHECK => 'Check',
-        self::PAYMENT_METHOD_ETRANSFER => 'e-Transfer',
+        self::PAYMENT_METHOD_CHECK => 'Cheque',
+        self::PAYMENT_METHOD_CREDIT_CARD => 'Credit card',
+        self::PAYMENT_METHOD_DEBIT => 'Debit',
+        self::PAYMENT_METHOD_OTHER => 'Other',
     ];
 
     /**
@@ -88,6 +94,7 @@ class ClientProjectInvoice extends Model
         'paid_at',
         'paid_amount',
         'payment_method',
+        'payment_reference',
         'refunded_at',
         'refund_amount',
         'refund_method',
@@ -328,7 +335,7 @@ class ClientProjectInvoice extends Model
     }
 
     /**
-     * Friendly label for the payment method ("Cash", "e-Transfer", …).
+     * Friendly label for the payment method ("Cash", "E-transfer", …).
      * Returns null if the invoice was paid before this field existed or
      * the method wasn't captured at mark-paid time.
      */
@@ -339,7 +346,89 @@ class ClientProjectInvoice extends Model
         }
 
         return self::PAYMENT_METHOD_LABELS[$this->payment_method]
-            ?? ucfirst($this->payment_method);
+            ?? ucfirst((string) $this->payment_method);
+    }
+
+    /**
+     * Method and optional reference for admin rows and receipts.
+     * Blank when neither was recorded (older paid invoices).
+     */
+    public function paymentDetailsLabel(): ?string
+    {
+        $parts = [];
+        if ($label = $this->paymentMethodLabel()) {
+            $parts[] = $label;
+        }
+        $reference = trim((string) $this->payment_reference);
+        if ($reference !== '') {
+            $parts[] = 'Ref '.$reference;
+        }
+
+        return $parts === [] ? null : implode(', ', $parts);
+    }
+
+    /**
+     * Installment row this invoice was created for, by 1-based position
+     * in the payment plan (not a foreign key).
+     */
+    public function linkedInstallment(): ?ClientProjectInstallment
+    {
+        $number = (int) $this->installment_number;
+        if ($number < 1) {
+            return null;
+        }
+
+        $project = $this->relationLoaded('project') ? $this->project : $this->project()->first();
+        if (! $project) {
+            return null;
+        }
+
+        $rows = $project->relationLoaded('installments')
+            ? $project->installments
+                ->sortBy(fn (ClientProjectInstallment $row) => sprintf('%010d-%010d', (int) $row->sort_order, (int) $row->id))
+                ->values()
+            : $project->installments()->orderBy('sort_order')->orderBy('id')->get()->values();
+
+        $match = $rows->get($number - 1);
+
+        return $match instanceof ClientProjectInstallment ? $match : null;
+    }
+
+    public function linkedInstallmentIsPaid(): bool
+    {
+        return (bool) $this->linkedInstallment()?->is_paid;
+    }
+
+    /**
+     * True when daily reminders may be paused. Accepts any invoice that
+     * has been issued, not only status exactly "sent": emailed (sent_at),
+     * sent, paid, refunded, overdue, or an installment already marked paid.
+     */
+    public function hasBeenSentForReminders(): bool
+    {
+        $status = strtolower(trim((string) $this->status));
+        if (in_array($status, [self::STATUS_SENT, self::STATUS_PAID, self::STATUS_REFUNDED], true)) {
+            return true;
+        }
+
+        if ($this->wasEverSent()) {
+            return true;
+        }
+
+        if ($this->linkedInstallmentIsPaid()) {
+            return true;
+        }
+
+        if ($this->due_on !== null) {
+            $due = $this->due_on instanceof \Carbon\CarbonInterface
+                ? $this->due_on->copy()->startOfDay()
+                : \Carbon\Carbon::parse($this->due_on)->startOfDay();
+            if ($due->lt(\Carbon\Carbon::today('America/Toronto'))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     // --- Item helpers -----------------------------------------------------

@@ -46,6 +46,7 @@ class MarkInvoicePaidService
         bool $sendSms = false,
         ?string $projectStatus = null,
         ?string $extraNote = null,
+        ?string $paymentReference = null,
     ): array {
         if ($invoice->client_project_id !== $project->id) {
             return ['ok' => false, 'error' => 'This invoice does not belong to that project.'];
@@ -67,11 +68,16 @@ class MarkInvoicePaidService
 
         $firstInstallmentJustPaid = false;
 
-        DB::transaction(function () use ($invoice, $project, $paidOn, $paidAmount, $paymentMethod, &$firstInstallmentJustPaid) {
+        DB::transaction(function () use ($invoice, $project, $paidOn, $paidAmount, $paymentMethod, $paymentReference, &$firstInstallmentJustPaid) {
             $invoice->paid_at = $paidOn;
             $invoice->paid_amount = round($paidAmount, 2);
             $invoice->payment_method = $paymentMethod;
+            $reference = trim((string) $paymentReference);
+            $invoice->payment_reference = $reference !== '' ? $reference : null;
             $invoice->status = ClientProjectInvoice::STATUS_PAID;
+            if ($invoice->reminders_paused_at === null) {
+                $invoice->reminders_paused_at = now();
+            }
 
             $pdf = $this->pdfService->renderReceiptPdf($project, $invoice);
             $bytes = $pdf->output();

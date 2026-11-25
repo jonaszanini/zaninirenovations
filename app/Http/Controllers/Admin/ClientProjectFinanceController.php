@@ -13,6 +13,7 @@ use App\Models\ClientProjectReturn;
 use App\Models\ClientProjectTimeEntry;
 use App\Services\ClientCommunicationLogger;
 use App\Services\ClientProjectStatusService;
+use App\Services\Invoice\MarkInvoicePaidService;
 use App\Services\ProjectPhotoWebpStorage;
 use App\Services\RecalculateRemainingInstallmentsService;
 use App\Support\CadMoney;
@@ -229,9 +230,67 @@ class ClientProjectFinanceController extends Controller
         Request $request,
         ClientProject $client_project,
         ClientProjectInstallment $installment,
-        ClientProjectStatusService $statusService
+        ClientProjectStatusService $statusService,
+        MarkInvoicePaidService $markPaidService,
     ) {
         abort_unless($installment->client_project_id === $client_project->id, 404);
+
+        $markingPaid = $request->boolean('is_paid');
+        $linkedInvoice = $markingPaid
+            ? $this->unsettledInvoiceForInstallment($client_project, $installment)
+            : null;
+
+        // An installment with an open invoice must use the same mark-paid
+        // path as a regular invoice. Flipping only is_paid left the invoice
+        // Sent, kept reminders running, and never emailed a receipt.
+        if ($linkedInvoice) {
+            $allowedStatusesOnFirstPaid = array_values(array_filter(
+                ClientProject::statuses(),
+                fn (string $s) => ! in_array($s, ClientProject::terminalStatuses(), true)
+            ));
+
+            $data = $request->validate([
+                'is_paid' => ['required', 'boolean'],
+                'paid_on' => ['required', 'date'],
+                'paid_amount' => ['nullable', 'numeric', 'min:0'],
+                'payment_method' => ['required', Rule::in(array_keys(ClientProjectInvoice::PAYMENT_METHOD_LABELS))],
+                'payment_reference' => ['nullable', 'string', 'max:120'],
+                'also_email_receipt' => ['nullable', 'boolean'],
+                'also_sms_receipt' => ['nullable', 'boolean'],
+                'project_status' => ['nullable', 'string', Rule::in($allowedStatusesOnFirstPaid)],
+            ]);
+
+            $amount = isset($data['paid_amount'])
+                ? (float) $data['paid_amount']
+                : (float) $linkedInvoice->total;
+
+            $result = $markPaidService->mark(
+                $client_project,
+                $linkedInvoice,
+                $data['paid_on'],
+                $amount,
+                $data['payment_method'],
+                $request->boolean('also_email_receipt'),
+                $request->boolean('also_sms_receipt'),
+                isset($data['project_status']) ? trim((string) $data['project_status']) : null,
+                null,
+                $data['payment_reference'] ?? null,
+            );
+
+            if (! ($result['ok'] ?? false)) {
+                return back()->with('error', $result['error'] ?? 'Could not mark the invoice paid.');
+            }
+
+            $redirect = back()
+                ->withFragment('financials')
+                ->with('success', $result['flash'] ?? 'Invoice marked paid.');
+
+            if (! empty($result['warning'])) {
+                $redirect->with('warning', $result['warning']);
+            }
+
+            return $redirect;
+        }
 
         $data = $request->validate([
             'is_paid' => ['required', 'boolean'],
@@ -831,5 +890,29 @@ class ClientProjectFinanceController extends Controller
         $ordinals = ['1st', '2nd', '3rd', '4th'];
 
         return ($ordinals[$index] ?? ($index + 1).'th').' installment';
+    }
+
+    /**
+     * Invoice linked to this installment that is not already paid or refunded.
+     */
+    protected function unsettledInvoiceForInstallment(
+        ClientProject $project,
+        ClientProjectInstallment $installment
+    ): ?ClientProjectInvoice {
+        $ordered = $project->installments()->orderBy('sort_order')->orderBy('id')->get()->values();
+        $index = $ordered->search(fn (ClientProjectInstallment $row) => (int) $row->id === (int) $installment->id);
+        if ($index === false) {
+            return null;
+        }
+
+        $invoice = $project->invoices()
+            ->where('installment_number', $index + 1)
+            ->first();
+
+        if (! $invoice || $invoice->isSettled()) {
+            return null;
+        }
+
+        return $invoice;
     }
 }
