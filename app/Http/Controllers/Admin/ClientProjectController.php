@@ -604,6 +604,11 @@ class ClientProjectController extends Controller
         }
 
         $data = $validator->validated();
+        // Edit Details always posts the status that was on screen. Capture it
+        // before visit-date sync, which may promote Visit Required to Visit
+        // Scheduled (or the reverse when the date is cleared). Only apply the
+        // posted status when the admin actually changed the dropdown.
+        $originalStatus = $client_project->status;
         $nextStatus = array_key_exists('status', $data) ? $data['status'] : null;
         unset($data['status']);
 
@@ -656,6 +661,7 @@ class ClientProjectController extends Controller
         if (
             is_string($nextStatus)
             && $nextStatus !== ''
+            && $nextStatus !== $originalStatus
             && $nextStatus !== $client_project->status
             && ! $client_project->isClosed()
         ) {

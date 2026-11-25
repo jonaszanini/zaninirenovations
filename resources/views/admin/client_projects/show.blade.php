@@ -526,7 +526,7 @@
           <span class="admin-label-with-tip">
             <label for="cp-status-select" class="cp-status-form-label">Change status</label>
             <x-admin.info-tip label="Change status">
-              Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Awaiting Client → Pending Customer → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward. Pending Customer means the project is waiting on the client.
+              Workflow: Visit required → Visit scheduled → Quote Pending → Quote Sent → Awaiting Client → Proposal Accepted → Pending First Payment → Scheduled → In Progress → Pending Customer → Awaiting Final Payment → Completed. Cancelled is final; rejected projects can be reopened. Time tracking, quotation, contract, invoice, and financials unlock from Proposal Accepted onward. Pending Customer means the project is waiting on the client.
               Status saves on change. Optional note is for this status only.
             </x-admin.info-tip>
           </span>

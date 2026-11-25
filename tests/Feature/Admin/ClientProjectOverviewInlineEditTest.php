@@ -532,6 +532,64 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         $this->assertStringNotContainsString('#overview', (string) $calendarFail->headers->get('Location'));
     }
 
+    public function test_edit_details_keeps_visit_scheduled_when_the_posted_status_is_unchanged(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Kitchen visit',
+            'client_name' => 'Ada Client',
+            'visit_required' => true,
+            'visit_date' => null,
+            'status' => ClientProject::STATUS_VISIT_REQUIRED,
+        ]);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Kitchen visit',
+            'client_name' => 'Ada Client',
+            'visit_required' => '1',
+            'visit_date' => '2026-11-19',
+            'status' => ClientProject::STATUS_VISIT_REQUIRED,
+        ])->assertSessionDoesntHaveErrors();
+
+        $project->refresh();
+        $this->assertSame(ClientProject::STATUS_VISIT_SCHEDULED, $project->status);
+        $this->assertSame('2026-11-19', $project->visit_date->toDateString());
+        $this->assertFalse(
+            $project->statusHistory()->where('note', 'Status set from project details.')->exists()
+        );
+    }
+
+    public function test_edit_details_keeps_visit_required_when_clearing_the_date_without_changing_status(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Kitchen visit',
+            'client_name' => 'Ada Client',
+            'visit_required' => true,
+            'visit_date' => '2026-11-19',
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+        ]);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Kitchen visit',
+            'client_name' => 'Ada Client',
+            'visit_required' => '1',
+            'visit_date' => '',
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+        ])->assertSessionDoesntHaveErrors();
+
+        $project->refresh();
+        $this->assertSame(ClientProject::STATUS_VISIT_REQUIRED, $project->status);
+        $this->assertNull($project->visit_date);
+        $this->assertFalse(
+            $project->statusHistory()->where('note', 'Status set from project details.')->exists()
+        );
+    }
+
     /**
      * @return array{name: ?string, email: ?string, phone: ?string, address: ?string}
      */

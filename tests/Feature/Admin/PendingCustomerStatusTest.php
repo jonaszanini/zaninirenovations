@@ -63,5 +63,23 @@ class PendingCustomerStatusTest extends IntegrationTestCase
         $filtered->assertDontSee('Bathroom still quoting');
 
         $this->assertSame(ClientProject::STATUS_QUOTE_PENDING, $other->fresh()->status);
+
+        $keys = ClientProject::statuses();
+        $this->assertGreaterThan(
+            array_search(ClientProject::STATUS_IN_PROGRESS, $keys, true),
+            array_search(ClientProject::STATUS_PENDING_CUSTOMER, $keys, true)
+        );
+        $this->assertLessThan(
+            array_search(ClientProject::STATUS_AWAITING_FINAL_PAYMENT, $keys, true),
+            array_search(ClientProject::STATUS_PENDING_CUSTOMER, $keys, true)
+        );
+        $labels = array_keys(ClientProject::statusLabels());
+        $this->assertGreaterThan(
+            array_search(ClientProject::STATUS_IN_PROGRESS, $labels, true),
+            array_search(ClientProject::STATUS_PENDING_CUSTOMER, $labels, true)
+        );
+
+        $this->get(route('admin.client-projects.show', $waiting))
+            ->assertSee('Scheduled → In Progress → Pending Customer → Awaiting Final Payment → Completed', false);
     }
 }

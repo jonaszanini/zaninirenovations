@@ -4790,6 +4790,10 @@ a:hover .cp-expense-receipt-pdf {
   color: var(--admin-primary);
 }
 
+.cp-mark-paid-pinned {
+  padding: 0 18px 8px;
+}
+
 .cp-mark-paid-receipt-options {
   display: flex;
   flex-direction: column;
@@ -6424,6 +6428,7 @@ body.cp-modal-open {
 
   .cp-modal {
     max-width: calc(100vw - 24px);
+    height: calc(100dvh - 24px);
     max-height: calc(100dvh - 24px);
   }
 
@@ -6443,14 +6448,25 @@ body.cp-modal-open {
   }
 
   .cp-modal-header,
-  .cp-modal-footer {
+  .cp-modal-footer,
+  .cp-mark-paid-pinned {
     flex-shrink: 0;
+  }
+
+  .cp-mark-paid-intro-extra {
+    display: none;
+  }
+
+  .cp-mark-paid-pinned {
+    padding: 8px 18px 4px;
+    border-top: 1px solid var(--admin-border);
+    background: var(--admin-surface);
   }
 
   .cp-modal-body {
     overflow-y: auto;
     min-height: 0;
-    flex: 1 1 auto;
+    flex: 1 1 0;
   }
 
   .cp-modal-footer {

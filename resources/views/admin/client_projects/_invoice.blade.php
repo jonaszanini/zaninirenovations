@@ -635,20 +635,22 @@
           <p class="admin-form-help" style="margin-top:0;" id="cp-mark-paid-intro">
             This will mark <strong id="cp-mark-paid-invoice-label">the invoice</strong>
             as paid and generate a <strong>Receipt PDF</strong>.
-            @if ($markPaidCanEmail || $markPaidCanSms)
-              You can optionally deliver the receipt to the client
-              @if ($markPaidCanEmail && $markPaidCanSms)
-                by email or SMS
-              @elseif ($markPaidCanEmail)
-                by email
+            <span class="cp-mark-paid-intro-extra">
+              @if ($markPaidCanEmail || $markPaidCanSms)
+                You can optionally deliver the receipt to the client
+                @if ($markPaidCanEmail && $markPaidCanSms)
+                  by email or SMS
+                @elseif ($markPaidCanEmail)
+                  by email
+                @else
+                  by SMS
+                @endif
+                using the options below.
               @else
-                by SMS
+                No client email or SMS-capable phone is on file, the receipt will be saved for you to send manually.
               @endif
-              using the options below.
-            @else
-              No client email or SMS-capable phone is on file, the receipt will be saved for you to send manually.
-            @endif
-            @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
+              @unless ($isHourly) The linked installment on the Financials tab will be marked paid for you. @endunless
+            </span>
           </p>
           <div class="admin-form-grid-2">
             <div class="admin-form-group">
@@ -686,10 +688,13 @@
             </div>
           </div>
 
-          @php
-            $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
-              ->reject(fn ($label, $key) => in_array($key, \App\Models\ClientProject::terminalStatuses(), true));
-          @endphp
+        </div>
+
+        @php
+          $markPaidStatusLabels = collect(\App\Models\ClientProject::statusLabels())
+            ->reject(fn ($label, $key) => in_array($key, \App\Models\ClientProject::terminalStatuses(), true));
+        @endphp
+        <div class="cp-mark-paid-pinned">
           <fieldset id="cp-mark-paid-status-fieldset" class="cp-mark-paid-project-status" disabled>
             <legend class="cp-mark-paid-project-status-legend">Project status</legend>
             <p class="admin-form-help" style="margin:0 0 8px;">
