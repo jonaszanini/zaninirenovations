@@ -129,7 +129,10 @@
                   </div>
                   <div class="admin-form-group col-2">
                     <label>Amount</label>
-                    <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required value="{{ $editExpenseAmount }}" data-cp-money-entry="direct">
+                    <div class="cp-cad-field">
+                      <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+                      <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required value="{{ $editExpenseAmount }}" data-cp-money-entry="direct">
+                    </div>
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">
@@ -188,8 +191,11 @@
                         'tipLabel' => 'Hourly rate',
                       ])
                     </span>
-                    <input type="text" name="hourly_rate" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
-                           value="{{ $editHourlyRate }}" data-cp-money-entry="direct">
+                    <div class="cp-cad-field">
+                      <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+                      <input type="text" name="hourly_rate" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off"
+                             value="{{ $editHourlyRate }}" data-cp-money-entry="direct">
+                    </div>
                   </div>
                 </div>
                 <div class="cp-time-submit cp-time-edit-actions">

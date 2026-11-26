@@ -3391,16 +3391,48 @@ a:hover .cp-expense-receipt-pdf {
   }
 }
 
-/* Helper log-time form — 14-column row (Helper 3 · Date 2 · Start 2 · End 2 · Note 2 · Hours 1 · Rate 2). */
+/* Shared CAD prefix wrapper for .cp-money-input (direct decimal entry) */
+.cp-cad-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.cp-cad-field__prefix {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--admin-muted, #64748b);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cp-cad-field > .cp-money-input.admin-input,
+.cp-cad-field > .cp-money-input {
+  padding-left: 42px;
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Helper log-time form — balanced responsive columns so Date & Hours never clip */
 .cp-helper-time-form-grid {
   display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
 
 .cp-helper-time-form-grid .admin-form-group {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .cp-helper-time-form-grid .admin-form-group label.cp-label-with-hint {
@@ -3414,7 +3446,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-helper-time-form-grid .col-1 {
-  grid-column: span 1;
+  grid-column: span 2;
 }
 
 .cp-helper-time-form-grid .col-2 {
@@ -3422,29 +3454,188 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-helper-time-form-grid .col-3 {
+  grid-column: span 4;
+}
+
+/* Date fields need ~150px minimum so dd/yyyy never clips behind icon */
+.cp-helper-time-form-grid .admin-form-group:has(input[type="date"]) {
   grid-column: span 3;
 }
 
-@media (max-width: 1100px) {
-  .cp-helper-time-form-grid .col-1 {
-    grid-column: span 2;
-  }
-
-  .cp-helper-time-form-grid .col-2 {
-    grid-column: span 3;
-  }
-
-  .cp-helper-time-form-grid .col-3 {
-    grid-column: span 4;
-  }
+.cp-helper-log-form .cp-helper-time-form-grid .col-3 {
+  grid-column: span 3;
 }
 
-@media (max-width: 560px) {
+.cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5) {
+  grid-column: span 4;
+}
+
+.cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1180px) {
+  .cp-helper-time-form-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 
   .cp-helper-time-form-grid .col-1,
   .cp-helper-time-form-grid .col-2,
-  .cp-helper-time-form-grid .col-3 {
-    grid-column: span 14;
+  .cp-helper-time-form-grid .col-3,
+  .cp-helper-time-form-grid .admin-form-group:has(input[type="date"]),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-3,
+  .cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-helper-time-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-helper-time-form-grid .col-1,
+  .cp-helper-time-form-grid .col-2,
+  .cp-helper-time-form-grid .col-3,
+  .cp-helper-time-form-grid .admin-form-group:has(input[type="date"]),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-3,
+  .cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+    grid-column: span 2;
+  }
+
+  .cp-helper-log-form .cp-helper-time-form-grid .admin-form-group:nth-child(3),
+  .cp-helper-log-form .cp-helper-time-form-grid .admin-form-group:nth-child(4) {
+    grid-column: span 1;
+  }
+}
+
+.cp-time-summary-email {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
+}
+
+.cp-time-summary-email__head {
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Split payment builder (moved from inline <style> in _helper_time.blade.php) */
+.cp-split-builder {
+  flex: 1 1 320px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.cp-split-builder__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.cp-split-builder__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-heading, #374151);
+}
+
+.cp-split-builder__remaining {
+  font-size: 13px;
+  color: var(--admin-muted, #6b7280);
+}
+
+.cp-split-builder__remaining strong {
+  color: var(--admin-heading, #374151);
+}
+
+.cp-split-builder__remaining.is-balanced strong {
+  color: var(--admin-success, #16a34a);
+}
+
+.cp-split-builder__remaining.is-over strong {
+  color: var(--admin-danger, #dc2626);
+}
+
+#cp-split-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.cp-split-row__method {
+  flex: 1 1 160px;
+  min-width: 130px;
+}
+
+.cp-split-row__amount-wrap {
+  flex: 0 0 140px;
+  width: 140px;
+}
+
+.cp-split-row__amount {
+  width: 100%;
+}
+
+.cp-split-row__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--admin-control-height, 44px);
+  min-height: var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
+  flex-shrink: 0;
+  background: var(--admin-surface, #ffffff);
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 8px;
+  color: var(--admin-muted, #64748b);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.cp-split-row__remove:not(:disabled):hover {
+  color: var(--admin-danger, #ef4444);
+  border-color: var(--admin-danger, #ef4444);
+}
+
+.cp-split-row__remove:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cp-split-add-btn {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .cp-split-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .cp-split-row__method {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .cp-split-row__amount-wrap {
+    width: 100%;
   }
 }
 
@@ -3452,13 +3643,13 @@ a:hover .cp-expense-receipt-pdf {
    Profit / time summary tiles
    ================================================================= */
 .cp-profit-card {
-  background: #fbfbfd;
-  border-top: 3px solid #024768;
+  background: var(--admin-surface, #ffffff);
+  border-top: 3px solid var(--admin-primary, #024768);
 }
 
 .cp-profit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
   gap: 12px;
   margin-top: 10px;
 }
@@ -3466,8 +3657,8 @@ a:hover .cp-expense-receipt-pdf {
 .cp-profit-tile {
   padding: 14px 16px;
   border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
-  border-radius: 8px;
-  background: var(--admin-surface, #ffffff);
+  border-radius: 12px;
+  background: var(--admin-stat-tile-bg, #ffffff);
   color: var(--admin-text);
 }
 
@@ -10082,11 +10273,11 @@ body.cp-modal-open {
 
 .cp-helper-entry__summary-detail {
   margin-top: 4px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: #374151;
-  line-height: 1.35;
+  color: var(--admin-text, #374151);
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -10113,8 +10304,9 @@ body.cp-modal-open {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--admin-muted, #6b7280);
+  background: var(--admin-stat-tile-bg, #f3f4f6);
+  border: 1px solid var(--admin-border, #e2e8f0);
   margin-left: 8px;
 }
 
@@ -10145,11 +10337,17 @@ body.cp-modal-open {
 .cp-helper-summary {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 
 .cp-helper-summary__grid {
   margin-top: 10px;
+}
+
+@media (min-width: 1120px) {
+  .cp-helper-summary__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 .cp-helper-summary__note {

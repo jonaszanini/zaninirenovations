@@ -7,7 +7,11 @@
 @endphp
 
 <div class="admin-card">
-  <h3>Log time</h3>
+  <h3 class="cp-card-head">
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-clock-o"></i></span>
+    <span>Log time</span>
+    <x-admin.info-tip label="Log time">Pick Start + End and Hours fills in automatically (same day, e.g. 09:00 → 17:30). Pick only Start to log an in-progress entry and add End later.</x-admin.info-tip>
+  </h3>
   <form action="{{ route('admin.client-projects.time.store', $project) }}" method="post" class="cp-finance-form" id="cp-time-form" data-cp-time-form>
     @csrf
     <div class="cp-time-form-grid">
@@ -24,9 +28,10 @@
         @include('admin.client_projects._cp_time_input', ['name' => 'end_time', 'role' => 'end'])
       </div>
       <div class="admin-form-group">
-        <label>Hours
-          <span class="cp-hint" title="Optional. Filled automatically when you pick start + end. Leave empty + leave end blank to start an open entry.">?</span>
-        </label>
+        <span class="admin-label-with-tip">
+          <label>Hours</label>
+          <x-admin.info-tip label="Hours">Optional. Filled automatically when you pick Start + End. Leave Hours and End blank to start an open in-progress entry.</x-admin.info-tip>
+        </span>
         <input type="text" name="hours"
                class="admin-input cp-hours-input"
                inputmode="decimal"
@@ -39,9 +44,6 @@
         <input class="admin-input" type="text" name="note" maxlength="500">
       </div>
     </div>
-    <p class="admin-form-help cp-time-help">
-      Tip: pick <strong>Start</strong> + <strong>End</strong> and Hours fills in automatically. End must be later than start on the same day (e.g. 09:00 → 17:30). Pick only <strong>Start</strong> to log an in-progress entry — you can come back later and add the End time.
-    </p>
     @error('hours') <p class="admin-form-error">{{ $message }}</p> @enderror
     @error('end_time') <p class="admin-form-error">{{ $message }}</p> @enderror
     <div class="cp-time-submit">
@@ -199,20 +201,22 @@
       $hasClientName = filled($project->client_name);
       $canSendTimeSummary = $closedForSummary> 0 && $hasClientEmail && $hasClientName;
     @endphp
-    <div class="cp-time-summary-email" style="margin-top:20px;padding-top:20px;border-top:1px solid #e5e7eb;">
-      <h4 class="cp-time-saved-heading" style="margin-top:0;">Send summary to client</h4>
-      <p class="admin-form-help" style="margin-bottom:12px;">
-        Email the client a full breakdown: each day worked (start, end, hours, notes), total hours, and amounts before and after 13% HST.
-        {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
-      </p>
+    <div class="cp-time-summary-email">
+      <h4 class="cp-time-saved-heading cp-time-summary-email__head">
+        Send summary to client
+        <x-admin.info-tip label="Send summary to client">
+          Email the client a full breakdown: each day worked (start, end, hours, notes), total hours, and amounts before and after 13% HST.
+          {{ $project->secondaryClientEmail() ? 'A copy goes to the secondary email if set.' : '' }}
+        </x-admin.info-tip>
+      </h4>
       @if (!$hasClientEmail || !$hasClientName)
-        <p class="admin-form-help" style="color:#b45309;">
+        <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
           <i class="fa fa-exclamation-triangle"></i>
           Add the client’s name and email on the
           <a href="{{ route('admin.client-projects.edit', $project) }}">edit project</a> page before sending.
         </p>
       @elseif ($closedForSummary === 0)
-        <p class="admin-form-help" style="color:#b45309;">
+        <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
           <i class="fa fa-exclamation-triangle"></i>
           Close at least one time entry (with hours) before sending — open “in progress” rows are listed separately but not included in totals.
         </p>

@@ -30,7 +30,10 @@
 
 <div class="admin-card cp-helper-card" id="cp-helper-time">
   <div class="cp-helper-card__head">
-    <h3>Helper time tracking</h3>
+    <h3 class="cp-card-head">
+      <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-users"></i></span>
+      <span>Helper time tracking</span>
+    </h3>
     <a href="{{ route('admin.helpers.index', ['return_project' => $project->id]) }}"
        class="admin-btn admin-btn--ghost admin-btn--sm cp-helper-config-btn"
        title="Manage helpers">
@@ -163,8 +166,11 @@
           </div>
           <div class="admin-form-group col-2">
             <label>Amount</label>
-            <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required
-                   value="{{ old('expense_amount') }}" placeholder="0.00" data-cp-money-entry="direct">
+            <div class="cp-cad-field">
+              <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+              <input type="text" name="expense_amount" class="admin-input cp-money-input" inputmode="decimal" autocomplete="off" required
+                     value="{{ old('expense_amount') }}" placeholder="0.00" data-cp-money-entry="direct">
+            </div>
             @error('expense_amount') <p class="admin-form-error">{{ $message }}</p> @enderror
           </div>
         </div>
@@ -207,13 +213,14 @@
       @endif
     </div>
 
-    <h4 class="cp-time-saved-heading" style="margin-top:24px;">Helper entries</h4>
-    <p class="admin-form-help cp-time-saved-help">
-      Select unpaid entries below, then mark as paid. Paid entries are locked and recorded as project expenses.
-      @if ($pendingAckPayments->isNotEmpty())
-        Use the checkboxes on days awaiting helper confirmation to mark acknowledged in bulk.
-      @endif
-    </p>
+    <h4 class="cp-time-saved-heading" style="margin-top:24px;">Helper entries
+      <x-admin.info-tip label="Helper entries">
+        Select unpaid entries below, then mark as paid. Paid entries are locked and recorded as project expenses.
+        @if ($pendingAckPayments->isNotEmpty())
+          Use the checkboxes on days awaiting helper confirmation to mark acknowledged in bulk.
+        @endif
+      </x-admin.info-tip>
+    </h4>
 
     @if ($pendingAckPayments->isNotEmpty())
       <form action="{{ route('admin.client-projects.helper-payments.acknowledge-bulk', $project) }}"
@@ -264,9 +271,12 @@
                     <option value="{{ $value }}">{{ $label }}</option>
                   @endforeach
                 </select>
-                <input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off"
-                       name="splits[0][amount]" placeholder="0.00" required data-cp-money-entry="direct">
-                <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled>
+                <div class="cp-cad-field cp-split-row__amount-wrap">
+                  <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+                  <input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off"
+                         name="splits[0][amount]" placeholder="0.00" required data-cp-money-entry="direct">
+                </div>
+                <button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" disabled aria-label="Remove payment method">
                   <i class="fa fa-times"></i>
                 </button>
               </div>
@@ -278,7 +288,7 @@
             </button>
           </div>
 
-          <div class="admin-form-group" style="margin-top:12px;">
+          <div class="admin-form-group">
             <label>Paid on</label>
             <input class="admin-input" type="date" name="paid_on" value="{{ now()->toDateString() }}">
           </div>
@@ -289,28 +299,6 @@
         @error('entry_ids') <p class="admin-form-error">{{ $message }}</p> @enderror
         @error('splits') <p class="admin-form-error">{{ $message }}</p> @enderror
       </form>
-
-      <style>
-        .cp-split-builder { margin-bottom: 4px; }
-        .cp-split-builder__head { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
-        .cp-split-builder__label { font-size: 13px; font-weight: 600; color: #374151; }
-        .cp-split-builder__remaining { font-size: 13px; color: #6b7280; }
-        .cp-split-builder__remaining strong { color: #374151; }
-        .cp-split-builder__remaining.is-balanced strong { color: #16a34a; }
-        .cp-split-builder__remaining.is-over strong { color: #dc2626; }
-        #cp-split-rows { display: flex; flex-direction: column; gap: 8px; }
-        .cp-split-row { display: flex; align-items: center; gap: 8px; }
-        .cp-split-row__method { flex: 1; min-width: 120px; }
-        .cp-split-row__amount { width: 120px; }
-        .cp-split-row__remove {
-          background: none; border: 1px solid #e5e7eb; border-radius: 6px;
-          color: #9ca3af; padding: 5px 8px; cursor: pointer; line-height: 1;
-          transition: color .15s, border-color .15s;
-        }
-        .cp-split-row__remove:not(:disabled):hover { color: #ef4444; border-color: #ef4444; }
-        .cp-split-row__remove:disabled { opacity: .35; cursor: default; }
-        .cp-split-add-btn { margin-top: 4px; font-size: 12px; }
-      </style>
 
       <script>
         (function () {
@@ -393,8 +381,9 @@
             div.setAttribute('data-split-row', '');
             div.innerHTML =
               '<select class="admin-input cp-split-row__method" name="splits[' + splitIdx + '][method]" required>' + opts + '</select>' +
-              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required data-cp-money-entry="direct">' +
-              '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)"><i class="fa fa-times"></i></button>';
+              '<div class="cp-cad-field cp-split-row__amount-wrap"><span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>' +
+              '<input class="admin-input cp-money-input cp-split-row__amount" type="text" inputmode="decimal" autocomplete="off" name="splits[' + splitIdx + '][amount]" placeholder="0.00" required data-cp-money-entry="direct"></div>' +
+              '<button type="button" class="cp-split-row__remove" title="Remove" onclick="cpRemoveSplitRow(this)" aria-label="Remove payment method"><i class="fa fa-times"></i></button>';
 
             document.getElementById('cp-split-rows').appendChild(div);
             splitIdx++;
