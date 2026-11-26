@@ -1222,28 +1222,30 @@
           || $errors->has('visit_date')
           || $errors->has('visit_time');
       @endphp
-      <div class="admin-card cp-visit-card cp-visit-section">
-        @include('admin.client_projects._visit_required_toggle', [
-          'visitRequiredId' => 'cp-visit-required',
-          'visitRequiredChecked' => old('visit_required', $project->visit_required),
-          'expandableId' => 'cp-schedule-visit-expandable',
-          'visitDateId' => 'cp-visit-date',
-          'visitDateValue' => $cpShowVisitDateVal,
-          'visitTimeId' => 'cp-visit-time',
-          'visitTimeValue' => $cpShowVisitTimeVal,
-          'expandOpen' => $cpShowVisitExpandOpen,
-          'showVisitDone' => true,
-          'visitDoneId' => 'cp-visit-done',
-          'visitDoneChecked' => old('visit_done', $project->visit_done),
-        ])
-      </div>
+      <div class="cp-schedule-grid">
+        <div class="admin-card cp-visit-card cp-visit-section">
+          @include('admin.client_projects._visit_required_toggle', [
+            'visitRequiredId' => 'cp-visit-required',
+            'visitRequiredChecked' => old('visit_required', $project->visit_required),
+            'expandableId' => 'cp-schedule-visit-expandable',
+            'visitDateId' => 'cp-visit-date',
+            'visitDateValue' => $cpShowVisitDateVal,
+            'visitTimeId' => 'cp-visit-time',
+            'visitTimeValue' => $cpShowVisitTimeVal,
+            'expandOpen' => $cpShowVisitExpandOpen,
+            'showVisitDone' => true,
+            'visitDoneId' => 'cp-visit-done',
+            'visitDoneChecked' => old('visit_done', $project->visit_done),
+          ])
+        </div>
 
-      <div class="admin-card">
-        <h3 class="cp-form-help-flush sp-heading cp-schedule-card-heading">
-          <span class="admin-heading-copy">Start &amp; End dates
-            <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
-          </span>
-        </h3>
+        <div class="admin-card cp-schedule-dates-card">
+          <h3 class="cp-card-head cp-schedule-card-heading">
+            <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-calendar"></i></span>
+            <span class="admin-heading-copy">Start &amp; End dates
+              <x-admin.info-tip label="Start and End dates">Saving both dates schedules the project on the Project Calendar and emails you a Google Calendar link. Picking dates on the calendar saves them immediately.</x-admin.info-tip>
+            </span>
+          </h3>
         <div id="cp-schedule-date-warning" class="admin-flash admin-flash--warning admin-flash--js-hidden" role="alert"></div>
 
         @include('admin.partials.schedule_date_picker', [
@@ -1305,7 +1307,7 @@
 
           @if ($lastSentDates)
             <p class="admin-form-help cp-send-dates-note">
-              <i class="fa fa-check-circle" style="color:#10b981;"></i>
+              <i class="fa fa-check-circle cp-icon--success" aria-hidden="true"></i>
               Dates last emailed on
               <strong>{{ \App\Models\ClientProject::formatDateTime($lastSentDates->sent_at) }}</strong>
               to {{ $lastSentRecipients ?: $project->clientEmailRecipientsLabel() }}.
@@ -1327,6 +1329,7 @@
               {{ $lastSentDates ? 'Re-send dates to client' : 'Send dates to client' }}
             </button>
           @endunless
+        </div>
         </div>
       </div>
     </form>
@@ -1369,12 +1372,12 @@
         @endphp
 
         @if (!$datesSet)
-          <p class="admin-form-help" style="color:#b45309;">
+          <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
             <i class="fa fa-exclamation-triangle"></i>
             Save both the start and end dates before you can send the confirmation.
           </p>
         @elseif (!$hasContact)
-          <p class="admin-form-help" style="color:#b45309;">
+          <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
             <i class="fa fa-exclamation-triangle"></i>
             Missing client contact info: {{ implode(', ', $project->missingClientContactFields()) }}.
             <a href="{{ route('admin.client-projects.edit', $project) }}">Edit project details</a> to fix.
@@ -1383,7 +1386,7 @@
 
         @if ($alreadySent)
           <p class="admin-form-help">
-            <i class="fa fa-check-circle" style="color:#10b981;"></i>
+            <i class="fa fa-check-circle cp-icon--success" aria-hidden="true"></i>
             Last sent on
             <strong>{{ \App\Models\ClientProject::formatDateTime($project->service_confirmation_sent_at) }}</strong>.
           </p>

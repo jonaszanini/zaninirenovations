@@ -2701,6 +2701,42 @@ html.cp-cancel-modal-open {
 /* =================================================================
    Schedule tab
    ================================================================= */
+.cp-schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .cp-schedule-grid {
+    grid-template-columns: minmax(290px, 0.85fr) minmax(0, 1.35fr);
+    gap: 16px;
+  }
+}
+
+.cp-schedule-grid > .admin-card {
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.16);
+}
+
+.cp-schedule-grid > .admin-card + .admin-card::before {
+  content: none;
+  display: none;
+}
+
+.cp-visit-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.cp-icon--success {
+  color: #10b981;
+}
+
 .cp-schedule-summary {
   margin-top: 14px;
   padding: 12px 14px;
@@ -9135,26 +9171,21 @@ body.cp-modal-open {
 
 /* Visit date + time row — compact fields, same row on desktop, stacks on mobile */
 .cp-visit-datetime-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
   gap: 12px;
-  align-items: flex-start;
+  align-items: start;
+  margin-top: 12px;
 }
 
-.cp-visit-datetime-row .cp-visit-date {
-  flex: 0 0 auto;
-  width: 175px;
-}
-
-.cp-visit-datetime-row .cp-visit-date input[type="date"] {
-  width: 100%;
-}
-
+.cp-visit-datetime-row .cp-visit-date,
 .cp-visit-datetime-row .cp-visit-time {
-  flex: 0 0 auto;
-  width: 130px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
+.cp-visit-datetime-row .cp-visit-date input[type="date"],
 .cp-visit-time input[type="time"] {
   width: 100%;
 }
@@ -9168,12 +9199,7 @@ body.cp-modal-open {
 
 @media (max-width: 480px) {
   .cp-visit-datetime-row {
-    flex-direction: column;
-  }
-
-  .cp-visit-datetime-row .cp-visit-date,
-  .cp-visit-datetime-row .cp-visit-time {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 
