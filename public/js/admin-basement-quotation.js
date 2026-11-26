@@ -1439,6 +1439,12 @@
       }
     }
     if (preset === 'flood') {
+      form.querySelectorAll('[data-br-enabled-section="finishing"]').forEach(function (cb) {
+        cb.checked = true;
+      });
+      setNamedCheck('include_cleaning', true);
+      setNamedCheck('include_touchups', true);
+      applyScope();
       syncFloodDrywallPrefill(true);
     }
     lastAppliedPreset = preset;
@@ -1564,33 +1570,63 @@
     }
   }
 
+  function stickyHeaderOffset() {
+    var offset = 12;
+    try {
+      if (!window.getComputedStyle || !document.querySelector) return offset;
+      var header = document.querySelector('.admin-topbar');
+      if (!header || typeof header.getBoundingClientRect !== 'function') return offset;
+      var pos = window.getComputedStyle(header).position;
+      if (pos === 'sticky' || pos === 'fixed') {
+        offset = Math.ceil(header.getBoundingClientRect().height) + 12;
+      }
+    } catch (err) {}
+    return offset;
+  }
+
+  function scrollSectionIntoView(el) {
+    if (!el) return;
+    var offset = stickyHeaderOffset();
+    if (el.style && typeof el.style.setProperty === 'function') {
+      el.style.setProperty('scroll-margin-top', offset + 'px');
+    }
+    if (typeof el.scrollIntoView === 'function') {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function syncAccExpanded(el) {
+    if (!el || typeof el.querySelector !== 'function') return;
+    var summary = el.querySelector('.br-acc__summary');
+    if (!summary || typeof summary.setAttribute !== 'function') return;
+    var open = typeof el.hasAttribute === 'function' && el.hasAttribute('open');
+    summary.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
   function jumpToSection(key) {
     if (!key) return;
     var idx = wizardKeys.indexOf(key);
     if (idx >= 0) {
-      setWizardStep(idx, true);
+      setWizardStep(idx, true, true);
       return;
     }
     if (currentPreset() === 'bathroom' && (key === 'electrical' || key === 'plumbing' || key === 'framing')) {
       var bathIdx = wizardKeys.indexOf('bathroom');
       if (bathIdx >= 0) {
-        setWizardStep(bathIdx, false);
+        setWizardStep(bathIdx, false, true);
         var nestedEl = document.getElementById('br-' + key + '-fields');
-        if (nestedEl && nestedEl.scrollIntoView) {
-          nestedEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        } else {
-          var bathEl = sectionEl('bathroom');
-          if (bathEl && bathEl.scrollIntoView) {
-            bathEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-          }
-        }
+        scrollSectionIntoView(nestedEl || sectionEl('bathroom'));
       }
     }
   }
 
-  function setWizardStep(index, scroll) {
+  function setWizardStep(index, scroll, exclusive) {
     if (index < 0) index = 0;
     if (index >= wizardKeys.length) index = wizardKeys.length - 1;
+    if (exclusive && isAllSections) {
+      isAllSections = false;
+      syncViewModeUi();
+    }
     currentIndex = index;
     var key = wizardKeys[currentIndex];
     wizardKeys.forEach(function (k) {
@@ -1598,12 +1634,16 @@
       if (!el) return;
       var active = k === key;
       el.classList.toggle('is-active', active);
-      if (isAllSections) {
-        el.setAttribute('open', '');
-      } else if (!isEdit) {
-        if (active) el.setAttribute('open', '');
-        else el.removeAttribute('open');
+      if (exclusive || isAllSections || !isEdit) {
+        if (isAllSections && !exclusive) {
+          el.setAttribute('open', '');
+        } else if (active) {
+          el.setAttribute('open', '');
+        } else {
+          el.removeAttribute('open');
+        }
       }
+      syncAccExpanded(el);
     });
     form.querySelectorAll('.br-progress__item').forEach(function (btn) {
       btn.classList.toggle('is-current', btn.getAttribute('data-br-goto') === key);
@@ -1629,10 +1669,7 @@
       next.disabled = false;
     }
     if (scroll) {
-      var el = sectionEl(key);
-      if (el && el.scrollIntoView) {
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
+      scrollSectionIntoView(sectionEl(key));
     }
     schedulePreview();
   }
@@ -1946,21 +1983,40 @@
     }
     if (empty) empty.hidden = true;
     if (body) body.hidden = false;
+    function liveRow(opts) {
+      var cls = 'br-live-row';
+      if (opts.trade) cls += ' br-live-row--trade br-live-trade-row';
+      if (opts.emph) cls += ' br-live-row--emph';
+      if (opts.grand) cls += ' br-live-row--grand';
+      if (opts.zero) cls += ' br-live-row--zero';
+      var attrs = '';
+      if (opts.reconKey) attrs += ' data-br-recon-key="' + escapeHtml(opts.reconKey) + '"';
+      if (opts.goto) attrs += ' data-br-goto-row="' + escapeHtml(opts.goto) + '"';
+      var tag = opts.trade ? 'button' : 'div';
+      var typeAttr = opts.trade ? ' type="button"' : '';
+      return '<' + tag + typeAttr + ' class="' + cls + '"' + attrs + '>'
+        + '<span class="br-live-row__label">' + escapeHtml(opts.label) + '</span>'
+        + '<span class="br-live-row__value">' + opts.valueHtml + '</span>'
+        + '</' + tag + '>';
+    }
+    function liveGroup(title, rowsHtml, extraAttrs) {
+      if (!rowsHtml) return '';
+      return '<div class="br-live-group"' + (extraAttrs || '') + '>'
+        + '<p class="br-live-group__title">' + escapeHtml(title) + '</p>'
+        + rowsHtml
+        + '</div>';
+    }
     var html = '';
+    var wasteHtml = '';
     var wastePct = Number(summary.material_waste_percent);
     if (isFinite(wastePct) && wastePct > 0) {
-      html += '<div class="pq-row"><span class="admin-form-help">Material waste in qtys</span><span class="admin-form-help">' + wastePct + '%</span></div>';
+      wasteHtml += liveRow({ label: 'Material waste', valueHtml: escapeHtml(String(wastePct) + '%') });
     }
     var floorWastePct = Number(summary.flooring_waste_percent);
     if (isFinite(floorWastePct) && floorWastePct >= 0 && document.getElementById('br-fl-waste')) {
-      html += '<div class="pq-row"><span class="admin-form-help">Flooring waste</span><span class="admin-form-help">' + floorWastePct + '%</span></div>';
+      wasteHtml += liveRow({ label: 'Flooring waste', valueHtml: escapeHtml(String(floorWastePct) + '%') });
     }
-    if (lastCommuteAmount > 0) {
-      html += '<div class="pq-row"><span>Commute (incl. HST)</span><span>' + fmt(lastCommuteAmount) + '</span></div>';
-    }
-    if (lastDebrisAmount > 0) {
-      html += '<div class="pq-row"><span>Debris removal (incl. HST)</span><span>' + fmt(lastDebrisAmount) + '</span></div>';
-    }
+    html += liveGroup('Waste settings', wasteHtml, ' data-br-live-group="waste"');
     var sectionSubtotals = summary.section_subtotals_pre_hst || {};
     var enabledSections = enabledTradeKeys();
     var tradeRowsHtml = '';
@@ -1968,38 +2024,59 @@
       if (k === 'overview') return;
       if (enabledSections.indexOf(k) === -1) return;
       var subAmt = Number(sectionSubtotals[k] || 0);
-      if (subAmt <= 0) return;
-      tradeRowsHtml += '<button type="button" class="pq-row br-live-trade-row" data-br-goto-row="' + escapeHtml(k) + '">'
-        + '<span>' + escapeHtml(sectionDisplayLabel(k)) + '</span>'
-        + '<span>' + fmt(subAmt) + '</span>'
-        + '</button>';
+      tradeRowsHtml += liveRow({
+        trade: true,
+        zero: !(subAmt > 0),
+        goto: k,
+        label: sectionDisplayLabel(k),
+        valueHtml: fmt(subAmt)
+      });
     });
-    if (tradeRowsHtml) {
-      html += '<div class="br-live-trades" data-br-live-trades="1">'
-        + '<p class="br-live-trades__title">Trade breakdown</p>'
-        + tradeRowsHtml
-        + '</div>';
-    }
+    html += liveGroup('Trade breakdown', tradeRowsHtml, ' data-br-live-group="trades" data-br-live-trades="1"');
     var recon = summary.reconciliation || {};
     var reconLines = recon.lines || [];
     if (reconLines.length) {
-      html += '<div class="br-reconciliation" data-br-reconciliation="1">';
+      var feeHtml = '';
+      var taxHtml = '';
+      var grandHtml = '';
+      var feeKeys = { sections_subtotal_sum: 1, extra_materials: 1, contractor_fee: 1 };
+      var taxKeys = { electrical_tax_in: 1, plumbing_tax_in: 1, hst: 1 };
       reconLines.forEach(function (line) {
-        if (line.key === 'grand_total' && lastAdditionalTaxIn > 0) {
-          html += '<div class="pq-row" data-br-recon-key="additional_costs_tax_in">'
-            + '<span>Additional costs (incl. HST)</span><span>' + fmt(lastAdditionalTaxIn) + '</span></div>';
-        }
-        var rowClass = 'pq-row';
-        if (line.row_class === 'sub') rowClass += ' pq-row--sub';
-        if (line.row_class === 'hl') rowClass += ' pq-row--hl';
         var lineAmount = Number(line.amount || 0);
-        if (line.key === 'grand_total') {
-          lineAmount = grand;
+        if (line.key === 'grand_total') lineAmount = grand;
+        var row = liveRow({
+          reconKey: line.key || '',
+          emph: line.key === 'subtotal_pre_hst',
+          grand: line.key === 'grand_total',
+          zero: line.key !== 'grand_total' && line.key !== 'subtotal_pre_hst' && !(lineAmount > 0),
+          label: line.label || '',
+          valueHtml: fmt(lineAmount)
+        });
+        if (line.key === 'grand_total') grandHtml = row;
+        else if (taxKeys[line.key]) taxHtml += row;
+        else if (feeKeys[line.key] || line.key === 'subtotal_pre_hst') feeHtml += row;
+        else feeHtml += row;
+        if (line.key === 'contractor_fee') {
+          if (lastCommuteAmount > 0) {
+            feeHtml += liveRow({ label: 'Commute (incl. HST)', valueHtml: fmt(lastCommuteAmount) });
+          }
+          if (lastDebrisAmount > 0) {
+            feeHtml += liveRow({ label: 'Debris removal (incl. HST)', valueHtml: fmt(lastDebrisAmount) });
+          }
         }
-        html += '<div class="' + rowClass + '" data-br-recon-key="' + escapeHtml(line.key || '') + '">'
-          + '<span>' + escapeHtml(line.label || '') + '</span><span>' + fmt(lineAmount) + '</span></div>';
       });
-      html += '</div>';
+      if (lastAdditionalTaxIn > 0) {
+        taxHtml += liveRow({
+          reconKey: 'additional_costs_tax_in',
+          label: 'Additional costs (incl. HST)',
+          valueHtml: fmt(lastAdditionalTaxIn)
+        });
+      }
+      html += '<div class="br-reconciliation" data-br-reconciliation="1">'
+        + liveGroup('Subtotals and fees', feeHtml, ' data-br-live-group="fees"')
+        + liveGroup('Taxes', taxHtml, ' data-br-live-group="taxes"')
+        + (grandHtml ? '<div class="br-live-footer" data-br-live-group="grand">' + grandHtml + '</div>' : '')
+        + '</div>';
     }
     body.innerHTML = html;
     updateDrywallNetHint(data.scope || {});
@@ -2576,6 +2653,48 @@
     el.addEventListener('change', schedulePreview);
   }
 
+  function syncRateOverride(input) {
+    if (!input) return;
+    var wrap = input.closest ? input.closest('[data-br-rate]') : null;
+    if (!wrap) return;
+    var posted = String(input.value || '').replace(/[$,\s]/g, '');
+    var sharedRaw = input.getAttribute('data-br-rate-shared');
+    var sharedNum = sharedRaw === null || sharedRaw === '' ? null : Number(sharedRaw);
+    var postedNum = posted === '' ? null : Number(posted);
+    var custom = postedNum !== null && sharedNum !== null && isFinite(postedNum) && isFinite(sharedNum)
+      && Math.abs(postedNum - sharedNum) >= 0.001;
+    if (wrap.classList) wrap.classList.toggle('is-custom', custom);
+    var hint = wrap.querySelector('[data-br-rate-custom]');
+    var reset = wrap.querySelector('[data-br-rate-reset]');
+    if (hint) hint.hidden = !custom;
+    if (reset) reset.hidden = !custom;
+  }
+
+  function bindRateOverrides() {
+    form.querySelectorAll('[data-br-rate-input]').forEach(function (input) {
+      if (input.dataset && input.dataset.brRateBound === '1') return;
+      if (input.dataset) input.dataset.brRateBound = '1';
+      var sync = function () { syncRateOverride(input); };
+      input.addEventListener('input', sync);
+      input.addEventListener('change', sync);
+      input.addEventListener('blur', sync);
+      var wrap = input.closest ? input.closest('[data-br-rate]') : null;
+      var reset = wrap ? wrap.querySelector('[data-br-rate-reset]') : null;
+      if (reset && reset.dataset && reset.dataset.brRateResetBound !== '1') {
+        reset.dataset.brRateResetBound = '1';
+        reset.addEventListener('click', function () {
+          input.value = input.getAttribute('data-br-rate-shared') || '';
+          try {
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          } catch (err) {}
+          syncRateOverride(input);
+        });
+      }
+      sync();
+    });
+  }
+
   function initExclusiveChecks() {
     var groups = {};
     form.querySelectorAll('[data-br-exclusive-group]').forEach(function (el) {
@@ -2637,6 +2756,14 @@
   }
 
   form.querySelectorAll('.br-preview').forEach(bindPreview);
+  bindRateOverrides();
+  setTimeout(bindRateOverrides, 0);
+  form.querySelectorAll('details[data-br-step]').forEach(function (el) {
+    syncAccExpanded(el);
+    el.addEventListener('toggle', function () {
+      syncAccExpanded(el);
+    });
+  });
   form.querySelectorAll('[data-br-scope-field]').forEach(function (el) {
     var markDirty = function () { el.setAttribute('data-br-scope-dirty', '1'); };
     el.addEventListener('input', markDirty);

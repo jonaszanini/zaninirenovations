@@ -35,6 +35,11 @@
   $qtyStep = ($qtyStep !== null && $qtyStep !== '') ? (string) $qtyStep : '0.01';
   $min = $min ?? '0';
   $required = ! empty($required);
+  $quoteRate = ! empty($quoteRate) || ! empty($brQuoteRates);
+  $rateKeys = array_values(array_filter(array_merge(
+      [($workKey ?? null)],
+      $extraRateKeys ?? []
+  )));
 @endphp
 <div class="sq-qty">
   <span class="admin-label-with-tip">
@@ -54,7 +59,11 @@
         <i class="fa fa-cog" aria-hidden="true"></i>
       </a>
     </div>
-    @if (filled($rate ?? null))
+    @if ($quoteRate && $rateKeys !== [])
+      @include('admin.quotations.basement._rate_override', [
+        'rateKeys' => $rateKeys,
+      ])
+    @elseif (filled($rate ?? null))
       <span class="sq-qty__rate">{{ $rate }}</span>
     @endif
   </div>

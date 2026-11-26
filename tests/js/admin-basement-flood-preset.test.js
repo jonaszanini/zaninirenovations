@@ -684,4 +684,21 @@ assert.strictEqual(cutHeightInput.value, '24');
 assert.strictEqual(ceilingTypeSelect.value, 'none');
 assert.strictEqual(includePermitCb.checked, false);
 
+// Flood Restoration checks Final cleaning and Touch-ups / punch list when chosen.
+// Wall leaves them off. Full keeps them on. The finishing trade stays enabled.
+includeCleaningCb.checked = false;
+includeTouchupsCb.checked = false;
+const finishingTradeCb = tradeCheckboxes.find((cb) => cb.value === 'finishing');
+finishingTradeCb.checked = false;
+selectPreset('wall');
+assert.strictEqual(includeCleaningCb.checked, false, 'wall leaves Final cleaning off');
+assert.strictEqual(includeTouchupsCb.checked, false, 'wall leaves Touch-ups / punch list off');
+selectPreset('flood');
+assert.strictEqual(includeCleaningCb.checked, true, 'switching to flood checks Final cleaning');
+assert.strictEqual(includeTouchupsCb.checked, true, 'switching to flood checks Touch-ups / punch list');
+assert.strictEqual(finishingTradeCb.checked, true, 'switching to flood enables Final Details & Cleanup');
+selectPreset('full');
+assert.strictEqual(includeCleaningCb.checked, true, 'full preset keeps Final cleaning on');
+assert.strictEqual(includeTouchupsCb.checked, true, 'full preset keeps Touch-ups / punch list on');
+
 console.log('admin-basement-flood-preset: ok');

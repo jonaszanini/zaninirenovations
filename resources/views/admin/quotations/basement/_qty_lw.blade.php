@@ -102,7 +102,11 @@
   </div>
 
   <p class="admin-form-help br-lw__computed" data-br-lw-computed @if($mode !== 'dimensions') hidden @endif>{{ $computed }}</p>
-  @if (filled($rate ?? null))
+  @if (! empty($workKey))
+    @include('admin.quotations.basement._rate_override', [
+      'rateKeys' => $rateKeys ?? [$workKey],
+    ])
+  @elseif (filled($rate ?? null))
     <p class="sq-qty__rate">{{ $rate }}</p>
   @endif
   @if (isset($errors) && $errors->has($name))

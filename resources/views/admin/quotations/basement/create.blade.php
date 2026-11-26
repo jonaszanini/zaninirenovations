@@ -60,6 +60,12 @@
           if (old('ceiling_type') === null) {
               $inputs['ceiling_type'] = 'none';
           }
+          if (old('include_cleaning') === null) {
+              $inputs['include_cleaning'] = true;
+          }
+          if (old('include_touchups') === null) {
+              $inputs['include_touchups'] = true;
+          }
       }
   }
   $enabledNow = BasementQuotationCalculator::enabledSections([
@@ -440,7 +446,9 @@
     <aside class="br-aside">
       <div class="pq-summary-card">
         <div class="qh-priced-head">
-          <h4>Live breakdown</h4>
+          <h4>Live breakdown
+            <x-admin.info-tip label="Live breakdown">Grouped totals for this quotation. Amounts update as you edit.</x-admin.info-tip>
+          </h4>
         </div>
         <div id="br-live-root">
           <p class="admin-form-help" id="br-live-empty">Enter the basement area to see totals.</p>

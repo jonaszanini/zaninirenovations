@@ -15,6 +15,7 @@ use App\Models\ClientProject;
 use App\Models\ClientProjectQuotation;
 use App\Services\AdditionalCostsService;
 use App\Services\BasementQuotationCalculator;
+use App\Services\BasementQuoteRateOverrides;
 use App\Services\ClientProjectStatusService;
 use App\Services\CommuteExpenseService;
 use App\Services\DebrisRemovalExpenseService;
@@ -666,6 +667,19 @@ class BasementQuotationController extends Controller
 
         $out['labor_override'] = $this->nestedNumericMap($request->input('labor_override'), ['hours']);
         $out['materials_override'] = $this->nestedNumericMap($request->input('materials_override'), ['qty', 'unit_price']);
+        $existingRates = (is_array($storedInputs) && is_array($storedInputs['rate_overrides'] ?? null))
+            ? $storedInputs['rate_overrides']
+            : [];
+        $postedRates = $request->input('rate_overrides');
+        if (is_array($postedRates)) {
+            $settingsOwner = (float) BasementSettings::current()->owner_hourly_rate;
+            $normalizedRates = BasementQuoteRateOverrides::normalizePosted($postedRates, $existingRates, $settingsOwner);
+            if ($normalizedRates !== []) {
+                $out['rate_overrides'] = $normalizedRates;
+            }
+        } elseif ($existingRates !== []) {
+            $out['rate_overrides'] = $existingRates;
+        }
         $out['extra_materials'] = $this->extraMaterialsFromRequest($request);
         $storedElec = is_array($storedInputs['electrical_lines'] ?? null) ? $storedInputs['electrical_lines'] : [];
         $storedPlumb = is_array($storedInputs['plumbing_lines'] ?? null) ? $storedInputs['plumbing_lines'] : [];

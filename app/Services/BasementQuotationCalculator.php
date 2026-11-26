@@ -1164,6 +1164,14 @@ class BasementQuotationCalculator
         $originalInputs = $inputs;
         $feePercent = self::resolvedContractorFeePercent($originalInputs);
         $inputs = array_merge(self::defaultInputs(), $inputs);
+        $rateOverrides = is_array($inputs['rate_overrides'] ?? null) ? $inputs['rate_overrides'] : [];
+        if ($rateOverrides !== []) {
+            $prod = BasementQuoteRateOverrides::applyToProductivity(
+                $prod,
+                $rateOverrides,
+                (float) $settings->owner_hourly_rate
+            );
+        }
         $inputs['scope_preset'] = self::normalizePreset($inputs['scope_preset'] ?? null);
         $inputs['stud_spacing_in'] = self::normalizeStudSpacing($inputs['stud_spacing_in'] ?? BasementSettings::STUD_SPACING_DEFAULT);
         $inputs['drywall_sheet_size'] = self::normalizeSheetSize($inputs['drywall_sheet_size'] ?? '4x8');
@@ -1767,7 +1775,15 @@ class BasementQuotationCalculator
             }
             if (! empty($inputs['include_shoe'])) {
                 $shoeLf = $this->qtyOr($inputs['shoe_lf'] ?? null, $baseLf);
-                $addLabor('trim_shoe', 'doors_trim', 'Shoe moulding', number_format($shoeLf, 0).' lf', $perHr($shoeLf, (float) ($prod['shoe_lf_per_hr'] ?? 30)));
+                $shoeHours = $perHr($shoeLf, (float) ($prod['shoe_lf_per_hr'] ?? 30));
+                $shoeCaulk = is_array($inputs['rate_overrides'] ?? null)
+                    ? ($inputs['rate_overrides']['shoe_caulk_paint'] ?? null)
+                    : null;
+                $rateOwner = (float) $settings->owner_hourly_rate;
+                if (is_numeric($shoeCaulk) && (float) $shoeCaulk > 0 && $rateOwner > 0 && $shoeLf > 0) {
+                    $shoeHours += ($shoeLf * (float) $shoeCaulk) / $rateOwner;
+                }
+                $addLabor('trim_shoe', 'doors_trim', 'Shoe moulding', number_format($shoeLf, 0).' lf', $shoeHours);
                 if ($legacyTrimSticks) {
                     $stick = self::trimStickLengthFt($matCatalog, 'shoe');
                     $wasteLf = $this->withMaterialWaste($shoeLf, $inputs);
