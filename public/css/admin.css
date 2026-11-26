@@ -2815,6 +2815,19 @@ details[open] > summary.admin-chevron-summary::after {
   word-break: break-word;
 }
 
+#admin-dialog .admin-dialog-extra {
+  margin: 0 0 16px;
+  text-align: left;
+}
+
+#admin-dialog .admin-dialog-panel:has(.admin-dialog-extra) .admin-dialog-message {
+  margin-bottom: 12px;
+}
+
+#admin-dialog .admin-dialog-extra .admin-info-tip__bubble {
+  text-indent: 0;
+}
+
 #admin-dialog .admin-dialog-actions {
   display: flex;
   flex-wrap: wrap;

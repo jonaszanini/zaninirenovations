@@ -15,6 +15,13 @@
     on your <strong>{{ $project->name }}</strong> project.
   </p>
 
+  @if (($receiptsAttached ?? 0) > 0)
+  <p>{{ (int) $receiptsAttached }} receipt {{ (int) $receiptsAttached === 1 ? 'file is' : 'files are' }} attached. The file {{ (int) $receiptsAttached === 1 ? 'name matches' : 'names match' }} the Expenses numbers.</p>
+  @endif
+  @if (! empty($receiptsOmittedForSize))
+  <p>The rest are available on request.</p>
+  @endif
+
   <table role="presentation" style="margin: 16px 0; border-collapse: collapse;">
     <tr>
       <td style="padding: 6px 12px; background: #f4fafe; border: 1px solid #024768; font-size: 15px;">

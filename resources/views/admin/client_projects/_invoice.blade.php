@@ -972,4 +972,18 @@
     });
   })();
 </script>
+@php
+  $invoiceExpenseReceiptCount = $project->expenses->filter(fn ($expense) => filled($expense->receipt_path))->count();
+@endphp
+@if ($invoiceExpenseReceiptCount > 0)
+  <template id="cp-send-invoice-receipt-option">
+    @include('admin.partials.checkbox', [
+      'id' => 'cp-send-invoice-attach-receipts',
+      'name' => '',
+      'checked' => true,
+      'label' => 'Attach expense receipts ('.$invoiceExpenseReceiptCount.')',
+      'info' => 'Receipt files saved on this project\'s expenses. File names match the Expenses numbers. If the email would be too large, only what fits is attached and the rest are available on request.',
+    ])
+  </template>
+@endif
 
