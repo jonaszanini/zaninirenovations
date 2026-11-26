@@ -3192,6 +3192,25 @@ html.admin-dark .cp-notes-popover {
 html.admin-dark .cp-edit-project-form-card {
   background: var(--admin-surface);
 }
+html.admin-dark .cp-edit-collapsible,
+html.admin-dark .cp-edit-subcard {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+html.admin-dark .cp-edit-collapsible__summary {
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-edit-collapsible__body {
+  border-top-color: var(--admin-border);
+}
+html.admin-dark .cp-edit-collapsible__badge {
+  background: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+}
+html.admin-dark .cp-card-head__icon--danger {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
 html.admin-dark .cp-danger-card {
   background: rgba(220, 38, 38, 0.08);
   border-color: rgba(220, 38, 38, 0.3);
