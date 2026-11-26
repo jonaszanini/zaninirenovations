@@ -618,7 +618,7 @@
      non-locked state (hourly and fixed-price both use it). The pre-accept
      lock branch returns before this point, so we gate on that one case.
      ===================================================================== --}}
-@if (($isHourly || $isAccepted) && ! $isClosed)
+@if (($isHourly || $isAccepted || $showExistingInvoices) && ! $isClosed)
   <div class="cp-modal-backdrop" id="cp-mark-paid-modal" hidden>
     <div class="cp-modal" role="dialog" aria-labelledby="cp-mark-paid-title">
       <div class="cp-modal-header">

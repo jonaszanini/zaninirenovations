@@ -1159,7 +1159,9 @@
         @include('admin.client_projects._final_summary', ['project' => $project])
       @endif
 
-      @include('admin.client_projects._travel_cost', ['project' => $project])
+      @include('admin.client_projects._overview_details', ['project' => $project])
+
+      @include('admin.client_projects._overview_quick_actions', ['project' => $project])
 
       @if ($linkedUtilities['has_any'] ?? false)
         <div class="admin-card cp-utilities-teaser">
@@ -1177,8 +1179,6 @@
           <a href="#utilities" class="admin-btn admin-btn--ghost admin-btn--sm">View utilities</a>
         </div>
       @endif
-
-      @include('admin.client_projects._overview_details', ['project' => $project])
     </div>
   </section>
 
@@ -1543,6 +1543,20 @@
         var tab = (window.location.hash || '').replace('#', '');
         if (tab && document.querySelector('.cp-tab[data-tab="' + tab + '"]')) {
           show(tab);
+        }
+      });
+
+      document.addEventListener('click', function (e) {
+        var link = e.target.closest('[data-cp-jump-tab]');
+        if (!link) return;
+        var key = link.getAttribute('data-cp-jump-tab');
+        if (key && document.querySelector('.cp-tab[data-tab="' + key + '"]')) {
+          e.preventDefault();
+          show(key);
+          var tabsBar = document.querySelector('.cp-tabs');
+          if (tabsBar) {
+            tabsBar.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
         }
       });
     })();

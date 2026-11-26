@@ -620,6 +620,209 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         ];
     }
 
+    public function test_overview_details_conditional_rows_travel_and_edit_card_move(): void
+    {
+        $this->actingAsAdmin();
+
+        $emptyProject = ClientProject::factory()->create([
+            'name' => 'Bathroom Update',
+            'client_name' => 'Jordan Lee',
+            'client_email' => 'jordan@example.com',
+            'client_email_secondary' => null,
+            'client_phone' => null,
+            'client_address' => null,
+            'created_at' => '2026-10-01 09:00:00',
+            'status_changed_at' => '2026-10-02 10:00:00',
+        ]);
+
+        $html = $this->get(route('admin.client-projects.show', $emptyProject))
+            ->assertOk()
+            ->assertDontSee('<dt>Secondary email</dt>', false)
+            ->assertDontSee('<dt>Address</dt>', false)
+            ->assertDontSee('<dt>Created</dt>', false)
+            ->assertDontSee('<dt>Status changed</dt>', false)
+            ->assertDontSee('id="cp-travel-cost"', false)
+            ->assertSee('data-cp-overview-travel', false)
+            ->assertSee('data-cp-overview-more-details', false)
+            ->assertSee(route('admin.client-projects.edit', $emptyProject), false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/<dt>Phone<\/dt><dd>\s*Not set\s*<\/dd>/', $html);
+        $this->assertMatchesRegularExpression('/<dt>\s*<span class="cp-overview-dt">\s*Travel/s', $html);
+        $this->assertMatchesRegularExpression('/data-cp-overview-travel-cost>\s*Not set\s*<\/span>/', $html);
+
+        // Full Estimated travel cost card now lives on the Edit page with Refresh button.
+        $this->get(route('admin.client-projects.edit', $emptyProject))
+            ->assertOk()
+            ->assertSee('id="cp-travel-cost"', false)
+            ->assertSee('data-cp-travel-refresh', false)
+            ->assertSee('Estimated travel cost', false)
+            ->assertSee('admin-vehicles.js', false);
+
+        // When optional contact + travel estimate data exist, Details displays them cleanly.
+        \Illuminate\Support\Facades\DB::table('company_settings')->updateOrInsert(
+            ['id' => 1],
+            [
+                'home_address_latitude' => 45.4215,
+                'home_address_longitude' => -75.6972,
+                'gas_price_per_liter' => 1.50,
+            ]
+        );
+        \App\Models\Vehicle::query()->create([
+            'name' => 'Work Van',
+            'fuel_consumption_l100km' => 14.0,
+            'is_active' => true,
+        ]);
+
+        $fullProject = ClientProject::factory()->create([
+            'name' => 'Basement Framing',
+            'client_name' => 'Taylor Reed',
+            'client_email' => 'taylor@example.com',
+            'client_email_secondary' => 'partner@example.com',
+            'client_phone' => '6135550194',
+            'client_address' => '142 Maplewood Ave, Ottawa, ON',
+            'client_address_latitude' => 45.35,
+            'client_address_longitude' => -75.75,
+        ]);
+
+        config([
+            'google_maps.api_key' => 'test-browser-key',
+            'google_maps.server_api_key' => 'test-server-key',
+        ]);
+
+        $mapsMock = $this->mock(\App\Services\GoogleMapsService::class);
+        $mapsMock->shouldReceive('isConfigured')->andReturn(true);
+        $mapsMock->shouldReceive('isDistanceMatrixConfigured')->andReturn(true);
+        $mapsMock->shouldReceive('roundTripDrivingDistance')->andReturn([
+            'ok' => true,
+            'one_way_km' => 38.7,
+            'return_km' => 38.7,
+            'round_trip_km' => 77.4,
+            'outbound_duration_text' => '~27 min',
+            'return_duration_text' => '~27 min',
+            'duration_text' => '~54 min round trip',
+            'message' => null,
+        ]);
+
+        $this->getJson(route('admin.client-projects.travel-estimate', $fullProject))
+            ->assertOk()
+            ->assertJson(['ok' => true, 'fuel_cost_formatted' => 'CA$16.25']);
+
+        $fullHtml = $this->get(route('admin.client-projects.show', $fullProject))
+            ->assertOk()
+            ->assertSee('<dt>Secondary email</dt><dd>partner@example.com</dd>', false)
+            ->assertSee('(613) 555-0194', false)
+            ->assertSee('142 Maplewood Ave, Ottawa, ON', false)
+            ->assertSee('CA$16.25', false)
+            ->assertSee('77.4 km, about 54 min', false)
+            ->getContent();
+        $this->assertStringContainsString('data-cp-overview-more-details', $fullHtml);
+    }
+
+    public function test_overview_quick_actions_empty_sent_and_paid_states(): void
+    {
+        $this->actingAsAdmin();
+
+        $emptyProject = ClientProject::factory()->create([
+            'name' => 'Quick Actions Empty',
+            'client_name' => 'Morgan Fox',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+        ]);
+
+        $this->get(route('admin.client-projects.show', $emptyProject))
+            ->assertOk()
+            ->assertSee('data-cp-overview-quick-actions', false)
+            ->assertSee('Create quotation', false)
+            ->assertSee(route('admin.quotations.index', ['project' => $emptyProject->id]), false)
+            ->assertSee('data-cp-jump-tab="invoice"', false);
+
+        $activeProject = ClientProject::factory()->create([
+            'name' => 'Quick Actions Active',
+            'client_name' => 'Alex Rivera',
+            'client_email' => 'alex@example.com',
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+        ]);
+
+        $quotation = \App\Models\ClientProjectQuotation::query()->create([
+            'client_project_id' => $activeProject->id,
+            'quotation_number' => 'QUO-2026-7701',
+            'source_type' => \App\Models\ClientProjectQuotation::SOURCE_BASEMENT,
+            'source_id' => 999,
+            'title' => 'Basement Scope',
+            'status' => \App\Models\ClientProjectQuotation::STATUS_SENT,
+            'items' => [
+                ['description' => 'Framing & drywall', 'amount' => 1000.00, 'apply_hst' => true],
+            ],
+            'subtotal' => 1000.00,
+            'hst' => 130.00,
+            'total' => 1130.00,
+        ]);
+
+        \App\Models\ClientProjectExpense::query()->create([
+            'client_project_id' => $activeProject->id,
+            'occurred_on' => '2026-11-10',
+            'description' => 'Lumber receipt',
+            'amount' => 50.00,
+            'receipt_path' => 'receipts/test.webp',
+        ]);
+
+        $sentInvoice = \App\Models\ClientProjectInvoice::query()->create([
+            'client_project_id' => $activeProject->id,
+            'installment_number' => 1,
+            'installment_description' => 'Deposit',
+            'invoice_number' => 'INV-2026-7701',
+            'items' => [
+                ['description' => 'Deposit milestone', 'amount' => 1000.00, 'line_kind' => 'labour'],
+            ],
+            'subtotal' => 1000.00,
+            'hst' => 130.00,
+            'total' => 1130.00,
+            'status' => \App\Models\ClientProjectInvoice::STATUS_SENT,
+            'sent_at' => now(),
+            'due_on' => '2026-12-01',
+        ]);
+
+        $sentHtml = $this->get(route('admin.client-projects.show', $activeProject))
+            ->assertOk()
+            ->assertSee('QUO-2026-7701', false)
+            ->assertSee('CA$1,130.00', false)
+            ->assertSee("cpOpenQuotationDrawer('qd-{$quotation->id}')", false)
+            ->assertSee(route('admin.client-projects.quotation.edit', [$activeProject, $quotation]), false)
+            ->assertSee('INV-2026-7701', false)
+            ->assertSee(route('admin.client-projects.invoices.edit', [$activeProject, $sentInvoice]), false)
+            ->assertSee(route('admin.client-projects.invoices.pdf', [$activeProject, $sentInvoice]), false)
+            ->assertSee('attach_expense_receipts', false)
+            ->assertSee(route('admin.client-projects.invoices.mark-paid', [$activeProject, $sentInvoice]), false)
+            ->assertSee(route('admin.client-projects.invoices.reminders.toggle', [$activeProject, $sentInvoice]), false)
+            ->getContent();
+
+        $this->assertMatchesRegularExpression('/Amount paid.*?CA\$0\.00/s', $sentHtml);
+        $this->assertMatchesRegularExpression('/Balance due.*?CA\$1,130\.00/s', $sentHtml);
+
+        $sentInvoice->update([
+            'status' => \App\Models\ClientProjectInvoice::STATUS_PAID,
+            'paid_at' => now(),
+            'paid_amount' => 1130.00,
+            'payment_method' => \App\Models\ClientProjectInvoice::PAYMENT_METHOD_ETRANSFER,
+        ]);
+
+        $paidHtml = $this->get(route('admin.client-projects.show', $activeProject))
+            ->assertOk()
+            ->assertSee('INV-2026-7701', false)
+            ->assertSee(route('admin.client-projects.invoices.pdf', [$activeProject, $sentInvoice]), false)
+            ->getContent();
+
+        $qaInvoiceStart = strpos($paidHtml, 'data-cp-qa-section="invoice"');
+        $this->assertNotFalse($qaInvoiceStart);
+        $qaInvoiceSection = substr($paidHtml, (int) $qaInvoiceStart, 4500);
+        $this->assertStringNotContainsString('Send invoice', $qaInvoiceSection);
+        $this->assertStringNotContainsString('Mark paid', $qaInvoiceSection);
+        $this->assertStringNotContainsString('Stop reminders', $qaInvoiceSection);
+        $this->assertMatchesRegularExpression('/Balance due.*?CA\$0\.00/s', $qaInvoiceSection);
+    }
+
     /**
      * @param  array{name: ?string, email: ?string, phone: ?string, address: ?string}  $directoryBefore
      * @param  array{client_name: mixed, client_email: mixed, client_phone: mixed, client_address: mixed}  $projectContactBefore
