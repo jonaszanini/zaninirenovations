@@ -407,7 +407,7 @@ class ClientProjectInvoiceController extends Controller
         return $pdf->stream($this->pdfService->receiptPdfFilename($client_project, $invoice));
     }
 
-    public function send(ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
+    public function send(Request $request, ClientProject $client_project, ClientProjectInvoice $invoice, ClientProjectStatusService $statusService)
     {
         $this->authorizeInvoiceForProject($client_project, $invoice);
 
@@ -473,12 +473,23 @@ class ClientProjectInvoiceController extends Controller
             .ClientProject::formatMoney((float) $invoice->total)
             .($invoice->due_on ? ', due '.\Carbon\Carbon::parse($invoice->due_on)->format('M j, Y') : '');
 
+        $attachExpenseReceipts = $request->boolean('attach_expense_receipts');
+        if ($attachExpenseReceipts) {
+            $client_project->loadMissing('expenses');
+        }
+
         try {
             $mailer = Mail::to($client_project->client_email);
             if ($cc) {
                 $mailer->cc($cc);
             }
-            $mailer->send(new ClientProjectInvoiceClient($client_project, $invoice, $bytes, $filename));
+            $mailer->send(new ClientProjectInvoiceClient(
+                $client_project,
+                $invoice,
+                $bytes,
+                $filename,
+                $attachExpenseReceipts,
+            ));
 
             app(ClientCommunicationLogger::class)->logEmail(
                 $client_project,
