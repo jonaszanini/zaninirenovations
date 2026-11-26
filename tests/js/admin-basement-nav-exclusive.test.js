@@ -230,4 +230,21 @@ assert.strictEqual(isOpen(sections.finishing), false);
 assert.strictEqual(isOpen(sections.review), false);
 assert.strictEqual(sections.overview._styleProps['scroll-margin-top'], '92px');
 
+const rateCss = fs.readFileSync(path.join(__dirname, '../../public/css/admin-client-projects.css'), 'utf8');
+assert.match(
+  rateCss,
+  /\.br-rate__custom\s*\{[^}]*display:\s*none;/,
+  'default Custom badge stays hidden; display must not override the hidden attribute'
+);
+assert.match(
+  rateCss,
+  /\.br-rate\.is-custom\s+\.br-rate__custom\s*\{[^}]*display:\s*inline-flex;/,
+  'Custom badge shows only on an overridden rate'
+);
+assert.match(
+  rateCss,
+  /\.br-rate__custom\[hidden\],\s*\.br-rate__reset\[hidden\]\s*\{[^}]*display:\s*none\s*!important;/,
+  'hidden Custom badge and Reset stay hidden even when a display rule is present'
+);
+
 console.log('admin-basement-nav-exclusive: ok');

@@ -10990,6 +10990,32 @@ body.cp-modal-open {
   min-height: 40px;
 }
 
+/* Phone and tablet: the Save/Cancel bar sticks at the top of the page.
+   Focus and scroll-into-view must stop below it, including the client
+   directory search. 4.25rem matches the bar's sticky offset; 7rem covers
+   a wrapped two-row bar plus its padding. */
+@media (max-width: 1179px) {
+  html:has(.cp-edit-page) {
+    scroll-padding-top: calc(env(safe-area-inset-top, 0px) + 4.25rem + 7rem);
+    scroll-padding-bottom: 1.25rem;
+  }
+
+  .cp-edit-page :is(
+    .admin-form-group,
+    .cp-edit-section,
+    .cp-edit-directory-bar,
+    .cp-client-directory-picker,
+    .admin-search-select,
+    input,
+    select,
+    textarea,
+    summary
+  ) {
+    scroll-margin-top: calc(env(safe-area-inset-top, 0px) + 4.25rem + 7rem);
+    scroll-margin-bottom: 1.25rem;
+  }
+}
+
 .cp-edit-section {
   margin-top: 14px;
   padding-top: 14px;
@@ -12470,13 +12496,22 @@ body.cp-modal-open {
 }
 
 .br-rate__custom {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 6px;
   min-height: 44px;
   font-size: 12px;
   font-weight: 600;
   color: var(--admin-primary);
+}
+
+.br-rate.is-custom .br-rate__custom {
+  display: inline-flex;
+}
+
+.br-rate__custom[hidden],
+.br-rate__reset[hidden] {
+  display: none !important;
 }
 
 .br-rate__dot {
