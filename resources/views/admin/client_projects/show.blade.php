@@ -1455,13 +1455,22 @@
   </section>
 
   {{-- HISTORY TAB --------------------------------------------------------- --}}
-  <section class="cp-tab-panel" data-panel="history">
+  <section class="cp-tab-panel" data-panel="history" id="history">
     <div class="admin-card">
-      <h3>Status history</h3>
+      <h3 class="cp-card-head">
+        <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-history"></i></span>
+        <span>Status history</span>
+        <x-admin.info-tip label="Status history">
+          Chronological log of status transitions and key project events.
+        </x-admin.info-tip>
+      </h3>
       @if ($project->statusHistory->isEmpty())
-        <p class="admin-form-help">No history yet.</p>
+        <div class="cp-history-empty">
+          <div class="cp-empty-state-icon" aria-hidden="true"><i class="fa fa-history"></i></div>
+          <h4 class="cp-empty-state-title">No history yet</h4>
+        </div>
       @else
-        <div class="admin-table-scroll">
+        <div class="admin-table-scroll cp-history-scroll">
         <table class="admin-table cp-history-table">
           <thead>
             <tr>
@@ -1474,18 +1483,18 @@
           <tbody>
             @foreach ($project->statusHistory as $entry)
               <tr>
-                <td>{{ $entry->changedAtDisplay() }}</td>
-                <td>
+                <td data-label="When" class="cp-history-when">{{ $entry->changedAtDisplay() }}</td>
+                <td data-label="Event" class="cp-history-event">
                   @if ($entry->isEvent())
-                    <span class="cp-badge" style="background:#e5e7eb;color:#4b5563;">Event</span>
+                    <span class="cp-badge cp-history-badge" style="background:#e5e7eb;color:#4b5563;">Event</span>
                   @else
-                    <span class="cp-badge" style="background:#dbeafe;color:#1e40af;">
+                    <span class="cp-badge cp-history-badge" style="background:#dbeafe;color:#1e40af;">
                       {{ $entry->fromLabel() }} → {{ $entry->toLabel() }}
                     </span>
                   @endif
                 </td>
-                <td>{{ $entry->note ?: '—' }}</td>
-                <td>{{ $entry->user?->email ?? 'system' }}</td>
+                <td data-label="Note" class="cp-history-note">{{ $entry->note ?: '—' }}</td>
+                <td data-label="By" class="cp-history-by">{{ $entry->user?->email ?? 'system' }}</td>
               </tr>
             @endforeach
           </tbody>
