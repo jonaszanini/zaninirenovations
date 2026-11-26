@@ -2894,7 +2894,7 @@ html.cp-cancel-modal-open {
 .cp-installment-label {
   font-weight: 600;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--admin-heading, #1f2937);
 }
 
 .cp-installment-pct {
@@ -2976,8 +2976,154 @@ html.cp-cancel-modal-open {
   }
 }
 
+.cp-installments-table th,
+.cp-installments-table td {
+  padding: 10px 8px;
+  vertical-align: middle;
+}
+
+.cp-installment-invoice-link {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cp-installment-actions-cell .cp-inline-form {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .cp-installments-table .cp-row-paid {
   background: var(--admin-success-soft, #f0fdf4);
+}
+
+@media (max-width: 900px) {
+  .admin-table-scroll:has(.cp-installments-table),
+  .admin-table-scroll:has(.cp-returns-table) {
+    overflow-x: visible;
+  }
+
+  .cp-installments-table.admin-table,
+  .cp-returns-table.admin-table {
+    min-width: 0;
+  }
+
+  .cp-installments-table thead,
+  .cp-returns-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .cp-installments-table,
+  .cp-installments-table tbody,
+  .cp-installments-table tr,
+  .cp-installments-table th,
+  .cp-installments-table td,
+  .cp-returns-table,
+  .cp-returns-table tbody,
+  .cp-returns-table tr,
+  .cp-returns-table th,
+  .cp-returns-table td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .cp-installments-table tbody tr:not(.cp-totals-row),
+  .cp-returns-table tbody tr:not(.cp-totals-row) {
+    background: var(--admin-elevated);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.25);
+  }
+
+  .cp-installments-table tbody tr.cp-row-paid {
+    background: var(--admin-success-soft, #f0fdf4);
+  }
+
+  .cp-installments-table tbody tr.cp-totals-row,
+  .cp-returns-table tbody tr.cp-totals-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+  }
+
+  .cp-installments-table tbody tr.cp-totals-row td,
+  .cp-returns-table tbody tr.cp-totals-row td {
+    display: inline-block;
+    width: auto;
+    padding: 0;
+    border: none;
+  }
+
+  .cp-installments-table td[data-label],
+  .cp-returns-table td[data-label] {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 5px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .cp-installments-table td[data-label]::before,
+  .cp-returns-table td[data-label]::before {
+    content: attr(data-label);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--admin-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-top: 3px;
+  }
+
+  .cp-installments-table td[data-label="Invoice"] {
+    justify-items: end;
+  }
+
+  .cp-installments-table td[data-label="Invoice"]::before {
+    justify-self: start;
+  }
+
+  .cp-installments-table td[data-label="Actions"],
+  .cp-returns-table td[data-label="Actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--admin-border);
+  }
+
+  .cp-installments-table td[data-label="Actions"]::before,
+  .cp-returns-table td[data-label="Actions"]::before {
+    margin-right: auto;
+  }
+
+  .cp-installments-table .cp-inline-form,
+  .cp-returns-table .cp-inline-form {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .cp-installments-table .admin-btn,
+  .cp-returns-table .admin-btn,
+  .cp-installments-table .admin-input[type="date"] {
+    min-height: var(--admin-control-height, 44px);
+  }
 }
 
 /* "(incl. 13% HST)" annotation next to the Amount column header /
@@ -3129,7 +3275,7 @@ a:hover .cp-expense-receipt-pdf {
 
 .cp-expense-edit-panel {
   padding: 16px 20px 20px;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed var(--admin-border, #e5e7eb);
 }
 
 .cp-expense-edit-heading {
@@ -3149,7 +3295,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-expenses-send-email {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 
 .cp-expenses-send-heading {
@@ -3278,6 +3424,14 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-expenses-table .cp-expense-receipt-cell {
+    flex: 0 0 auto;
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .cp-expenses-table .cp-expense-receipt-cell:empty,
+  .cp-expenses-table .cp-expense-receipt-cell:not(:has(a)) {
     display: none;
   }
 
@@ -3294,10 +3448,10 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-expense-actions--mobile .admin-actions-dropdown__toggle {
-    min-width: 32px;
-    min-height: 32px;
-    width: 32px;
-    height: 32px;
+    min-width: var(--admin-control-height, 44px);
+    min-height: var(--admin-control-height, 44px);
+    width: var(--admin-control-height, 44px);
+    height: var(--admin-control-height, 44px);
   }
 
   .cp-expenses-table .cp-expense-edit-row td {
@@ -3308,6 +3462,10 @@ a:hover .cp-expense-receipt-pdf {
 @media (max-width: 820px) {
   .cp-finance-form-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-finance-form-desc {
+    grid-column: 1 / -1;
   }
 
   .cp-finance-form-actions {
@@ -3649,7 +3807,7 @@ a:hover .cp-expense-receipt-pdf {
 
 .cp-profit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
   margin-top: 10px;
 }
@@ -3668,6 +3826,9 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-profit-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: var(--admin-muted);
   text-transform: uppercase;

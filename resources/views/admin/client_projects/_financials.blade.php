@@ -80,13 +80,15 @@
       <div class="admin-form-grid-2">
         <div class="admin-form-group">
           <label for="cp-hourly-rate-edit">Rate (CAD / hour) <span class="cp-required">*</span></label>
-          <input type="text" id="cp-hourly-rate-edit" name="hourly_rate" required
-                 class="admin-input cp-money-input"
-                 inputmode="decimal"
-                 autocomplete="off"
-                
-                 placeholder="0.00"
-                 value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}" data-cp-money-entry="direct">
+          <div class="cp-cad-field">
+            <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+            <input type="text" id="cp-hourly-rate-edit" name="hourly_rate" required
+                   class="admin-input cp-money-input"
+                   inputmode="decimal"
+                   autocomplete="off"
+                   placeholder="0.00"
+                   value="{{ $hourlyRateConfigured> 0 ? number_format($hourlyRateConfigured, 2, '.', '') : '' }}" data-cp-money-entry="direct">
+          </div>
           @error('hourly_rate') <p class="admin-form-error">{{ $message }}</p> @enderror
         </div>
         <div class="admin-form-group">
@@ -107,8 +109,9 @@
 @else
   {{-- PAYMENT PLAN FORM ----------------------------------------------------- --}}
   <div class="admin-card">
-    <h3 class="cp-form-help-flush">
-      Payment plan
+    <h3 class="cp-card-head cp-form-help-flush">
+      <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-pie-chart"></i></span>
+      <span>Payment plan</span>
       <x-admin.info-tip label="Payment plan">Contracted and approved totals, installment split, invoices and outstanding balance. Draft invoices are not receivables.</x-admin.info-tip>
     </h3>
 
@@ -324,19 +327,22 @@
   {{-- INSTALLMENT PAYMENT STATUS ------------------------------------------ --}}
   @if ($installments->isNotEmpty())
     <div class="admin-card">
-      <h3>Installments</h3>
+      <h3 class="cp-card-head">
+        <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-list-ol"></i></span>
+        <span>Installments</span>
+      </h3>
       <div class="admin-table-scroll">
       <table class="admin-table cp-installments-table">
         <thead>
           <tr>
-            <th>#</th>
+            <th class="cp-col-num">#</th>
             <th>Label</th>
             <th>%</th>
             <th class="cp-col-amount">Amount <span class="admin-form-help cp-incl-hst">(incl. 13% HST)</span></th>
             <th>Status</th>
             <th>Invoice</th>
             <th>Paid on</th>
-            <th></th>
+            <th class="cp-col-actions">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -345,28 +351,28 @@
               $finInvoice = $installmentInvoices->get($idx + 1);
             @endphp
             <tr class="{{ $inst->is_paid ? 'cp-row-paid' : '' }}">
-              <td>{{ $idx + 1 }}</td>
-              <td>{{ $inst->label }}</td>
-              <td>{{ number_format((float) $inst->percentage, 2) }}%</td>
-              <td class="cp-col-amount">{{ \App\Models\ClientProject::formatMoney($inst->effectiveTotal()) }}</td>
-              <td>
+              <td data-label="#">{{ $idx + 1 }}</td>
+              <td data-label="Label">{{ $inst->label }}</td>
+              <td data-label="%">{{ number_format((float) $inst->percentage, 2) }}%</td>
+              <td class="cp-col-amount" data-label="Amount">{{ \App\Models\ClientProject::formatMoney($inst->effectiveTotal()) }}</td>
+              <td data-label="Status">
                 @if ($inst->is_paid)
                   <span class="cp-badge" style="background:#22c55e20;color:#15803d;">Paid</span>
                 @else
                   <span class="cp-badge" style="background:#f59e0b20;color:#b45309;">Unpaid</span>
                 @endif
               </td>
-              <td>
+              <td data-label="Invoice" class="cp-installment-invoice-cell">
                 @if ($finInvoice)
-                  <a href="{{ route('admin.client-projects.invoices.edit', [$project, $finInvoice]) }}">{{ $finInvoice->invoice_number }}</a>
+                  <a href="{{ route('admin.client-projects.invoices.edit', [$project, $finInvoice]) }}" class="cp-installment-invoice-link">{{ $finInvoice->invoice_number }}</a>
                   <span class="admin-form-help">{{ \App\Models\ClientProjectInvoice::statusLabel($finInvoice->status) }}</span>
                   @include('admin.client_projects._invoice_payment_meta', ['invoice' => $finInvoice])
                 @else
                   <span class="admin-form-help">—</span>
                 @endif
               </td>
-              <td>{{ \App\Models\ClientProject::formatDate($inst->paid_on) }}</td>
-              <td>
+              <td data-label="Paid on">{{ \App\Models\ClientProject::formatDate($inst->paid_on) }}</td>
+              <td data-label="Actions" class="cp-installment-actions-cell">
                 @php
                   $finMarkPaidViaInvoice = $finInvoice && ! $finInvoice->isSettled();
                   $finFirstPaid = $project->invoices->where('status', \App\Models\ClientProjectInvoice::STATUS_PAID)->isEmpty()
@@ -421,27 +427,32 @@
   $expenseSendHasClient = $project->hasClientContactInfo();
 @endphp
 <div class="admin-card">
-  <h3>Expenses</h3>
+  <h3 class="cp-card-head">
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-receipt"></i></span>
+    <span>Expenses</span>
+  </h3>
   <form action="{{ route('admin.client-projects.expenses.store', $project) }}" method="post" enctype="multipart/form-data" class="cp-finance-form">
     @csrf
     <div class="cp-finance-form-grid">
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-date">
         <label>Date</label>
         <input class="admin-input" type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-desc">
         <label>Description</label>
         <input class="admin-input" type="text" name="description" required maxlength="500" value="{{ old('description') }}">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-amount">
         <label>Amount (CAD)</label>
-        <input type="text" name="amount" required
-               class="admin-input cp-money-input"
-               inputmode="decimal"
-               autocomplete="off"
-              
-               placeholder="0.00"
-               value="{{ old('amount') }}" data-cp-money-entry="direct">
+        <div class="cp-cad-field">
+          <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+          <input type="text" name="amount" required
+                 class="admin-input cp-money-input"
+                 inputmode="decimal"
+                 autocomplete="off"
+                 placeholder="0.00"
+                 value="{{ old('amount') }}" data-cp-money-entry="direct">
+        </div>
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add expense</button>
@@ -528,22 +539,24 @@
                   @method('PUT')
                   @if (! $expenseOnInvoice)
                     <div class="cp-finance-form-grid">
-                      <div class="admin-form-group">
+                      <div class="admin-form-group cp-finance-form-date">
                         <label for="cp-expense-edit-date-{{ $expense->id }}">Date</label>
                         <input class="admin-input" type="date" id="cp-expense-edit-date-{{ $expense->id }}" name="occurred_on" required value="{{ old('occurred_on', $expense->occurred_on->toDateString()) }}">
                       </div>
-                      <div class="admin-form-group">
+                      <div class="admin-form-group cp-finance-form-desc">
                         <label for="cp-expense-edit-desc-{{ $expense->id }}">Description</label>
                         <input class="admin-input" type="text" id="cp-expense-edit-desc-{{ $expense->id }}" name="description" required maxlength="500" value="{{ old('description', $expense->description) }}">
                       </div>
-                      <div class="admin-form-group">
+                      <div class="admin-form-group cp-finance-form-amount">
                         <label for="cp-expense-edit-amt-{{ $expense->id }}">Amount (CAD)</label>
-                        <input type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
-                               class="admin-input cp-money-input"
-                               inputmode="decimal"
-                               autocomplete="off"
-                              
-                               value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}" data-cp-money-entry="direct">
+                        <div class="cp-cad-field">
+                          <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+                          <input type="text" id="cp-expense-edit-amt-{{ $expense->id }}" name="amount" required
+                                 class="admin-input cp-money-input"
+                                 inputmode="decimal"
+                                 autocomplete="off"
+                                 value="{{ old('amount', number_format((float) $expense->amount, 2, '.', '')) }}" data-cp-money-entry="direct">
+                        </div>
                       </div>
                     </div>
                   @endif
@@ -599,7 +612,7 @@
         </x-admin.info-tip>
       </h4>
       @if (! $expenseSendHasClient)
-        <p class="admin-form-help" style="color:#b45309;">
+        <p class="admin-form-help cp-send-dates-note cp-send-dates-note--warn">
           <i class="fa fa-exclamation-triangle"></i>
           Add the client’s name and email on the
           <a href="{{ route('admin.client-projects.edit', $project) }}">edit project</a> page before sending.
@@ -624,29 +637,32 @@
 
 {{-- RETURNS / CREDITS --------------------------------------------------- --}}
 <div class="admin-card">
-  <h3 class="cp-form-help-flush">
-    Returns / Credits
+  <h3 class="cp-card-head cp-form-help-flush">
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-undo"></i></span>
+    <span>Returns / Credits</span>
     <x-admin.info-tip label="Returns / Credits">Money returned from suppliers or credits. These are subtracted from expenses to compute Total Spent.</x-admin.info-tip>
   </h3>
   <form action="{{ route('admin.client-projects.returns.store', $project) }}" method="post" class="cp-finance-form">
     @csrf
     <div class="cp-finance-form-grid">
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-date">
         <label>Date</label>
         <input class="admin-input" type="date" name="occurred_on" required value="{{ now()->toDateString() }}">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-desc">
         <label>Description</label>
         <input class="admin-input" type="text" name="description" required maxlength="500">
       </div>
-      <div class="admin-form-group">
+      <div class="admin-form-group cp-finance-form-amount">
         <label>Amount (CAD)</label>
-        <input type="text" name="amount" required
-               class="admin-input cp-money-input"
-               inputmode="decimal"
-               autocomplete="off"
-              
-               placeholder="0.00" data-cp-money-entry="direct">
+        <div class="cp-cad-field">
+          <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+          <input type="text" name="amount" required
+                 class="admin-input cp-money-input"
+                 inputmode="decimal"
+                 autocomplete="off"
+                 placeholder="0.00" data-cp-money-entry="direct">
+        </div>
       </div>
       <div class="admin-form-group cp-finance-form-actions">
         <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm">Add return</button>
@@ -656,17 +672,17 @@
 
   @if ($project->returns->isNotEmpty())
     <div class="admin-table-scroll">
-    <table class="admin-table">
+    <table class="admin-table cp-returns-table">
       <thead>
-        <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th></th></tr>
+        <tr><th>Date</th><th>Description</th><th class="cp-col-amount">Amount</th><th class="cp-col-actions">Actions</th></tr>
       </thead>
       <tbody>
         @foreach ($project->returns as $return)
           <tr>
-            <td>{{ \App\Models\ClientProject::formatDate($return->occurred_on) }}</td>
-            <td>{{ $return->description }}</td>
-            <td class="cp-col-amount">−{{ \App\Models\ClientProject::formatMoney($return->amount) }}</td>
-            <td>
+            <td data-label="Date">{{ \App\Models\ClientProject::formatDate($return->occurred_on) }}</td>
+            <td data-label="Description">{{ $return->description }}</td>
+            <td class="cp-col-amount" data-label="Amount">−{{ \App\Models\ClientProject::formatMoney($return->amount) }}</td>
+            <td data-label="Actions" class="cp-returns-actions-cell">
               <form action="{{ route('admin.client-projects.returns.destroy', [$project, $return]) }}" method="post" onsubmit="return confirm('Delete this return?');" class="cp-inline-form">
                 @csrf
                 @method('DELETE')
@@ -690,8 +706,9 @@
 
 {{-- PROFIT / HST SUMMARY ---------------------------------------------- --}}
 <div class="admin-card cp-profit-card">
-  <h3 class="cp-form-help-flush">
-    Profit summary
+  <h3 class="cp-card-head cp-form-help-flush">
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-line-chart"></i></span>
+    <span>Profit summary</span>
     <x-admin.info-tip label="Profit summary">
       @if ($isHourly)
         Revenue = rate × logged hours (pre-tax labour). Expenses on Financials track materials reimbursed by the client—they are shown as cash tracked but do not reduce gross/net profit below. HST set aside = 13% of labour revenue.
@@ -715,9 +732,11 @@
     </div>
     <div class="cp-profit-tile">
       @if ($isHourly)
-        <div class="cp-profit-label">Total spent (tracked)</div>
+        <div class="cp-profit-label">
+          <span>Total spent (tracked)</span>
+          <x-admin.info-tip label="Total spent (tracked)">Materials reimbursed on client invoices—not deducted from gross or net profit below.</x-admin.info-tip>
+        </div>
         <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
-        <x-admin.info-tip label="Total spent (tracked)">Materials reimbursed on client invoices—not deducted from gross or net profit below.</x-admin.info-tip>
       @else
         <div class="cp-profit-label">Total spent (expenses − returns)</div>
         <div class="cp-profit-value">{{ \App\Models\ClientProject::formatMoney($spent) }}</div>
@@ -737,11 +756,13 @@
     </div>
     @if ($effectiveHourlyFromTime !== null)
       <div class="cp-profit-tile">
-        <div class="cp-profit-label">Effective hourly rate</div>
+        <div class="cp-profit-label">
+          <span>Effective hourly rate</span>
+          <x-admin.info-tip label="Effective hourly rate">Net profit after HST divided by closed hours from Time Tracking.</x-admin.info-tip>
+        </div>
         <div class="cp-profit-value {{ $effectiveHourlyFromTime>= 0 ? 'is-positive' : 'is-negative' }}">
           {{ \App\Models\ClientProject::formatMoney($effectiveHourlyFromTime) }} / h
         </div>
-        <x-admin.info-tip label="Effective hourly rate">Net profit after HST divided by closed hours from Time Tracking.</x-admin.info-tip>
       </div>
     @endif
   </div>
