@@ -1164,8 +1164,9 @@
       @if ($linkedUtilities['has_any'] ?? false)
         <div class="admin-card cp-utilities-teaser">
           <div class="cp-utilities-teaser__text">
-            <h3>
-              Linked utilities
+            <h3 class="cp-card-head">
+              <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-wrench"></i></span>
+              <span>Linked utilities</span>
               <x-admin.info-tip label="Linked utilities">Saved items from admin calculators that are linked to this project.</x-admin.info-tip>
             </h3>
             <p class="cp-utilities-teaser__count">

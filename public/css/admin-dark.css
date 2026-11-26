@@ -3089,9 +3089,33 @@ html.admin-dark .cp-invoice-preview-card {
   border-color: var(--admin-border);
 }
 
-/* Project header card */
+/* Project header card & Dashboard-aligned tab strip */
+html.admin-dark .cp-card-head__icon,
+html.admin-dark .cp-header-detail__icon {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #38bdf8;
+}
+html.admin-dark .cp-tabs {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.55);
+}
+html.admin-dark .cp-tab {
+  color: var(--admin-muted);
+}
+html.admin-dark .cp-tab:hover {
+  background: var(--admin-surface-hover);
+  color: var(--admin-heading);
+}
+html.admin-dark .cp-tab.is-active {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
 html.admin-dark .cp-header-card {
   background: var(--admin-surface);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.5);
 }
 html.admin-dark .cp-header-name {
   color: var(--admin-heading);
