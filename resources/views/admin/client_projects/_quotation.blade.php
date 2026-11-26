@@ -30,29 +30,38 @@
   $quotationHub = route('admin.quotations.index', ['project' => $project->id]);
 @endphp
 
-<div class="admin-card" style="margin-bottom:1rem;">
-  <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:0.75rem;">
-    <div>
-      <h3 style="margin:0 0 0.25rem 0;">Quotations</h3>
-      <p class="admin-form-help cp-form-help-flush">
-        Total of <strong>accepted</strong> quotations (excludes draft / sent / rejected):
-        <strong>{{ \App\Models\ClientProject::formatMoney($acceptedGrand) }}</strong>
+<div class="admin-card cp-quotations-summary-card">
+  <div class="cp-quotations-summary-head">
+    <div class="cp-quotations-summary-head__info">
+      <h3 class="cp-card-head cp-quotations-summary-head__title">
+        <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-calculator"></i></span>
+        <span>Quotations</span>
+        @if ($quotationRows->count() > 1)
+          <x-admin.info-tip label="Quotations">
+            Total counts accepted quotations only (excludes draft, sent, or rejected). Each quotation is collapsed to a short summary — expand one to view the full PDF-style preview and workflow status.
+          </x-admin.info-tip>
+        @else
+          <x-admin.info-tip label="Quotations">
+            Total counts accepted quotations only (excludes draft, sent, or rejected).
+          </x-admin.info-tip>
+        @endif
+      </h3>
+      <div class="cp-quotations-summary-head__kpi">
+        <span class="cp-quotations-kpi-label">Accepted total</span>
+        <strong class="cp-quotations-kpi-value">{{ \App\Models\ClientProject::formatMoney($acceptedGrand) }}</strong>
         @if ($quotationRows->isNotEmpty())
           <span class="cp-contract-version">· {{ $quotationRows->count() }} document{{ $quotationRows->count() === 1 ? '' : 's' }}</span>
         @endif
-      </p>
-      @if ($quotationRows->count()> 1)
-        <p class="admin-form-help" style="margin:8px 0 0;">
-          Each quotation is collapsed to a short summary — expand one to view the full PDF-style preview and workflow status.
-        </p>
-      @endif
+      </div>
     </div>
-    <a href="{{ $quotationHub }}"
-       class="admin-btn admin-btn--primary admin-btn--sm">
-      <i class="fa fa-plus"></i> Create quotation
-    </a>
+    <div class="cp-quotations-summary-head__actions">
+      <a href="{{ $quotationHub }}"
+         class="admin-btn admin-btn--primary admin-btn--sm">
+        <i class="fa fa-plus"></i> Create quotation
+      </a>
+      @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
+    </div>
   </div>
-  @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
 </div>
 
 @if ($quotationRows->isEmpty())

@@ -42,13 +42,13 @@
 @if (!$contract || !$hasContent)
   {{-- Empty state ----------------------------------------------------- --}}
   <div class="admin-card cp-contract-empty">
-    <h3>Contract</h3>
-    <p class="admin-form-help">
-      Create the contract for this project. You'll be able to paste from Word
-      or Google Docs and fully format the body — headings, lists, tables,
-      bold, etc. Once it's ready you can download a PDF, email it, or text a
-      link to the client.
-    </p>
+    <div class="cp-empty-state-icon" aria-hidden="true"><i class="fa fa-file-text-o"></i></div>
+    <h3 class="cp-empty-state-title">
+      <span>Contract</span>
+      <x-admin.info-tip label="Contract">
+        Create the contract for this project. You can paste from Word or Google Docs and fully format the body — headings, lists, tables, bold, etc. Once ready you can download a PDF, email it, or text a link to the client.
+      </x-admin.info-tip>
+    </h3>
     <div class="cp-contract-empty-action">
       <a href="{{ route('admin.client-projects.contract.edit', $project) }}"
          class="admin-btn admin-btn--primary admin-btn--lg">
@@ -61,7 +61,10 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>Contract</h3>
+        <h3 class="cp-card-head">
+          <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-file-text-o"></i></span>
+          <span>Contract</span>
+        </h3>
         <div class="cp-contract-meta-row">
           @if ($contract->isSent())
             <span class="cp-badge" style="background:#22c55e20;color:#15803d;">

@@ -34,7 +34,10 @@
 @endphp
 
 <div class="admin-card cp-overview-details-card">
-  <h3>Details</h3>
+  <h3 class="cp-card-head">
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-info-circle"></i></span>
+    <span>Details</span>
+  </h3>
   <dl class="cp-dl">
     <dt>Project name</dt><dd data-cp-project-name-mirror>{{ $project->name }}</dd>
     <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [

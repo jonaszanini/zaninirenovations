@@ -1367,10 +1367,35 @@ a.cp-table-phone .fa {
 /* =================================================================
    Detail page: header card + status form
    ================================================================= */
+.cp-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--admin-heading);
+}
+
+.cp-card-head__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.1));
+  border: 1px solid rgba(2, 71, 104, 0.18);
+  color: var(--admin-primary, #024768);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .cp-header-card {
-  padding: 14px 18px;
+  padding: 18px 20px;
   margin: 0 0 1rem;
-  border-radius: var(--admin-radius);
+  border-radius: 16px;
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.16);
 }
 
 .cp-header-layout {
@@ -1584,10 +1609,18 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
 .cp-header-details {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 12px 20px;
-  margin-top: 6px;
+  gap: 12px 18px;
+  margin-top: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--admin-border, #e5e7eb);
+}
+
+/* Phone shrinks to its content; email takes the remaining row so a
+   long address on the next line does not steal a third auto-fit column. */
+@media (min-width: 1200px) {
+  .cp-header-details {
+    grid-template-columns: minmax(140px, max-content) minmax(260px, 1fr);
+  }
 }
 
 .cp-header-detail {
@@ -1601,23 +1634,18 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
   grid-column: 1 / -1;
 }
 
-@media (min-width: 700px) {
-  .cp-header-detail--wide {
-    grid-column: span 2;
-  }
-}
-
 .cp-header-detail__icon {
   flex-shrink: 0;
-  width: 28px;
-  height: 28px;
+  width: 34px;
+  height: 34px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
-  background: var(--admin-surface-hover, #f1f5f9);
-  color: var(--admin-muted, #64748b);
-  font-size: 13px;
+  border-radius: 10px;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.08));
+  border: 1px solid rgba(2, 71, 104, 0.14);
+  color: var(--admin-primary, #024768);
+  font-size: 14px;
 }
 
 .cp-header-detail__body {
@@ -1640,7 +1668,7 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
   color: var(--admin-text, #1f2937);
   line-height: 1.35;
   word-break: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 a.cp-header-detail__value {
@@ -1959,7 +1987,8 @@ a.cp-header-detail__value:hover {
 .cp-status-inline-note {
   margin-top: 0;
   max-width: none;
-  flex: 1 1 280px;
+  flex: 0 0 auto;
+  width: 100%;
   min-width: 0;
   display: flex;
   align-items: center;
@@ -1968,12 +1997,17 @@ a.cp-header-detail__value:hover {
 .cp-status-inline-note__display {
   margin: 0;
   padding: 8px 12px;
-  min-height: var(--admin-control-height, 40px);
+  min-height: var(--admin-control-height, 44px);
   width: 100%;
   align-items: center;
-  border-radius: 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
   font-size: 14px;
   color: var(--admin-text);
+}
+
+.cp-status-inline-note__display:hover {
+  border-color: var(--admin-border);
 }
 
 .cp-status-inline-note__editor {
@@ -2004,6 +2038,11 @@ a.cp-header-detail__value:hover {
     flex: 0 1 240px;
     width: auto;
     min-width: 200px;
+  }
+
+  .cp-status-inline-note {
+    flex: 1 1 280px;
+    width: auto;
   }
 
   .cp-status-note {
@@ -2301,9 +2340,13 @@ html.cp-cancel-modal-open {
    ================================================================= */
 .cp-tabs {
   display: flex;
-  gap: 2px;
-  margin: 18px 0 14px;
-  border-bottom: 1px solid #e5e7eb;
+  gap: 3px;
+  margin: 16px 0 16px;
+  padding: 5px;
+  background: var(--admin-surface, #ffffff);
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 14px;
+  box-shadow: 0 8px 20px -16px rgba(15, 23, 42, 0.16);
   flex-wrap: nowrap;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -2318,28 +2361,32 @@ html.cp-cancel-modal-open {
 .cp-tab {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   background: transparent;
-  border: none;
-  padding: 10px 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 11px;
   min-height: var(--admin-control-height, 44px);
   box-sizing: border-box;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: #4b5563;
+  color: var(--admin-muted, #475569);
   cursor: pointer;
-  border-bottom: 3px solid transparent;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .cp-tab:hover {
-  color: var(--admin-primary);
+  background: var(--admin-surface-hover, #f1f5f9);
+  color: var(--admin-heading, #0f172a);
 }
 
 .cp-tab.is-active {
-  color: var(--admin-primary);
-  border-bottom-color: var(--admin-primary);
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.1));
+  border-color: rgba(2, 71, 104, 0.22);
+  color: var(--admin-primary, #024768);
+  font-weight: 700;
 }
 
 .cp-tab-panel {
@@ -2350,29 +2397,54 @@ html.cp-cancel-modal-open {
   display: block;
 }
 
+.cp-tab-panel > .admin-card,
+.cp-tab-panel .cp-overview-grid > .admin-card,
+.cp-tab-panel .cp-utilities > .admin-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.16);
+}
+
 /* Overview tab: compact 2-column card grid on desktop, stacked on phone. */
 .cp-overview-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 12px;
+  gap: 14px;
   align-items: start;
 }
 
 @media (min-width: 1024px) {
   .cp-overview-grid {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 12px 16px;
+    gap: 16px;
+  }
+
+  .cp-overview-grid > .cp-final-summary {
+    grid-column: 1 / -1;
+  }
+
+  .cp-overview-grid > .cp-travel-cost-card,
+  .cp-overview-grid > .cp-utilities-teaser {
+    grid-column: 1;
+  }
+
+  .cp-overview-grid > .cp-overview-details-card {
+    grid-column: 2;
+    grid-row: 1 / span 4;
+  }
+
+  .cp-overview-grid:has(> .cp-final-summary) > .cp-overview-details-card {
+    grid-row: 2 / span 3;
   }
 }
 
 .cp-overview-grid>.admin-card {
-  padding: 0.85rem 1rem;
+  padding: 1rem 1.15rem;
   margin: 0;
 }
 
 @media (min-width: 768px) {
   .cp-overview-grid>.admin-card {
-    padding: 1rem 1.15rem;
+    padding: 1.15rem 1.25rem;
   }
 }
 
@@ -2563,48 +2635,98 @@ html.cp-cancel-modal-open {
    ================================================================= */
 .cp-dl {
   display: grid;
-  grid-template-columns: 180px 1fr;
-  row-gap: 8px;
-  column-gap: 16px;
-  margin: 8px 0 0;
+  grid-template-columns: 150px minmax(0, 1fr);
+  row-gap: 0;
+  column-gap: 14px;
+  margin: 4px 0 0;
+  align-items: center;
 }
 
 .cp-dl dt {
-  color: #6b7280;
-  font-size: 13px;
+  color: var(--admin-muted, #64748b);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
 }
 
 .cp-dl dd {
   margin: 0;
-  font-size: 14px;
-  color: #1f2937;
+  font-size: 13.5px;
+  color: var(--admin-heading, #0f172a);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--admin-border, #e2e8f0);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.cp-dl dt:last-of-type,
+.cp-dl dd:last-of-type {
+  border-bottom: none;
 }
 
 .cp-notes-box {
   white-space: pre-wrap;
   background: var(--admin-surface-hover);
   border: 1px solid var(--admin-border);
-  border-radius: 6px;
+  border-radius: 10px;
   padding: 12px 14px;
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--admin-text);
 }
 
 @media (max-width: 700px) {
-  .cp-dl {
-    grid-template-columns: 1fr;
-    row-gap: 4px;
+  .cp-overview-grid .cp-dl {
+    grid-template-columns: 7rem minmax(0, 1fr);
+    column-gap: 10px;
   }
 
   .cp-dl dt {
-    margin-top: 8px;
-    font-weight: 600;
+    margin-top: 0;
+    font-size: 12px;
   }
 }
 
 /* =================================================================
    Schedule tab
    ================================================================= */
+.cp-schedule-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .cp-schedule-grid {
+    grid-template-columns: minmax(290px, 0.85fr) minmax(0, 1.35fr);
+    gap: 16px;
+  }
+}
+
+.cp-schedule-grid > .admin-card {
+  margin: 0;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.16);
+}
+
+.cp-schedule-grid > .admin-card + .admin-card::before {
+  content: none;
+  display: none;
+}
+
+.cp-visit-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+
+.cp-icon--success {
+  color: #10b981;
+}
+
 .cp-schedule-summary {
   margin-top: 14px;
   padding: 12px 14px;
@@ -2762,7 +2884,7 @@ html.cp-cancel-modal-open {
 .cp-installment-label {
   font-weight: 600;
   font-size: 14px;
-  color: #1f2937;
+  color: var(--admin-heading, #1f2937);
 }
 
 .cp-installment-pct {
@@ -2844,8 +2966,154 @@ html.cp-cancel-modal-open {
   }
 }
 
+.cp-installments-table th,
+.cp-installments-table td {
+  padding: 10px 8px;
+  vertical-align: middle;
+}
+
+.cp-installment-invoice-link {
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.cp-installment-actions-cell .cp-inline-form {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .cp-installments-table .cp-row-paid {
   background: var(--admin-success-soft, #f0fdf4);
+}
+
+@media (max-width: 900px) {
+  .admin-table-scroll:has(.cp-installments-table),
+  .admin-table-scroll:has(.cp-returns-table) {
+    overflow-x: visible;
+  }
+
+  .cp-installments-table.admin-table,
+  .cp-returns-table.admin-table {
+    min-width: 0;
+  }
+
+  .cp-installments-table thead,
+  .cp-returns-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .cp-installments-table,
+  .cp-installments-table tbody,
+  .cp-installments-table tr,
+  .cp-installments-table th,
+  .cp-installments-table td,
+  .cp-returns-table,
+  .cp-returns-table tbody,
+  .cp-returns-table tr,
+  .cp-returns-table th,
+  .cp-returns-table td {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .cp-installments-table tbody tr:not(.cp-totals-row),
+  .cp-returns-table tbody tr:not(.cp-totals-row) {
+    background: var(--admin-elevated);
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.25);
+  }
+
+  .cp-installments-table tbody tr.cp-row-paid {
+    background: var(--admin-success-soft, #f0fdf4);
+  }
+
+  .cp-installments-table tbody tr.cp-totals-row,
+  .cp-returns-table tbody tr.cp-totals-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+  }
+
+  .cp-installments-table tbody tr.cp-totals-row td,
+  .cp-returns-table tbody tr.cp-totals-row td {
+    display: inline-block;
+    width: auto;
+    padding: 0;
+    border: none;
+  }
+
+  .cp-installments-table td[data-label],
+  .cp-returns-table td[data-label] {
+    display: grid;
+    grid-template-columns: 88px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 5px 0;
+    border: none;
+    text-align: right;
+  }
+
+  .cp-installments-table td[data-label]::before,
+  .cp-returns-table td[data-label]::before {
+    content: attr(data-label);
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--admin-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding-top: 3px;
+  }
+
+  .cp-installments-table td[data-label="Invoice"] {
+    justify-items: end;
+  }
+
+  .cp-installments-table td[data-label="Invoice"]::before {
+    justify-self: start;
+  }
+
+  .cp-installments-table td[data-label="Actions"],
+  .cp-returns-table td[data-label="Actions"] {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--admin-border);
+  }
+
+  .cp-installments-table td[data-label="Actions"]::before,
+  .cp-returns-table td[data-label="Actions"]::before {
+    margin-right: auto;
+  }
+
+  .cp-installments-table .cp-inline-form,
+  .cp-returns-table .cp-inline-form {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .cp-installments-table .admin-btn,
+  .cp-returns-table .admin-btn,
+  .cp-installments-table .admin-input[type="date"] {
+    min-height: var(--admin-control-height, 44px);
+  }
 }
 
 /* "(incl. 13% HST)" annotation next to the Amount column header /
@@ -2997,7 +3265,7 @@ a:hover .cp-expense-receipt-pdf {
 
 .cp-expense-edit-panel {
   padding: 16px 20px 20px;
-  border-top: 1px dashed #e5e7eb;
+  border-top: 1px dashed var(--admin-border, #e5e7eb);
 }
 
 .cp-expense-edit-heading {
@@ -3017,7 +3285,7 @@ a:hover .cp-expense-receipt-pdf {
 .cp-expenses-send-email {
   margin-top: 20px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 
 .cp-expenses-send-heading {
@@ -3146,6 +3414,14 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-expenses-table .cp-expense-receipt-cell {
+    flex: 0 0 auto;
+    width: auto;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .cp-expenses-table .cp-expense-receipt-cell:empty,
+  .cp-expenses-table .cp-expense-receipt-cell:not(:has(a)) {
     display: none;
   }
 
@@ -3162,10 +3438,10 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-expense-actions--mobile .admin-actions-dropdown__toggle {
-    min-width: 32px;
-    min-height: 32px;
-    width: 32px;
-    height: 32px;
+    min-width: var(--admin-control-height, 44px);
+    min-height: var(--admin-control-height, 44px);
+    width: var(--admin-control-height, 44px);
+    height: var(--admin-control-height, 44px);
   }
 
   .cp-expenses-table .cp-expense-edit-row td {
@@ -3176,6 +3452,10 @@ a:hover .cp-expense-receipt-pdf {
 @media (max-width: 820px) {
   .cp-finance-form-grid {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-finance-form-desc {
+    grid-column: 1 / -1;
   }
 
   .cp-finance-form-actions {
@@ -3259,16 +3539,48 @@ a:hover .cp-expense-receipt-pdf {
   }
 }
 
-/* Helper log-time form — 14-column row (Helper 3 · Date 2 · Start 2 · End 2 · Note 2 · Hours 1 · Rate 2). */
+/* Shared CAD prefix wrapper for .cp-money-input (direct decimal entry) */
+.cp-cad-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+}
+
+.cp-cad-field__prefix {
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--admin-muted, #64748b);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.cp-cad-field > .cp-money-input.admin-input,
+.cp-cad-field > .cp-money-input {
+  padding-left: 42px;
+  width: 100%;
+  min-width: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Helper log-time form — balanced responsive columns so Date & Hours never clip */
 .cp-helper-time-form-grid {
   display: grid;
-  grid-template-columns: repeat(14, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 12px;
   align-items: end;
 }
 
 .cp-helper-time-form-grid .admin-form-group {
   margin-bottom: 0;
+  min-width: 0;
 }
 
 .cp-helper-time-form-grid .admin-form-group label.cp-label-with-hint {
@@ -3282,7 +3594,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-helper-time-form-grid .col-1 {
-  grid-column: span 1;
+  grid-column: span 2;
 }
 
 .cp-helper-time-form-grid .col-2 {
@@ -3290,29 +3602,188 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-helper-time-form-grid .col-3 {
+  grid-column: span 4;
+}
+
+/* Date fields need ~150px minimum so dd/yyyy never clips behind icon */
+.cp-helper-time-form-grid .admin-form-group:has(input[type="date"]) {
   grid-column: span 3;
 }
 
-@media (max-width: 1100px) {
-  .cp-helper-time-form-grid .col-1 {
-    grid-column: span 2;
-  }
-
-  .cp-helper-time-form-grid .col-2 {
-    grid-column: span 3;
-  }
-
-  .cp-helper-time-form-grid .col-3 {
-    grid-column: span 4;
-  }
+.cp-helper-log-form .cp-helper-time-form-grid .col-3 {
+  grid-column: span 3;
 }
 
-@media (max-width: 560px) {
+.cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5) {
+  grid-column: span 4;
+}
+
+.cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1180px) {
+  .cp-helper-time-form-grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
 
   .cp-helper-time-form-grid .col-1,
   .cp-helper-time-form-grid .col-2,
-  .cp-helper-time-form-grid .col-3 {
-    grid-column: span 14;
+  .cp-helper-time-form-grid .col-3,
+  .cp-helper-time-form-grid .admin-form-group:has(input[type="date"]),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-3,
+  .cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-helper-time-form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-helper-time-form-grid .col-1,
+  .cp-helper-time-form-grid .col-2,
+  .cp-helper-time-form-grid .col-3,
+  .cp-helper-time-form-grid .admin-form-group:has(input[type="date"]),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-3,
+  .cp-helper-log-form .cp-helper-time-form-grid .col-2:nth-child(5),
+  .cp-helper-log-form .cp-helper-time-form-grid .col-1 {
+    grid-column: span 2;
+  }
+
+  .cp-helper-log-form .cp-helper-time-form-grid .admin-form-group:nth-child(3),
+  .cp-helper-log-form .cp-helper-time-form-grid .admin-form-group:nth-child(4) {
+    grid-column: span 1;
+  }
+}
+
+.cp-time-summary-email {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
+}
+
+.cp-time-summary-email__head {
+  margin-top: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Split payment builder (moved from inline <style> in _helper_time.blade.php) */
+.cp-split-builder {
+  flex: 1 1 320px;
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.cp-split-builder__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.cp-split-builder__label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--admin-heading, #374151);
+}
+
+.cp-split-builder__remaining {
+  font-size: 13px;
+  color: var(--admin-muted, #6b7280);
+}
+
+.cp-split-builder__remaining strong {
+  color: var(--admin-heading, #374151);
+}
+
+.cp-split-builder__remaining.is-balanced strong {
+  color: var(--admin-success, #16a34a);
+}
+
+.cp-split-builder__remaining.is-over strong {
+  color: var(--admin-danger, #dc2626);
+}
+
+#cp-split-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cp-split-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+.cp-split-row__method {
+  flex: 1 1 160px;
+  min-width: 130px;
+}
+
+.cp-split-row__amount-wrap {
+  flex: 0 0 140px;
+  width: 140px;
+}
+
+.cp-split-row__amount {
+  width: 100%;
+}
+
+.cp-split-row__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--admin-control-height, 44px);
+  min-height: var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
+  flex-shrink: 0;
+  background: var(--admin-surface, #ffffff);
+  border: 1px solid var(--admin-border, #e5e7eb);
+  border-radius: 8px;
+  color: var(--admin-muted, #64748b);
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+}
+
+.cp-split-row__remove:not(:disabled):hover {
+  color: var(--admin-danger, #ef4444);
+  border-color: var(--admin-danger, #ef4444);
+}
+
+.cp-split-row__remove:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cp-split-add-btn {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+@media (max-width: 560px) {
+  .cp-split-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .cp-split-row__method {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .cp-split-row__amount-wrap {
+    width: 100%;
   }
 }
 
@@ -3320,13 +3791,13 @@ a:hover .cp-expense-receipt-pdf {
    Profit / time summary tiles
    ================================================================= */
 .cp-profit-card {
-  background: #fbfbfd;
-  border-top: 3px solid #024768;
+  background: var(--admin-surface, #ffffff);
+  border-top: 3px solid var(--admin-primary, #024768);
 }
 
 .cp-profit-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
   margin-top: 10px;
 }
@@ -3334,8 +3805,8 @@ a:hover .cp-expense-receipt-pdf {
 .cp-profit-tile {
   padding: 14px 16px;
   border: 1px solid var(--admin-stat-tile-border, #e5e7eb);
-  border-radius: 8px;
-  background: var(--admin-surface, #ffffff);
+  border-radius: 12px;
+  background: var(--admin-stat-tile-bg, #ffffff);
   color: var(--admin-text);
 }
 
@@ -3345,6 +3816,9 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-profit-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
   color: var(--admin-muted);
   text-transform: uppercase;
@@ -3382,21 +3856,106 @@ a:hover .cp-expense-receipt-pdf {
 .cp-final-dates {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px dashed #e5e7eb;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 24px;
-  font-size: 14px;
-  color: #334155;
+  border-top: 1px dashed var(--admin-border, #e5e7eb);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px 18px;
+  font-size: 13.5px;
+  color: var(--admin-text, #334155);
 }
 
 /* =================================================================
    History table
    ================================================================= */
+.cp-history-empty {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.cp-history-table {
+  width: 100%;
+}
+
 .cp-history-table td,
 .cp-history-table th {
   vertical-align: top;
   font-size: 13px;
+}
+
+.cp-history-when {
+  white-space: nowrap;
+  color: var(--admin-muted);
+}
+
+.cp-history-badge {
+  white-space: normal;
+  line-height: 1.35;
+  text-align: left;
+}
+
+.cp-history-by {
+  word-break: break-word;
+}
+
+@media (max-width: 768px) {
+  .cp-history-scroll {
+    overflow: visible;
+  }
+
+  .cp-history-table,
+  .cp-history-table tbody {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .cp-history-table thead {
+    display: none;
+  }
+
+  .cp-history-table tbody tr {
+    display: grid;
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    background: var(--admin-elevated);
+  }
+
+  .cp-history-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .cp-history-table tbody td {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    font-size: 13px;
+    min-width: 0;
+    word-break: break-word;
+  }
+
+  .cp-history-table tbody td::before {
+    content: attr(data-label);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--admin-muted);
+    padding-top: 2px;
+  }
+
+  .cp-history-when {
+    white-space: normal;
+  }
 }
 
 /* =================================================================
@@ -4026,6 +4585,29 @@ a:hover .cp-expense-receipt-pdf {
 /* Empty state — large centered "Create Contract" button. */
 .cp-contract-empty {
   text-align: center;
+  padding: 28px 20px;
+}
+
+.cp-empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.1));
+  border: 1px solid rgba(2, 71, 104, 0.18);
+  color: var(--admin-primary, #024768);
+  font-size: 20px;
+}
+
+.cp-empty-state-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 16px;
 }
 
 .cp-contract-empty h3 {
@@ -4060,10 +4642,15 @@ a:hover .cp-expense-receipt-pdf {
 .cp-contract-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.cp-contract-meta {
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .cp-contract-meta-row {
@@ -4302,7 +4889,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-sig-cell--contractor .signature-line {
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--admin-border-strong, #1f2937);
   margin-bottom: 6px;
 }
 
@@ -4310,12 +4897,13 @@ a:hover .cp-expense-receipt-pdf {
 .cp-sig-cell--contractor .signature-contractor .signature-name,
 .cp-sig-cell--contractor .signature-name {
   font-size: 14px;
+  color: var(--admin-heading, #1f2937);
   margin-bottom: 0 !important;
 }
 
 .cp-sig-cell--contractor .signature-date {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--admin-muted, #4b5563);
   margin-top: 8px;
 }
 
@@ -4328,20 +4916,20 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-sig-line {
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--admin-border-strong, #1f2937);
   margin-bottom: 6px;
 }
 
 .cp-sig-date {
   margin-top: 8px;
-  color: #4b5563;
+  color: var(--admin-muted, #4b5563);
 }
 
 .cp-contract-entire {
   margin-top: 28px;
   padding-top: 12px;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--admin-text, #1f2937);
   line-height: 1.55;
 }
 
@@ -4349,8 +4937,38 @@ a:hover .cp-expense-receipt-pdf {
   margin-top: 28px;
   padding-top: 12px;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--admin-text, #1f2937);
   line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .cp-contract-preview {
+    padding: 16px 14px;
+  }
+
+  .cp-contract-parties-table,
+  .cp-contract-parties-table tbody,
+  .cp-contract-parties-table tr,
+  .cp-contract-parties-table td,
+  .cp-contract-preview-signatures table,
+  .cp-contract-preview-signatures tbody,
+  .cp-contract-preview-signatures tr,
+  .cp-contract-preview-signatures td {
+    display: block;
+    width: 100%;
+  }
+
+  .cp-contract-parties-table td + td {
+    border-top: none;
+  }
+
+  .cp-contract-preview-signatures td {
+    padding: 0 0 22px;
+  }
+
+  .cp-contract-preview-signatures td:last-child {
+    padding-bottom: 0;
+  }
 }
 
 .cp-contractor-fee-clause+.cp-contract-entire {
@@ -4851,15 +5469,80 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 /* =================================================================
-   Quotation tab — multiple documents (accordion summaries)
+   Quotation tab — summary header & multiple documents (accordion)
    ================================================================= */
-/* Quotation accordion: clean grid layout.
-   Zero .admin-card padding so summary padding (~16px) is the only inset. */
+.cp-quotations-summary-card {
+  margin-bottom: 16px;
+}
+
+.cp-quotations-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+
+.cp-quotations-summary-head__info {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.cp-quotations-summary-head__title {
+  margin-bottom: 6px;
+}
+
+.cp-quotations-summary-head__kpi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.cp-quotations-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-muted, #64748b);
+}
+
+.cp-quotations-kpi-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--admin-primary, #024768);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-quotations-summary-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cp-quotations-summary-head__actions .admin-btn {
+  min-height: var(--admin-control-height, 44px);
+}
+
+@media (max-width: 640px) {
+  .cp-quotations-summary-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cp-quotations-summary-head__actions {
+    justify-content: flex-start;
+  }
+}
+
 .cp-quotation-accordion {
-  margin-bottom: 0.75rem;
+  margin-bottom: 12px;
   border: 1px solid var(--admin-border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--admin-surface);
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.14);
   padding: 0;
   overflow: visible;
 }
@@ -5209,12 +5892,22 @@ a:hover .cp-expense-receipt-pdf {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--admin-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--admin-surface);
   color: var(--admin-muted);
+}
+
+.cp-quotation-toolbar__mobile .admin-actions-dropdown__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--admin-control-height, 44px);
+  min-height: var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
 }
 
 .cp-quotation-toolbar__overflow .admin-actions-dropdown__toggle:hover {
@@ -5343,6 +6036,11 @@ a:hover .cp-expense-receipt-pdf {
   margin-top: auto;
 }
 
+.cp-quotation-control__field-row .cp-quotation-control__input-wrap {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
 .cp-quotation-control__field-row .cp-quotation-control__input {
   flex: 1 1 7rem;
   min-width: 0;
@@ -5354,6 +6052,7 @@ a:hover .cp-expense-receipt-pdf {
   flex: 0 0 auto;
   white-space: nowrap;
   align-self: flex-end;
+  min-height: var(--admin-control-height, 44px);
 }
 
 @media (max-width: 768px) {
@@ -5397,6 +6096,7 @@ a:hover .cp-expense-receipt-pdf {
     align-items: stretch;
   }
 
+  .cp-quotation-control__field-row .cp-quotation-control__input-wrap,
   .cp-quotation-control__field-row .cp-quotation-control__input {
     flex: 0 0 auto;
     width: 100%;
@@ -5583,8 +6283,26 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-items th.amount,
 .cp-quotation-items td.amount {
   text-align: right;
-  width: 150px;
+  width: 140px;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cp-quotation-doc-client {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cp-quotation-items th.amount,
+  .cp-quotation-items td.amount {
+    width: auto;
+  }
+
+  .cp-quotation-items th,
+  .cp-quotation-items td {
+    padding: 6px 8px;
+    font-size: 12.5px;
+  }
 }
 
 .cp-quotation-items tbody tr:nth-child(even) td {
@@ -5722,7 +6440,23 @@ a:hover .cp-expense-receipt-pdf {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
-  margin: 12px 0 4px;
+  margin: 12px 0 8px;
+}
+
+.cp-billing-totals .cp-hourly-summary-tile {
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.cp-billing-totals .cp-hourly-summary-value {
+  font-size: clamp(15px, 1.35vw, 18px);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1180px) {
+  .cp-billing-totals {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
 }
 
 .cp-billing-actions {
@@ -5746,7 +6480,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-contract-header .cp-billing-actions {
-  width: 100%;
+  width: auto;
 }
 
 .cp-billing-prepare__terms {
@@ -5770,6 +6504,10 @@ a:hover .cp-expense-receipt-pdf {
 @media (max-width: 640px) {
   .cp-billing-totals {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-billing-totals .cp-hourly-summary-tile--highlight {
+    grid-column: 1 / -1;
   }
 
   .cp-billing-prepare-table .admin-input[type="date"] {
@@ -5802,11 +6540,43 @@ a:hover .cp-expense-receipt-pdf {
   margin: 8px 0 0;
 }
 
-/* Invoice table — mostly inherits from .admin-table; this tightens the
-   inline action cell so the buttons don't explode the row height. */
+/* Invoice table — fits comfortably at 1024px+ laptop and stacks to cards below 900px */
+.admin-table.cp-invoices-table {
+  min-width: 0;
+  width: 100%;
+}
+
 .cp-invoices-table th,
 .cp-invoices-table td {
   vertical-align: middle;
+  padding: 10px 8px;
+}
+
+.cp-invoices-table .cp-col-num {
+  width: 34px;
+  text-align: center;
+}
+
+.cp-invoices-table .cp-col-actions {
+  text-align: right;
+  width: 165px;
+}
+
+@media (max-width: 1200px) and (min-width: 901px) {
+  .cp-invoices-table th,
+  .cp-invoices-table td {
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+
+  .cp-invoices-table .cp-col-actions {
+    width: 132px;
+  }
+
+  .cp-invoices-table td[data-label="Status"] .cp-badge {
+    white-space: normal;
+    line-height: 1.25;
+  }
 }
 
 .cp-invoice-due {
@@ -5944,7 +6714,7 @@ a:hover .cp-expense-receipt-pdf {
   color: #013552 !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 900px) {
   .admin-table-scroll:has(.cp-invoices-table) {
     overflow-x: visible;
   }
@@ -5974,9 +6744,10 @@ a:hover .cp-expense-receipt-pdf {
   .cp-invoices-table tbody tr:not(.cp-invoice-warning-row) {
     background: var(--admin-elevated);
     border: 1px solid var(--admin-border);
-    border-radius: 10px;
-    padding: 10px 12px 8px;
-    margin-bottom: 8px;
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.25);
   }
 
   .cp-invoice-warning-row {
@@ -5987,40 +6758,75 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-invoices-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 4px 0;
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 5px 0;
     border: none;
+    text-align: right;
+  }
+
+  .cp-invoices-table td[data-label="Description"],
+  .cp-invoices-table td[data-label="Status"] {
+    text-align: right;
   }
 
   .cp-invoices-table td[data-label]::before {
     content: attr(data-label);
+    text-align: left;
     font-size: 11px;
     font-weight: 600;
     color: var(--admin-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    flex: 0 0 auto;
-    padding-top: 4px;
+    padding-top: 3px;
+  }
+
+  .cp-invoices-table td[data-label="Status"] {
+    justify-items: end;
+  }
+
+  .cp-invoices-table td[data-label="Status"]::before {
+    justify-self: start;
   }
 
   .cp-invoices-table td[data-label="Actions"] {
-    justify-content: flex-end;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     overflow: visible;
     position: relative;
     z-index: 2;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--admin-border);
   }
 
   .cp-invoices-table td[data-label="Actions"]::before {
     margin-right: auto;
-    padding-top: 12px;
+    padding-top: 0;
+  }
+
+  .cp-invoices-table .admin-actions-dropdown__toggle {
+    min-width: var(--admin-control-height, 44px);
+    min-height: var(--admin-control-height, 44px);
+    width: var(--admin-control-height, 44px);
+    height: var(--admin-control-height, 44px);
+  }
+
+  .cp-invoices-table .cp-invoice-actions.admin-table-actions .admin-btn:not(.admin-actions-dropdown__toggle) {
+    display: none;
+  }
+
+  .cp-invoices-table .cp-invoice-actions.admin-table-actions .admin-actions-dropdown {
+    display: inline-block;
   }
 
   .cp-invoice-warning-row td {
     display: block;
     padding: 0;
+    text-align: left;
   }
 
   .cp-invoice-warning-row td::before {
@@ -6364,6 +7170,12 @@ body.cp-modal-open {
 @media (max-width: 700px) {
   .cp-contract-header {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cp-contract-meta {
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   .cp-contract-actions {
@@ -9039,26 +9851,21 @@ body.cp-modal-open {
 
 /* Visit date + time row — compact fields, same row on desktop, stacks on mobile */
 .cp-visit-datetime-row {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.75fr);
   gap: 12px;
-  align-items: flex-start;
+  align-items: start;
+  margin-top: 12px;
 }
 
-.cp-visit-datetime-row .cp-visit-date {
-  flex: 0 0 auto;
-  width: 175px;
-}
-
-.cp-visit-datetime-row .cp-visit-date input[type="date"] {
-  width: 100%;
-}
-
+.cp-visit-datetime-row .cp-visit-date,
 .cp-visit-datetime-row .cp-visit-time {
-  flex: 0 0 auto;
-  width: 130px;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 0;
 }
 
+.cp-visit-datetime-row .cp-visit-date input[type="date"],
 .cp-visit-time input[type="time"] {
   width: 100%;
 }
@@ -9072,12 +9879,7 @@ body.cp-modal-open {
 
 @media (max-width: 480px) {
   .cp-visit-datetime-row {
-    flex-direction: column;
-  }
-
-  .cp-visit-datetime-row .cp-visit-date,
-  .cp-visit-datetime-row .cp-visit-time {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 
@@ -9960,11 +10762,11 @@ body.cp-modal-open {
 
 .cp-helper-entry__summary-detail {
   margin-top: 4px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
-  color: #374151;
-  line-height: 1.35;
+  color: var(--admin-text, #374151);
+  line-height: 1.4;
   word-break: break-word;
 }
 
@@ -9991,8 +10793,9 @@ body.cp-modal-open {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #6b7280;
-  background: #f3f4f6;
+  color: var(--admin-muted, #6b7280);
+  background: var(--admin-stat-tile-bg, #f3f4f6);
+  border: 1px solid var(--admin-border, #e2e8f0);
   margin-left: 8px;
 }
 
@@ -10023,11 +10826,17 @@ body.cp-modal-open {
 .cp-helper-summary {
   margin-top: 24px;
   padding-top: 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 
 .cp-helper-summary__grid {
   margin-top: 10px;
+}
+
+@media (min-width: 1120px) {
+  .cp-helper-summary__grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
 }
 
 .cp-helper-summary__note {
@@ -10093,21 +10902,38 @@ body.cp-modal-open {
 
 .cp-utilities-intro {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
 }
 
 .cp-utilities-intro h3 {
-  margin: 0 0 4px;
+  margin: 0;
+}
+
+.cp-utilities-empty {
+  text-align: center;
+  padding: 28px 20px;
+}
+
+.cp-utilities-empty .cp-empty-state-title {
+  justify-content: center;
 }
 
 .cp-utilities-empty__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cp-utilities-empty__actions .admin-btn {
+  min-height: 44px;
+  justify-content: center;
 }
 
 .cp-utilities-section {
@@ -10154,6 +10980,15 @@ body.cp-modal-open {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .cp-utilities-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 12px;
+    align-items: start;
+  }
 }
 
 .cp-utilities-item {
@@ -10254,6 +11089,15 @@ body.cp-modal-open {
   .cp-utilities-section__head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cp-utilities-intro .admin-btn,
+  .cp-utilities-item__open,
+  .cp-utilities-item__pdf.admin-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .cp-utilities-item__open {

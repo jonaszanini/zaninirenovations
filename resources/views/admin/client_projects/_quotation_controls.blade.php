@@ -7,7 +7,7 @@
             class="cp-quotation-control__form">
         @csrf
         <label for="cp-q-status-{{ $quotation->id }}" class="cp-quotation-control__label">Workflow status</label>
-        <select class="admin-input" id="cp-q-status-{{ $quotation->id }}"
+        <select id="cp-q-status-{{ $quotation->id }}"
                 name="status"
                 class="admin-input cp-quotation-control__select"
                 onchange="this.form.submit()">
@@ -28,15 +28,17 @@
           @csrf
           <label for="cp-q-sub-override-{{ $quotation->id }}" class="cp-quotation-control__label">Subtotal override (pre-tax)</label>
           <div class="cp-quotation-control__field-row">
-            <input type="text"
-                   id="cp-q-sub-override-{{ $quotation->id }}"
-                   name="subtotal_override"
-                   class="admin-input cp-money-input cp-quotation-control__input"
-                   inputmode="decimal"
-                   autocomplete="off"
-                  
-                   placeholder="0.00"
-                   value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}" data-cp-money-entry="direct">
+            <div class="cp-cad-field cp-quotation-control__input-wrap">
+              <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+              <input type="text"
+                     id="cp-q-sub-override-{{ $quotation->id }}"
+                     name="subtotal_override"
+                     class="admin-input cp-money-input cp-quotation-control__input"
+                     inputmode="decimal"
+                     autocomplete="off"
+                     placeholder="0.00"
+                     value="{{ old('subtotal_override', $quotation->hasSubtotalOverrideActive() ? number_format((float) $quotation->subtotal_override, 2, '.', '') : '') }}" data-cp-money-entry="direct">
+            </div>
             <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-quotation-control__submit">
               <i class="fa fa-save"></i> Save
             </button>

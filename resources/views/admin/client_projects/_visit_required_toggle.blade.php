@@ -22,22 +22,24 @@
   $slowExpand = $slowExpand ?? false;
 @endphp
 <input type="hidden" name="visit_required" value="0">
-<label class="cp-visit-toggle" for="{{ $visitRequiredId }}">
-  <input type="checkbox"
-    name="visit_required"
-    value="1"
-    id="{{ $visitRequiredId }}"
-    @checked($visitRequiredChecked ?? false)>
-  <span class="cp-visit-toggle__control" aria-hidden="true"></span>
-  <span class="cp-visit-toggle__label">Visit required</span>
-</label>
+<div class="cp-visit-toggle-row">
+  <label class="cp-visit-toggle" for="{{ $visitRequiredId }}">
+    <input type="checkbox"
+      name="visit_required"
+      value="1"
+      id="{{ $visitRequiredId }}"
+      @checked($visitRequiredChecked ?? false)>
+    <span class="cp-visit-toggle__control" aria-hidden="true"></span>
+    <span class="cp-visit-toggle__label">Visit required</span>
+  </label>
+  <x-admin.info-tip label="On-site visit">
+    On-site visit before quoting. Set a visit date when you know it; leave the date empty if you only need to flag that a visit is required.
+  </x-admin.info-tip>
+</div>
 <div id="{{ $expandableId }}"
   class="cp-visit-expandable @if ($slowExpand) cp-visit-expandable--slow @endif @if ($expandOpen) is-open @endif"
   aria-hidden="{{ $expandOpen ? 'false' : 'true' }}">
   <div class="cp-visit-expandable__inner">
-    <p class="admin-form-help cp-visit-expandable__help">
-      On-site visit before quoting. Set a visit date when you know it; leave the date empty if you only need to flag that a visit is required.
-    </p>
     <div class="cp-visit-datetime-row">
       <div class="admin-form-group cp-visit-date">
         <label for="{{ $visitDateId }}">Visit date</label>
