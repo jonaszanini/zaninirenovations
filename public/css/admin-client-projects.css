@@ -6204,7 +6204,23 @@ a:hover .cp-expense-receipt-pdf {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
-  margin: 12px 0 4px;
+  margin: 12px 0 8px;
+}
+
+.cp-billing-totals .cp-hourly-summary-tile {
+  border-radius: 12px;
+  min-width: 0;
+}
+
+.cp-billing-totals .cp-hourly-summary-value {
+  font-size: clamp(15px, 1.35vw, 18px);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 1180px) {
+  .cp-billing-totals {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
 }
 
 .cp-billing-actions {
@@ -6228,7 +6244,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-contract-header .cp-billing-actions {
-  width: 100%;
+  width: auto;
 }
 
 .cp-billing-prepare__terms {
@@ -6252,6 +6268,10 @@ a:hover .cp-expense-receipt-pdf {
 @media (max-width: 640px) {
   .cp-billing-totals {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .cp-billing-totals .cp-hourly-summary-tile--highlight {
+    grid-column: 1 / -1;
   }
 
   .cp-billing-prepare-table .admin-input[type="date"] {
@@ -6284,11 +6304,43 @@ a:hover .cp-expense-receipt-pdf {
   margin: 8px 0 0;
 }
 
-/* Invoice table — mostly inherits from .admin-table; this tightens the
-   inline action cell so the buttons don't explode the row height. */
+/* Invoice table — fits comfortably at 1024px+ laptop and stacks to cards below 900px */
+.admin-table.cp-invoices-table {
+  min-width: 0;
+  width: 100%;
+}
+
 .cp-invoices-table th,
 .cp-invoices-table td {
   vertical-align: middle;
+  padding: 10px 8px;
+}
+
+.cp-invoices-table .cp-col-num {
+  width: 34px;
+  text-align: center;
+}
+
+.cp-invoices-table .cp-col-actions {
+  text-align: right;
+  width: 165px;
+}
+
+@media (max-width: 1200px) and (min-width: 901px) {
+  .cp-invoices-table th,
+  .cp-invoices-table td {
+    padding: 9px 6px;
+    font-size: 13px;
+  }
+
+  .cp-invoices-table .cp-col-actions {
+    width: 132px;
+  }
+
+  .cp-invoices-table td[data-label="Status"] .cp-badge {
+    white-space: normal;
+    line-height: 1.25;
+  }
 }
 
 .cp-invoice-due {
@@ -6426,7 +6478,7 @@ a:hover .cp-expense-receipt-pdf {
   color: #013552 !important;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 900px) {
   .admin-table-scroll:has(.cp-invoices-table) {
     overflow-x: visible;
   }
@@ -6456,9 +6508,10 @@ a:hover .cp-expense-receipt-pdf {
   .cp-invoices-table tbody tr:not(.cp-invoice-warning-row) {
     background: var(--admin-elevated);
     border: 1px solid var(--admin-border);
-    border-radius: 10px;
-    padding: 10px 12px 8px;
-    margin-bottom: 8px;
+    border-radius: 12px;
+    padding: 12px 14px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 6px 16px -14px rgba(15, 23, 42, 0.25);
   }
 
   .cp-invoice-warning-row {
@@ -6469,40 +6522,75 @@ a:hover .cp-expense-receipt-pdf {
   }
 
   .cp-invoices-table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 4px 0;
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr);
+    align-items: start;
+    gap: 8px;
+    padding: 5px 0;
     border: none;
+    text-align: right;
+  }
+
+  .cp-invoices-table td[data-label="Description"],
+  .cp-invoices-table td[data-label="Status"] {
+    text-align: right;
   }
 
   .cp-invoices-table td[data-label]::before {
     content: attr(data-label);
+    text-align: left;
     font-size: 11px;
     font-weight: 600;
     color: var(--admin-muted);
     text-transform: uppercase;
     letter-spacing: 0.04em;
-    flex: 0 0 auto;
-    padding-top: 4px;
+    padding-top: 3px;
+  }
+
+  .cp-invoices-table td[data-label="Status"] {
+    justify-items: end;
+  }
+
+  .cp-invoices-table td[data-label="Status"]::before {
+    justify-self: start;
   }
 
   .cp-invoices-table td[data-label="Actions"] {
-    justify-content: flex-end;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     overflow: visible;
     position: relative;
     z-index: 2;
+    margin-top: 6px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--admin-border);
   }
 
   .cp-invoices-table td[data-label="Actions"]::before {
     margin-right: auto;
-    padding-top: 12px;
+    padding-top: 0;
+  }
+
+  .cp-invoices-table .admin-actions-dropdown__toggle {
+    min-width: var(--admin-control-height, 44px);
+    min-height: var(--admin-control-height, 44px);
+    width: var(--admin-control-height, 44px);
+    height: var(--admin-control-height, 44px);
+  }
+
+  .cp-invoices-table .cp-invoice-actions.admin-table-actions .admin-btn:not(.admin-actions-dropdown__toggle) {
+    display: none;
+  }
+
+  .cp-invoices-table .cp-invoice-actions.admin-table-actions .admin-actions-dropdown {
+    display: inline-block;
   }
 
   .cp-invoice-warning-row td {
     display: block;
     padding: 0;
+    text-align: left;
   }
 
   .cp-invoice-warning-row td::before {

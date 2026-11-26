@@ -64,19 +64,22 @@
     <div class="admin-card cp-contract-card">
       <div class="cp-contract-header">
         <div class="cp-contract-meta">
-          <h3>Existing invoices</h3>
+          <h3 class="cp-card-head">
+            <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-file-text-o"></i></span>
+            <span>Existing invoices</span>
+          </h3>
         </div>
       </div>
       <div class="admin-table-scroll">
-        <table class="admin-table cp-invoices-table">
+        <table class="admin-table cp-invoices-table cp-invoices-table--readonly">
           <thead>
             <tr>
               <th>Description</th>
-              <th style="width:120px;">Subtotal</th>
-              <th style="width:120px;">HST</th>
-              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
-              <th style="width:130px;">Status</th>
-              <th style="width:200px;">Actions</th>
+              <th class="cp-col-amount">Subtotal</th>
+              <th class="cp-col-amount">HST</th>
+              <th class="cp-col-amount">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th>Status</th>
+              <th class="cp-col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -162,8 +165,9 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>
-          Invoices
+        <h3 class="cp-card-head">
+          <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-file-text-o"></i></span>
+          <span>Invoices</span>
           <x-admin.info-tip label="Invoices">
             This project is billed by the hour. Log time on the
             <a href="#time" data-cp-jump-tab="time">Time Tracking</a> tab, then create
@@ -244,15 +248,15 @@
         </x-admin.info-tip>
       </h4>
       <div class="admin-table-scroll">
-        <table class="admin-table cp-invoices-table">
+        <table class="admin-table cp-invoices-table cp-invoices-table--hourly">
           <thead>
             <tr>
               <th>Description</th>
-              <th style="width:120px;">Subtotal</th>
-              <th style="width:120px;">HST (13%)</th>
-              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
-              <th style="width:130px;">Status</th>
-              <th style="width:340px;">Actions</th>
+              <th class="cp-col-amount">Subtotal</th>
+              <th class="cp-col-amount">HST (13%)</th>
+              <th class="cp-col-amount">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th>Status</th>
+              <th class="cp-col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -341,8 +345,9 @@
   <div class="admin-card cp-contract-card">
     <div class="cp-contract-header">
       <div class="cp-contract-meta">
-        <h3>
-          Invoices
+        <h3 class="cp-card-head">
+          <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-file-text-o"></i></span>
+          <span>Invoices</span>
           <x-admin.info-tip label="Invoices">
             One invoice per installment from your <a href="#financials" data-cp-jump-tab="financials">Payment plan</a>.
             When you mark an invoice as paid, a receipt is generated and emailed to the client automatically,
@@ -354,6 +359,7 @@
       </div>
 
       <div class="cp-contract-actions">
+        @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
         {{-- Manual invoice creation (no installment link) --}}
         <form action="{{ route('admin.client-projects.invoices.create', $project) }}" method="post" class="cp-inline-form">
           @csrf
@@ -364,8 +370,6 @@
         </form>
       </div>
     </div>
-
-    @include('admin.client_projects._billing_actions', ['project' => $project, 'billingCompact' => true])
 
     @if ($installments->isNotEmpty())
       @include('admin.client_projects._billing_totals', [
@@ -424,16 +428,16 @@
         </x-admin.info-tip>
       </h4>
       <div class="admin-table-scroll">
-        <table class="admin-table cp-invoices-table">
+        <table class="admin-table cp-invoices-table cp-invoices-table--installments">
           <thead>
             <tr>
-              <th style="width:50px;">#</th>
+              <th class="cp-col-num">#</th>
               <th>Description</th>
-              <th style="width:120px;">Subtotal</th>
-              <th style="width:120px;">HST</th>
-              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
-              <th style="width:130px;">Status</th>
-              <th style="width:340px;">Actions</th>
+              <th class="cp-col-amount">Subtotal</th>
+              <th class="cp-col-amount">HST</th>
+              <th class="cp-col-amount">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th>Status</th>
+              <th class="cp-col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -541,15 +545,15 @@
         </x-admin.info-tip>
       </h4>
       <div class="admin-table-scroll">
-        <table class="admin-table cp-invoices-table">
+        <table class="admin-table cp-invoices-table cp-invoices-table--hourly">
           <thead>
             <tr>
               <th>Description</th>
-              <th style="width:120px;">Subtotal</th>
-              <th style="width:120px;">HST (13%)</th>
-              <th style="width:130px;">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
-              <th style="width:130px;">Status</th>
-              <th style="width:340px;">Actions</th>
+              <th class="cp-col-amount">Subtotal</th>
+              <th class="cp-col-amount">HST (13%)</th>
+              <th class="cp-col-amount">Total <span class="admin-form-help cp-incl-hst">(incl. HST)</span></th>
+              <th>Status</th>
+              <th class="cp-col-actions">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -659,15 +663,17 @@
             </div>
             <div class="admin-form-group">
               <label for="cp-mark-paid-amount">Amount received (CAD)</label>
-              <input type="text"
-                     id="cp-mark-paid-amount"
-                     name="paid_amount"
-                     class="admin-input cp-money-input"
-                     inputmode="decimal"
-                     autocomplete="off"
-                    
-                     placeholder="0.00"
-                     required data-cp-money-entry="direct">
+              <div class="cp-cad-field">
+                <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+                <input type="text"
+                       id="cp-mark-paid-amount"
+                       name="paid_amount"
+                       class="admin-input cp-money-input"
+                       inputmode="decimal"
+                       autocomplete="off"
+                       placeholder="0.00"
+                       required data-cp-money-entry="direct">
+              </div>
             </div>
           </div>
           <div class="admin-form-grid-2">
@@ -862,15 +868,18 @@
           </div>
           <div class="admin-form-group">
             <label for="cp-refund-amount">Amount to refund (CAD)</label>
-            <input type="text"
-                   id="cp-refund-amount"
-                   name="refund_amount"
-                   class="admin-input cp-money-input"
-                   inputmode="decimal"
-                   autocomplete="off"
-                   placeholder="0.00"
-                   required
-                   data-cp-money-entry="direct">
+            <div class="cp-cad-field">
+              <span class="cp-cad-field__prefix" aria-hidden="true">CA$</span>
+              <input type="text"
+                     id="cp-refund-amount"
+                     name="refund_amount"
+                     class="admin-input cp-money-input"
+                     inputmode="decimal"
+                     autocomplete="off"
+                     placeholder="0.00"
+                     required
+                     data-cp-money-entry="direct">
+            </div>
           </div>
         </div>
         <div class="admin-form-group cp-mark-paid-method">
