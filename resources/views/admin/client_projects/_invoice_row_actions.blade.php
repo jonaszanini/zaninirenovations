@@ -83,6 +83,9 @@
   $clientEmail = $project->clientEmailRecipientsLabel();
   $clientSms = $project->clientSmsRecipientsLabel();
   $sendConfirm = "This will generate a new PDF, email it to {$clientEmail}, and save it on the server. Continue?";
+  $expenseReceiptCount = $project->expenses->filter(fn ($expense) => filled($expense->receipt_path))->count();
+  $sendReceiptCheckbox = $expenseReceiptCount > 0;
+  $sendConfirmLabel = ($invoice && $invoice->wasEverSent()) ? 'Resend' : 'Send';
   $smsConfirm = "Send an SMS to {$clientSms} with a secure link to view or download this invoice PDF?";
   $canReminder = filled(trim((string) $project->client_email)) || $canSms;
   $reminderConfirm = filled(trim((string) $project->client_email))
@@ -265,7 +268,16 @@
               <form action="{{ $item['action'] }}"
                     method="post"
                     class="admin-actions-dropdown__form"
-                    @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                    @if (! empty($item['checkboxTemplate']))
+                      data-confirm="{{ $item['confirm'] }}"
+                      data-confirm-title="{{ $item['confirmTitle'] ?? 'Send invoice' }}"
+                      data-confirm-label="{{ $item['confirmLabel'] ?? 'Send' }}"
+                      data-confirm-checkbox-template="{{ $item['checkboxTemplate'] }}"
+                      data-confirm-checkbox-name="{{ $item['checkboxName'] }}"
+                    @elseif (! empty($item['confirm']))
+                      onsubmit="return confirm({{ json_encode($item['confirm']) }});"
+                    @endif
+                    >
                 @csrf
                 @if (! empty($item['method']) && $item['method'] === 'DELETE')
                   @method('DELETE')
@@ -318,13 +330,20 @@
     }
     if (! $invoice->isSettled()) {
         if ($canSend) {
-            $invoiceDropdownItems[] = [
+            $sendItem = [
                 'type' => 'form',
                 'action' => route('admin.client-projects.invoices.send', [$project, $invoice]),
                 'icon' => 'fa-paper-plane',
                 'label' => $invoice->wasEverSent() ? 'Resend' : 'Send',
                 'confirm' => $sendConfirm,
             ];
+            if ($sendReceiptCheckbox) {
+                $sendItem['confirmTitle'] = 'Send invoice';
+                $sendItem['confirmLabel'] = $sendConfirmLabel;
+                $sendItem['checkboxTemplate'] = 'cp-send-invoice-receipt-option';
+                $sendItem['checkboxName'] = 'attach_expense_receipts';
+            }
+            $invoiceDropdownItems[] = $sendItem;
         }
         if ($canSms) {
             $invoiceDropdownItems[] = [
@@ -436,7 +455,16 @@
         <form action="{{ route('admin.client-projects.invoices.send', [$project, $invoice]) }}"
               method="post"
               class="cp-inline-form"
-              onsubmit="return confirm({{ json_encode($sendConfirm) }});">
+              @if ($sendReceiptCheckbox)
+                data-confirm="{{ $sendConfirm }}"
+                data-confirm-title="Send invoice"
+                data-confirm-label="{{ $sendConfirmLabel }}"
+                data-confirm-checkbox-template="cp-send-invoice-receipt-option"
+                data-confirm-checkbox-name="attach_expense_receipts"
+              @else
+                onsubmit="return confirm({{ json_encode($sendConfirm) }});"
+              @endif
+              >
           @csrf
           <button type="submit" class="admin-btn admin-btn--primary admin-btn--sm cp-action-icon-btn" aria-label="{{ $invoice->wasEverSent() ? 'Resend' : 'Send' }}">
             <i class="fa fa-paper-plane" aria-hidden="true"></i>
@@ -645,7 +673,16 @@
               <form action="{{ $item['action'] }}"
                     method="post"
                     class="admin-actions-dropdown__form"
-                    @if (! empty($item['confirm'])) onsubmit="return confirm({{ json_encode($item['confirm']) }});" @endif>
+                    @if (! empty($item['checkboxTemplate']))
+                      data-confirm="{{ $item['confirm'] }}"
+                      data-confirm-title="{{ $item['confirmTitle'] ?? 'Send invoice' }}"
+                      data-confirm-label="{{ $item['confirmLabel'] ?? 'Send' }}"
+                      data-confirm-checkbox-template="{{ $item['checkboxTemplate'] }}"
+                      data-confirm-checkbox-name="{{ $item['checkboxName'] }}"
+                    @elseif (! empty($item['confirm']))
+                      onsubmit="return confirm({{ json_encode($item['confirm']) }});"
+                    @endif
+                    >
                 @csrf
                 @if (! empty($item['method']) && $item['method'] === 'DELETE')
                   @method('DELETE')

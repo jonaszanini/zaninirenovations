@@ -101,8 +101,44 @@
     });
   }
 
+  function clearDialogExtra() {
+    if (!root) return;
+    root.querySelectorAll('.admin-dialog-extra').forEach(function (el) {
+      if (el.parentNode) el.parentNode.removeChild(el);
+    });
+  }
+
+  function rememberCheckbox() {
+    if (!root) return;
+    var box = root.querySelector('.admin-dialog-extra input[type="checkbox"]');
+    if (box) {
+      root.dataset.checkboxChecked = box.checked ? '1' : '0';
+    } else if (root.dataset) {
+      delete root.dataset.checkboxChecked;
+    }
+  }
+
+  function mountCheckboxTemplate(templateId) {
+    var tpl = templateId ? document.getElementById(templateId) : null;
+    if (!tpl || !messageEl || !messageEl.parentNode) return;
+    var extra = document.createElement('div');
+    extra.className = 'admin-dialog-extra';
+    if (tpl.content) {
+      extra.appendChild(tpl.content.cloneNode(true));
+    } else {
+      extra.innerHTML = tpl.innerHTML;
+    }
+    var input = extra.querySelector('input[type="checkbox"]');
+    if (input && (input.hasAttribute('checked') || input.defaultChecked)) {
+      input.checked = true;
+    }
+    messageEl.parentNode.insertBefore(extra, messageEl.nextSibling);
+  }
+
   function close(result) {
     if (!root || root.hidden) return;
+    rememberCheckbox();
+    clearDialogExtra();
     root.hidden = true;
     root.setAttribute('aria-hidden', 'true');
     document.documentElement.classList.remove(OPEN_CLASS);
@@ -152,6 +188,10 @@
 
       if (titleEl) titleEl.textContent = title;
       if (messageEl) messageEl.textContent = message;
+      clearDialogExtra();
+      if (options.checkboxTemplate) {
+        mountCheckboxTemplate(options.checkboxTemplate);
+      }
 
       if (iconEl) {
         iconEl.className = 'fa admin-dialog-icon ' + (
@@ -242,6 +282,7 @@
       confirmLabel: options.confirmLabel || 'Continue',
       cancelLabel: options.cancelLabel || 'Cancel',
       danger: !!options.danger,
+      checkboxTemplate: options.checkboxTemplate || '',
     });
   }
 
@@ -299,9 +340,32 @@
 
       var title = form.getAttribute('data-confirm-title') || 'Confirm';
       var danger = form.hasAttribute('data-confirm-danger');
+      var confirmLabel = form.getAttribute('data-confirm-label') || 'Continue';
+      var checkboxTemplate = form.getAttribute('data-confirm-checkbox-template') || '';
+      var checkboxName = form.getAttribute('data-confirm-checkbox-name') || '';
 
-      confirm(msg, { title: title, danger: danger }).then(function (ok) {
+      confirm(msg, {
+        title: title,
+        danger: danger,
+        confirmLabel: confirmLabel,
+        checkboxTemplate: checkboxTemplate,
+      }).then(function (ok) {
         if (!ok) return;
+        if (checkboxName) {
+          var dialog = document.getElementById('admin-dialog');
+          var on = dialog && dialog.dataset.checkboxChecked === '1';
+          form.querySelectorAll('input[data-invoice-receipt-flag]').forEach(function (node) {
+            if (node.parentNode) node.parentNode.removeChild(node);
+          });
+          if (on) {
+            var hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = checkboxName;
+            hidden.value = '1';
+            hidden.setAttribute('data-invoice-receipt-flag', '1');
+            form.appendChild(hidden);
+          }
+        }
         form.dataset.confirmBypass = '1';
         if (typeof form.requestSubmit === 'function') {
           form.requestSubmit();
