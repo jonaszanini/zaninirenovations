@@ -1608,16 +1608,18 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
 
 .cp-header-details {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px 18px;
   margin-top: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--admin-border, #e5e7eb);
 }
 
+/* Phone shrinks to its content; email takes the remaining row so a
+   long address on the next line does not steal a third auto-fit column. */
 @media (min-width: 1200px) {
   .cp-header-details {
-    grid-template-columns: minmax(140px, 0.85fr) minmax(190px, 1.15fr) minmax(190px, 1.15fr) minmax(220px, 1.45fr);
+    grid-template-columns: minmax(140px, max-content) minmax(260px, 1fr);
   }
 }
 
@@ -1630,18 +1632,6 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
 
 .cp-header-detail--wide {
   grid-column: 1 / -1;
-}
-
-@media (min-width: 700px) and (max-width: 1199px) {
-  .cp-header-detail--wide {
-    grid-column: span 2;
-  }
-}
-
-@media (min-width: 1200px) {
-  .cp-header-detail--wide {
-    grid-column: auto;
-  }
 }
 
 .cp-header-detail__icon {
@@ -1678,7 +1668,7 @@ a.admin-client-link.cp-header-detail__value:focus-visible {
   color: var(--admin-text, #1f2937);
   line-height: 1.35;
   word-break: normal;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
 }
 
 a.cp-header-detail__value {
