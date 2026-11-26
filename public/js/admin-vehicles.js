@@ -232,9 +232,68 @@
     loadEstimate();
   }
 
+  function formatOverviewDuration(durationText) {
+    if (!durationText) return '';
+    return String(durationText)
+      .replace(/^~/, 'about ')
+      .replace(/\s+round trip$/i, '')
+      .trim();
+  }
+
+  function initOverviewTravelRow() {
+    var el = document.querySelector('[data-cp-overview-travel]');
+    if (!el || el._cpOverviewTravelWired) return;
+    el._cpOverviewTravelWired = true;
+
+    var url = el.getAttribute('data-url');
+    if (!url) return;
+
+    var costEl = el.querySelector('[data-cp-overview-travel-cost]');
+    var metaEl = el.querySelector('[data-cp-overview-travel-meta]');
+
+    fetch(url, {
+      headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.ok || !data.fuel_cost_formatted) {
+          if (costEl && (!costEl.textContent || !costEl.textContent.trim())) {
+            costEl.textContent = 'Not set';
+          }
+          if (metaEl) {
+            metaEl.hidden = true;
+            metaEl.textContent = '';
+          }
+          return;
+        }
+        if (costEl) {
+          costEl.textContent = data.fuel_cost_formatted;
+        }
+        if (metaEl) {
+          var parts = [];
+          if (data.round_trip_km != null && data.round_trip_km !== '') {
+            parts.push(data.round_trip_km + ' km');
+          }
+          var dur = formatOverviewDuration(data.duration_text);
+          if (dur) {
+            parts.push(dur);
+          }
+          if (parts.length > 0) {
+            metaEl.textContent = '(' + parts.join(', ') + ')';
+            metaEl.hidden = false;
+          } else {
+            metaEl.textContent = '';
+            metaEl.hidden = true;
+          }
+        }
+      })
+      .catch(function () {});
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     initVehicleFormNumeric();
     initVehicleCalc();
     initTravelCost();
+    initOverviewTravelRow();
   });
 })();

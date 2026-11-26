@@ -3152,8 +3152,32 @@ html.admin-dark .cp-status-form-help {
 html.admin-dark .cp-dl dt {
   color: var(--admin-muted);
 }
-html.admin-dark .cp-dl dd {
+html.admin-dark .cp-dl dd,
+html.admin-dark .cp-overview-travel__cost,
+html.admin-dark .cp-qa-section__title,
+html.admin-dark .cp-qa-item__number,
+html.admin-dark .cp-qa-item__total,
+html.admin-dark .cp-qa-metric__value {
+  color: var(--admin-heading);
+}
+
+html.admin-dark .cp-qa-item,
+html.admin-dark .cp-qa-empty {
+  background: var(--admin-surface-hover);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-qa-metric {
+  background: var(--admin-surface);
+  border-color: var(--admin-border);
+}
+
+html.admin-dark .cp-qa-item__title {
   color: var(--admin-text);
+}
+
+html.admin-dark .cp-qa-tab-link {
+  color: var(--admin-primary);
 }
 
 /* Notes popover */

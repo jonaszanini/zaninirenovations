@@ -666,6 +666,9 @@
       function cpOpenQuotationDrawer(id) {
         var el = document.getElementById(id);
         if (!el) return;
+        if (el.parentElement !== document.body) {
+          document.body.appendChild(el);
+        }
         el.removeAttribute('hidden');
         el.classList.add('is-open');
         document.body.style.overflow = 'hidden';

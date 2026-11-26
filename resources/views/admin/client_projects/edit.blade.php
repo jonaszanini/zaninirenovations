@@ -280,6 +280,10 @@
     </aside>
   </div>
 
+  <div class="cp-edit-project-travel-wrap">
+    @include('admin.client_projects._travel_cost', ['project' => $project])
+  </div>
+
   <div class="admin-card admin-card--narrow cp-edit-project-photos-card">
     <h3>Photos &amp; files</h3>
     @include('admin.client_projects._project_photos_gallery', [
@@ -385,4 +389,5 @@
 
 @push('scripts')
   @include('admin.partials.google_maps_scripts')
+  <script src="{{ asset('js/admin-vehicles.js') }}?v={{ @filemtime(public_path('js/admin-vehicles.js')) ?: time() }}" defer></script>
 @endpush

@@ -31,6 +31,55 @@
   } else {
     $scheduleDisplay = 'Not set';
   }
+
+  $secondaryEmail = $project->secondaryClientEmail();
+  $formattedPhone = \App\Models\ClientProject::formatPhone($project->client_phone);
+
+  // Travel row uses the exact same data source and calculation as Estimated travel cost.
+  $overviewTravelCost = null;
+  $overviewTravelMeta = null;
+  try {
+    $travelMaps = app(\App\Services\GoogleMapsService::class);
+    $project->copyServiceCoordinatesFromDirectory();
+    if (
+      $travelMaps->isConfigured()
+      && $travelMaps->isDistanceMatrixConfigured()
+      && $project->hasServiceCoordinates()
+    ) {
+      $travelSettings = \App\Models\CompanySetting::current();
+      $travelVehicle = \App\Models\Vehicle::active();
+      if (
+        $travelSettings->hasHomeCoordinates()
+        && $travelVehicle
+        && $travelVehicle->hasFuelConsumption()
+        && $travelSettings->hasGasPrice()
+      ) {
+        $travelResp = app(\App\Http\Controllers\Admin\ClientProjectTravelController::class)
+          ->estimate($project, $travelMaps)
+          ->getData(true);
+        if (!empty($travelResp['ok']) && !empty($travelResp['fuel_cost_formatted'])) {
+          $overviewTravelCost = $travelResp['fuel_cost_formatted'];
+          $metaParts = [];
+          if (isset($travelResp['round_trip_km']) && $travelResp['round_trip_km'] !== '') {
+            $metaParts[] = $travelResp['round_trip_km'].' km';
+          }
+          if (!empty($travelResp['duration_text'])) {
+            $cleanDur = preg_replace(['/^~/', '/\s+round trip$/i'], ['about ', ''], (string) $travelResp['duration_text']);
+            $cleanDur = trim((string) $cleanDur);
+            if ($cleanDur !== '') {
+              $metaParts[] = $cleanDur;
+            }
+          }
+          if (!empty($metaParts)) {
+            $overviewTravelMeta = implode(', ', $metaParts);
+          }
+        }
+      }
+    }
+  } catch (\Throwable $e) {
+    $overviewTravelCost = null;
+    $overviewTravelMeta = null;
+  }
 @endphp
 
 <div class="admin-card cp-overview-details-card">
@@ -39,21 +88,34 @@
     <span>Details</span>
   </h3>
   <dl class="cp-dl">
-    <dt>Project name</dt><dd data-cp-project-name-mirror>{{ $project->name }}</dd>
-    <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [
-      'project' => $project,
-      'label' => $project->client_name,
-    ])</dd>
-    <dt>Email</dt><dd>@include('admin.partials.client_directory_link', [
-      'project' => $project,
-      'label' => $project->client_email,
-      'fallbackMailto' => true,
-    ])</dd>
-    <dt>Secondary email</dt><dd>{{ $project->secondaryClientEmail() ?: 'Not set' }}</dd>
-    <dt>Phone</dt><dd>{{ \App\Models\ClientProject::formatPhone($project->client_phone) ?: 'Not set' }}</dd>
-    <dt>Address</dt><dd>{{ $project->client_address ?: 'Not set' }}</dd>
-    <dt>Created</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->created_at) }}</dd>
-    <dt>Status changed</dt><dd>{{ \App\Models\ClientProject::formatDateTime($project->status_changed_at) }}</dd>
+    @if (filled(trim((string) $project->name)))
+      <dt>Project name</dt><dd data-cp-project-name-mirror>{{ $project->name }}</dd>
+    @endif
+
+    @if (filled(trim((string) $project->client_name)))
+      <dt>Client</dt><dd>@include('admin.partials.client_directory_link', [
+        'project' => $project,
+        'label' => $project->client_name,
+      ])</dd>
+    @endif
+
+    @if (filled(trim((string) $project->client_email)))
+      <dt>Email</dt><dd>@include('admin.partials.client_directory_link', [
+        'project' => $project,
+        'label' => $project->client_email,
+        'fallbackMailto' => true,
+      ])</dd>
+    @endif
+
+    @if (filled($secondaryEmail))
+      <dt>Secondary email</dt><dd>{{ $secondaryEmail }}</dd>
+    @endif
+
+    <dt>Phone</dt><dd>{{ $formattedPhone ?: 'Not set' }}</dd>
+
+    @if (filled(trim((string) $project->client_address)))
+      <dt>Address</dt><dd>{{ $project->client_address }}</dd>
+    @endif
 
     <dt>
       <span class="cp-overview-dt">
@@ -173,10 +235,37 @@
         </div>
       </form>
     </dd>
+
+    <dt>
+      <span class="cp-overview-dt">
+        Travel
+        <x-admin.info-tip label="Travel">Round trip fuel cost, distance, and drive time using your home / office address and active vehicle. Refresh or edit vehicle settings on More details.</x-admin.info-tip>
+      </span>
+    </dt>
+    <dd class="cp-overview-travel"
+        data-cp-overview-travel
+        data-url="{{ route('admin.client-projects.travel-estimate', $project) }}">
+      @if ($overviewTravelCost)
+        <span class="cp-overview-travel__cost" data-cp-overview-travel-cost>{{ $overviewTravelCost }}</span>
+        <span class="cp-overview-travel__meta" data-cp-overview-travel-meta @if(!$overviewTravelMeta) hidden @endif>{{ $overviewTravelMeta ? '('.$overviewTravelMeta.')' : '' }}</span>
+      @else
+        <span class="cp-overview-travel__cost" data-cp-overview-travel-cost>Not set</span>
+        <span class="cp-overview-travel__meta" data-cp-overview-travel-meta hidden></span>
+      @endif
+    </dd>
   </dl>
 
   @if ($project->notes)
     <h3 class="cp-overview-notes-heading">Notes</h3>
     <div class="cp-notes-box">{{ $project->notes }}</div>
   @endif
+
+  <div class="cp-overview-details-card__foot">
+    <a href="{{ route('admin.client-projects.edit', $project) }}"
+       class="admin-btn admin-btn--ghost admin-btn--sm cp-overview-more-details"
+       data-cp-overview-more-details>
+      <span>More details</span>
+      <i class="fa fa-arrow-right" aria-hidden="true"></i>
+    </a>
+  </div>
 </div>
