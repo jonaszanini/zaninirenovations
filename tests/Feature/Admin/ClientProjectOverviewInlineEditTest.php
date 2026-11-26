@@ -823,6 +823,141 @@ class ClientProjectOverviewInlineEditTest extends IntegrationTestCase
         $this->assertMatchesRegularExpression('/Balance due.*?CA\$0\.00/s', $qaInvoiceSection);
     }
 
+    public function test_edit_page_renders_all_existing_field_names_collapsible_billing_and_saves_all_fields(): void
+    {
+        Mail::fake();
+        $this->actingAsAdmin();
+
+        $client = Client::query()->create([
+            'name' => 'Initial Client',
+            'email' => 'initial@example.com',
+            'phone' => '6135550101',
+            'address' => '10 First St, Ottawa, ON',
+        ]);
+
+        $project = ClientProject::factory()->create([
+            'name' => 'Initial Project',
+            'client_id' => $client->id,
+            'client_name' => 'Initial Client',
+            'client_email' => 'initial@example.com',
+            'client_email_secondary' => null,
+            'client_phone' => '6135550101',
+            'client_address' => '10 First St, Ottawa, ON',
+            'contacted_via' => ClientProject::CONTACTED_VIA_EMAIL,
+            'conversation_on' => null,
+            'invoice_billing_name' => null,
+            'invoice_billing_address' => null,
+            'billing_type' => ClientProject::BILLING_FIXED,
+            'status' => ClientProject::STATUS_QUOTE_PENDING,
+        ]);
+
+        $emptyBillingHtml = $this->get(route('admin.client-projects.edit', $project))
+            ->assertOk()
+            ->assertSee('id="cp-edit-project-form"', false)
+            ->assertSee('id="cp-travel-cost"', false)
+            ->assertSee('data-cp-travel-refresh', false)
+            ->getContent();
+
+        $expectedFieldNames = [
+            'name',
+            'status',
+            'contacted_via',
+            'conversation_on',
+            'client_id',
+            'sync_client_directory',
+            'client_name',
+            'client_phone',
+            'client_email',
+            'client_email_secondary',
+            'client_address',
+            'client_address_place_id',
+            'client_address_latitude',
+            'client_address_longitude',
+            'invoice_billing_name',
+            'invoice_billing_address',
+            'visit_required',
+            'visit_date',
+            'visit_time',
+            'visit_done',
+            'start_date',
+            'end_date',
+            'billing_type',
+            'hourly_rate',
+            'notes',
+            'photos[]',
+            'document_links[0][url]',
+            'document_links[0][kind]',
+        ];
+        foreach ($expectedFieldNames as $fieldName) {
+            $this->assertStringContainsString('name="'.$fieldName.'"', $emptyBillingHtml, "Missing input name={$fieldName}");
+        }
+        $this->assertStringContainsString('id="cp-edit-schedule-enabled"', $emptyBillingHtml);
+        $this->assertStringContainsString('data-cp-money-entry="direct"', $emptyBillingHtml);
+        $this->assertStringContainsString('data-cp-invoice-billing-details', $emptyBillingHtml);
+        $this->assertDoesNotMatchRegularExpression('/data-cp-invoice-billing-details[^>]*\bopen\b/', $emptyBillingHtml);
+        $this->assertDoesNotMatchRegularExpression('/<p[^>]*>Address suggestions enabled/', $emptyBillingHtml);
+
+        $this->put(route('admin.client-projects.update', $project), [
+            'name' => 'Updated Kitchen Remodel',
+            'status' => ClientProject::STATUS_IN_PROGRESS,
+            'contacted_via' => ClientProject::CONTACTED_VIA_CALL,
+            'conversation_on' => ClientProject::CONTACTED_VIA_WHATSAPP,
+            'client_id' => $client->id,
+            'sync_client_directory' => '1',
+            'client_name' => 'Updated Client Name',
+            'client_phone' => '(416) 555-0199',
+            'client_email' => 'updated@example.com',
+            'client_email_secondary' => 'cc@example.com',
+            'client_address' => '250 Queen St, Ottawa, ON',
+            'client_address_place_id' => 'place-test-123',
+            'client_address_latitude' => '45.4201',
+            'client_address_longitude' => '-75.7001',
+            'invoice_billing_name' => 'Updated Holdings Ltd.',
+            'invoice_billing_address' => '99 Billing Ave, Ottawa, ON',
+            'visit_required' => '1',
+            'visit_date' => '2026-12-01',
+            'visit_time' => '13:30',
+            'visit_done' => '0',
+            'start_date' => '2026-12-10',
+            'end_date' => '2026-12-15',
+            'billing_type' => ClientProject::BILLING_HOURLY,
+            'hourly_rate' => '115.00',
+            'notes' => 'Updated internal note.',
+        ])->assertRedirect(route('admin.client-projects.show', $project))
+            ->assertSessionDoesntHaveErrors();
+
+        $project->refresh();
+        $client->refresh();
+
+        $this->assertSame('Updated Kitchen Remodel', $project->name);
+        $this->assertSame(ClientProject::STATUS_IN_PROGRESS, $project->status);
+        $this->assertSame(ClientProject::CONTACTED_VIA_CALL, $project->contacted_via);
+        $this->assertSame(ClientProject::CONTACTED_VIA_WHATSAPP, $project->conversation_on);
+        $this->assertSame('Updated Client Name', $project->client_name);
+        $this->assertSame('4165550199', $project->client_phone);
+        $this->assertSame('updated@example.com', $project->client_email);
+        $this->assertSame('cc@example.com', $project->client_email_secondary);
+        $this->assertSame('250 Queen St, Ottawa, ON', $project->client_address);
+        $this->assertSame('Updated Holdings Ltd.', $project->invoice_billing_name);
+        $this->assertSame('99 Billing Ave, Ottawa, ON', $project->invoice_billing_address);
+        $this->assertSame('2026-12-01', $project->visit_date?->toDateString());
+        $this->assertSame('2026-12-10', $project->start_date?->toDateString());
+        $this->assertSame('2026-12-15', $project->end_date?->toDateString());
+        $this->assertSame(ClientProject::BILLING_HOURLY, $project->billing_type);
+        $this->assertSame('115.00', number_format((float) $project->hourly_rate, 2, '.', ''));
+        $this->assertSame('Updated internal note.', $project->notes);
+
+        $this->assertSame('Updated Client Name', $client->name);
+        $this->assertSame('updated@example.com', $client->email);
+        $this->assertSame('4165550199', $client->phone);
+        $this->assertSame('250 Queen St, Ottawa, ON', $client->address);
+
+        $openBillingHtml = $this->get(route('admin.client-projects.edit', $project))
+            ->assertOk()
+            ->getContent();
+        $this->assertMatchesRegularExpression('/data-cp-invoice-billing-details[^>]*\bopen\b/', $openBillingHtml);
+    }
+
     /**
      * @param  array{name: ?string, email: ?string, phone: ?string, address: ?string}  $directoryBefore
      * @param  array{client_name: mixed, client_email: mixed, client_phone: mixed, client_address: mixed}  $projectContactBefore

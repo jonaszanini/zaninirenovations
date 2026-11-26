@@ -10940,6 +10940,386 @@ body.cp-modal-open {
   }
 }
 
+/* =================================================================
+   Edit Project Page (.cp-edit-page) — compact multi-column layout
+   ================================================================= */
+.cp-edit-page__grid {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  margin-bottom: 0;
+}
+
+.cp-edit-page__main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.cp-edit-page__side {
+  display: contents;
+}
+
+.cp-edit-page .cp-edit-project-form-card,
+.cp-edit-page .cp-edit-project-photos-card,
+.cp-edit-page .cp-edit-project-travel-wrap > .cp-travel-cost-card,
+.cp-edit-page .cp-danger-card {
+  border-radius: 16px;
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.16);
+}
+
+.cp-edit-page .cp-edit-project-form-card {
+  padding: 16px 18px;
+}
+
+.cp-edit-page .cp-edit-actions-bar {
+  order: -1;
+  position: sticky;
+  top: calc(env(safe-area-inset-top, 0px) + 4.25rem);
+  z-index: 90;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+}
+
+.cp-edit-page .cp-edit-actions-bar .admin-btn {
+  width: auto;
+  flex: 1 1 130px;
+  min-height: 40px;
+}
+
+.cp-edit-section {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.cp-edit-section--first {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.cp-edit-section__head {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.cp-edit-page .admin-form-group {
+  margin-bottom: 0;
+  min-width: 0;
+}
+
+.cp-edit-page .admin-form-group > label,
+.cp-edit-page .admin-label-with-tip {
+  margin-bottom: 4px;
+}
+
+.cp-edit-page .admin-input,
+.cp-edit-page select.admin-input,
+.cp-edit-page .admin-btn {
+  min-height: 40px;
+}
+
+.cp-edit-page .admin-input,
+.cp-edit-page textarea.admin-input {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.cp-edit-page .admin-places-status--ok {
+  display: none !important;
+}
+
+.cp-edit-directory-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cp-edit-directory-bar .cp-client-sync-toggle {
+  margin-bottom: 0;
+}
+
+.cp-edit-grid-project,
+.cp-edit-grid-client,
+.cp-edit-grid-invoice-billing,
+.cp-edit-grid-schedule,
+.cp-edit-grid-billing-notes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px 14px;
+  align-items: start;
+}
+
+.cp-edit-collapsible {
+  margin-top: 12px;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--admin-surface-hover, #f8fafc);
+}
+
+.cp-edit-collapsible__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  min-height: 42px;
+  cursor: pointer;
+  list-style: none;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--admin-heading, #0f172a);
+}
+
+.cp-edit-collapsible__summary::-webkit-details-marker {
+  display: none;
+}
+
+.cp-edit-collapsible__title-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cp-edit-collapsible__chevron {
+  font-size: 11px;
+  color: var(--admin-muted, #64748b);
+  transition: transform 0.16s ease;
+}
+
+.cp-edit-collapsible[open] .cp-edit-collapsible__chevron {
+  transform: rotate(90deg);
+}
+
+.cp-edit-collapsible__tag {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-muted, #64748b);
+}
+
+.cp-edit-collapsible__badge {
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.1));
+  color: var(--admin-primary, #024768);
+}
+
+.cp-edit-collapsible__body {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.cp-edit-subcard {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--admin-border, #e2e8f0);
+  border-radius: 12px;
+  background: var(--admin-surface-hover, #f8fafc);
+  min-width: 0;
+}
+
+.cp-edit-subcard .cp-schedule-dates {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+
+.cp-edit-subcard .cp-visit-datetime-row {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.cp-edit-page__side .cp-document-links-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.cp-edit-page__side .cp-document-links-url {
+  grid-column: 1 / -1;
+}
+
+.cp-edit-page .cp-visit-section {
+  margin-top: 0;
+  border-top: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.cp-edit-billing-col,
+.cp-edit-notes-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cp-edit-page .cp-billing-choice {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.cp-edit-page .cp-billing-option {
+  min-height: 40px;
+  padding: 8px 10px;
+}
+
+.cp-edit-form-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--admin-border, #e2e8f0);
+}
+
+.cp-edit-danger-card {
+  margin-top: 0;
+}
+
+.cp-edit-danger-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cp-edit-danger-card__row .cp-danger-title {
+  margin: 0;
+}
+
+.cp-card-head__icon--danger {
+  background: rgba(220, 38, 38, 0.12);
+  color: #dc2626;
+}
+
+.cp-edit-page .cp-edit-project-photos-card {
+  margin-top: 0;
+  padding: 16px 18px;
+}
+
+.cp-edit-page .cp-edit-project-travel-wrap {
+  margin-bottom: 0;
+}
+
+.cp-edit-page .cp-edit-project-travel-wrap .cp-travel-breakdown-wrap {
+  overflow-x: auto;
+}
+
+.cp-edit-page .cp-edit-project-travel-wrap .cp-travel-breakdown th,
+.cp-edit-page .cp-edit-project-travel-wrap .cp-travel-breakdown td {
+  padding: 7px 6px;
+  font-size: 12.5px;
+}
+
+/* Tablet (768px - 1023px): 2-column compact field layout */
+@media (min-width: 768px) {
+  .cp-edit-grid-project {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cp-edit-col-name {
+    grid-column: 1 / -1;
+  }
+
+  .cp-edit-grid-client,
+  .cp-edit-grid-invoice-billing {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .cp-edit-address-col {
+    grid-column: 1 / -1;
+  }
+
+  .cp-edit-grid-schedule {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .cp-edit-grid-billing-notes {
+    grid-template-columns: minmax(240px, 5fr) minmax(0, 7fr);
+  }
+}
+
+/* Laptop & Desktop (1024px+): 3-col short Project selects & 12-col Client grid */
+@media (min-width: 1024px) {
+  .cp-edit-grid-project {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cp-edit-grid-client,
+  .cp-edit-grid-invoice-billing {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .cp-edit-span-3 { grid-column: span 3; }
+  .cp-edit-span-4 { grid-column: span 4; }
+  .cp-edit-span-5 { grid-column: span 5; }
+  .cp-edit-span-7 { grid-column: span 7; }
+}
+
+/* Wide desktop (1180px+ / 1280px+ viewport): two-column page with sticky right rail */
+@media (min-width: 1180px) {
+  .cp-edit-page__grid {
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 18px;
+    align-items: start;
+  }
+
+  .cp-edit-page__side {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+  }
+
+  .cp-edit-page .cp-edit-actions-bar {
+    order: 0;
+    position: sticky;
+    top: 1rem;
+    z-index: 10;
+  }
+}
+
+/* Extra wide (1440px+): all 4 Project fields sit on 1 row + wider rail */
+@media (min-width: 1440px) {
+  .cp-edit-page__grid {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+
+  .cp-edit-grid-project {
+    grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr));
+  }
+
+  .cp-edit-col-name {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 640px) {
+  .cp-edit-page .cp-edit-project-form-card,
+  .cp-edit-page .cp-edit-project-photos-card {
+    padding: 14px;
+  }
+
+  .cp-edit-page .admin-input,
+  .cp-edit-page select.admin-input,
+  .cp-edit-page .admin-btn {
+    min-height: 44px;
+  }
+
+  .cp-edit-page .cp-edit-form-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cp-edit-page .cp-edit-form-actions .admin-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cp-edit-page .cp-billing-choice {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Helper time tracking --------------------------------------------------- */
 .cp-helper-card {
   margin-top: 20px;
