@@ -5174,15 +5174,80 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 /* =================================================================
-   Quotation tab — multiple documents (accordion summaries)
+   Quotation tab — summary header & multiple documents (accordion)
    ================================================================= */
-/* Quotation accordion: clean grid layout.
-   Zero .admin-card padding so summary padding (~16px) is the only inset. */
+.cp-quotations-summary-card {
+  margin-bottom: 16px;
+}
+
+.cp-quotations-summary-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+}
+
+.cp-quotations-summary-head__info {
+  min-width: 0;
+  flex: 1 1 260px;
+}
+
+.cp-quotations-summary-head__title {
+  margin-bottom: 6px;
+}
+
+.cp-quotations-summary-head__kpi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px 10px;
+}
+
+.cp-quotations-kpi-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-muted, #64748b);
+}
+
+.cp-quotations-kpi-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--admin-primary, #024768);
+  font-variant-numeric: tabular-nums;
+}
+
+.cp-quotations-summary-head__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.cp-quotations-summary-head__actions .admin-btn {
+  min-height: var(--admin-control-height, 44px);
+}
+
+@media (max-width: 640px) {
+  .cp-quotations-summary-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cp-quotations-summary-head__actions {
+    justify-content: flex-start;
+  }
+}
+
 .cp-quotation-accordion {
-  margin-bottom: 0.75rem;
+  margin-bottom: 12px;
   border: 1px solid var(--admin-border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--admin-surface);
+  box-shadow: 0 10px 28px -16px rgba(15, 23, 42, 0.14);
   padding: 0;
   overflow: visible;
 }
@@ -5532,12 +5597,22 @@ a:hover .cp-expense-receipt-pdf {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 1px solid var(--admin-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background: var(--admin-surface);
   color: var(--admin-muted);
+}
+
+.cp-quotation-toolbar__mobile .admin-actions-dropdown__toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--admin-control-height, 44px);
+  min-height: var(--admin-control-height, 44px);
+  width: var(--admin-control-height, 44px);
+  height: var(--admin-control-height, 44px);
 }
 
 .cp-quotation-toolbar__overflow .admin-actions-dropdown__toggle:hover {
@@ -5666,6 +5741,11 @@ a:hover .cp-expense-receipt-pdf {
   margin-top: auto;
 }
 
+.cp-quotation-control__field-row .cp-quotation-control__input-wrap {
+  flex: 1 1 8rem;
+  min-width: 0;
+}
+
 .cp-quotation-control__field-row .cp-quotation-control__input {
   flex: 1 1 7rem;
   min-width: 0;
@@ -5677,6 +5757,7 @@ a:hover .cp-expense-receipt-pdf {
   flex: 0 0 auto;
   white-space: nowrap;
   align-self: flex-end;
+  min-height: var(--admin-control-height, 44px);
 }
 
 @media (max-width: 768px) {
@@ -5720,6 +5801,7 @@ a:hover .cp-expense-receipt-pdf {
     align-items: stretch;
   }
 
+  .cp-quotation-control__field-row .cp-quotation-control__input-wrap,
   .cp-quotation-control__field-row .cp-quotation-control__input {
     flex: 0 0 auto;
     width: 100%;
@@ -5906,8 +5988,26 @@ a:hover .cp-expense-receipt-pdf {
 .cp-quotation-items th.amount,
 .cp-quotation-items td.amount {
   text-align: right;
-  width: 150px;
+  width: 140px;
   white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .cp-quotation-doc-client {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .cp-quotation-items th.amount,
+  .cp-quotation-items td.amount {
+    width: auto;
+  }
+
+  .cp-quotation-items th,
+  .cp-quotation-items td {
+    padding: 6px 8px;
+    font-size: 12.5px;
+  }
 }
 
 .cp-quotation-items tbody tr:nth-child(even) td {
