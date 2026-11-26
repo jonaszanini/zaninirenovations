@@ -10821,21 +10821,38 @@ body.cp-modal-open {
 
 .cp-utilities-intro {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 16px;
   margin-bottom: 14px;
 }
 
 .cp-utilities-intro h3 {
-  margin: 0 0 4px;
+  margin: 0;
+}
+
+.cp-utilities-empty {
+  text-align: center;
+  padding: 28px 20px;
+}
+
+.cp-utilities-empty .cp-empty-state-title {
+  justify-content: center;
 }
 
 .cp-utilities-empty__actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  max-width: 780px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.cp-utilities-empty__actions .admin-btn {
+  min-height: 44px;
+  justify-content: center;
 }
 
 .cp-utilities-section {
@@ -10882,6 +10899,15 @@ body.cp-modal-open {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+@media (min-width: 1024px) {
+  .cp-utilities-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+    gap: 12px;
+    align-items: start;
+  }
 }
 
 .cp-utilities-item {
@@ -10982,6 +11008,15 @@ body.cp-modal-open {
   .cp-utilities-section__head {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .cp-utilities-intro .admin-btn,
+  .cp-utilities-item__open,
+  .cp-utilities-item__pdf.admin-btn {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .cp-utilities-item__open {

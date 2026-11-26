@@ -37,10 +37,13 @@
 <div class="cp-utilities">
   <div class="admin-card cp-utilities-intro">
     <div class="cp-utilities-intro__text">
-      <h3>Linked utilities</h3>
-      <p class="admin-form-help">
-        Saved work from admin calculators linked to this project. Open any item to continue editing in its tool.
-      </p>
+      <h3 class="cp-card-head">
+        <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-wrench"></i></span>
+        <span>Linked utilities</span>
+        <x-admin.info-tip label="Linked utilities">
+          Saved work from admin calculators linked to this project. Open any item to continue editing in its tool.
+        </x-admin.info-tip>
+      </h3>
     </div>
     <a href="{{ $links['index'] ?? route('admin.utilities.index') }}" class="admin-btn admin-btn--ghost admin-btn--sm">
       <i class="fa fa-wrench" aria-hidden="true"></i> All utilities
@@ -49,10 +52,13 @@
 
   @if (!$hasAny)
     <div class="admin-card cp-utilities-empty">
-      <p>No utilities are linked to this project yet.</p>
-      <p class="admin-form-help">
-        When you save a Room Area or Measurement project, or a Lumber calculation, choose this client project in the tool to link it here.
-      </p>
+      <div class="cp-empty-state-icon" aria-hidden="true"><i class="fa fa-wrench"></i></div>
+      <h3 class="cp-empty-state-title">
+        <span>No utilities are linked to this project yet</span>
+        <x-admin.info-tip label="Linking utilities">
+          When you save a Room Area or Measurement project, or a Lumber calculation, choose this client project in the tool to link it here.
+        </x-admin.info-tip>
+      </h3>
       <div class="cp-utilities-empty__actions">
         @foreach ($sections as $section)
           <a href="{{ $section['new_url'] }}" class="admin-btn admin-btn--ghost admin-btn--sm" @if (!empty($section['target'])) target="{{ $section['target'] }}" rel="noopener" @endif>
