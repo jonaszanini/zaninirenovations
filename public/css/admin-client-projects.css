@@ -2350,7 +2350,7 @@ html.cp-cancel-modal-open {
    ================================================================= */
 .cp-tabs {
   display: flex;
-  gap: 4px;
+  gap: 3px;
   margin: 16px 0 16px;
   padding: 5px;
   background: var(--admin-surface, #ffffff);
@@ -2375,10 +2375,10 @@ html.cp-cancel-modal-open {
   background: transparent;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 8px 14px;
+  padding: 8px 11px;
   min-height: var(--admin-control-height, 44px);
   box-sizing: border-box;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--admin-muted, #475569);
   cursor: pointer;
@@ -3916,6 +3916,8 @@ a:hover .cp-expense-receipt-pdf {
   .cp-history-table tbody {
     display: block;
     width: 100%;
+    min-width: 0;
+    max-width: 100%;
   }
 
   .cp-history-table thead {
@@ -3925,6 +3927,9 @@ a:hover .cp-expense-receipt-pdf {
   .cp-history-table tbody tr {
     display: grid;
     gap: 8px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: 12px 14px;
     margin-bottom: 10px;
     border: 1px solid var(--admin-border);
@@ -7175,6 +7180,12 @@ body.cp-modal-open {
 @media (max-width: 700px) {
   .cp-contract-header {
     flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cp-contract-meta {
+    flex: 0 0 auto;
+    width: 100%;
   }
 
   .cp-contract-actions {

@@ -428,7 +428,7 @@
 @endphp
 <div class="admin-card">
   <h3 class="cp-card-head">
-    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-receipt"></i></span>
+    <span class="cp-card-head__icon" aria-hidden="true"><i class="fa fa-credit-card"></i></span>
     <span>Expenses</span>
   </h3>
   <form action="{{ route('admin.client-projects.expenses.store', $project) }}" method="post" enctype="multipart/form-data" class="cp-finance-form">
