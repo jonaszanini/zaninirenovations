@@ -3118,6 +3118,14 @@ html.admin-dark .cp-header-card {
   background: var(--admin-surface);
   box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.5);
 }
+html.admin-dark .cp-empty-state-icon {
+  background: rgba(56, 189, 248, 0.14);
+  border-color: rgba(56, 189, 248, 0.28);
+  color: #38bdf8;
+}
+html.admin-dark .cp-sig-cell--contractor .contractor-signature-img {
+  filter: invert(1) brightness(1.15);
+}
 html.admin-dark .cp-header-name {
   color: var(--admin-heading);
 }

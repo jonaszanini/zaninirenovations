@@ -4349,6 +4349,29 @@ a:hover .cp-expense-receipt-pdf {
 /* Empty state — large centered "Create Contract" button. */
 .cp-contract-empty {
   text-align: center;
+  padding: 28px 20px;
+}
+
+.cp-empty-state-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  background: var(--admin-primary-soft, rgba(2, 71, 104, 0.1));
+  border: 1px solid rgba(2, 71, 104, 0.18);
+  color: var(--admin-primary, #024768);
+  font-size: 20px;
+}
+
+.cp-empty-state-title {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 0 0 16px;
 }
 
 .cp-contract-empty h3 {
@@ -4383,10 +4406,15 @@ a:hover .cp-expense-receipt-pdf {
 .cp-contract-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.cp-contract-meta {
+  flex: 1 1 280px;
+  min-width: 0;
 }
 
 .cp-contract-meta-row {
@@ -4625,7 +4653,7 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-sig-cell--contractor .signature-line {
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--admin-border-strong, #1f2937);
   margin-bottom: 6px;
 }
 
@@ -4633,12 +4661,13 @@ a:hover .cp-expense-receipt-pdf {
 .cp-sig-cell--contractor .signature-contractor .signature-name,
 .cp-sig-cell--contractor .signature-name {
   font-size: 14px;
+  color: var(--admin-heading, #1f2937);
   margin-bottom: 0 !important;
 }
 
 .cp-sig-cell--contractor .signature-date {
   font-size: 14px;
-  color: #4b5563;
+  color: var(--admin-muted, #4b5563);
   margin-top: 8px;
 }
 
@@ -4651,20 +4680,20 @@ a:hover .cp-expense-receipt-pdf {
 }
 
 .cp-sig-line {
-  border-top: 1px solid #1f2937;
+  border-top: 1px solid var(--admin-border-strong, #1f2937);
   margin-bottom: 6px;
 }
 
 .cp-sig-date {
   margin-top: 8px;
-  color: #4b5563;
+  color: var(--admin-muted, #4b5563);
 }
 
 .cp-contract-entire {
   margin-top: 28px;
   padding-top: 12px;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--admin-text, #1f2937);
   line-height: 1.55;
 }
 
@@ -4672,8 +4701,38 @@ a:hover .cp-expense-receipt-pdf {
   margin-top: 28px;
   padding-top: 12px;
   font-size: 13px;
-  color: #1f2937;
+  color: var(--admin-text, #1f2937);
   line-height: 1.55;
+}
+
+@media (max-width: 640px) {
+  .cp-contract-preview {
+    padding: 16px 14px;
+  }
+
+  .cp-contract-parties-table,
+  .cp-contract-parties-table tbody,
+  .cp-contract-parties-table tr,
+  .cp-contract-parties-table td,
+  .cp-contract-preview-signatures table,
+  .cp-contract-preview-signatures tbody,
+  .cp-contract-preview-signatures tr,
+  .cp-contract-preview-signatures td {
+    display: block;
+    width: 100%;
+  }
+
+  .cp-contract-parties-table td + td {
+    border-top: none;
+  }
+
+  .cp-contract-preview-signatures td {
+    padding: 0 0 22px;
+  }
+
+  .cp-contract-preview-signatures td:last-child {
+    padding-bottom: 0;
+  }
 }
 
 .cp-contractor-fee-clause+.cp-contract-entire {
