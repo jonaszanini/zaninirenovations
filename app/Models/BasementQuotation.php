@@ -525,8 +525,8 @@ class BasementQuotation extends Model
         $resolved = \App\Services\BasementClientScope::resolveCopy($inputs, $calc);
 
         return [
-            'included' => (string) ($stored['included'] ?? $resolved['included']),
-            'not_included' => (string) ($stored['not_included'] ?? $resolved['not_included']),
+            'included' => (string) $resolved['included'],
+            'not_included' => (string) $resolved['not_included'],
             'assumptions' => (string) ($stored['assumptions'] ?? $resolved['assumptions']),
             'allowances' => (string) $resolved['allowances'],
         ];

@@ -253,4 +253,80 @@ class BasementFloodRestorationWorkflowTest extends IntegrationTestCase
         $this->assertEqualsWithDelta(round($expectedRunLf * 2.0, 2), (float) $proposed['drywall_wall_sf'], 0.05);
         $this->assertEqualsWithDelta(round($expectedRunLf * 8.0, 2), (float) $proposed['paint_wall_sf'], 0.05);
     }
+
+    public function test_flood_preset_checks_final_cleaning_and_touchups_without_changing_saved_quotes_or_other_presets(): void
+    {
+        $this->actingAsAdmin();
+
+        $floodHtml = $this->get(route('admin.quotations.basement.create', ['scope_preset' => 'flood']))
+            ->assertOk()
+            ->assertSee('Final cleaning')
+            ->assertSee('Touch-ups / punch list')
+            ->assertSee('Final Details')
+            ->getContent();
+        $this->assertCheckboxChecked($floodHtml, 'include_cleaning', true);
+        $this->assertCheckboxChecked($floodHtml, 'include_touchups', true);
+        $this->assertCheckboxChecked($floodHtml, 'enabled_sections[]', true, 'finishing');
+
+        $fullHtml = $this->get(route('admin.quotations.basement.create', ['scope_preset' => 'full']))
+            ->assertOk()
+            ->getContent();
+        $this->assertCheckboxChecked($fullHtml, 'include_cleaning', true);
+        $this->assertCheckboxChecked($fullHtml, 'include_touchups', true);
+
+        $wallHtml = $this->get(route('admin.quotations.basement.create', ['scope_preset' => 'wall']))
+            ->assertOk()
+            ->getContent();
+        $this->assertCheckboxChecked($wallHtml, 'include_cleaning', false);
+        $this->assertCheckboxChecked($wallHtml, 'include_touchups', false);
+
+        $this->post(route('admin.quotations.basement.store'), [
+            'save_intent' => 'draft',
+            'client_name' => 'Saved Flood Cleaning Off',
+            'scope_preset' => 'flood',
+            'enabled_sections' => BasementQuotationCalculator::presetEnabledSections('flood'),
+            'area_sqft' => 100,
+            'ceiling_height_ft' => 8,
+            'ceiling_type' => 'none',
+            'flooring_type' => 'lvp',
+            'include_cleaning' => '0',
+            'include_touchups' => '0',
+            'include_commute' => '0',
+            'include_debris_removal' => '0',
+            'ask_reply_to_accept' => '0',
+            'payment_installments' => 1,
+            'owner_hourly_rate' => 85,
+        ])->assertSessionHasNoErrors()->assertRedirect();
+
+        $quote = BasementQuotation::query()->where('client_name', 'Saved Flood Cleaning Off')->first();
+        $this->assertNotNull($quote);
+        $this->assertFalse((bool) $quote->inputs['include_cleaning']);
+        $this->assertFalse((bool) $quote->inputs['include_touchups']);
+
+        $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertCheckboxChecked($editHtml, 'include_cleaning', false);
+        $this->assertCheckboxChecked($editHtml, 'include_touchups', false);
+    }
+
+    private function assertCheckboxChecked(string $html, string $name, bool $checked, ?string $value = null): void
+    {
+        preg_match_all('/<input\b[^>]*type="checkbox"[^>]*>/s', $html, $tags);
+        $match = null;
+        foreach ($tags[0] as $tag) {
+            if (! preg_match('/\bname="'.preg_quote($name, '/').'"/', $tag)) {
+                continue;
+            }
+            if ($value !== null && ! preg_match('/\bvalue="'.preg_quote($value, '/').'"/', $tag)) {
+                continue;
+            }
+            $match = $tag;
+            break;
+        }
+        $this->assertNotNull($match, 'Missing checkbox '.$name.($value ? '='.$value : ''));
+        if ($checked) {
+            $this->assertMatchesRegularExpression('/\bchecked\b/', $match);
+        } else {
+            $this->assertDoesNotMatchRegularExpression('/\bchecked\b/', $match);
+        }
+    }
 }

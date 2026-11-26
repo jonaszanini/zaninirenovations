@@ -207,7 +207,18 @@ class BasementClientScope
     {
         $generated = self::generatedCopy($inputs, $calc);
         $out = ['generated' => $generated];
+        $tradeLabels = array_values(BasementQuotationCalculator::tradeSections());
+        $sectionLists = self::refreshSectionLists(
+            trim((string) ($inputs['client_scope_included'] ?? '')),
+            trim((string) ($inputs['client_scope_not_included'] ?? '')),
+            $generated,
+            $tradeLabels
+        );
         foreach (self::COPY_KEYS as $short => $inputKey) {
+            if ($short === 'included' || $short === 'not_included') {
+                $out[$short] = $sectionLists[$short];
+                continue;
+            }
             $stored = trim((string) ($inputs[$inputKey] ?? ''));
             if ($short === 'allowances') {
                 if ($stored === '') {
@@ -227,6 +238,165 @@ class BasementClientScope
         }
 
         return $out;
+    }
+
+    /**
+     * Move trade names between Included and Not included when the saved copy
+     * is still the generated list (or still lists those trade names) and the
+     * enabled sections have changed. Hand-written scope text is left as-is.
+     *
+     * @param  array{included: string, not_included: string, assumptions: string, allowances: string}  $generated
+     * @param  list<string>  $tradeLabels
+     * @return array{included: string, not_included: string}
+     */
+    public static function refreshSectionLists(string $included, string $notIncluded, array $generated, array $tradeLabels): array
+    {
+        $generatedIncluded = (string) ($generated['included'] ?? '');
+        $generatedNotIncluded = (string) ($generated['not_included'] ?? '');
+        if ($included === '') {
+            $included = $generatedIncluded;
+        } elseif (self::looksLikeFullGeneratedList($included, $generatedIncluded, $generated, $tradeLabels)) {
+            $included = $generatedIncluded;
+        }
+        if ($notIncluded === '') {
+            $notIncluded = $generatedNotIncluded;
+        } elseif (self::looksLikeFullGeneratedList($notIncluded, $generatedNotIncluded, $generated, $tradeLabels)) {
+            $notIncluded = $generatedNotIncluded;
+        }
+
+        $generatedIncludedSet = array_fill_keys(self::scopeLines($generatedIncluded), true);
+        $generatedNotSet = array_fill_keys(self::scopeLines($generatedNotIncluded), true);
+        $includedAcceptsMovedLabel = self::containsTradeLabel($included, $tradeLabels);
+        $notIncludedAcceptsMovedLabel = self::containsTradeLabel($notIncluded, $tradeLabels);
+
+        foreach ($tradeLabels as $label) {
+            $off = isset($generatedNotSet[$label]);
+            if ($off) {
+                $wasListed = in_array($label, self::scopeLines($included), true);
+                $included = self::removeScopeLine($included, $label);
+                if ($wasListed && $notIncludedAcceptsMovedLabel) {
+                    $notIncluded = self::ensureScopeLine($notIncluded, $label);
+                }
+                continue;
+            }
+            $wasExcluded = in_array($label, self::scopeLines($notIncluded), true);
+            $notIncluded = self::removeScopeLine($notIncluded, $label);
+            if ($wasExcluded && $includedAcceptsMovedLabel && isset($generatedIncludedSet[$label])) {
+                $included = self::ensureScopeLine($included, $label);
+            }
+        }
+
+        return [
+            'included' => $included,
+            'not_included' => $notIncluded,
+        ];
+    }
+
+    /**
+     * @param  array{included?: string, not_included?: string}  $generated
+     * @param  list<string>  $tradeLabels
+     */
+    private static function looksLikeFullGeneratedList(string $stored, string $generatedField, array $generated, array $tradeLabels): bool
+    {
+        $storedLines = self::scopeLines($stored);
+        if ($storedLines === []) {
+            return false;
+        }
+        $managed = self::managedScopeLines($generated, $tradeLabels);
+        $labelSet = array_fill_keys($tradeLabels, true);
+        $generatedLines = self::scopeLines($generatedField);
+        $generatedSet = array_fill_keys($generatedLines, true);
+        foreach ($storedLines as $line) {
+            if (! isset($managed[$line])) {
+                return false;
+            }
+            if (! isset($generatedSet[$line]) && ! isset($labelSet[$line])) {
+                return false;
+            }
+        }
+        $storedSet = array_fill_keys($storedLines, true);
+        foreach ($generatedLines as $line) {
+            if (! isset($storedSet[$line]) && ! isset($labelSet[$line])) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param  array{included?: string, not_included?: string}  $generated
+     * @param  list<string>  $tradeLabels
+     * @return array<string, true>
+     */
+    private static function managedScopeLines(array $generated, array $tradeLabels): array
+    {
+        $managed = [];
+        foreach ($tradeLabels as $label) {
+            $managed[$label] = true;
+        }
+        foreach (['included', 'not_included'] as $key) {
+            foreach (self::scopeLines((string) ($generated[$key] ?? '')) as $line) {
+                $managed[$line] = true;
+            }
+        }
+
+        return $managed;
+    }
+
+    /**
+     * @param  list<string>  $tradeLabels
+     */
+    private static function containsTradeLabel(string $text, array $tradeLabels): bool
+    {
+        $set = array_fill_keys(self::scopeLines($text), true);
+        foreach ($tradeLabels as $label) {
+            if (isset($set[$label])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function scopeLines(string $text): array
+    {
+        $text = str_replace(["\r\n", "\r"], "\n", trim($text));
+        $lines = [];
+        foreach (explode("\n", $text) as $line) {
+            $line = trim($line);
+            if ($line !== '') {
+                $lines[] = $line;
+            }
+        }
+
+        return $lines;
+    }
+
+    private static function removeScopeLine(string $text, string $line): string
+    {
+        $keep = [];
+        foreach (self::scopeLines($text) as $existing) {
+            if ($existing !== $line) {
+                $keep[] = $existing;
+            }
+        }
+
+        return implode("\n", $keep);
+    }
+
+    private static function ensureScopeLine(string $text, string $line): string
+    {
+        $lines = self::scopeLines($text);
+        if (in_array($line, $lines, true)) {
+            return implode("\n", $lines);
+        }
+        $lines[] = $line;
+
+        return implode("\n", $lines);
     }
 
     public static function allowancesAmountsStale(string $stored, string $generated): bool

@@ -21,3 +21,4 @@ tests/js/admin-project-calendar-popover.test.js
 tests/js/admin-info-tip.test.mjs
 tests/js/admin-basement-layout-import.test.js
 tests/js/admin-basement-flood-preset.test.js
+tests/js/admin-basement-nav-exclusive.test.js

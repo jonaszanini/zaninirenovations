@@ -20,6 +20,7 @@
   $brOn = function (string $key, $fallback = false) use ($inputs) {
       return (bool) old($key, $inputs[$key] ?? $fallback);
   };
+  $brQuoteRates = true;
   $wizardStep = 0;
   $scopePreset = $scopePreset ?? \App\Services\BasementQuotationCalculator::normalizePreset(old('scope_preset', $inputs['scope_preset'] ?? 'full'));
   $areaMode = \App\Services\BasementQuotationCalculator::normalizeAreaMode(old('area_entry_mode', $inputs['area_entry_mode'] ?? 'sqft'));
@@ -1203,6 +1204,7 @@
           'value' => $brQty('shoe_lf'),
           'info' => $brInfo['shoe_lf'],
           'workKey' => 'shoe_install',
+          'extraRateKeys' => ['shoe_caulk_paint'],
           'gearLabel' => 'Edit shoe moulding rates',
           'rate' => \App\Services\SharedWorkCatalog::rateLine('shoe_install').' · '.\App\Services\SharedWorkCatalog::rateLine('shoe_caulk_paint'),
           'inputClass' => 'br-preview',
@@ -1327,6 +1329,9 @@
         'widthValue' => $qtyDim('paint_ceiling_sf')['width'],
         'placeholder' => 'Auto',
         'info' => $brInfo['paint_ceiling_sf'],
+        'workKey' => 'paint_ceiling',
+        'gearLabel' => 'Edit ceiling paint rates',
+        'rate' => \App\Services\SharedWorkCatalog::rateLine('paint_ceiling'),
       ])
       </div>
       <div class="admin-form-group">

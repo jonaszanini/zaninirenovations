@@ -14,6 +14,7 @@ tests/Feature/Admin/BasementWizardSubtotalBrowserTest.php
 tests/Feature/Admin/BasementCeilingSectionNoteBrowserTest.php
 tests/Feature/Admin/QuotationDraftOptionalFieldsTest.php
 tests/Feature/Admin/BasementPaintManualEditTest.php
+tests/Feature/Admin/BasementRateOverrideTest.php
 tests/Feature/Admin/BasementHeaderLegacyQuoteTest.php
 tests/Feature/Admin/BasementHeaderLfBrowserTest.php
 tests/Unit/Services/BasementQuotationFeeWasteScopeTest.php

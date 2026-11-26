@@ -13,8 +13,23 @@
       $feeDefault = 0;
   }
   $feeValue = old('contractor_fee_percent', $inputs['contractor_fee_percent'] ?? $feeDefault);
-  $scopeFieldLocked = function (string $name) use ($inputs): bool {
-      return old($name) !== null || filled($inputs[$name] ?? null);
+  $scopeFieldLocked = function (string $name) use ($inputs, $scopeCopy): bool {
+      if (old($name) !== null) {
+          return true;
+      }
+      $stored = trim((string) ($inputs[$name] ?? ''));
+      if ($stored === '') {
+          return false;
+      }
+      $short = array_search($name, \App\Services\BasementClientScope::COPY_KEYS, true);
+      if ($short === 'included' || $short === 'not_included') {
+          $resolved = trim((string) ($scopeCopy[$short] ?? ''));
+          $generated = trim((string) ($scopeCopy['generated'][$short] ?? ''));
+
+          return $resolved !== $generated;
+      }
+
+      return true;
   };
 @endphp
 {{-- Client scope — always last trade-adjacent step, before Review --}}
@@ -49,7 +64,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-included" name="client_scope_included" rows="6"
-                    data-br-scope-field="included"@if($scopeFieldLocked('client_scope_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_included', $inputs['client_scope_included'] ?? $scopeCopy['included']) }}</textarea>
+                    data-br-scope-field="included"@if($scopeFieldLocked('client_scope_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_included', $scopeCopy['included']) }}</textarea>
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
@@ -60,7 +75,7 @@
             ])
           </span>
           <textarea class="admin-input br-preview br-scope-copy" id="br-scope-not-included" name="client_scope_not_included" rows="6"
-                    data-br-scope-field="not_included"@if($scopeFieldLocked('client_scope_not_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_not_included', $inputs['client_scope_not_included'] ?? $scopeCopy['not_included']) }}</textarea>
+                    data-br-scope-field="not_included"@if($scopeFieldLocked('client_scope_not_included')) data-br-scope-persisted="1" data-br-scope-dirty="1"@endif>{{ old('client_scope_not_included', $scopeCopy['not_included']) }}</textarea>
         </div>
         <div class="admin-form-group">
           <span class="admin-label-with-tip">
