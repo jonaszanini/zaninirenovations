@@ -65,6 +65,11 @@ class BasementClientScope
                     if ($type !== 'none') {
                         $included[] = 'Flooring: '.(BasementQuotationCalculator::FLOORING_TYPES[$type] ?? 'LVP').'. Carpet is not offered.';
                     }
+                } elseif ($key === 'bathroom' && $isFlood) {
+                    if (BasementQuotationCalculator::floodBathroomScopeLabels($inputs) === []) {
+                        $notIncluded[] = $label;
+                    }
+                    continue;
                 } elseif ($key === 'bathroom' && empty($inputs['include_bathroom'])) {
                     $notIncluded[] = $label;
                     continue;
@@ -93,7 +98,13 @@ class BasementClientScope
             }
         }
 
-        if (! empty($inputs['include_bathroom']) && in_array('bathroom', $enabled, true)) {
+        $floodBathLabels = $isFlood ? BasementQuotationCalculator::floodBathroomScopeLabels($inputs) : [];
+        if ($floodBathLabels !== []) {
+            $included[] = 'Bathroom flood restoration';
+            foreach ($floodBathLabels as $floodBathLabel) {
+                $included[] = $floodBathLabel;
+            }
+        } elseif (! empty($inputs['include_bathroom']) && in_array('bathroom', $enabled, true) && ! $isFlood) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bathroom' : 'Full bathroom';
             $included[] = $type.' finishing as specified on this quotation.';
         }
@@ -253,6 +264,7 @@ class BasementClientScope
     {
         $generatedIncluded = (string) ($generated['included'] ?? '');
         $generatedNotIncluded = (string) ($generated['not_included'] ?? '');
+        $priorNotIncludedLines = self::scopeLines($notIncluded);
         if ($included === '') {
             $included = $generatedIncluded;
         } elseif (self::looksLikeFullGeneratedList($included, $generatedIncluded, $generated, $tradeLabels)) {
@@ -266,7 +278,7 @@ class BasementClientScope
 
         $generatedIncludedSet = array_fill_keys(self::scopeLines($generatedIncluded), true);
         $generatedNotSet = array_fill_keys(self::scopeLines($generatedNotIncluded), true);
-        $includedAcceptsMovedLabel = self::containsTradeLabel($included, $tradeLabels);
+        $includedAcceptsMovedLabel = self::includedTextAcceptsMovedLabel($included, $generated, $tradeLabels);
         $notIncludedAcceptsMovedLabel = self::containsTradeLabel($notIncluded, $tradeLabels);
 
         foreach ($tradeLabels as $label) {
@@ -283,6 +295,24 @@ class BasementClientScope
             $notIncluded = self::removeScopeLine($notIncluded, $label);
             if ($wasExcluded && $includedAcceptsMovedLabel && isset($generatedIncludedSet[$label])) {
                 $included = self::ensureScopeLine($included, $label);
+            }
+        }
+
+        // A stale Not included list that still matches the generated shape is
+        // replaced above, which drops a trade before the move can see it.
+        // Put that trade on Included when the saved Included text is the
+        // generated sentences plus a hand-written note.
+        if ($includedAcceptsMovedLabel) {
+            $includedLines = array_fill_keys(self::scopeLines($included), true);
+            foreach ($tradeLabels as $label) {
+                if (! in_array($label, $priorNotIncludedLines, true) || ! isset($generatedIncludedSet[$label])) {
+                    continue;
+                }
+                if (isset($includedLines[$label])) {
+                    continue;
+                }
+                $included = self::ensureScopeLine($included, $label);
+                $includedLines[$label] = true;
             }
         }
 
@@ -342,6 +372,29 @@ class BasementClientScope
         }
 
         return $managed;
+    }
+
+    /**
+     * Auto flood sentences replace the trade name, so a saved Included list
+     * of those sentences plus a hand-written note still accepts a trade that
+     * moves from Not included. A list with no generated lines stays as written.
+     *
+     * @param  array{included?: string, not_included?: string}  $generated
+     * @param  list<string>  $tradeLabels
+     */
+    private static function includedTextAcceptsMovedLabel(string $text, array $generated, array $tradeLabels): bool
+    {
+        if (self::containsTradeLabel($text, $tradeLabels)) {
+            return true;
+        }
+        $generatedIncluded = array_fill_keys(self::scopeLines((string) ($generated['included'] ?? '')), true);
+        foreach (self::scopeLines($text) as $line) {
+            if (isset($generatedIncluded[$line])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

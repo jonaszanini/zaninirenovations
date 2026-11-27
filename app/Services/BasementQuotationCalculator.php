@@ -636,11 +636,150 @@ class BasementQuotationCalculator
     }
 
     /**
+     * Flood-restoration bathroom choices. Each is one checkbox plus a
+     * per-quote material amount and labour hours (owner hourly, same as
+     * other each-works). Shower is a fixed starting point. The others start
+     * from shared catalog material prices and productivity when those exist.
+     *
+     * @param  array<string, array<string, mixed>>|null  $materials
+     * @param  array<string, float>|null  $productivity
+     * @return array<string, array{label: string, info: string, material: float, hours: float}>
+     */
+    public static function floodBathroomOptions(?array $materials = null, ?array $productivity = null): array
+    {
+        $materials = $materials ?? BasementSettings::defaultMaterials();
+        $productivity = $productivity ?? BasementSettings::defaultProductivity();
+        $price = static function (string $key, float $fallback) use ($materials): float {
+            $raw = $materials[$key]['unit_price'] ?? $fallback;
+
+            return round(max(0, (float) (is_numeric($raw) ? $raw : $fallback)), 2);
+        };
+        $rate = static function (string $key, float $fallback) use ($productivity): float {
+            $raw = $productivity[$key] ?? $fallback;
+
+            return max(0.0, (float) (is_numeric($raw) ? $raw : $fallback));
+        };
+
+        $floorSf = 40.0;
+        $floorPerHour = $rate('flooring_sf_per_hr', 25);
+        $wallSf = 96.0;
+        $sheets = (int) ceil($wallSf / 32);
+        $hang = $rate('drywall_hang_sf_per_hr', 35);
+        $finish = $rate('drywall_finish_l4_sf_per_hr', 20);
+        $paint = $rate('paint_wall_sf_per_hr', 80);
+
+        return [
+            'flooring' => [
+                'label' => 'Bathroom flooring (replace)',
+                'info' => 'Replace the bathroom floor. Starts from the vinyl material rate for a 40 sq ft bathroom and the flooring install rate. Edit the material amount and labour hours on this quote.',
+                'material' => round($floorSf * $price('lvp', 3.50), 2),
+                'hours' => round($floorPerHour > 0 ? $floorSf / $floorPerHour : 0, 2),
+            ],
+            'drywall' => [
+                'label' => 'Drywall and paint',
+                'info' => 'Bathroom drywall and paint can also roll into the main drywall and painting sections. Leave this off when those sections already cover the bathroom, so the work is not counted twice.',
+                'material' => round(
+                    ($sheets * $price('drywall_sheet', 18))
+                    + $price('joint_compound', 18)
+                    + $price('paint_quart', 18)
+                    + $price('primer_quart', 14),
+                    2
+                ),
+                'hours' => round(
+                    ($hang > 0 ? $wallSf / $hang : 0)
+                    + ($finish > 0 ? $wallSf / $finish : 0)
+                    + ($paint > 0 ? ($wallSf * 2) / $paint : 0),
+                    2
+                ),
+            ],
+            'shower' => [
+                'label' => 'Shower kit or shower base with walls',
+                'info' => 'Shower kit, or a shower base with walls. Starts at CA$550 material and 6 labour hours. Edit either amount on this quote.',
+                'material' => 550.00,
+                'hours' => 6.00,
+            ],
+            'vanity' => [
+                'label' => 'Vanity replacement',
+                'info' => 'Replace the bathroom vanity. Starts from the vanity material amount and vanity install hours. Edit either amount on this quote.',
+                'material' => $price('vanity', 360),
+                'hours' => round($rate('vanity_hours', 4), 2),
+            ],
+            'toilet' => [
+                'label' => 'Toilet pull and reinstall',
+                'info' => 'Pull the toilet and set it back. Starts from the wax-ring material amount and toilet install hours. Edit either amount on this quote.',
+                'material' => $price('toilet_wax_ring', 12),
+                'hours' => round($rate('toilet_hours', 2), 2),
+            ],
+        ];
+    }
+
+    /**
+     * Checked flood bathroom options, with per-quote amounts when stored.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @param  array<string, mixed>|null  $original
+     * @param  array<string, array<string, mixed>>|null  $materials
+     * @param  array<string, float>|null  $productivity
+     * @return list<array{key: string, label: string, material: float, hours: float}>
+     */
+    public static function floodBathroomSelections(
+        array $inputs,
+        ?array $original = null,
+        ?array $materials = null,
+        ?array $productivity = null
+    ): array {
+        $original = $original ?? $inputs;
+        $options = self::floodBathroomOptions($materials, $productivity);
+        $selected = [];
+        foreach ($options as $key => $opt) {
+            if (empty($inputs['flood_bath_'.$key]) && empty($original['flood_bath_'.$key])) {
+                continue;
+            }
+            $materialKey = 'flood_bath_'.$key.'_material';
+            $hoursKey = 'flood_bath_'.$key.'_hours';
+            $materialRaw = array_key_exists($materialKey, $original) ? $original[$materialKey] : null;
+            $hoursRaw = array_key_exists($hoursKey, $original) ? $original[$hoursKey] : null;
+            $material = ($materialRaw === null || $materialRaw === '' || ! is_numeric($materialRaw))
+                ? (float) $opt['material']
+                : (float) $materialRaw;
+            $hours = ($hoursRaw === null || $hoursRaw === '' || ! is_numeric($hoursRaw))
+                ? (float) $opt['hours']
+                : (float) $hoursRaw;
+            $selected[] = [
+                'key' => $key,
+                'label' => $opt['label'],
+                'material' => round(max(0, $material), 2),
+                'hours' => round(max(0, $hours), 2),
+            ];
+        }
+
+        return $selected;
+    }
+
+    /**
+     * Client-scope item labels for a flood quote whose bathroom step is on.
+     *
+     * @param  array<string, mixed>  $inputs
+     * @return list<string>
+     */
+    public static function floodBathroomScopeLabels(array $inputs): array
+    {
+        if (self::normalizePreset($inputs['scope_preset'] ?? null) !== 'flood') {
+            return [];
+        }
+        if (! self::sectionEnabled($inputs, 'bathroom')) {
+            return [];
+        }
+
+        return array_column(self::floodBathroomSelections($inputs), 'label');
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public static function defaultInputs(): array
     {
-        return [
+        $inputs = [
             'area_sqft' => 0,
             'area_entry_mode' => 'sqft',
             'area_length_ft' => null,
@@ -779,6 +918,13 @@ class BasementQuotationCalculator
             'labor_override' => [],
             'materials_override' => [],
         ];
+        foreach (self::floodBathroomOptions() as $key => $opt) {
+            $inputs['flood_bath_'.$key] = false;
+            $inputs['flood_bath_'.$key.'_material'] = $opt['material'];
+            $inputs['flood_bath_'.$key.'_hours'] = $opt['hours'];
+        }
+
+        return $inputs;
     }
 
     /**
@@ -1951,7 +2097,8 @@ class BasementQuotationCalculator
         }
 
         // --- Bathroom ---
-        if ($on('bathroom') && ! empty($inputs['include_bathroom'])) {
+        // Flood restoration uses the per-quote options below instead of a new bathroom build.
+        if ($on('bathroom') && ! empty($inputs['include_bathroom']) && ! $isFlood) {
             $half = ($inputs['bath_type'] ?? 'full') === 'half';
             $sinkQty = self::bathSinkQty($inputs);
             if (! empty($inputs['include_vanity']) && $sinkQty > 0) {
@@ -1978,9 +2125,6 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_toilet'])) {
                 $addLabor('bath_toilet', 'bathroom', 'Toilet', 'Install', (float) $prod['toilet_hours']);
                 $addMat('toilet', 'bathroom', 1, 'toilet');
-                if ($isFlood) {
-                    $addMat('toilet_wax_ring', 'bathroom', 1, 'toilet_wax_ring');
-                }
             }
             if (! $half && ! empty($inputs['include_shower'])) {
                 $addLabor('bath_shower', 'bathroom', 'Shower', 'Install', (float) $prod['shower_hours']);
@@ -2033,6 +2177,31 @@ class BasementQuotationCalculator
                     $perHr($vinylSf, (float) $prod['flooring_sf_per_hr'])
                 );
                 $addMat('bath_vinyl', 'bathroom', $this->withMaterialWaste($vinylSf, $inputs), 'lvp', 'Bathroom vinyl flooring');
+            }
+        }
+
+        if ($isFlood && $on('bathroom')) {
+            foreach (self::floodBathroomSelections($inputs, $originalInputs, $matCatalog, $prod) as $floodBath) {
+                if ($floodBath['hours'] > 0) {
+                    $addLabor(
+                        'flood_bath_'.$floodBath['key'],
+                        'bathroom',
+                        $floodBath['label'],
+                        '1 each',
+                        $floodBath['hours']
+                    );
+                }
+                if ($floodBath['material'] > 0) {
+                    $addMat(
+                        'flood_bath_'.$floodBath['key'],
+                        'bathroom',
+                        1,
+                        null,
+                        $floodBath['label'],
+                        'each',
+                        $floodBath['material']
+                    );
+                }
             }
         }
 

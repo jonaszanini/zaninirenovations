@@ -1189,6 +1189,9 @@
     form.querySelectorAll('[data-br-flood-only]').forEach(function (el) {
       el.hidden = !floodOnly;
     });
+    form.querySelectorAll('[data-br-hide-on-flood]').forEach(function (el) {
+      el.hidden = floodOnly;
+    });
     var areaOverview = form.querySelector('[data-br-area-overview]');
     var wallOverview = form.querySelector('[data-br-wall-overview]');
     if (areaOverview) areaOverview.hidden = wallOnly;
@@ -1256,7 +1259,7 @@
       });
     });
     var includeWrap = form.querySelector('[data-br-bath-include-wrap]');
-    if (includeWrap) includeWrap.hidden = nest;
+    if (includeWrap) includeWrap.hidden = nest || currentPreset() === 'flood';
     if (nest) {
       setNamedCheck('include_bathroom', true);
       var bathFields = document.getElementById('br-bath-fields');

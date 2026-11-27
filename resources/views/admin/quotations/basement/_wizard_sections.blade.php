@@ -1377,7 +1377,7 @@
 <details class="br-acc admin-card" data-br-step="bathroom" @unless(in_array('bathroom', $enabledNow, true)) hidden @endunless>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Bathroom</summary>
   <div class="br-acc__body">
-    <div class="br-bath-include" data-br-bath-include-wrap @if($bathNestTrades) hidden @endif>
+    <div class="br-bath-include" data-br-bath-include-wrap @if($bathNestTrades || $floodPreset) hidden @endif>
       @include('admin.partials.checkbox', [
         'name' => 'include_bathroom',
         'hiddenFallback' => true,
@@ -1390,6 +1390,7 @@
       ])
     </div>
     <div id="br-bath-fields" class="br-bath-fields" @unless($brOn('include_bathroom') || $bathNestTrades) hidden @endunless>
+      <div data-br-bath-build data-br-hide-on-flood @if($floodPreset) hidden @endif>
       <div class="br-bath-block">
         <div class="br-bath-top">
           <div class="admin-form-group">
@@ -1557,6 +1558,58 @@
         <template id="br-tile-template">
           @include('admin.quotations.basement._bath_tile_area_row', ['i' => '__I__', 'area' => \App\Services\BasementQuotationCalculator::blankBathTileArea()])
         </template>
+      </div>
+      </div>
+      @php
+        $floodBathCatalog = \App\Services\BasementQuotationCalculator::floodBathroomOptions();
+        if (isset($settings) && $settings instanceof \App\Models\BasementSettings) {
+            try {
+                $floodBathCatalog = \App\Services\BasementQuotationCalculator::floodBathroomOptions(
+                    $settings->resolvedMaterials(),
+                    $settings->resolvedProductivity()
+                );
+            } catch (\Throwable $e) {
+                $floodBathCatalog = \App\Services\BasementQuotationCalculator::floodBathroomOptions();
+            }
+        }
+      @endphp
+      <div id="br-bath-flood" class="br-flood-bath" data-br-flood-only @unless($floodPreset) hidden @endunless>
+        @foreach ($floodBathCatalog as $floodBathKey => $floodBathOpt)
+          @php
+            $floodBathOnKey = 'flood_bath_'.$floodBathKey;
+            $floodBathMaterialKey = $floodBathOnKey.'_material';
+            $floodBathHoursKey = $floodBathOnKey.'_hours';
+            $floodBathMaterial = $brVal($floodBathMaterialKey, $floodBathOpt['material']);
+            $floodBathHours = $brVal($floodBathHoursKey, $floodBathOpt['hours']);
+          @endphp
+          <div class="br-flood-bath__option">
+            @include('admin.partials.checkbox', [
+              'name' => $floodBathOnKey,
+              'id' => 'br-flood-bath-'.$floodBathKey,
+              'hiddenFallback' => true,
+              'checked' => $brOn($floodBathOnKey),
+              'label' => $floodBathOpt['label'],
+              'info' => $floodBathOpt['info'],
+              'inputClass' => 'admin-checkbox__input br-preview',
+              'class' => 'br-flood-bath__check',
+            ])
+            <div class="br-flood-bath__fields">
+              <div class="admin-form-group">
+                <label for="br-flood-bath-{{ $floodBathKey }}-material">Material (CA$)</label>
+                <input type="text" inputmode="decimal" autocomplete="off"
+                       class="admin-input cp-money-input br-preview" id="br-flood-bath-{{ $floodBathKey }}-material"
+                       name="{{ $floodBathMaterialKey }}"
+                       value="{{ number_format((float) $floodBathMaterial, 2, '.', '') }}" data-cp-money-entry="direct">
+              </div>
+              <div class="admin-form-group">
+                <label for="br-flood-bath-{{ $floodBathKey }}-hours">Labour hours</label>
+                <input type="number" step="0.25" min="0" class="admin-input br-preview" id="br-flood-bath-{{ $floodBathKey }}-hours"
+                       name="{{ $floodBathHoursKey }}"
+                       value="{{ rtrim(rtrim(number_format((float) $floodBathHours, 2, '.', ''), '0'), '.') }}">
+              </div>
+            </div>
+          </div>
+        @endforeach
       </div>
     </div>
     @include('admin.quotations.basement._section_subtotal', ['sectionKey' => 'bathroom'])

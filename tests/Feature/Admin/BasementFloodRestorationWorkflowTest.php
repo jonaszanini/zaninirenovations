@@ -308,6 +308,105 @@ class BasementFloodRestorationWorkflowTest extends IntegrationTestCase
         $this->assertCheckboxChecked($editHtml, 'include_touchups', false);
     }
 
+    public function test_flood_bathroom_options_persist_reopen_and_change_the_client_pdf_totals(): void
+    {
+        $this->actingAsAdmin();
+
+        $project = ClientProject::factory()->create([
+            'status' => ClientProject::STATUS_VISIT_SCHEDULED,
+            'billing_type' => ClientProject::BILLING_FIXED,
+        ]);
+
+        $sections = array_values(array_unique(array_merge(
+            BasementQuotationCalculator::presetEnabledSections('flood'),
+            ['bathroom']
+        )));
+        $payload = [
+            'save_intent' => 'publish',
+            'client_name' => 'Flood Bath Options',
+            'scope_preset' => 'flood',
+            'enabled_sections' => $sections,
+            'perimeter_lf' => 120,
+            'partition_lf' => 40,
+            'flood_cut_height_in' => 24,
+            'flood_partition_both_faces' => '1',
+            'flood_casing_mode' => 'legs',
+            'area_sqft' => 800,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'flooring_waste_percent' => 7,
+            'include_cleaning' => '1',
+            'include_touchups' => '1',
+            'payment_installments' => 1,
+            'include_commute' => '0',
+            'include_debris_removal' => '0',
+            'ask_reply_to_accept' => '0',
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'include_helper' => '0',
+            'trim_material_lf_v2' => '1',
+            'corner_bead_by_height' => '1',
+            'drywall_boxing_v2' => '1',
+            'flood_bath_shower' => '1',
+            'flood_bath_shower_material' => '425.50',
+            'flood_bath_shower_hours' => '7.5',
+            'flood_bath_flooring' => '0',
+            'flood_bath_drywall' => '0',
+            'flood_bath_vanity' => '0',
+            'flood_bath_toilet' => '0',
+        ];
+
+        $this->post(route('admin.quotations.basement.store'), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $quote = BasementQuotation::query()->where('client_name', 'Flood Bath Options')->firstOrFail();
+        $this->assertTrue((bool) ($quote->inputs['flood_bath_shower'] ?? false));
+        $this->assertEquals(425.50, (float) $quote->inputs['flood_bath_shower_material']);
+        $this->assertEquals(7.5, (float) $quote->inputs['flood_bath_shower_hours']);
+        $this->assertFalse((bool) ($quote->inputs['flood_bath_flooring'] ?? true));
+
+        $editHtml = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertCheckboxChecked($editHtml, 'flood_bath_shower', true);
+        $this->assertCheckboxChecked($editHtml, 'flood_bath_flooring', false);
+        $this->assertStringContainsString('value="425.50"', $editHtml);
+        $this->assertStringContainsString('value="7.5"', $editHtml);
+        $this->assertStringContainsString('Shower kit or shower base with walls', $editHtml);
+        $this->assertStringContainsString('data-br-hide-on-flood', $editHtml);
+
+        $preview = $this->post(route('admin.quotations.basement.preview'), $payload)->assertOk()->json();
+        $labor = collect($preview['labor'] ?? [])->firstWhere('key', 'flood_bath_shower');
+        $material = collect($preview['materials'] ?? [])->firstWhere('key', 'flood_bath_shower');
+        $this->assertNotNull($labor);
+        $this->assertEquals(637.50, (float) $labor['amount']);
+        $this->assertEquals(425.50, (float) $material['amount']);
+        $this->assertStringContainsString('Bathroom flood restoration', (string) ($preview['client_scope']['included'] ?? ''));
+        $this->assertStringContainsString('Shower kit or shower base with walls', (string) ($preview['client_scope']['included'] ?? ''));
+
+        $this->post(route('admin.quotations.basement.link', $quote), [
+            'client_project_id' => $project->id,
+        ])->assertSessionHasNoErrors();
+
+        $cpq = ClientProjectQuotation::query()
+            ->where('source_type', ClientProjectQuotation::SOURCE_BASEMENT)
+            ->where('source_id', $quote->id)
+            ->firstOrFail();
+        $pdfResponse = $this->get(route('admin.client-projects.quotation.pdf', [$project, $cpq]))->assertOk();
+        $pdfPath = storage_path('app/flood-bath-options-'.$quote->id.'.pdf');
+        file_put_contents($pdfPath, $pdfResponse->getContent());
+        try {
+            $pdfText = preg_replace('/\s+/', ' ', $this->extractPdfText($pdfPath)) ?? '';
+            $this->assertStringContainsString('Basement renovation (labour)', $pdfText);
+            $this->assertStringContainsString('Basement renovation materials', $pdfText);
+            $materials = number_format((float) $quote->fresh()->calculation['summary']['materials_pre_hst'], 2, '.', ',');
+            $this->assertStringContainsString($materials, $pdfText);
+            $this->assertStringContainsString('Bathroom flood restoration', $pdfText);
+            $this->assertStringContainsString('Shower kit or shower base with walls', $pdfText);
+        } finally {
+            @unlink($pdfPath);
+        }
+    }
+
     private function assertCheckboxChecked(string $html, string $name, bool $checked, ?string $value = null): void
     {
         preg_match_all('/<input\b[^>]*type="checkbox"[^>]*>/s', $html, $tags);

@@ -56,10 +56,67 @@ class QuotationPdfPageBreakTest extends TestCase
         $this->assertStringContainsString('page-break-after: avoid', $heading);
     }
 
+    public function test_section_headings_stay_with_the_first_body_lines_and_long_lists_can_split(): void
+    {
+        $included = [];
+        $assumptions = [];
+        for ($i = 1; $i <= 40; $i++) {
+            $included[] = 'Included line '.$i;
+        }
+        for ($i = 1; $i <= 20; $i++) {
+            $assumptions[] = 'Assumption '.$i;
+        }
+
+        $html = $this->renderPdfHtml(
+            [[
+                'description' => 'Basement renovation (labour)',
+                'amount' => 1200,
+                'apply_hst' => true,
+            ]],
+            implode("\n", $included),
+            implode("\n", $assumptions),
+            '<p>First short paragraph stays with the heading.</p><p>'.str_repeat('More scope detail. ', 40).'</p>'
+        );
+
+        $scopeTable = $this->cssDeclaration($html, '.quote-client-scope-table');
+        $this->assertStringContainsString('page-break-inside: auto', $scopeTable);
+        $this->assertStringNotContainsString('page-break-inside: avoid', $scopeTable);
+
+        $scopeRow = $this->cssDeclaration($html, '.quote-client-scope-table tr');
+        $this->assertStringContainsString('page-break-inside: avoid', $scopeRow);
+
+        $this->assertMatchesRegularExpression(
+            '/\.quote-client-scope-table tr\.quote-client-scope-head[^{]*\{[^}]*page-break-after:\s*avoid/s',
+            $html
+        );
+
+        $keep = $this->cssDeclaration($html, '.quote-heading-keep');
+        $this->assertStringContainsString('page-break-inside: avoid', $keep);
+        $this->assertStringContainsString('page-break-after: avoid', $keep);
+
+        $this->assertSame(2, substr_count($html, 'class="quote-client-scope-kicker"'));
+        $this->assertStringContainsString('>Value<', $html);
+        $this->assertStringContainsString('>Special terms<', $html);
+        $this->assertGreaterThan(40, substr_count($html, 'quote-client-scope-line'));
+        $this->assertStringNotContainsString('page-break-before: always', $html);
+
+        $titleAt = strpos($html, 'Description of the work');
+        $firstAt = strpos($html, 'First short paragraph stays with the heading.');
+        $restAt = strpos($html, 'More scope detail.');
+        $this->assertNotFalse($titleAt);
+        $this->assertNotFalse($firstAt);
+        $this->assertNotFalse($restAt);
+        $keepClose = strpos($html, '</table>', $titleAt);
+        $this->assertNotFalse($keepClose);
+        $this->assertLessThan($firstAt, $titleAt);
+        $this->assertLessThan($keepClose, $firstAt);
+        $this->assertLessThan($restAt, $keepClose);
+    }
+
     /**
      * @param  list<array<string, mixed>>  $items
      */
-    private function renderPdfHtml(array $items): string
+    private function renderPdfHtml(array $items, string $included = '', string $assumptions = '', ?string $workDescription = null): string
     {
         $project = new ClientProject([
             'name' => 'Kitchen pantry',
@@ -69,7 +126,7 @@ class QuotationPdfPageBreakTest extends TestCase
             'client_email' => 'ada@example.test',
         ]);
 
-        $quotation = new ClientProjectQuotation([
+        $quotation = new class([
             'title' => 'Custom millwork',
             'type' => ClientProjectQuotation::TYPE_QUOTATION,
             'quotation_number' => 'QUO-2026-0255',
@@ -77,8 +134,26 @@ class QuotationPdfPageBreakTest extends TestCase
             'labour' => true,
             'material' => true,
             'items' => $items,
-            'work_description' => 'Kitchen pantry built-in with painted doors.',
-        ]);
+            'work_description' => $workDescription ?? 'Kitchen pantry built-in with painted doors.',
+        ]) extends ClientProjectQuotation {
+            public function clientScopeForPdf(): ?array
+            {
+                $included = (string) ($this->attributes['__scope_included'] ?? '');
+                $assumptions = (string) ($this->attributes['__scope_assumptions'] ?? '');
+                if (trim($included) === '' && trim($assumptions) === '') {
+                    return null;
+                }
+
+                return [
+                    'included' => $included,
+                    'not_included' => 'Work outside this quotation.',
+                    'assumptions' => $assumptions,
+                    'allowances' => 'Allowance stays with the heading.',
+                ];
+            }
+        };
+        $quotation->setAttribute('__scope_included', $included);
+        $quotation->setAttribute('__scope_assumptions', $assumptions);
 
         return view('admin.client_projects.quotation.pdf', [
             'project' => $project,
