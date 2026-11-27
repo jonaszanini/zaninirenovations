@@ -2699,8 +2699,10 @@ html.admin-dark .admin-table.cp-projects-table th {
 html.admin-dark .admin-table.cp-projects-table td {
   border-bottom-color: rgba(51, 65, 85, 0.55);
 }
-html.admin-dark .admin-table.cp-projects-table tr.cp-row-link:hover td {
-  background: rgba(30, 41, 59, 0.55);
+@media (hover: hover) and (pointer: fine) {
+  html.admin-dark .admin-table.cp-projects-table tr.cp-row-link:hover td {
+    background: rgba(30, 41, 59, 0.55);
+  }
 }
 html.admin-dark .admin-table.cp-projects-table tr.cp-row-link:focus-visible td {
   background: rgba(14, 165, 233, 0.14);

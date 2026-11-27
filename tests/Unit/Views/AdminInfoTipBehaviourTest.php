@@ -260,6 +260,15 @@ BLADE);
         $this->assertStringContainsString("document.addEventListener('scroll', onViewportMove, { capture: true, passive: true })", $js);
         $this->assertStringContainsString("window.addEventListener('resize', onViewportMove)", $js);
         $this->assertStringContainsString("document.addEventListener('focusout'", $js);
+        $this->assertStringContainsString("document.addEventListener('pointerover'", $js);
+        $this->assertStringContainsString("document.addEventListener('focusin'", $js);
+        $this->assertStringContainsString("'(hover: hover) and (pointer: fine)'", $js);
+        $dash = file_get_contents(public_path('css/admin-dashboard.css'));
+        $this->assertDoesNotMatchRegularExpression(
+            '/\.dash-card--stat:hover\s*\{[^}]*transform\s*:/s',
+            $dash,
+            'Stat-card hover must not transform, or fixed info tips jump until the pointer leaves'
+        );
         $this->assertStringContainsString('function isLinkTarget', $js);
         $this->assertStringContainsString('requestAnimationFrame', $js);
         $this->assertStringContainsString('isIconVisibleInClip', $js);

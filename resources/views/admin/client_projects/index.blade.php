@@ -208,13 +208,11 @@
                 $url = route('admin.client-projects.show', $project);
                 $rowStatusColor = $statusColors[$project->status] ?? '#6b7280';
               @endphp
-              <tr class="cp-row-link" data-href="{{ $url }}" tabindex="0" role="link" aria-label="Open project {{ $project->name }}">
+              <tr class="cp-row-link" data-href="{{ $url }}">
                 <td>
+                  <a class="cp-row-hit" href="{{ $url }}" tabindex="-1" aria-hidden="true"></a>
                   <div class="cp-client-cell">
-                    <strong class="cp-client-name">@include('admin.partials.client_directory_link', [
-                      'project' => $project,
-                      'label' => $project->clientNameForProjectList(),
-                    ])</strong>
+                    <strong class="cp-client-name">{{ $project->clientNameForProjectList() }}</strong>
 
                     @php
                       $hasPhone = filled($project->client_phone);
@@ -315,10 +313,11 @@
                   </div>
                 </td>
                 <td>
+                  <a class="cp-row-hit" href="{{ $url }}" tabindex="-1" aria-hidden="true"></a>
                   <div class="cp-table-project-cell">
                     <div class="cp-table-project-head">
                       <span class="cp-table-project-ref">{{ $project->referenceCode() }}</span>
-                      <strong class="cp-table-project-name">{{ $project->name }}</strong>
+                      <a class="cp-table-project-name" href="{{ $url }}">{{ $project->name }}</a>
                     </div>
                     @php
                       $hasStatusNote = filled($project->status_note);
@@ -331,8 +330,7 @@
                          data-current-status="{{ $project->status }}"
                          data-closed="{{ $isRowClosed ? '1' : '0' }}">
                       <div class="cp-table-status-note cp-inline-note__display {{ $isRowClosed ? 'cp-inline-note__display--locked' : '' }}"
-                           @unless ($isRowClosed) role="button" tabindex="0" @endunless
-                           title="{{ $isRowClosed ? ($hasStatusNote ? $project->status_note : 'Project is closed') : ($hasStatusNote ? $project->status_note : 'Click to add a quick note') }}">
+                           title="{{ $hasStatusNote ? $project->status_note : ($isRowClosed ? 'Project is closed' : 'No notes') }}">
                         <span class="cp-inline-note__text {{ $hasStatusNote ? '' : 'cp-inline-note__text--empty' }}">{{ $hasStatusNote ? $project->status_note : 'No notes' }}</span>
                         @unless ($isRowClosed)
                           <i class="fa fa-pencil cp-inline-note__icon" aria-hidden="true"></i>
@@ -366,6 +364,7 @@
                   </div>
                 </td>
                 <td>
+                  <a class="cp-row-hit" href="{{ $url }}" tabindex="-1" aria-hidden="true"></a>
                   <div class="cp-inline-status"
                        data-cp-inline-status
                        data-project-id="{{ $project->id }}"
@@ -417,6 +416,7 @@
                   </div>
                 </td>
                 <td>
+                  <a class="cp-row-hit" href="{{ $url }}" tabindex="-1" aria-hidden="true"></a>
                   @if ($project->showsVisitLayoutInProjectList())
                     @if ($project->showsVisitRequiredInProjectList())
                       <div class="cp-subtle">Visit required</div>
@@ -435,6 +435,7 @@
                   @endif
                 </td>
                 <td class="cp-col-amount">
+                  <a class="cp-row-hit" href="{{ $url }}" tabindex="-1" aria-hidden="true"></a>
                   @if ($project->isHourly())
                     @php
                       $hourlyTotal = round((float) ($project->hours_logged ?? 0) * (float) ($project->hourly_rate ?? 0), 2);
@@ -442,7 +443,11 @@
                     {{ \App\Models\ClientProject::formatMoney($hourlyTotal) }}
                     <div class="cp-subtle">{{ number_format((float) ($project->hours_logged ?? 0), 2) }} h @ {{ \App\Models\ClientProject::formatMoney((float) ($project->hourly_rate ?? 0)) }}/h</div>
                   @else
-                    {{ \App\Models\ClientProject::formatMoney($project->total_amount) }}
+                    @php $listTotal = $project->projectListFixedTotal(); @endphp
+                    {{ \App\Models\ClientProject::formatMoney($listTotal['amount']) }}
+                    @if ($listTotal['note'])
+                      <div class="cp-list-total__note">{{ $listTotal['note'] }}</div>
+                    @endif
                   @endif
                 </td>
               </tr>
@@ -489,49 +494,7 @@
     </div>
   </div>
 
-  {{-- Row-as-link behaviour. <tr> can't legally wrap an <a>, so we navigate
-       in JS. Plain clicks open in the same tab; Ctrl/Cmd-click and middle-click
-       open in a new tab to match standard link behaviour. --}}
   <script>
-    (function () {
-      var rows = document.querySelectorAll('.cp-row-link[data-href]');
-      if (!rows.length) return;
-
-      function shouldIgnore(target) {
-        // Don't hijack clicks on real interactive elements inside the row
-        // (links, buttons, inputs, selects, action buttons, inline note/status).
-        return !!target.closest('a, button, input, select, textarea, label, .cp-client-action-btn, .cp-client-actions, .cp-inline-note, .cp-inline-status, .cp-status-menu');
-      }
-
-      rows.forEach(function (row) {
-        var url = row.getAttribute('data-href');
-
-        row.addEventListener('click', function (ev) {
-          if (shouldIgnore(ev.target)) return;
-          if (ev.ctrlKey || ev.metaKey || ev.shiftKey) {
-            window.open(url, '_blank');
-          } else {
-            window.location.href = url;
-          }
-        });
-
-        // Middle-click (auxclick, button === 1) → open in new tab.
-        row.addEventListener('auxclick', function (ev) {
-          if (ev.button !== 1 || shouldIgnore(ev.target)) return;
-          ev.preventDefault();
-          window.open(url, '_blank');
-        });
-
-        // Keyboard: Enter / Space activates the row when it has focus.
-        row.addEventListener('keydown', function (ev) {
-          if (ev.key !== 'Enter' && ev.key !== ' ') return;
-          if (shouldIgnore(ev.target)) return;
-          ev.preventDefault();
-          window.location.href = url;
-        });
-      });
-    })();
-
     // Shared toast helper + contact action buttons + inline quick note & status editor
     (function () {
       var toastEl = document.getElementById('cp-copy-toast');
@@ -599,13 +562,8 @@
           noteWrap.setAttribute('data-closed', isClosed ? '1' : '0');
           if (display) {
             display.classList.toggle('cp-inline-note__display--locked', isClosed);
-            if (isClosed) {
-              display.removeAttribute('role');
-              display.removeAttribute('tabindex');
-            } else {
-              display.setAttribute('role', 'button');
-              display.setAttribute('tabindex', '0');
-            }
+            display.removeAttribute('role');
+            display.removeAttribute('tabindex');
           }
           if (pencil) {
             pencil.hidden = isClosed;
@@ -625,7 +583,7 @@
           var closedState = noteWrap.getAttribute('data-closed') === '1';
           display.setAttribute(
             'title',
-            closedState ? (clean || 'Project is closed') : (clean || 'Click to add a quick note')
+            closedState ? (clean || 'Project is closed') : (clean || 'No notes')
           );
         }
         if (input) {
@@ -700,19 +658,6 @@
             if (cancelBtn) cancelBtn.disabled = false;
           });
         }
-
-        display.addEventListener('click', function (ev) {
-          ev.stopPropagation();
-          openEditor();
-        });
-
-        display.addEventListener('keydown', function (ev) {
-          if (ev.key === 'Enter' || ev.key === ' ') {
-            ev.preventDefault();
-            ev.stopPropagation();
-            openEditor();
-          }
-        });
 
         input.addEventListener('keydown', function (ev) {
           if (ev.key === 'Enter') {
@@ -1117,4 +1062,5 @@
 
 @push('scripts')
   <script src="{{ asset('js/admin-contact-hold.js') }}?v={{ @filemtime(public_path('js/admin-contact-hold.js')) ?: time() }}"></script>
+  <script src="{{ asset('js/admin-project-list-rows.js') }}?v={{ @filemtime(public_path('js/admin-project-list-rows.js')) ?: time() }}"></script>
 @endpush

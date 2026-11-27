@@ -1,6 +1,7 @@
 /**
- * Admin info-tip: click/tap ⓘ toggles a popover. Event delegation so
- * dynamically added rows work. No hover-only behaviour.
+ * Admin info-tip: click/tap toggles a pinned popover. On a fine pointer,
+ * hover or keyboard focus also opens it. Outside click and Escape close it.
+ * Event delegation so dynamically added rows work.
  *
  * Markup: wrap > button.admin-info-tip + sibling .admin-info-tip__bubble
  * (bubble is never nested inside the button).
@@ -162,6 +163,7 @@
     var btn = buttonOf(root);
     var bubble = bubbleOf(root);
     root.classList.remove(OPEN);
+    if (root.removeAttribute) root.removeAttribute('data-tip-pinned');
     if (btn) {
       btn.setAttribute('aria-expanded', 'false');
     }
@@ -197,11 +199,19 @@
     });
   }
 
+  function fineHoverPointer(ev) {
+    if (ev && (ev.pointerType === 'touch' || ev.pointerType === 'pen')) return false;
+    if (typeof window.matchMedia !== 'function') return false;
+    return window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+  }
+
   function toggleTip(root) {
     var btn = buttonOf(root);
     var open = btn && btn.getAttribute('aria-expanded') === 'true';
+    var pinned = root.getAttribute('data-tip-pinned') === '1';
     closeTips(root);
-    if (!open) {
+    if (!open || !pinned) {
+      root.setAttribute('data-tip-pinned', '1');
       openTip(root);
     } else {
       closeTip(root);
@@ -997,6 +1007,36 @@
     e.preventDefault();
   }, true);
 
+  document.addEventListener('pointerover', function (e) {
+    if (!fineHoverPointer(e)) return;
+    var root = rootOf(e.target);
+    if (!root) return;
+    if (!closestFrom(e.target, '.admin-info-tip') && !closestFrom(e.target, '.admin-info-tip__bubble')) return;
+    openTip(root);
+  }, true);
+
+  document.addEventListener('pointerout', function (e) {
+    if (!fineHoverPointer(e)) return;
+    var root = rootOf(e.target);
+    if (!root || !root.classList.contains(OPEN)) return;
+    if (root.getAttribute('data-tip-pinned') === '1') return;
+    var next = e.relatedTarget;
+    if (next && root.contains && root.contains(next)) return;
+    closeTip(root);
+  }, true);
+
+  var skipFocusOpen = false;
+
+  document.addEventListener('focusin', function (e) {
+    if (skipFocusOpen) return;
+    if (!closestFrom(e.target, '.admin-info-tip')) return;
+    var root = rootOf(e.target);
+    if (!root) return;
+    var btn = buttonOf(root);
+    if (btn && btn.getAttribute('aria-expanded') === 'true') return;
+    openTip(root);
+  });
+
   document.addEventListener('click', function (e) {
     var root = rootOf(e.target);
     if (!root) {
@@ -1050,12 +1090,14 @@
       focusRoots.push(root);
     });
     closeTips(null);
+    skipFocusOpen = true;
     focusRoots.forEach(function (root) {
       var btn = buttonOf(root);
       if (btn && typeof btn.focus === 'function') {
         btn.focus();
       }
     });
+    skipFocusOpen = false;
   });
 
   window.addEventListener('resize', onViewportMove);

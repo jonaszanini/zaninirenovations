@@ -212,9 +212,12 @@ html.admin-dark .dash-page {
   transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
 }
 
+/* No transform here. A transformed ancestor becomes the containing block for
+   position:fixed info tips, so the bubble was placed against the card and
+   only appeared once the pointer left (the hover shift turned off). */
 .dash-card--stat:hover {
   border-color: rgba(14, 165, 233, 0.35);
-  transform: translateY(-2px);
+  box-shadow: 0 16px 32px -16px rgba(15, 23, 42, 0.28);
 }
 
 .dash-card--stat .dash-stat-label {
