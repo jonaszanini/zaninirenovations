@@ -1195,7 +1195,11 @@
       el.hidden = floodOnly && !keepLegacyBath;
     });
     form.querySelectorAll('[data-br-flood-bath-options]').forEach(function (el) {
-      el.hidden = !floodOnly || keepLegacyBath;
+      var hideFloodBath = !floodOnly || keepLegacyBath;
+      el.hidden = hideFloodBath;
+      el.querySelectorAll('input, select, textarea').forEach(function (input) {
+        input.disabled = hideFloodBath;
+      });
     });
     var areaOverview = form.querySelector('[data-br-area-overview]');
     var wallOverview = form.querySelector('[data-br-wall-overview]');

@@ -1617,7 +1617,7 @@
               </div>
               <div class="admin-form-group">
                 <label for="br-flood-bath-{{ $floodBathKey }}-hours">Labour hours</label>
-                <input type="number" step="0.25" min="0" class="admin-input br-preview" id="br-flood-bath-{{ $floodBathKey }}-hours"
+                <input type="number" step="any" min="0" class="admin-input br-preview" id="br-flood-bath-{{ $floodBathKey }}-hours"
                        name="{{ $floodBathHoursKey }}"
                        value="{{ rtrim(rtrim(number_format((float) $floodBathHours, 2, '.', ''), '0'), '.') }}">
               </div>

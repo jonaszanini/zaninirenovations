@@ -36,6 +36,20 @@ class BasementFloodRestorationWorkflowTest extends IntegrationTestCase
             $html
         );
         $this->assertSame(12, preg_match_all('/data-br-enabled-section="[^"]+"/', $html));
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*step="any"[^>]*id="br-flood-bath-flooring-hours"/s',
+            $html,
+            'Calculated flood bathroom hours such as 1.60 must be a valid number input'
+        );
+        $this->assertMatchesRegularExpression(
+            '/<input[^>]*step="any"[^>]*id="br-flood-bath-drywall-hours"/s',
+            $html
+        );
+        $this->assertStringContainsString(
+            'input.disabled = hideFloodBath',
+            (string) file_get_contents(public_path('js/admin-basement-quotation.js')),
+            'Hidden flood bathroom amounts must not block save on other presets'
+        );
 
         $configHtml = $this->get(route('admin.quotations.basement.price-configuration'))
             ->assertOk()
