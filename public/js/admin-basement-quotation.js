@@ -1189,6 +1189,18 @@
     form.querySelectorAll('[data-br-flood-only]').forEach(function (el) {
       el.hidden = !floodOnly;
     });
+    var floodBathOptIn = document.getElementById('br-flood-bath-use-restoration');
+    var keepLegacyBath = floodOnly && floodBathOptIn && !floodBathOptIn.checked;
+    form.querySelectorAll('[data-br-hide-on-flood]').forEach(function (el) {
+      el.hidden = floodOnly && !keepLegacyBath;
+    });
+    form.querySelectorAll('[data-br-flood-bath-options]').forEach(function (el) {
+      var hideFloodBath = !floodOnly || keepLegacyBath;
+      el.hidden = hideFloodBath;
+      el.querySelectorAll('input, select, textarea').forEach(function (input) {
+        input.disabled = hideFloodBath;
+      });
+    });
     var areaOverview = form.querySelector('[data-br-area-overview]');
     var wallOverview = form.querySelector('[data-br-wall-overview]');
     if (areaOverview) areaOverview.hidden = wallOnly;
@@ -1256,7 +1268,7 @@
       });
     });
     var includeWrap = form.querySelector('[data-br-bath-include-wrap]');
-    if (includeWrap) includeWrap.hidden = nest;
+    if (includeWrap) includeWrap.hidden = nest || currentPreset() === 'flood';
     if (nest) {
       setNamedCheck('include_bathroom', true);
       var bathFields = document.getElementById('br-bath-fields');
@@ -1881,6 +1893,12 @@
       if (!isEdit) setWizardStep(currentIndex, false);
     });
   });
+  var floodBathOptIn = document.getElementById('br-flood-bath-use-restoration');
+  if (floodBathOptIn) {
+    floodBathOptIn.addEventListener('change', function () {
+      applyScope();
+    });
+  }
 
   form.querySelectorAll('[data-br-goto]').forEach(function (btn) {
     btn.addEventListener('click', function () {

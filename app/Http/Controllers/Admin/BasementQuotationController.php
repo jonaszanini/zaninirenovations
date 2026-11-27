@@ -468,6 +468,16 @@ class BasementQuotationController extends Controller
             'flood_cut_height_in',
             'building_permit_amount',
             'bcin_drawings_amount',
+            'flood_bath_flooring_material',
+            'flood_bath_flooring_hours',
+            'flood_bath_drywall_material',
+            'flood_bath_drywall_hours',
+            'flood_bath_shower_material',
+            'flood_bath_shower_hours',
+            'flood_bath_vanity_material',
+            'flood_bath_vanity_hours',
+            'flood_bath_toilet_material',
+            'flood_bath_toilet_hours',
         ];
         $optionalQty = [
             'demo_flooring_sf', 'demo_drywall_sf', 'demo_studs_lf', 'demo_baseboard_lf',
@@ -499,6 +509,7 @@ class BasementQuotationController extends Controller
             'drywall_type_x_ceiling', 'drywall_resilient_channel',
             'include_stairs', 'under_stair_storage', 'include_millwork', 'include_egress_window',
             'include_bathroom', 'include_vanity', 'include_pedestal_sink', 'include_toilet', 'include_shower',
+            'flood_bath_flooring', 'flood_bath_drywall', 'flood_bath_shower', 'flood_bath_vanity', 'flood_bath_toilet',
             'include_tub', 'include_exhaust_fan', 'include_bath_fixture', 'include_bath_spot',
             'include_cleaning', 'include_touchups', 'include_shoe',
             'include_building_permit',
@@ -605,6 +616,28 @@ class BasementQuotationController extends Controller
                     || in_array('on', $raw, true);
             } else {
                 $out[$key] = $request->boolean($key);
+            }
+        }
+        $restorationOptIn = false;
+        if ($request->exists('flood_bath_use_restoration')) {
+            $restorationRaw = $request->input('flood_bath_use_restoration');
+            $restorationOptIn = is_array($restorationRaw)
+                ? in_array('1', $restorationRaw, true)
+                    || in_array(1, $restorationRaw, true)
+                    || in_array(true, $restorationRaw, true)
+                    || in_array('true', $restorationRaw, true)
+                    || in_array('on', $restorationRaw, true)
+                : $request->boolean('flood_bath_use_restoration');
+        }
+        if (is_array($storedInputs)
+            && BasementQuotationCalculator::usesLegacyFloodBathroom($storedInputs)
+            && ! $restorationOptIn) {
+            foreach (['flooring', 'drywall', 'shower', 'vanity', 'toilet'] as $floodBathKey) {
+                unset(
+                    $out['flood_bath_'.$floodBathKey],
+                    $out['flood_bath_'.$floodBathKey.'_material'],
+                    $out['flood_bath_'.$floodBathKey.'_hours']
+                );
             }
         }
         if (! $request->exists('flood_partition_both_faces')) {

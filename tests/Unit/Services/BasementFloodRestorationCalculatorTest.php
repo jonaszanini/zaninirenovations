@@ -350,6 +350,13 @@ class BasementFloodRestorationCalculatorTest extends TestCase
             ], $settings);
             $this->assertNull(collect($nonFlood['materials'])->firstWhere('key', 'toilet_wax_ring'));
         }
+
+        // Once restoration choices are stored, the old build lines are not added.
+        $switched = $inputs;
+        $switched['flood_bath_shower'] = false;
+        $switchedCalc = (new BasementQuotationCalculator)->calculate($switched, $settings);
+        $this->assertNull(collect($switchedCalc['materials'])->firstWhere('key', 'toilet_wax_ring'));
+        $this->assertNull(collect($switchedCalc['labor'])->firstWhere('key', 'bath_toilet'));
     }
 
     public function test_zero_area_with_positive_perimeter_calculates_nonzero_and_passes_validation(): void

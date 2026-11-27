@@ -982,11 +982,41 @@ a.cp-table-phone .fa {
    removed in favour of clicking anywhere on the row). */
 .cp-table tr.cp-row-link {
   cursor: pointer;
+  touch-action: manipulation;
   transition: background-color 0.12s ease;
 }
 
-.cp-table tr.cp-row-link:hover td {
-  background: #eff6ff;
+.admin-table.cp-projects-table tr.cp-row-link > td {
+  position: relative;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.cp-row-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.admin-table.cp-projects-table .cp-client-actions,
+.admin-table.cp-projects-table .cp-inline-status,
+.admin-table.cp-projects-table a.cp-table-project-name {
+  position: relative;
+  z-index: 2;
+}
+
+a.cp-table-project-name,
+a.cp-table-project-name:link,
+a.cp-table-project-name:visited {
+  color: inherit;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .cp-table tr.cp-row-link:hover td {
+    background: #eff6ff;
+  }
 }
 
 .cp-table tr.cp-row-link:focus {
@@ -1142,6 +1172,15 @@ a.cp-table-phone .fa {
 .admin-table.cp-projects-table .cp-col-amount {
   font-weight: 700;
   color: var(--admin-heading, #0f172a);
+}
+
+.cp-list-total__note {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--admin-muted, #64748b);
 }
 
 /* Inline quick note editor & interactive status selector */
@@ -13241,6 +13280,55 @@ html.admin-dark .br-hardwood-caution {
 
 .br-bath-include .admin-checkbox {
   min-height: 44px;
+}
+
+.br-flood-bath {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.br-flood-bath__option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.br-flood-bath__option:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.br-flood-bath__check {
+  min-width: 0;
+}
+
+.br-flood-bath__fields {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  min-width: 0;
+}
+
+.br-flood-bath__fields .admin-form-group {
+  min-width: 0;
+  margin: 0;
+}
+
+.br-flood-bath__fields .admin-input {
+  width: 100%;
+}
+
+@media (min-width: 700px) {
+  .br-flood-bath__fields {
+    grid-template-columns: minmax(8rem, 14rem) minmax(7rem, 10rem);
+    max-width: 28rem;
+  }
 }
 
 .br-bath-fields {

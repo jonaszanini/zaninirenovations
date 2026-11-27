@@ -69,6 +69,7 @@ class ClientProjectController extends Controller
             : null;
 
         $query = ClientProject::query()
+            ->with(['quotations:id,client_project_id,status,total_amount,sent_at'])
             ->withCount('installments')
             ->withSum('installments as paid_amount_sum', 'amount')
             // Pull hours so hourly-billed projects can display rate × hours

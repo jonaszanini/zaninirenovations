@@ -11,6 +11,7 @@ tests/Feature/Invoices/InvoiceEmailExpenseReceiptsTest.php
 tests/Feature/Admin/GlobalFinancialsTest.php
 tests/Feature/Admin/PrepareBillingTest.php
 tests/Feature/Admin/ClientProjectOverviewInlineEditTest.php
+tests/Feature/Admin/ClientProjectIndexListTotalTest.php
 tests/Feature/AdminMoneyDirectEntryTest.php
 tests/Feature/SharedPricesTest.php
 tests/Feature/SharedPricesAddRenameTest.php

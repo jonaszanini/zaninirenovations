@@ -1007,6 +1007,52 @@ class ClientProject extends Model
     }
 
     /**
+     * Project List TOTAL for a fixed-price project.
+     * An accepted quotation keeps the stored contract total.
+     * With no accepted quotation, the latest sent quotation is shown
+     * and marked pending. Anything else keeps the stored total (often zero).
+     *
+     * @return array{amount: float, note: ?string}
+     */
+    public function projectListFixedTotal(): array
+    {
+        $quotations = $this->relationLoaded('quotations')
+            ? $this->quotations
+            : $this->quotations()->get(['id', 'client_project_id', 'status', 'total_amount', 'sent_at']);
+
+        $hasAccepted = $quotations->contains(
+            fn ($quotation) => $quotation->status === ClientProjectQuotation::STATUS_ACCEPTED
+        );
+        if ($hasAccepted) {
+            return [
+                'amount' => round((float) ($this->total_amount ?? 0), 2),
+                'note' => null,
+            ];
+        }
+
+        $sent = $quotations
+            ->filter(fn ($quotation) => $quotation->status === ClientProjectQuotation::STATUS_SENT)
+            ->sortByDesc(function ($quotation) {
+                $sentAt = $quotation->sent_at ? $quotation->sent_at->getTimestamp() : 0;
+
+                return sprintf('%010d-%010d', $sentAt, (int) $quotation->id);
+            })
+            ->first();
+
+        if ($sent) {
+            return [
+                'amount' => round((float) ($sent->total_amount ?? 0), 2),
+                'note' => 'Pending approval',
+            ];
+        }
+
+        return [
+            'amount' => round((float) ($this->total_amount ?? 0), 2),
+            'note' => null,
+        ];
+    }
+
+    /**
      * Accepted project quotations: used for payment-plan and installment
      * HST allocation (sum of per-line HST; lines may be HST-exempt).
      *

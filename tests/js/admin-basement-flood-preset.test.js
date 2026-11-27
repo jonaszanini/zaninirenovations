@@ -434,7 +434,9 @@ const insulateWallsCb = makeElement('input', { type: 'checkbox', name: 'insulate
 const insulateCeilingCb = makeElement('input', { type: 'checkbox', name: 'insulate_ceiling', checked: false });
 const underslabCb = makeElement('input', { type: 'checkbox', name: 'underslab', checked: false });
 const includeBathroomCb = makeElement('input', { type: 'checkbox', name: 'include_bathroom', 'data-br-reveal': 'br-bath-fields', checked: false });
-const bathFields = makeElement('div', { id: 'br-bath-fields', hidden: true });
+const bathBuild = makeElement('div', { 'data-br-bath-build': '', 'data-br-hide-on-flood': '' });
+const floodBath = makeElement('div', { id: 'br-bath-flood', class: 'br-flood-bath', 'data-br-flood-only': '', hidden: true });
+const bathFields = makeElement('div', { id: 'br-bath-fields', hidden: true }, [bathBuild, floodBath]);
 const includeDemoCb = makeElement('input', { type: 'checkbox', name: 'include_demolition', checked: false });
 const includeCleaningCb = makeElement('input', { type: 'checkbox', name: 'include_cleaning', checked: true });
 const includeTouchupsCb = makeElement('input', { type: 'checkbox', name: 'include_touchups', checked: true });
@@ -603,6 +605,8 @@ assert.strictEqual(ceilingTypeSelect.value, 'none');
 assert.strictEqual(flooringTypeSelect.value, 'lvp');
 assert.strictEqual(insulateWallsCb.checked, true);
 assert.strictEqual(includeBathroomCb.checked, false);
+assert.strictEqual(bathBuild.hidden, true, 'normal bathroom build hides on flood');
+assert.strictEqual(floodBath.hidden, false, 'flood bathroom options show on flood');
 
 // 2. User toggles trade checkboxes after selecting 'flood'
 const bathTradeCb = tradeCheckboxes.find((cb) => cb.value === 'bathroom');
@@ -666,10 +670,14 @@ assert.strictEqual(paintWallInput.value, '', 'flood paint quantity must not stay
 assert.strictEqual(baseInput.value, '', 'flood baseboard quantity must not stay on the full preset');
 assert.strictEqual(ceilingTypeSelect.value, 'drywall', 'full preset ceiling must not stay on the flood none value');
 assert.strictEqual(includePermitCb.checked, false, 'building permit stays off');
+assert.strictEqual(bathBuild.hidden, false, 'normal bathroom build returns when leaving flood');
+assert.strictEqual(floodBath.hidden, true, 'flood bathroom options hide when leaving flood');
 
 // 5. Back to flood restores the manual drywall edit and flood panels
 selectPreset('flood');
 assert.strictEqual(floodOnlyPanel.hidden, false, 'flood drywall panel returns');
+assert.strictEqual(bathBuild.hidden, true, 'switching back to flood hides the normal bathroom build');
+assert.strictEqual(floodBath.hidden, false, 'switching back to flood shows the restoration options');
 assert.strictEqual(dwWallInput.value, '350', 'manual flood drywall edit is restored');
 assert.strictEqual(insWallInput.dataset.brFloodQtyAuto, '1', 'imported insulation stays auto after a round trip');
 assert.strictEqual(insWallInput.value, '240', 'imported insulation is restored from the flood geometry');

@@ -301,22 +301,50 @@
       margin: 0 0 14pt;
     }
     .quote-client-scope-kicker {
-      margin: 0 0 6pt;
+      margin: 0 0 4pt;
       font-size: 9.5pt;
       font-weight: 700;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: #024768;
+      page-break-after: avoid;
+      break-after: avoid;
+    }
+    .quote-heading-keep {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 0;
+      page-break-inside: avoid;
+      page-break-after: avoid;
+      break-inside: avoid;
+      break-after: avoid;
+    }
+    .quote-heading-keep td {
+      padding: 0;
+      border: 0;
+      vertical-align: top;
     }
     .quote-client-scope-table {
       width: 100%;
       border-collapse: collapse;
       margin: 0 0 10pt;
+      page-break-inside: auto;
+      break-inside: auto;
+    }
+    .quote-client-scope-table tr {
+      page-break-inside: avoid;
+      break-inside: avoid;
+    }
+    .quote-client-scope-table tr.quote-client-scope-head,
+    .quote-client-scope-table tr.quote-client-scope-titles,
+    .quote-client-scope-table tr.quote-client-scope-first {
+      page-break-after: avoid;
+      break-after: avoid;
     }
     .quote-client-scope-table td {
       width: 50%;
       vertical-align: top;
-      padding: 0 8pt 8pt 0;
+      padding: 0 8pt 2pt 0;
     }
     .quote-client-scope-table td:last-child {
       padding-right: 0;
@@ -332,6 +360,9 @@
       padding: 0;
       font-size: 9.5pt;
       line-height: 1.35;
+    }
+    .quote-client-scope-table td ul {
+      margin: 0 0 0 12pt;
     }
     .quote-client-scope-block li {
       margin: 0 0 2pt;
@@ -728,10 +759,29 @@
     $flooringMaterial = $quotation->flooringMaterialSelectionForPdf();
   @endphp
   @if ($quotation->hasWorkDescriptionForPdf())
+    @php
+      $workKeepHtml = '';
+      $workRestHtml = $quoteWorkDesc;
+      if ($quoteWorkDescIsHtml && preg_match('/\A\s*(<p\b[^>]*>.*?<\/p>)/is', (string) $quoteWorkDesc, $workFirst) && strlen($workFirst[1]) < 900) {
+          $workKeepHtml = $workFirst[1];
+          $workRestHtml = ltrim(substr((string) $quoteWorkDesc, strlen($workFirst[0])));
+      }
+    @endphp
     <div class="quote-work-description">
-      <p class="quote-work-description-title">Description of the work</p>
+      <table class="quote-heading-keep" role="presentation">
+        <tr>
+          <td>
+            <p class="quote-work-description-title">Description of the work</p>
+            @if ($workKeepHtml !== '')
+              <div class="quote-work-description-body quote-work-description-body--rich">{!! $workKeepHtml !!}</div>
+            @endif
+          </td>
+        </tr>
+      </table>
       @if ($quoteWorkDescIsHtml)
-        <div class="quote-work-description-body quote-work-description-body--rich">{!! $quoteWorkDesc !!}</div>
+        @if (trim((string) $workRestHtml) !== '')
+          <div class="quote-work-description-body quote-work-description-body--rich">{!! $workRestHtml !!}</div>
+        @endif
       @else
         <p class="quote-work-description-body">{!! nl2br(e($quoteWorkDesc)) !!}</p>
       @endif
@@ -883,8 +933,12 @@
     }
   @endphp
   @if ($lowDeckDiagrams)
-    <div class="pdf-photos-section" style="page-break-inside: avoid;">
-      <p class="pdf-photos-title">Deck layout diagrams</p>
+    <div class="pdf-photos-section">
+      <table class="quote-heading-keep" role="presentation">
+        <tr>
+          <td><p class="pdf-photos-title">Deck layout diagrams</p></td>
+        </tr>
+      </table>
       <div style="text-align:center; margin-bottom:10pt;">
         <div style="width:70%; margin:0 auto 8pt;">{!! $lowDeckDiagrams['foundations'] !!}</div>
         <div style="width:70%; margin:0 auto 8pt;">{!! $lowDeckDiagrams['framing'] !!}</div>
@@ -895,8 +949,14 @@
 
   @if ($pdfPhotos->isNotEmpty())
     <div class="pdf-photos-section">
-      <p class="pdf-photos-title">Reference photos</p>
-      <p class="pdf-photos-intro">Site and scope reference images attached to this {{ strtolower($quotation->typeLabel()) }}.</p>
+      <table class="quote-heading-keep" role="presentation">
+        <tr>
+          <td>
+            <p class="pdf-photos-title">Reference photos</p>
+            <p class="pdf-photos-intro">Site and scope reference images attached to this {{ strtolower($quotation->typeLabel()) }}.</p>
+          </td>
+        </tr>
+      </table>
       <table class="pdf-photos-grid">
         @foreach ($pdfPhotos->chunk(2) as $row)
           <tr>
