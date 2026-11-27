@@ -294,7 +294,7 @@ class BasementFloodRestorationCalculatorTest extends TestCase
         $this->assertSame('800 sq ft', $paintCeiling['detail']);
     }
 
-    public function test_flood_bathroom_build_flags_do_not_add_catalog_toilet_or_wax_ring(): void
+    public function test_bathroom_enabled_on_flood_adds_toilet_wax_ring_and_extra_materials_only_on_flood(): void
     {
         $enabledSections = array_values(array_unique(array_merge(
             BasementQuotationCalculator::presetEnabledSections('flood'),
@@ -315,25 +315,30 @@ class BasementFloodRestorationCalculatorTest extends TestCase
         $settings = $this->settings();
         $calc = (new BasementQuotationCalculator)->calculate($inputs, $settings);
 
-        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'toilet_wax_ring'));
-        $this->assertNull(collect($calc['materials'])->firstWhere('key', 'toilet'));
-        $this->assertNull(collect($calc['labor'])->firstWhere('key', 'bath_toilet'));
+        $wax = collect($calc['materials'])->firstWhere('key', 'toilet_wax_ring');
+        $this->assertNotNull($wax);
+        $this->assertEqualsWithDelta(1.0, (float) $wax['qty'], 0.01);
+        $this->assertEqualsWithDelta(
+            (float) BasementSettings::defaultMaterials()['toilet_wax_ring']['unit_price'],
+            (float) $wax['unit_price'],
+            0.01
+        );
 
+        // Changing toilet_wax_ring price in BasementSettings updates the line and total
         $customMats = BasementSettings::defaultMaterials();
         $customMats['toilet_wax_ring']['unit_price'] = 24.50;
         $customCalc = (new BasementQuotationCalculator)->calculate($inputs, $this->settings([], $customMats));
-        $this->assertNull(collect($customCalc['materials'])->firstWhere('key', 'toilet_wax_ring'));
-        $this->assertEqualsWithDelta(
-            (float) $calc['summary']['grand_total'],
-            (float) $customCalc['summary']['grand_total'],
-            0.02
-        );
+        $customWax = collect($customCalc['materials'])->firstWhere('key', 'toilet_wax_ring');
+        $this->assertEqualsWithDelta(24.50, (float) $customWax['amount'], 0.01);
+        $this->assertGreaterThan((float) $calc['summary']['grand_total'], (float) $customCalc['summary']['grand_total']);
 
+        // Custom shower/tub extra material row
         $this->assertCount(1, $calc['extra_materials']);
         $this->assertSame('Custom tiled shower base material', $calc['extra_materials'][0]['label']);
         $this->assertEqualsWithDelta(950.0, (float) $calc['extra_materials'][0]['amount'], 0.01);
         $this->assertEqualsWithDelta(950.0, (float) $calc['summary']['extra_materials_pre_hst'], 0.01);
 
+        // Non-flood quotes with include_toilet => true must NOT add toilet_wax_ring
         foreach (['bathroom', 'full'] as $preset) {
             $nonFlood = (new BasementQuotationCalculator)->calculate([
                 'scope_preset' => $preset,
@@ -345,6 +350,13 @@ class BasementFloodRestorationCalculatorTest extends TestCase
             ], $settings);
             $this->assertNull(collect($nonFlood['materials'])->firstWhere('key', 'toilet_wax_ring'));
         }
+
+        // Once restoration choices are stored, the old build lines are not added.
+        $switched = $inputs;
+        $switched['flood_bath_shower'] = false;
+        $switchedCalc = (new BasementQuotationCalculator)->calculate($switched, $settings);
+        $this->assertNull(collect($switchedCalc['materials'])->firstWhere('key', 'toilet_wax_ring'));
+        $this->assertNull(collect($switchedCalc['labor'])->firstWhere('key', 'bath_toilet'));
     }
 
     public function test_zero_area_with_positive_perimeter_calculates_nonzero_and_passes_validation(): void

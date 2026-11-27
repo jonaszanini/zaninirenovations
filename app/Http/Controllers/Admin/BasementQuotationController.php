@@ -618,6 +618,28 @@ class BasementQuotationController extends Controller
                 $out[$key] = $request->boolean($key);
             }
         }
+        $restorationOptIn = false;
+        if ($request->exists('flood_bath_use_restoration')) {
+            $restorationRaw = $request->input('flood_bath_use_restoration');
+            $restorationOptIn = is_array($restorationRaw)
+                ? in_array('1', $restorationRaw, true)
+                    || in_array(1, $restorationRaw, true)
+                    || in_array(true, $restorationRaw, true)
+                    || in_array('true', $restorationRaw, true)
+                    || in_array('on', $restorationRaw, true)
+                : $request->boolean('flood_bath_use_restoration');
+        }
+        if (is_array($storedInputs)
+            && BasementQuotationCalculator::usesLegacyFloodBathroom($storedInputs)
+            && ! $restorationOptIn) {
+            foreach (['flooring', 'drywall', 'shower', 'vanity', 'toilet'] as $floodBathKey) {
+                unset(
+                    $out['flood_bath_'.$floodBathKey],
+                    $out['flood_bath_'.$floodBathKey.'_material'],
+                    $out['flood_bath_'.$floodBathKey.'_hours']
+                );
+            }
+        }
         if (! $request->exists('flood_partition_both_faces')) {
             $out['flood_partition_both_faces'] = (bool) ($storedInputs['flood_partition_both_faces'] ?? $defaults['flood_partition_both_faces']);
         }

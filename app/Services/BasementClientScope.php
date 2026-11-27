@@ -65,7 +65,7 @@ class BasementClientScope
                     if ($type !== 'none') {
                         $included[] = 'Flooring: '.(BasementQuotationCalculator::FLOORING_TYPES[$type] ?? 'LVP').'. Carpet is not offered.';
                     }
-                } elseif ($key === 'bathroom' && $isFlood) {
+                } elseif ($key === 'bathroom' && $isFlood && ! BasementQuotationCalculator::usesLegacyFloodBathroom($inputs)) {
                     if (BasementQuotationCalculator::floodBathroomScopeLabels($inputs) === []) {
                         $notIncluded[] = $label;
                     }
@@ -104,7 +104,7 @@ class BasementClientScope
             foreach ($floodBathLabels as $floodBathLabel) {
                 $included[] = $floodBathLabel;
             }
-        } elseif (! empty($inputs['include_bathroom']) && in_array('bathroom', $enabled, true) && ! $isFlood) {
+        } elseif (! empty($inputs['include_bathroom']) && in_array('bathroom', $enabled, true) && (! $isFlood || BasementQuotationCalculator::usesLegacyFloodBathroom($inputs))) {
             $type = ($inputs['bath_type'] ?? '') === 'half' ? 'Half bathroom' : 'Full bathroom';
             $included[] = $type.' finishing as specified on this quotation.';
         }

@@ -764,6 +764,9 @@ class BasementQuotationCalculator
      */
     public static function floodBathroomScopeLabels(array $inputs): array
     {
+        if (self::usesLegacyFloodBathroom($inputs)) {
+            return [];
+        }
         if (self::normalizePreset($inputs['scope_preset'] ?? null) !== 'flood') {
             return [];
         }
@@ -772,6 +775,41 @@ class BasementQuotationCalculator
         }
 
         return array_column(self::floodBathroomSelections($inputs), 'label');
+    }
+
+    /**
+     * A saved flood quote that priced the bathroom build before restoration
+     * options existed. Those inputs have no flood_bath_* choices stored.
+     *
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function usesLegacyFloodBathroom(array $storedInputs): bool
+    {
+        if (self::normalizePreset($storedInputs['scope_preset'] ?? null) !== 'flood') {
+            return false;
+        }
+        if (self::storesFloodBathroomChoices($storedInputs)) {
+            return false;
+        }
+        if (empty($storedInputs['include_bathroom'])) {
+            return false;
+        }
+
+        return self::sectionEnabled($storedInputs, 'bathroom');
+    }
+
+    /**
+     * @param  array<string, mixed>  $storedInputs
+     */
+    public static function storesFloodBathroomChoices(array $storedInputs): bool
+    {
+        foreach (['flooring', 'drywall', 'shower', 'vanity', 'toilet'] as $key) {
+            if (array_key_exists('flood_bath_'.$key, $storedInputs)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -2097,8 +2135,10 @@ class BasementQuotationCalculator
         }
 
         // --- Bathroom ---
-        // Flood restoration uses the per-quote options below instead of a new bathroom build.
-        if ($on('bathroom') && ! empty($inputs['include_bathroom']) && ! $isFlood) {
+        // New flood quotes use the restoration options below. A saved flood quote
+        // with no flood_bath_* choices still prices the bathroom build it was saved with.
+        $legacyFloodBath = $isFlood && self::usesLegacyFloodBathroom($originalInputs);
+        if ($on('bathroom') && ! empty($inputs['include_bathroom']) && (! $isFlood || $legacyFloodBath)) {
             $half = ($inputs['bath_type'] ?? 'full') === 'half';
             $sinkQty = self::bathSinkQty($inputs);
             if (! empty($inputs['include_vanity']) && $sinkQty > 0) {
@@ -2125,6 +2165,9 @@ class BasementQuotationCalculator
             if (! empty($inputs['include_toilet'])) {
                 $addLabor('bath_toilet', 'bathroom', 'Toilet', 'Install', (float) $prod['toilet_hours']);
                 $addMat('toilet', 'bathroom', 1, 'toilet');
+                if ($isFlood) {
+                    $addMat('toilet_wax_ring', 'bathroom', 1, 'toilet_wax_ring');
+                }
             }
             if (! $half && ! empty($inputs['include_shower'])) {
                 $addLabor('bath_shower', 'bathroom', 'Shower', 'Install', (float) $prod['shower_hours']);
@@ -2180,7 +2223,7 @@ class BasementQuotationCalculator
             }
         }
 
-        if ($isFlood && $on('bathroom')) {
+        if ($isFlood && $on('bathroom') && ! $legacyFloodBath) {
             foreach (self::floodBathroomSelections($inputs, $originalInputs, $matCatalog, $prod) as $floodBath) {
                 if ($floodBath['hours'] > 0) {
                     $addLabor(

@@ -221,6 +221,8 @@
   ];
   $wallPreset = $scopePreset === 'wall';
   $floodPreset = $scopePreset === 'flood';
+  $storedQuoteInputs = (isset($quotation) && is_array($quotation->inputs ?? null)) ? $quotation->inputs : [];
+  $floodBathLegacy = ($isEdit ?? false) && \App\Services\BasementQuotationCalculator::usesLegacyFloodBathroom($storedQuoteInputs);
 @endphp
 <details class="br-acc admin-card is-active" data-br-step="overview" @if(empty($isEdit)) open @endif>
   <summary class="br-acc__summary"><span class="br-acc__num">{{ $wizardStep }} of {{ $enabledCount }}</span> Project Overview</summary>
@@ -1390,7 +1392,19 @@
       ])
     </div>
     <div id="br-bath-fields" class="br-bath-fields" @unless($brOn('include_bathroom') || $bathNestTrades) hidden @endunless>
-      <div data-br-bath-build data-br-hide-on-flood @if($floodPreset) hidden @endif>
+      @if ($floodBathLegacy)
+        @include('admin.partials.checkbox', [
+          'name' => 'flood_bath_use_restoration',
+          'id' => 'br-flood-bath-use-restoration',
+          'hiddenFallback' => true,
+          'checked' => false,
+          'label' => 'Use flood restoration options',
+          'info' => 'This saved quote still prices the bathroom as a build. Turn this on to switch to restoration options. Leave it off and a save keeps the current bathroom total.',
+          'inputClass' => 'admin-checkbox__input br-preview',
+          'class' => 'br-flood-bath__legacy',
+        ])
+      @endif
+      <div data-br-bath-build data-br-hide-on-flood @if($floodPreset && ! $floodBathLegacy) hidden @endif>
       <div class="br-bath-block">
         <div class="br-bath-top">
           <div class="admin-form-group">
@@ -1573,7 +1587,7 @@
             }
         }
       @endphp
-      <div id="br-bath-flood" class="br-flood-bath" data-br-flood-only @unless($floodPreset) hidden @endunless>
+      <div id="br-bath-flood" class="br-flood-bath" data-br-flood-bath-options @unless($floodPreset && ! $floodBathLegacy) hidden @endunless>
         @foreach ($floodBathCatalog as $floodBathKey => $floodBathOpt)
           @php
             $floodBathOnKey = 'flood_bath_'.$floodBathKey;

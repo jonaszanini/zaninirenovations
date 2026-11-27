@@ -407,6 +407,123 @@ class BasementFloodRestorationWorkflowTest extends IntegrationTestCase
         }
     }
 
+    public function test_legacy_flood_bathroom_build_keeps_total_and_lines_when_saved_without_edits(): void
+    {
+        $this->actingAsAdmin();
+
+        $inputs = [
+            'scope_preset' => 'flood',
+            'enabled_sections' => array_values(array_unique(array_merge(
+                BasementQuotationCalculator::presetEnabledSections('flood'),
+                ['bathroom']
+            ))),
+            'perimeter_lf' => 120,
+            'partition_lf' => 40,
+            'flood_cut_height_in' => 24,
+            'flood_partition_both_faces' => true,
+            'flood_casing_mode' => 'legs',
+            'area_sqft' => 800,
+            'ceiling_height_ft' => 8,
+            'flooring_type' => 'lvp',
+            'flooring_waste_percent' => 7,
+            'insulate_walls' => true,
+            'include_bathroom' => true,
+            'include_toilet' => true,
+            'include_vanity' => true,
+            'include_shower' => true,
+            'bath_type' => 'full',
+            'owner_hourly_rate' => 85,
+            'helper_hourly_rate' => 45,
+            'include_helper' => false,
+            'casing_openings' => 3,
+            'include_shoe' => true,
+            'include_cleaning' => true,
+            'include_touchups' => true,
+            'trim_material_lf_v2' => true,
+            'corner_bead_by_height' => true,
+            'drywall_boxing_v2' => true,
+            'ceiling_type' => 'none',
+        ];
+        $calc = (new BasementQuotationCalculator)->calculate($inputs);
+        $this->assertNotNull(collect($calc['materials'])->firstWhere('key', 'toilet_wax_ring'));
+
+        $quote = BasementQuotation::create([
+            'quote_number' => 'BR-2026-LEGACY',
+            'client_name' => 'Legacy Flood Bath',
+            'is_draft' => false,
+            'inputs' => $inputs,
+            'calculation' => $calc,
+            'final_quote_total' => $calc['summary']['grand_total'],
+            'payment_installments' => 1,
+        ]);
+
+        $html = $this->get(route('admin.quotations.basement.edit', $quote))->assertOk()->getContent();
+        $this->assertStringContainsString('Use flood restoration options', $html);
+        $this->assertMatchesRegularExpression('/id="br-bath-flood"[^>]*\bhidden\b/', $html);
+        $this->assertDoesNotMatchRegularExpression('/data-br-bath-build[^>]*\bhidden\b/', $html);
+        $this->assertCheckboxChecked($html, 'flood_bath_use_restoration', false);
+
+        $values = (new \Symfony\Component\DomCrawler\Crawler($html))
+            ->filter('#br-main-form')
+            ->form()
+            ->getPhpValues();
+        $values['ask_reply_to_accept'] = $values['ask_reply_to_accept'] ?? '0';
+
+        $this->put(route('admin.quotations.basement.update', $quote), $values)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect();
+
+        $quote->refresh();
+        $this->assertFalse(BasementQuotationCalculator::storesFloodBathroomChoices($quote->inputs));
+        $this->assertTrue(BasementQuotationCalculator::usesLegacyFloodBathroom($quote->inputs));
+        $this->assertEqualsWithDelta(
+            (float) $calc['summary']['grand_total'],
+            (float) $quote->calculation['summary']['grand_total'],
+            0.02
+        );
+        $this->assertEqualsWithDelta(
+            (float) $calc['summary']['grand_total'],
+            (float) $quote->final_quote_total,
+            0.02
+        );
+        $this->assertSame($this->pricedLines($calc), $this->pricedLines($quote->calculation));
+
+        $values['flood_bath_use_restoration'] = '1';
+        $values['flood_bath_shower'] = '1';
+        $values['flood_bath_shower_material'] = '550';
+        $values['flood_bath_shower_hours'] = '6';
+        $this->put(route('admin.quotations.basement.update', $quote), $values)
+            ->assertSessionHasNoErrors();
+        $quote->refresh();
+        $this->assertTrue(BasementQuotationCalculator::storesFloodBathroomChoices($quote->inputs));
+        $this->assertFalse(BasementQuotationCalculator::usesLegacyFloodBathroom($quote->inputs));
+        $this->assertNull(collect($quote->calculation['materials'])->firstWhere('key', 'toilet_wax_ring'));
+        $this->assertNotNull(collect($quote->calculation['labor'])->firstWhere('key', 'flood_bath_shower'));
+    }
+
+    /**
+     * @param  array<string, mixed>  $calc
+     * @return list<string>
+     */
+    private function pricedLines(array $calc): array
+    {
+        $lines = [];
+        foreach (['labor', 'materials', 'extra_materials'] as $bucket) {
+            foreach ($calc[$bucket] ?? [] as $row) {
+                $lines[] = implode('|', [
+                    $bucket,
+                    (string) ($row['key'] ?? ''),
+                    (string) ($row['label'] ?? ''),
+                    number_format((float) ($row['hours'] ?? $row['qty'] ?? 0), 4, '.', ''),
+                    number_format((float) ($row['amount'] ?? 0), 2, '.', ''),
+                ]);
+            }
+        }
+        sort($lines);
+
+        return $lines;
+    }
+
     private function assertCheckboxChecked(string $html, string $name, bool $checked, ?string $value = null): void
     {
         preg_match_all('/<input\b[^>]*type="checkbox"[^>]*>/s', $html, $tags);

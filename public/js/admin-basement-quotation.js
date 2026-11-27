@@ -1189,8 +1189,13 @@
     form.querySelectorAll('[data-br-flood-only]').forEach(function (el) {
       el.hidden = !floodOnly;
     });
+    var floodBathOptIn = document.getElementById('br-flood-bath-use-restoration');
+    var keepLegacyBath = floodOnly && floodBathOptIn && !floodBathOptIn.checked;
     form.querySelectorAll('[data-br-hide-on-flood]').forEach(function (el) {
-      el.hidden = floodOnly;
+      el.hidden = floodOnly && !keepLegacyBath;
+    });
+    form.querySelectorAll('[data-br-flood-bath-options]').forEach(function (el) {
+      el.hidden = !floodOnly || keepLegacyBath;
     });
     var areaOverview = form.querySelector('[data-br-area-overview]');
     var wallOverview = form.querySelector('[data-br-wall-overview]');
@@ -1884,6 +1889,12 @@
       if (!isEdit) setWizardStep(currentIndex, false);
     });
   });
+  var floodBathOptIn = document.getElementById('br-flood-bath-use-restoration');
+  if (floodBathOptIn) {
+    floodBathOptIn.addEventListener('change', function () {
+      applyScope();
+    });
+  }
 
   form.querySelectorAll('[data-br-goto]').forEach(function (btn) {
     btn.addEventListener('click', function () {
